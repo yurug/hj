@@ -25,6 +25,10 @@ their programming skills under the wise supervision of their teachers.
 
    A command-line client for the dojo web API.
 
+- `admin`
+
+   A set of administration tools.
+
 - `etc`
 
    A basic configuration file.
