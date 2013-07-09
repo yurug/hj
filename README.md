@@ -11,7 +11,7 @@ their programming skills under the wise supervision of their teachers.
 * Ocsigen/Eliom >= 3.0 ([website][ocsigen])
 * Qemu ([website][qemu])
 
-## Description of the distribution
+## Description of the source distribution
 
 - `dojo` 
 
@@ -47,7 +47,10 @@ their programming skills under the wise supervision of their teachers.
    This is where the state of the system will be stored.
    (This can be changed).
 
-## Installation 
+## Basic installation 
+
+This installation assumes that the source distribution has been copied
+into a directory `$(ROOT)` that is accessible only to you and root.
 
 1. Install Ocsigen.
    The easiest way is through [OPAM][opam], the ocaml package manager.
@@ -55,11 +58,73 @@ their programming skills under the wise supervision of their teachers.
 2. Install Qemu with kvm.
    You should have a package for qemu in your GNU/Linux distribution.
 
-3. Download the default virtual machine.
+3. In `$(ROOT)/vms/default`, download the default virtual
+   machine (or create your [own][debianqemu])
 
-4. Initialize a ressource tree.
+```Shell
+wget http://www.pps.univ-paris-diderot.fr/~yrg/debian.img
+```
+
+4. In `$(ROOT)/vms/default`, create a pair of SSH keys:
+
+```Shell
+ssh-keygen -f ssh-keys
+```
+
+5. In `$(ROOT)/vms/default`, boot the virtual machine:
+
+```Shell
+qemu -enable-kvm -hda debian.img -m 512 -redir tcp:424242::22
+```
+
+6. In `$(ROOT)/vms/default`, copy your public key into the `corrector`'s authorized_keys:
+
+```Shell
+scp -P 424242 ssh-keys.pub .ssh/authorized_keys
+```
+
+The password is `corrector`.
+
+7. Change the password of `corrector`.
+
+```Shell
+ssh -p 424242 -i ssh-keys corrector@locahost 'passwd'
+```
+
+8. Shutdown the virtual machine.
+
+```Shell
+ssh -p 424242 -i ssh-keys corrector@locahost 'halt'
+```
+
+9, In `$(ROOT)`, build the system.
+
+```Shell
+make
+```
+
+10. In `$(ROOT)`, initialize a ressource tree.
+
+```Shell
+admin/freshdojo
+```
+
+11. In `$(ROOT)`, initialize a basic teacher.
+
+```Shell
+admin/maketeacher login password
+```
+
+12. In `$(ROOT)`, deploy the system.
+
+```Shell
+sudo make deploy
+```
+
+13. Connect to http://localhost:80
 
 
 [ocsigen]: http://www.ocsigen.org
 [qemu]: http://www.qemu.org
 [opam]: http://opam.ocamlpro.com
+[debianqemu]: http://wiki.colar.net/creating_a_qemu_image_and_installing_debian_in_it
