@@ -33,29 +33,29 @@ their programming skills under the wise supervision of their teachers.
 
    A basic configuration file.
 
-- `doc'
+- `doc`
 
    A user manual and documents for developpers.
 
 - `vms`
 
    This is where virtual machines are expected to be installed.
-   (This can be changed).
+   (This can be changed.)
 
 - `ressources`
 
    This is where the state of the system will be stored.
-   (This can be changed).
+   (This can be changed.)
 
 ## Basic installation 
 
 This installation assumes that the source distribution has been copied
-into a directory `$(ROOT)` that is accessible only to you and root.
+into a directory `$(ROOT)` that is accessible only to you and to root.
 
 - Install Ocsigen.
    The easiest way is through [OPAM][opam], the ocaml package manager.
 
-- Install Qemu with kvm.
+- Install Qemu with kvm enabled.
    You should have a package for qemu in your GNU/Linux distribution.
 
 - In `$(ROOT)/vms/default`, download the default virtual
