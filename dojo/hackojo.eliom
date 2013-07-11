@@ -1,0 +1,3 @@
+(* -*- tuareg -*- *)
+
+(** The Hacking Dojo. *)

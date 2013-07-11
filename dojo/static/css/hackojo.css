@@ -1,0 +1,60 @@
+/* FIXME: Beautify the web interface. */
+
+* {
+    font-family: sans-serif;
+}
+
+h1 {
+    text-align: center;
+}
+
+#connection_box {
+    margin-left: auto;
+    margin-right: auto;
+    width: 30em;
+    border-radius: 15px;
+    border-style:solid;
+    border-width:5px;
+}
+
+#connection_box table {
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+    border-width:0px;
+    border-style:none;
+}
+
+#connection_box td {
+    border-width:0px;
+    border-style:none;
+}
+
+#global {
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 2em;
+    padding-right: 2em;
+    width: 100em;
+}
+
+table.results {
+    border-collapse:collapse;
+    border-width:1px;
+    border-style:solid;
+    border-color:black;
+}
+
+thead {
+    font-weight:bold;
+    background-color:silver;
+    border-width:1px;
+    border-style:solid;
+}
+
+td {
+    border-width:1px;
+    border-style:solid;
+    padding: 0.3em;
+}
