@@ -8,6 +8,7 @@ their programming skills under the wise supervision of their teachers.
 
 ## Dependencies
 
+* OCaml >= 4.0
 * Ocsigen/Eliom >= 3.0 ([website][ocsigen])
 * Qemu ([website][qemu])
 
