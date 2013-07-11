@@ -18,7 +18,7 @@ module Hackojo_app =
 
 let hackojo_page body_contents =
   Eliom_tools.F.html
-    ~title:"The Hacking Dojo"
+    ~title:I18N.String.the_hacking_dojo
     ~css:[["css";"hackojo.css"]]
     (body ~a:[a_id "global"]
        (h1 [pcdata "Hackojo"]
