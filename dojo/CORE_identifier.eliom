@@ -59,3 +59,17 @@ let lwt_map_fold f m init =
   ) m (return init)
 
 type identifiers = Set.t
+
+exception InvalidPrefix of path * path
+
+let rec suffix prefix p =
+  match prefix, p with
+  | [], p -> p
+  | p :: ps, x :: xs when p = x -> suffix ps xs
+  | _, _ -> raise Not_found
+
+let suffix prefix p =
+  try
+    suffix prefix p
+  with Not_found ->
+    raise (InvalidPrefix (prefix, p))

@@ -52,3 +52,8 @@ val lwt_map_fold
 module Set : Set.S with type elt = identifier
 
 type identifiers = Set.t
+
+(** [suffix prefix path] extracts the [prefix] of [path].
+    Raise InvalidPrefix if [prefix] is not a prefix of [path]. *)
+val suffix : path -> path -> path
+exception InvalidPrefix of path * path
