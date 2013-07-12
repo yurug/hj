@@ -3,8 +3,12 @@
 open Simplexmlparser
 open Printf
 
+exception InvalidXMLIO of string
+
 let load_xml fname =
-  List.hd (xmlparser_file fname)
+  try
+    List.hd (xmlparser_file fname)
+  with Failure s -> raise (InvalidXMLIO s)
 
 exception InvalidPath of string list * xml
 
@@ -29,10 +33,8 @@ let plug path0 outer what =
 
 let print_xml xml =
   let b = Buffer.create 13 in
-  let fields spaces fs =
-    String.concat " "
-      (List.map (fun (k, v) -> Printf.sprintf "\n%s%s=\"%s\"" spaces k v) fs)
-  in
+  let field spaces (k, v) = Printf.sprintf "\n%s%s=\"%s\"" spaces k v in
+  let fields spaces fs = String.concat " " (List.map (field spaces) fs) in
   let open_element spaces e fs simple =
     let close = if simple then "/>" else ">" in
     bprintf b "%s<%s %s%s\n" spaces e (fields (spaces ^ "  ") fs) close
@@ -46,12 +48,13 @@ let print_xml xml =
       bprintf b "%s</%s>\n" spaces e
     | PCData s ->
       Buffer.add_string b (s ^ "\n")
-  and aux' spaces cs = List.iter (aux spaces) cs
-  in
+  and aux' spaces cs = List.iter (aux spaces) cs in
   aux "" xml;
   b
 
 let save_xml fname xml =
-  let cout = open_out fname in
-  Buffer.output_buffer cout (print_xml xml);
-  close_out cout
+  try
+    let cout = open_out fname in
+    Buffer.output_buffer cout (print_xml xml);
+    close_out cout
+  with Failure s -> raise (InvalidXMLIO s)
