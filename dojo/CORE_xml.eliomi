@@ -9,6 +9,10 @@ val plug :
   string list ->
   Simplexmlparser.xml -> Simplexmlparser.xml -> Simplexmlparser.xml
 
+(** [InvalidXMLIO s] is raised instead of [Failure s] by
+    the next two functions. *)
+exception InvalidXMLIO of string
+
 (** [load_xml fname] loads an untyped XML document from file [fname]. *)
 val load_xml : string -> Simplexmlparser.xml
 
