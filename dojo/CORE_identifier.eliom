@@ -9,8 +9,11 @@ type label = string
 exception InvalidLabel of string
 
 let label s =
-  if String.contains s Filename.dir_sep then raise (InvalidLabel s);
-  s
+  try
+    ignore (Str.search_forward (Str.regexp Filename.dir_sep) s 0);
+    raise (InvalidLabel s)
+  with Not_found ->
+    s
 
 type path = label list
 
