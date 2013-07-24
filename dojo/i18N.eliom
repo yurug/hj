@@ -32,6 +32,8 @@ sig
   val connect : string
   val disconnect : string
   val new_submission : string
+  val sorry_autotesting_is_disabled : string
+  val autotesting_title : string
 end
 
 module Fr : Text = struct
@@ -91,6 +93,11 @@ module Fr : Text = struct
   let disconnect = "déconnecte"
 
   let new_submission = "Nouvelle soumission :"
+
+  let sorry_autotesting_is_disabled =
+    "Désolé, le mode autotest n'est pas activé."
+
+  let autotesting_title = "Tests"
 
 end
 

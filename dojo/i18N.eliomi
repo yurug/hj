@@ -37,6 +37,8 @@ sig
   val connect : string
   val disconnect : string
   val new_submission : string
+  val sorry_autotesting_is_disabled : string
+  val autotesting_title : string
 end
 
 (** The chosen set of messages. *)
