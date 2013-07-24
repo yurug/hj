@@ -12,6 +12,9 @@ open Eliom_parameter
 (** The root service. *)
 let root = service ~path:[] ~get_params:unit ()
 
+(** The autotest service. *)
+let autotest = service ~path:["autotest"] ~get_params:unit ()
+
 (*
   let login  = CORE_user.login_service ~fallback:root
   let logout = CORE_user.logout_service ~fallback:root

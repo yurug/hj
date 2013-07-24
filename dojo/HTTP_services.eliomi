@@ -14,6 +14,15 @@ val root :
    [< Eliom_service.registrable > `Registrable ], 'a)
     Eliom_service.service
 
+(** The autotest service. *)
+val autotest :
+  (unit, unit,
+   [> `Attached of
+       ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+   [ `WithoutSuffix ], unit, unit,
+   [< Eliom_service.registrable > `Registrable ], 'a)
+    Eliom_service.service
+
 (** [redirect_service s x] installs a redirection service to service
     [s] applied to [x] that acts as a fallback for POST services. *)
 val redirect_service :

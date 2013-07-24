@@ -6,7 +6,7 @@
 PROJECT_NAME := hackojo
 
 # Source files for the server
-SERVER_FILES := $(wildcard *.eliomi *.eliom) 
+SERVER_FILES := $(wildcard *.eliomi *.eliom)
 # Source files for the client
 CLIENT_FILES := $(wildcard *.eliomi *.eliom)
 
