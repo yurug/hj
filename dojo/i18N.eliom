@@ -101,12 +101,7 @@ module Fr : Text = struct
 
 end
 
-type language = French
-
-(* FIXME: Define this value from a configuration file. *)
-let current_language = ref French
-
 module String = (val
-    match !current_language with
-      | French -> (module Fr : Text)
+    match CORE_config.current_language () with
+      | CORE_config.French -> (module Fr : Text)
 )
