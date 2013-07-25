@@ -34,6 +34,7 @@ sig
   val new_submission : string
   val sorry_autotesting_is_disabled : string
   val autotesting_title : string
+  val the_server_is_up : string
 end
 
 module Fr : Text = struct
@@ -98,6 +99,8 @@ module Fr : Text = struct
     "Désolé, le mode autotest n'est pas activé."
 
   let autotesting_title = "Tests"
+
+  let the_server_is_up = "Le serveur se lance correctement."
 
 end
 

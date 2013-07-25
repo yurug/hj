@@ -39,6 +39,7 @@ sig
   val new_submission : string
   val sorry_autotesting_is_disabled : string
   val autotesting_title : string
+  val the_server_is_up : string
 end
 
 (** The chosen set of messages. *)
