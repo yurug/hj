@@ -13,7 +13,9 @@ let guard server_process =
   let s = Eliom_bus.stream b in
   let job x = Lwt_stream.next s >> server_process x in
   let client_trigger = {unit -> unit { fun evt ->
-    Lwt.async (fun _ -> Eliom_bus.write %b () >> Lwt.return (Eliom_bus.close %b) )
-                                     }}
+    Lwt.async (fun _ ->
+      Eliom_bus.write %b ()
+      >> Lwt.return (Eliom_bus.close %b))
+  }}
   in
   (job, client_trigger)
