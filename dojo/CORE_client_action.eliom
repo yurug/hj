@@ -5,10 +5,10 @@ open Lwt
 type client_guardian = (unit -> unit) client_value
 }}
 
-(** [guarded w] takes a (server-side) parameterized process [w] and
+(** [guard w] takes a (server-side) parameterized process [w] and
     returns a pair [(p, c)] where [p] is the process [w] that waits
     for the client function [c] to be applied. *)
-let guarded server_process =
+let guard server_process =
   let b = Eliom_bus.create Json.t<unit> in
   let s = Eliom_bus.stream b in
   let job x = Lwt_stream.next s >> server_process x in
