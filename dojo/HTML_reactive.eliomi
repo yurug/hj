@@ -12,16 +12,23 @@ open Eliom_content
 open Html5
 open Html5.D
 open Html5_types
+open COMMON_pervasives
+
+module EltProduct : MapProduct_sig with type 'a t = 'a elt
 
 (** The communication channel. *)
-type 'a c
+type ('a, 'b) c
+
 }}
+
+
+
 
 (** The following two functions are meant to be used together in
     a pattern of the form:
 
     [[
-    async_div json_type computation (fun c ->
+    async_elt init json_type computation (fun c ->
        {unit {react %c reaction}}
     )
     ]]
@@ -41,7 +48,7 @@ type 'a c
         let rec aux () = (incr x; update !x) >> sleep 1. >> aux () in
         aux ()
     in
-    async_div Json.t<int> server_tick (fun c ->
+    async_elt (div []) Json.t<int> server_tick (fun c ->
       {unit {react %c (fun x -> return (div [p [pcdata (string_of_int x)]]))}})
     ]]
 
@@ -54,11 +61,20 @@ type 'a c
     separation between layout and content computations.
 *)
 {client{
-       val react : 'a c -> ('a -> [> div] elt Lwt.t) -> unit
+val react : ('a, 'b) c -> ('b -> 'a EltProduct.prod Lwt.t) -> unit
 }}
 
-val async_div :
-  'a Deriving_Json.t
-  -> (('a -> unit) -> unit Lwt.t)
-  -> ('a c -> unit Eliom_pervasives.client_value)
-  -> [> div] elt Lwt.t
+
+val async_elt :
+  'a Eliom_content_core.Html5.elt
+  -> 'b Deriving_Json.t
+  -> (('b -> unit) -> unit Lwt.t)
+  -> (('a only, 'b) c -> unit Eliom_pervasives.client_value)
+  -> 'a Eliom_content_core.Html5.elt Lwt.t
+
+val async_elts :
+  'a EltProduct.prod
+  -> 'b Deriving_Json.t
+  -> (('b -> unit) -> unit Lwt.t)
+  -> (('a, 'b) c -> unit Eliom_pervasives.client_value)
+  -> 'a EltProduct.prod Lwt.t
