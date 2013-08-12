@@ -2,27 +2,26 @@
 
 {shared{
 open Lwt
-open HTML_app
 open Eliom_content
 open Html5
 open Html5.D
 open Html5_types
-open CORE_autotest
+open HTML_app
 open HTML_reactive
+open CORE_autotest
+open COMMON_pervasives
 }}
 
 let test_entry t : [< | body_content_fun] elt Lwt.t =
   let json = Json.t<string * string> in
-  let run_test, launch = CORE_client_action.guard
-    (fun update ->
-      let t = ref 0 in
-      let rec aux () =
-        (incr t; Lwt_unix.sleep 1.) >>
-          (update ("foo" ^ string_of_int !t, "bar");
-           aux ())
-      in
-      aux ()
+  let run_test, launch = CORE_client_action.guard (fun update ->
+    let t = ref 0 in
+    forever (fun continue ->
+      (incr t; Lwt_unix.sleep 1.) >>
+        (update ("foo" ^ string_of_int !t, "bar");
+         continue ())
     )
+  )
   in
   lwt elt = async_div json run_test (fun c ->
     {unit {react %c (fun (description, value) ->
