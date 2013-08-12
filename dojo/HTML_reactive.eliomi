@@ -13,9 +13,6 @@ open Html5
 open Html5.D
 open Html5_types
 
-(** An HTML fragment is implemented using a [div] HTML5 element. *)
-type t = [ div ] elt
-
 (** The communication channel. *)
 type 'a c
 }}
@@ -57,11 +54,11 @@ type 'a c
     separation between layout and content computations.
 *)
 {client{
-       val react : 'a c -> ('a -> t Lwt.t) -> unit
+       val react : 'a c -> ('a -> [> div] elt Lwt.t) -> unit
 }}
 
 val async_div :
   'a Deriving_Json.t
   -> (('a -> unit) -> unit Lwt.t)
   -> ('a c -> unit Eliom_pervasives.client_value)
-  -> t Lwt.t
+  -> [> div] elt Lwt.t
