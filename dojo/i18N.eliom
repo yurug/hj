@@ -2,42 +2,7 @@
 
 let cap = String.capitalize
 
-module type Text =
-sig
-  val the_hacking_dojo : string
-  val assignments : string
-  val submission : string
-  val submissions : string
-  val name_label : string
-  val filename_label : string
-  val upload_label : string
-  val not_yet_submitted : string
-  val please_login : string
-  val unreadable_submission : string
-  val diagnostic : string
-  val link : string
-  val answer : string
-  val state : string
-  val waiting_state : string
-  val processing_state : string
-  val finished_state : string
-  val total : string
-  val mandatory : string
-  val see : string
-  val action : string
-  val question : string
-  val questions : string
-  val username : string
-  val password : string
-  val connect : string
-  val disconnect : string
-  val new_submission : string
-  val sorry_autotesting_is_disabled : string
-  val autotesting_title : string
-  val the_server_is_up : string
-end
-
-module Fr : Text = struct
+module Fr : I18N_sig.Text = struct
 
   let the_hacking_dojo = "Le Dojo de la Programmation"
 
@@ -93,6 +58,10 @@ module Fr : Text = struct
 
   let disconnect = "déconnecte"
 
+  let run = "Exécute"
+
+  let run_all = "Tout"
+
   let new_submission = "Nouvelle soumission :"
 
   let sorry_autotesting_is_disabled =
@@ -100,11 +69,15 @@ module Fr : Text = struct
 
   let autotesting_title = "Tests"
 
-  let the_server_is_up = "Le serveur se lance correctement."
+  let the_server_is_up =
+    "Le serveur se lance correctement."
+
+  let the_asynchronous_communication_layer_is_ok =
+    "La couche de communication client-serveur fonctionne."
 
 end
 
 module String = (val
     match CORE_config.current_language () with
-      | CORE_config.French -> (module Fr : Text)
+      | CORE_config.French -> (module Fr : I18N_sig.Text)
 )
