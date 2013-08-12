@@ -72,7 +72,7 @@ span.button {
     -moz-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
     box-shadow: 0 0 4px rgba(1, 1, 1, .75);
     font-color:#FFFFFF;
-    font-size:1em;
+    font-size:0.7em;
 }
 
 span.button:hover, span.button:focus {
@@ -80,4 +80,8 @@ span.button:hover, span.button:focus {
     -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+}
+
+span.report {
+    font-weight:italic;
 }
