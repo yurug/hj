@@ -8,9 +8,6 @@ open Lwt
 
 {shared{
 
-type finished
-type running
-
 type test_result =
   | Passed
   | Failed
