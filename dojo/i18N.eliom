@@ -58,9 +58,13 @@ module Fr : I18N_sig.Text = struct
 
   let disconnect = "déconnecte"
 
-  let run = "Exécute"
+  let run = "exécute"
 
-  let run_all = "Tout"
+  let run_all = "tout"
+
+  let status = "status"
+
+  let description = "description"
 
   let new_submission = "Nouvelle soumission :"
 

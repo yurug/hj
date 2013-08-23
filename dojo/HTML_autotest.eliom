@@ -8,6 +8,7 @@ open Html5.D
 open Html5_types
 open HTML_app
 open HTML_reactive
+open HTML_widget
 open CORE_autotest
 open COMMON_pervasives
 open EltProduct
@@ -29,6 +30,12 @@ let show d s =
     span ~a:[a_class ["report"]] [pcdata d],
     span ~a:[a_class ["report"]] [pcdata (string_of_test_state s)]
   )
+
+let test_row b d s = [
+  td ~a:[a_class ["button"]] [b];
+  td ~a:[a_class ["description"]] [d];
+  td ~a:[a_class ["status"]] [s]
+]
 
 }}
 
@@ -62,8 +69,8 @@ let test_entry t =
       (dynamically updated) status. Besides, we provide the [launch]
       function as a way to run the tests by other means than the
       button [b]. *)
-  let b = HTML_widget.button I18N.String.run {{ !$ %launch }} in
-  let row = tr (List.map (!* td) [ b; description; status ]) in
+  let b = button (I18N.cap I18N.String.run) {{ !$ %launch }} in
+  let row = tr (test_row b description status) in
   return (row, launch)
 
 let show_tests ts =
@@ -73,15 +80,15 @@ let show_tests ts =
   (** Build a button to launch all the tests. *)
   lwt launchers = Lwt_list.map_s (fun s -> return (snd s)) tests in
   let run_all = {unit -> unit{ List.fold_left ( $> ) ignore %launchers }} in
-  let run_all = HTML_widget.button I18N.String.run_all {{ !$ %run_all }} in
+  let run_all = button (I18N.cap I18N.String.run_all) {{ !$ %run_all }} in
 
   (** Build the HTML table for the test suite. *)
   lwt rows = Lwt_list.map_s (fun s -> return (fst s)) tests in
-  let thead = thead [tr (List.map (!* td) [
-    run_all;
-    pcdata "Description";
-    pcdata "Status"
-  ])]
+  let thead = thead [tr (test_row
+    run_all
+    (pcdata (I18N.cap I18N.String.description))
+    (pcdata (I18N.cap I18N.String.status))
+  )]
   in
   return (tablex ~a:[a_class ["results"]] ~thead [tbody rows]
           :> [ body_content_fun ] elt)

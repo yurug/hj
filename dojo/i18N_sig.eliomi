@@ -31,6 +31,8 @@ sig
   val password : string
   val run : string
   val run_all : string
+  val description : string
+  val status : string
   val connect : string
   val disconnect : string
   val new_submission : string

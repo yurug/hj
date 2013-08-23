@@ -5,7 +5,7 @@
 }
 
 h1 {
-    text-align: center;
+    text-align: left;
 }
 
 #connection_box {
@@ -54,9 +54,24 @@ thead {
 }
 
 td {
+    padding: 0.5em;
     border-width:1px;
     border-style:solid;
-    padding: 0.3em;
+}
+
+td.description {
+    padding: 0.5em;
+    width: 40em;
+}
+
+td.button {
+    text-align: center;
+    width: 5em;
+}
+
+td.status {
+    text-align: center;
+    width: 7em;
 }
 
 span.button {
