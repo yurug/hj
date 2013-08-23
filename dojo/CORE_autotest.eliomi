@@ -9,6 +9,12 @@ type test_result =
   | Failed
 deriving (Json)
 
+type test_state =
+  | Waiting
+  | Running of string
+  | Done of test_result
+deriving (Json)
+
 }}
 
 type test

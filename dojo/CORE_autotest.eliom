@@ -8,9 +8,18 @@ open Lwt
 
 {shared{
 
+type finished
+type running
+
 type test_result =
   | Passed
   | Failed
+deriving (Json)
+
+type test_state =
+  | Waiting
+  | Running of string
+  | Done of test_result
 deriving (Json)
 
 }}
