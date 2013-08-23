@@ -51,4 +51,13 @@ module MapProduct (T : sig type 'a t end)
     when applied to [continues]. *)
 val forever : ((unit -> 'a) -> 'a) -> 'a
 
+(** [f $> g] does [f (); g ()] when applied to [()]. *)
+val ( $> ) : (unit -> unit) -> (unit -> unit) -> unit -> unit
+
+(** [!$ f] is [fun _ -> f ()]. *)
+val ( !$ ) : (unit -> 'a) -> 'b -> 'a
+
+(** [!* f] is [fun x -> f [x]]. *)
+val ( !* ) : ('a list -> 'b) -> 'a -> 'b
+
 }}

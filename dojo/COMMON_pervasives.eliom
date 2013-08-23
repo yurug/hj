@@ -2,6 +2,12 @@
 
 {shared{
 
+let ( $> ) f g () = f (); g ()
+
+let ( !$ ) f x = f ()
+
+let ( !* ) f x = f [x]
+
 type 'a only = Only of 'a
 
 let forever what =
