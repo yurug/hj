@@ -47,8 +47,8 @@ end
 module MapProduct (T : sig type 'a t end)
   : MapProduct_sig with type 'a t = 'a T.t
 
-(** [forever that] does [that] for ever if [that] [continues ()] when
-    applied to [continues]. *)
+(** [forever that] does [that] for ever if [that] calls [continues ()]
+    when applied to [continues]. *)
 val forever : ((unit -> 'a) -> 'a) -> 'a
 
 }}
