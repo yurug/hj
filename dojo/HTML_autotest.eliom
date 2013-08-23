@@ -32,7 +32,7 @@ let show d s =
 
 let test_entry t =
   (** The test process transmits a report to the interface using string and a
-      state using a [test_state]. *)
+      state represented by a [test_state]. *)
   let json = Json.t<string * test_state> in
   (** It is guarded by the client's interface. *)
   let run_test, launch = CORE_client_action.guard (fun report ->
