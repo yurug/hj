@@ -79,6 +79,22 @@ module Fr : I18N_sig.Text = struct
   let the_asynchronous_communication_layer_is_ok =
     "La couche de communication client-serveur fonctionne."
 
+  let the_vfs_is_coherent =
+    "Le système de fichier journalisé est dans un état cohérent."
+
+  let there_is_no_repository_at_ressource_root =
+    Printf.sprintf
+      "Il n'y a pas de dépôt GIT à cet emplacement: `%s'"
+      CORE_config.ressource_root
+
+  let the_following_file_is_untracked f =
+    Printf.sprintf
+      "L'histoire du fichier suivant n'est pas pris en charge: `%s'"
+      f
+
+  let consistent =
+    "cohérent"
+
 end
 
 module String = (val

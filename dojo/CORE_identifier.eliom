@@ -19,6 +19,8 @@ type path = label list
 
 type identifier = path
 
+type t = identifier
+
 let path_of_string s =
   List.filter (fun l -> l <> "") (Str.split (Str.regexp Filename.dir_sep) s)
 

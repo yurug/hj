@@ -67,7 +67,16 @@ let client_server_asynchronous_communication_works =
     )
 
 
+let server_versioned_file_system_is_in_a_coherent_state =
+  make I18N.String.the_vfs_is_coherent
+    (fun update ->
+      lwt c = CORE_vfs.check () in
+      update (CORE_vfs.string_of_consistency_level c);
+      return (if c = CORE_vfs.Consistent then Passed else Failed)
+    )
+
 let all : test list =  [
   server_is_up;
-  client_server_asynchronous_communication_works
+  client_server_asynchronous_communication_works;
+  server_versioned_file_system_is_in_a_coherent_state;
 ]

@@ -26,6 +26,7 @@ type path = label list
 
 (** An identifier is a singularized path. *)
 type identifier
+type t = identifier
 
 (** {2 Conversions} *)
 

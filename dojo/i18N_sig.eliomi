@@ -40,4 +40,8 @@ sig
   val autotesting_title : string
   val the_server_is_up : string
   val the_asynchronous_communication_layer_is_ok : string
+  val the_vfs_is_coherent : string
+  val there_is_no_repository_at_ressource_root : string
+  val the_following_file_is_untracked : string -> string
+  val consistent : string
 end
