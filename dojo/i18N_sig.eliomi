@@ -1,5 +1,7 @@
 (* -*- tuareg -*- *)
 
+{shared{
+
 (** All the messages of the interfaces must be built using the
     following constants. *)
 module type Text =
@@ -45,3 +47,5 @@ sig
   val the_following_file_is_untracked : string -> string
   val consistent : string
 end
+
+}}

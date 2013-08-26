@@ -9,6 +9,7 @@ open Html5_types
 open HTML_app
 open HTML_reactive
 open HTML_widget
+open CORE_document
 open CORE_autotest
 open COMMON_pervasives
 open EltProduct
@@ -25,16 +26,18 @@ let string_of_test_state = function
   | Running s -> s
   | Done s -> string_of_test_result s
 
-let show d s =
-  P2 (
+let show d s b =
+  P3 (
     span ~a:[a_class ["report"]] [pcdata d],
-    span ~a:[a_class ["report"]] [pcdata (string_of_test_state s)]
+    span ~a:[a_class ["report"]] [pcdata (string_of_test_state s)],
+    show_or_hide (pcdata "...")
   )
 
-let test_row b d s = [
+let test_row b d s t = [
   td ~a:[a_class ["button"]] [b];
   td ~a:[a_class ["description"]] [d];
-  td ~a:[a_class ["status"]] [s]
+  td ~a:[a_class ["status"]] [s];
+  td ~a:[a_class ["status"]] [t]
 ]
 
 }}
@@ -57,11 +60,17 @@ let test_entry t =
   )
   in
   (** The report is viewed in the following HTML element which is
-      asynchronously updated each time the test reports something. *)
-  lwt (P2 (description, status)) =
-    async_elts (show (description t) Waiting) json run_test (fun c ->
-      {unit {react %c (fun (description, value) ->
-        return (show description value))
+      asynchronously updated each time the test reports something.
+      In the meantime, we log the messages inside a document that can
+      be read later on using a freshly created reading service.
+  *)
+  lwt (P3 (description, status, details)) =
+    async_elts (show (description t) Waiting ()) json run_test (fun c ->
+      {unit {react %c (
+        let log = ref CORE_document.empty_text in
+        fun (description, value) ->
+        log := CORE_document.add_line !log (string_of_test_state value);
+        return (show description value ()))
       }})
   in
   (** Finally, we return a table row containing a button [b] to launch
@@ -70,7 +79,7 @@ let test_entry t =
       function as a way to run the tests by other means than the
       button [b]. *)
   let b = button (I18N.cap I18N.String.run) {{ !$ %launch }} in
-  let row = tr (test_row b description status) in
+  let row = tr (test_row b description status details) in
   return (row, launch)
 
 let show_tests ts =
@@ -87,6 +96,7 @@ let show_tests ts =
   let thead = thead [tr (test_row
     run_all
     (pcdata (I18N.cap I18N.String.description))
+    (pcdata (I18N.cap I18N.String.status))
     (pcdata (I18N.cap I18N.String.status))
   )]
   in
