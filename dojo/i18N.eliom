@@ -1,5 +1,7 @@
 (* -*- tuareg -*- *)
 
+{shared{
+
 let cap = String.capitalize
 
 module Fr : I18N_sig.Text = struct
@@ -83,9 +85,7 @@ module Fr : I18N_sig.Text = struct
     "Le système de fichier journalisé est dans un état cohérent."
 
   let there_is_no_repository_at_ressource_root =
-    Printf.sprintf
-      "Il n'y a pas de dépôt GIT à cet emplacement: `%s'"
-      CORE_config.ressource_root
+    "Il n'y a pas de dépôt GIT à la racine de l'emplacement des ressources."
 
   let the_following_file_is_untracked f =
     Printf.sprintf
@@ -101,3 +101,6 @@ module String = (val
     match CORE_config.current_language () with
       | CORE_config.French -> (module Fr : I18N_sig.Text)
 )
+
+
+}}
