@@ -7,6 +7,10 @@ let ressource_root = Ocsigen_config.get_datadir ()
 let autotest_enabled () =
   try ignore (Sys.getenv "AUTOTEST"); true with Not_found -> false
 
+{shared{
+
 (** We only support french for the moment. *)
 type language = French
 let current_language () = French
+
+}}

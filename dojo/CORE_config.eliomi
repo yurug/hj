@@ -10,6 +10,8 @@ val ressource_root : string
     variable [AUTOTEST] is set. *)
 val autotest_enabled : unit -> bool
 
+{shared{
+
 (** Supported human languages in the user interface. *)
 type language = French
 
@@ -17,3 +19,5 @@ type language = French
     variables to determine in which human language the user interface
     must talk. *)
 val current_language : unit -> language
+
+}}
