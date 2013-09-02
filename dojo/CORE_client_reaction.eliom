@@ -7,6 +7,7 @@ open Lwt
 
 {shared{
 type 'a c = 'a Eliom_bus.t
+type reaction = unit
 }}
 
 (** Given a process [p] being executed on the server side, we want to

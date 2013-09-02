@@ -13,6 +13,7 @@ open Html5
 open Html5.D
 open Html5_types
 open COMMON_pervasives
+open CORE_client_reaction
 
 module EltProduct : MapProduct_sig with type 'a t = 'a elt
 
@@ -57,21 +58,30 @@ type ('a, 'b) c
     This pattern is the basic block to properly implement a clear
     separation between layout and content computations.
 *)
-{client{
-val react : ('a, 'b) c -> ('b -> 'a EltProduct.prod Lwt.t) -> unit
-}}
 
+(** [async_elt elt json_type computation reaction] produces an HTML5
+    element that is updated in [reaction] to a [computation].
 
+    An update of a type described by [json_type] is conveyed from the
+    [computation] to the [reaction]. In response to this notification,
+    the [reaction] must produce a new HTML5 element of the same type
+    as the initial element [elt].
+
+*)
 val async_elt :
   'a Eliom_content_core.Html5.elt
   -> 'b Deriving_Json.t
   -> (('b -> unit) -> unit Lwt.t)
-  -> (('a only, 'b) c -> unit Eliom_pervasives.client_value)
+  -> (('a only, 'b) c -> reaction Eliom_pervasives.client_value)
   -> 'a Eliom_content_core.Html5.elt Lwt.t
 
 val async_elts :
   'a EltProduct.prod
   -> 'b Deriving_Json.t
   -> (('b -> unit) -> unit Lwt.t)
-  -> (('a, 'b) c -> unit Eliom_pervasives.client_value)
+  -> (('a, 'b) c -> reaction Eliom_pervasives.client_value)
   -> 'a EltProduct.prod Lwt.t
+
+{client{
+  val react : ('a, 'b) c -> ('b -> 'a EltProduct.prod Lwt.t) -> reaction
+}}
