@@ -21,9 +21,6 @@ type ('a, 'b) c
 
 }}
 
-
-
-
 (** The following two functions are meant to be used together in
     a pattern of the form:
 
