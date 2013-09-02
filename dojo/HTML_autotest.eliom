@@ -11,6 +11,7 @@ open HTML_reactive
 open HTML_widget
 open CORE_document
 open CORE_autotest
+open CORE_client_reaction
 open COMMON_pervasives
 open EltProduct
 }}
@@ -30,7 +31,7 @@ let show d s b =
   P3 (
     span ~a:[a_class ["report"]] [pcdata d],
     span ~a:[a_class ["report"]] [pcdata (string_of_test_state s)],
-    show_or_hide (pcdata "...")
+    show_or_hide (span [pcdata "..."])
   )
 
 let test_row b d s t = [
@@ -66,7 +67,7 @@ let test_entry t =
   *)
   lwt (P3 (description, status, details)) =
     async_elts (show (description t) Waiting ()) json run_test (fun c ->
-      {unit {react %c (
+      {reaction {react %c (
         let log = ref CORE_document.empty_text in
         fun (description, value) ->
         log := CORE_document.add_line !log (string_of_test_state value);
