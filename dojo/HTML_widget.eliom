@@ -12,7 +12,7 @@ open COMMON_pervasives
 type onclick_cb = (Dom_html.mouseEvent Js.t -> unit) client_value
 
 let button label onclick =
-  span ~a:[a_onclick onclick; a_class ["button"]] [pcdata label]
+   span ~a:[a_onclick onclick; a_class ["button"]] [pcdata label]
 
 type show_state =
   | Hidden of string
@@ -35,7 +35,7 @@ let toggle s e =
 
 let show_or_hide e =
   let see =
-    button I18N.String.see {{
+    button (I18N.cap I18N.String.see) {{
       let s = ref Shown in
       fun _ -> toggle s %e
     }}

@@ -16,10 +16,28 @@ module Hackojo_app =
       let application_name = "hackojo"
     end)
 
+let get_img fname =
+  img
+    ~a:[a_id "logo"]
+    ~src:(make_uri ~service:(Eliom_service.static_dir ()) ["img"; fname])
+    ~alt:("logo")
+    ()
+
+let logo =
+  get_img "logo.png"
+
+let hackojo_bar =
+  div ~a:[a_id "bar"] [
+    logo;
+  ]
+
 let hackojo_page body_contents =
   Eliom_tools.F.html
     ~title:I18N.String.the_hacking_dojo
     ~css:[["css";"hackojo.css"]]
     (body ~a:[a_id "global"]
-       (h1 [pcdata "Hackojo"]
-        :: body_contents))
+       (hackojo_bar
+        :: [
+          div ~a:[a_id "bar_space"] [];
+          div ~a:[a_id "contents"] body_contents
+        ]))
