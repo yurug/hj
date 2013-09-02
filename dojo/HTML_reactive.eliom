@@ -35,6 +35,5 @@ let async_elts inits json computation reaction =
   return elts
 
 let async_elt init json computation reaction =
-(*  let reaction = function (P1 (Only x), y) -> reaction (x, y) in*)
   lwt (P1 (Only x)) = async_elts (P1 (Only init)) json computation reaction in
   return x
