@@ -32,6 +32,8 @@
 
 div.scroll_entry {
     padding: 0.1em;
+    display: block;
+    overflow: auto;
 }
 
 div.scroll_status {
@@ -41,13 +43,15 @@ div.scroll_status {
 }
 
 div.scroll_item {
-    width: auto;
+    overflow: auto;
 }
 
 div.scroll_item_main {
+    overflow: auto;
 }
 
 div.scroll_description {
+    overflow: auto;
 }
 
 div.scroll_commands {
