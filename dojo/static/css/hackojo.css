@@ -31,14 +31,28 @@
 }
 
 div.scroll_entry {
-    padding: 0.1em;
+    padding: 0.5em;
     display: block;
     overflow: auto;
 }
 
+div.scroll_side {
+    display: inline-block;
+    width : 19px;
+    line-height: 32px;
+    height: 32px;
+    font-weight:bold;
+    padding:5px 15px;
+    background: #EEEEEE;
+    border: thin solid #DDDDDD;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+    font-color:#FFFFFF;
+    text-align: center;
+}
+
 div.scroll_status {
-    width : 120px;
-    height: 64px;
     float: left;
 }
 
@@ -51,12 +65,17 @@ div.scroll_item_main {
 }
 
 div.scroll_description {
-    overflow: auto;
+    display: inline-block;
+    width: 500px;
+    margin-top: 0.5em;
+    margin-left: 1.5em;
+    margin-right: 1.5em;
+    margin-bottom: 0.5em;
 }
 
 div.scroll_commands {
-    width : 120px;
     float: right;
+    cursor:pointer;
 }
 
 

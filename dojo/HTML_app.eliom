@@ -31,24 +31,31 @@ let bar =
     logo;
   ]
 
-type hackojo_scroll = [ Html5_types.div ] Eliom_content.Html5.D.elt
+type div = [ Html5_types.div ] Eliom_content.Html5.D.elt
 
-let div_of_hackojo_scroll x = x
+type hackojo_scroll = {
+  elt  : div;
+  subs : div;
+}
+
+let div_of_hackojo_scroll x = x.elt
 
 let hackojo_scroll status description commands =
-  let subs = div ~a:[a_class ["scroll_item_subs"]] [
-  ]
-  in
-  div ~a:[a_class ["scroll_entry"]] [
-    div ~a:[a_class ["scroll_status"]] [ status ];
-    div ~a:[a_class ["scroll_item"]] [
-      div ~a:[a_class ["scroll_item_main"]] [
-        div ~a:[a_class ["scroll_description"]] [ description ];
-        div ~a:[a_class ["scroll_commands"]] [ commands ]
+  let subs = div ~a:[a_class ["scroll_item_subs"]] [] in
+  {
+    elt =
+      div ~a:[ a_class [ "scroll_entry" ]] [
+        div ~a:[ a_class [ "scroll_status"; "scroll_side" ]] [ status ];
+        div ~a:[ a_class [ "scroll_item" ]] [
+          div ~a:[ a_class [ "scroll_item_main" ]] [
+            div ~a:[ a_class [ "scroll_description" ]] [ description ];
+            div ~a:[ a_class [ "scroll_commands"; "scroll_side" ]] [  ]
+          ];
+          subs
+        ]
       ];
-      subs
-    ]
-  ]
+    subs = subs
+  }
 
 let hackojo_page body_contents =
   Eliom_tools.F.html
