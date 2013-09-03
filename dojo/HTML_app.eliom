@@ -26,9 +26,28 @@ let get_img fname =
 let logo =
   get_img "logo.png"
 
-let hackojo_bar =
+let bar =
   div ~a:[a_id "bar"] [
     logo;
+  ]
+
+type hackojo_scroll = [ Html5_types.div ] Eliom_content.Html5.D.elt
+
+let div_of_hackojo_scroll x = x
+
+let hackojo_scroll status description commands =
+  let subs = div ~a:[a_class ["scroll_item_subs"]] [
+  ]
+  in
+  div ~a:[a_class ["scroll_entry"]] [
+    div ~a:[a_class ["scroll_status"]] [ status ];
+    div ~a:[a_class ["scroll_item"]] [
+      div ~a:[a_class ["scroll_item_main"]] [
+        div ~a:[a_class ["scroll_description"]] [ description ];
+        div ~a:[a_class ["scroll_commands"]] [ commands ]
+      ];
+      subs
+    ]
   ]
 
 let hackojo_page body_contents =
@@ -36,7 +55,7 @@ let hackojo_page body_contents =
     ~title:I18N.String.the_hacking_dojo
     ~css:[["css";"hackojo.css"]]
     (body ~a:[a_id "global"]
-       (hackojo_bar
+       (bar
         :: [
           div ~a:[a_id "bar_space"] [];
           div ~a:[a_id "contents"] body_contents

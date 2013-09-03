@@ -30,6 +30,32 @@
     height: 64px;
 }
 
+div.scroll_entry {
+    padding: 0.1em;
+}
+
+div.scroll_status {
+    width : 120px;
+    height: 64px;
+    float: left;
+}
+
+div.scroll_item {
+    width: auto;
+}
+
+div.scroll_item_main {
+}
+
+div.scroll_description {
+}
+
+div.scroll_commands {
+    width : 120px;
+    float: right;
+}
+
+
 h1 {
     text-align: left;
 }

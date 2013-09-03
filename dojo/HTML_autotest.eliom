@@ -80,8 +80,8 @@ let test_entry t =
       function as a way to run the tests by other means than the
       button [b]. *)
   let b = button (I18N.cap I18N.String.run) {{ !$ %launch }} in
-  let row = tr (test_row b description status details) in
-  return (row, launch)
+  let scroll = HTML_app.hackojo_scroll status description b in
+  return (HTML_app.div_of_hackojo_scroll scroll, launch)
 
 let show_tests ts =
   (** Connect the test suite to the user interface. *)
@@ -93,15 +93,8 @@ let show_tests ts =
   let run_all = button (I18N.cap I18N.String.run_all) {{ !$ %run_all }} in
 
   (** Build the HTML table for the test suite. *)
-  lwt rows = Lwt_list.map_s (fun s -> return (fst s)) tests in
-  let thead = thead [tr (test_row
-    run_all
-    (pcdata (I18N.cap I18N.String.description))
-    (pcdata (I18N.cap I18N.String.status))
-    (pcdata (I18N.cap I18N.String.status))
-  )]
-  in
-  return (tablex ~a:[a_class ["results"]] ~thead [tbody rows]
+  lwt scrolls = Lwt_list.map_s (fun s -> return (fst s)) tests in
+  return (div scrolls
           :> [ body_content_fun ] elt)
 
 let () =
