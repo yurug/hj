@@ -38,9 +38,9 @@ div.scroll_entry {
 
 div.scroll_side {
     display: inline-block;
-    width : 19px;
-    line-height: 32px;
-    height: 32px;
+    width : 5em;
+    line-height: 48px;
+    height: 48px;
     font-weight:bold;
     padding:5px 15px;
     background: #EEEEEE;
@@ -136,21 +136,6 @@ td {
     padding: 0.5em;
     border-width:1px;
     border-style:solid;
-}
-
-td.description {
-    padding: 0.5em;
-    width: 40em;
-}
-
-td.button {
-    text-align: center;
-    width: 5em;
-}
-
-td.status {
-    text-align: center;
-    width: 7em;
 }
 
 span.button {
