@@ -48,11 +48,12 @@ let toggle s e =
 
 {shared{
 
-let show_or_hide (e : [ body_content_fun ] elt) =
+let show_or_hide ?(start_shown=true) (e : [ body_content_fun ] elt) =
   let see : [ body_content_fun ] elt =
     button [I18N.cap I18N.String.hide; I18N.cap I18N.String.see]
       {Dom_html.mouseEvent Js.t -> unit{
         let s = ref Shown in
+        if not %start_shown then toggle s %e;
         fun (_ : Dom_html.mouseEvent Js.t) -> toggle s %e
       }}
   in

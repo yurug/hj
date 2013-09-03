@@ -14,9 +14,10 @@ type onclick_cb = (mouseEvent Js.t -> unit) client_value
     [onclick_cb] when it is clicked. *)
 val button: string list -> onclick_cb -> [> span ] elt
 
-(** [show_or_hide e] returns an element with a button to
-    toggle its visibility. *)
+(** [show_or_hide ?start_shown e] returns an element with a button to
+    toggle its visibility. By default, [start_shown] is [true]. *)
 val show_or_hide:
+  ?start_shown:bool ->
   [ body_content_fun ] elt
   -> [ body_content_fun ] elt * [ body_content_fun ] elt
 
