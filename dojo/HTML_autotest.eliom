@@ -80,7 +80,7 @@ let test_entry t =
       (dynamically updated) status. Besides, we provide the [launch]
       function as a way to run the tests by other means than the
       button [b]. *)
-  let b = button (I18N.cap I18N.String.run) {{ !$ %launch }} in
+  let b = button [I18N.cap I18N.String.run] {{ !$ %launch }} in
   let scroll = HTML_app.hackojo_scroll status description details [b] in
   return (HTML_app.elt_of_hackojo_scroll scroll, launch)
 
@@ -91,7 +91,7 @@ let show_tests ts =
   (** Build a button to launch all the tests. *)
   lwt launchers = Lwt_list.map_s (fun s -> return (snd s)) tests in
   let run_all = {unit -> unit{ List.fold_left ( $> ) ignore %launchers }} in
-  let run_all = button (I18N.cap I18N.String.run_all) {{ !$ %run_all }} in
+  let run_all = button [I18N.cap I18N.String.run_all] {{ !$ %run_all }} in
 
   (** Build the HTML table for the test suite. *)
   lwt scrolls = Lwt_list.map_s (fun s -> return (fst s)) tests in

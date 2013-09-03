@@ -1,4 +1,4 @@
-(* -*- tuareg -*- *)
+(** -*- tuareg -*- *)
 
 {shared{
 
@@ -12,7 +12,7 @@ type onclick_cb = (mouseEvent Js.t -> unit) client_value
 
 (** [button label onclick_cb] returns a button that executes
     [onclick_cb] when it is clicked. *)
-val button: string -> onclick_cb -> [> span ] elt
+val button: string list -> onclick_cb -> [> span ] elt
 
 (** [show_or_hide e] returns an element with a button to
     toggle its visibility. *)

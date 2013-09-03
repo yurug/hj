@@ -26,6 +26,7 @@ sig
   val total : string
   val mandatory : string
   val see : string
+  val hide : string
   val action : string
   val question : string
   val questions : string

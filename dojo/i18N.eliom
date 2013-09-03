@@ -46,6 +46,8 @@ module Fr : I18N_sig.Text = struct
 
   let see = "voir"
 
+  let hide = "cacher"
+
   let action = "action"
 
   let question = "question"

@@ -1,7 +1,6 @@
 (* -*- tuareg -*- *)
 
 {shared{
-
 open Eliom_content
 open Html5
 open Html5.D
@@ -11,8 +10,24 @@ open COMMON_pervasives
 
 type onclick_cb = (Dom_html.mouseEvent Js.t -> unit) client_value
 
-let button label onclick =
-   span ~a:[a_onclick onclick; a_class ["button"]] [pcdata label]
+let button labels onclick =
+  let id = Id.new_elt_id () in
+  let onclick = {{
+    let state = ref 0 in
+    let next () =
+      if !state = List.length %labels - 1 then state := 0 else incr state
+    in
+    let label () = List.nth %labels !state in
+    fun e ->
+      let open Eliom_content.Html5 in
+      next ();
+      Manip.Named.replaceAllChild %id [D.pcdata (label ())];
+      %onclick e
+   }}
+  in
+  let label = List.nth labels 0 in
+   Id.create_named_elt ~id
+     (span ~a:[a_onclick onclick; a_class ["button"]] [pcdata label])
 
 type show_state =
   | Hidden of string
@@ -33,12 +48,13 @@ let toggle s e =
 
 {shared{
 
-let show_or_hide e =
+let show_or_hide (e : [ body_content_fun ] elt) =
   let see : [ body_content_fun ] elt =
-    button (I18N.cap I18N.String.see) {{
-      let s = ref Shown in
-      fun _ -> toggle s %e
-    }}
+    button [I18N.cap I18N.String.hide; I18N.cap I18N.String.see]
+      {Dom_html.mouseEvent Js.t -> unit{
+        let s = ref Shown in
+        fun (_ : Dom_html.mouseEvent Js.t) -> toggle s %e
+      }}
   in
      (see, e)
 
