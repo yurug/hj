@@ -34,14 +34,12 @@ let toggle s e =
 {shared{
 
 let show_or_hide e =
-  let see =
+  let see : [ body_content_fun ] elt =
     button (I18N.cap I18N.String.see) {{
       let s = ref Shown in
       fun _ -> toggle s %e
     }}
   in
-     (div [see; e] :> [ body_content_fun ] elt)
-
-
+     (see, e)
 
 }}

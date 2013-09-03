@@ -61,12 +61,22 @@ div.scroll_item {
 }
 
 div.scroll_item_main {
-    overflow: auto;
+    margin-bottom: 1em;
+    margin-left: 1em;
 }
 
 div.scroll_description {
-    display: inline-block;
-    width: 500px;
+    display: block;
+    margin-top: 0.5em;
+    margin-left: 1.5em;
+    margin-right: 1.5em;
+    margin-bottom: 0.5em;
+    border-left: solid 1px #DDDDDD;
+    padding-left: 1em;
+}
+
+div.scroll_short_description {
+    display: block;
     margin-top: 0.5em;
     margin-left: 1.5em;
     margin-right: 1.5em;
@@ -146,6 +156,7 @@ td.status {
 span.button {
     font-weight:bold;
     cursor:pointer;
+    margin-left: 1em;
     padding:5px 25px;
     background: #AAA69C;
     border:1px solid #171410;
@@ -156,7 +167,7 @@ span.button {
     -moz-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
     box-shadow: 0 0 4px rgba(1, 1, 1, .75);
     font-color:#FFFFFF;
-    font-size:0.7em;
+    font-size:1em;
 }
 
 span.button:hover, span.button:focus {

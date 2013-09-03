@@ -34,7 +34,8 @@ val hackojo_scroll :
   [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
   [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
   [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
+  [ Html5_types.body_content_fun ] Eliom_content.Html5.D.elt list ->
   hackojo_scroll
 
-val div_of_hackojo_scroll
-  : hackojo_scroll -> [ Html5_types.div ] Eliom_content.Html5.D.elt
+val elt_of_hackojo_scroll
+  : hackojo_scroll -> [ Html5_types.body_content_fun ] Eliom_content.Html5.D.elt

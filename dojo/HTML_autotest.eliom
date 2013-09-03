@@ -27,11 +27,11 @@ let string_of_test_state = function
   | Running s -> s
   | Done s -> string_of_test_result s
 
-let show d s b =
+let show d s l =
   P3 (
     span ~a:[a_class ["report"]] [pcdata d],
     span ~a:[a_class ["report"]] [pcdata (string_of_test_state s)],
-    show_or_hide (span [pcdata "..."])
+    div (List.map (fun s -> p [pcdata s]) (CORE_document.lines l))
   )
 
 let test_row b d s t = [
@@ -65,13 +65,14 @@ let test_entry t =
       In the meantime, we log the messages inside a document that can
       be read later on using a freshly created reading service.
   *)
+  let initial_report = show (description t) Waiting CORE_document.empty_text in
   lwt (P3 (description, status, details)) =
-    async_elts (show (description t) Waiting ()) json run_test (fun c ->
+    async_elts initial_report json run_test (fun c ->
       {reaction {react %c (
         let log = ref CORE_document.empty_text in
         fun (description, value) ->
         log := CORE_document.add_line !log (string_of_test_state value);
-        return (show description value ()))
+        return (show description value !log))
       }})
   in
   (** Finally, we return a table row containing a button [b] to launch
@@ -80,8 +81,8 @@ let test_entry t =
       function as a way to run the tests by other means than the
       button [b]. *)
   let b = button (I18N.cap I18N.String.run) {{ !$ %launch }} in
-  let scroll = HTML_app.hackojo_scroll status description b in
-  return (HTML_app.div_of_hackojo_scroll scroll, launch)
+  let scroll = HTML_app.hackojo_scroll status description details [b] in
+  return (HTML_app.elt_of_hackojo_scroll scroll, launch)
 
 let show_tests ts =
   (** Connect the test suite to the user interface. *)

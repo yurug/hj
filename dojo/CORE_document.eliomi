@@ -13,4 +13,6 @@ val empty_text : t
 
 val add_line : t -> string -> t
 
+val lines : t -> string list
+
 }}
