@@ -81,7 +81,9 @@ let test_entry t =
       function as a way to run the tests by other means than the
       button [b]. *)
   let b = button [I18N.cap I18N.String.run] {{ !$ %launch }} in
-  let scroll = HTML_app.hackojo_scroll status description details [b] in
+  let scroll =
+    HTML_app.hackojo_scroll status description ~start_shown:false details [b]
+  in
   return (HTML_app.elt_of_hackojo_scroll scroll, launch)
 
 let show_tests ts =

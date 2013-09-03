@@ -27,12 +27,16 @@ val hackojo_page :
 *)
 type hackojo_scroll
 
-(** [hackojo_scroll status description commands] creates a scroll
-    with the given [status], [description] and [commands].
+(** [hackojo_scroll status short_description ?start_shown description
+    commands] creates a scroll with the given [status],
+    [short_description], [description] and [commands]. [start_shown]
+    is a flag to determine if the description is initially shown
+    or not. (Default is [true].)
 *)
 val hackojo_scroll :
   [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
   [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
+  ?start_shown:bool ->
   [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
   [ Html5_types.body_content_fun ] Eliom_content.Html5.D.elt list ->
   hackojo_scroll

@@ -42,12 +42,15 @@ type hackojo_scroll = {
 
 let elt_of_hackojo_scroll x = x.elt
 
-let hackojo_scroll status short_description description commands =
+let hackojo_scroll
+    status short_description ?(start_shown=true) description commands =
   let subs = div ~a:[a_class ["scroll_item_subs"]] [] in
   let description =
     div ~a:[ a_class [ "scroll_description" ]] [ description ]
   in
-  let (expand_button, description) = HTML_widget.show_or_hide description in
+  let (expand_button, description) =
+    HTML_widget.show_or_hide ~start_shown description
+  in
   let commands =
     div ~a:[ a_class [ "scroll_commands" ]] (expand_button :: commands)
   in
