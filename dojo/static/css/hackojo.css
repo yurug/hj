@@ -78,7 +78,6 @@ div.scroll_description {
 div.scroll_short_description {
     display: block;
     margin-top: 0.5em;
-    margin-left: 1.5em;
     margin-right: 1.5em;
     margin-bottom: 0.5em;
 }
@@ -141,7 +140,7 @@ td {
 span.button {
     font-weight:bold;
     cursor:pointer;
-    margin-left: 1em;
+    margin-right: 1em;
     padding:5px 25px;
     background: #AAA69C;
     border:1px solid #171410;
