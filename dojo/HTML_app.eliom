@@ -49,7 +49,7 @@ let hackojo_scroll status description commands =
         div ~a:[ a_class [ "scroll_item" ]] [
           div ~a:[ a_class [ "scroll_item_main" ]] [
             div ~a:[ a_class [ "scroll_description" ]] [ description ];
-            div ~a:[ a_class [ "scroll_commands"; "scroll_side" ]] [  ]
+            div ~a:[ a_class [ "scroll_commands" ]] [  ]
           ];
           subs
         ]
