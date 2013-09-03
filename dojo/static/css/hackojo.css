@@ -20,7 +20,7 @@
 }
 
 #bar {
-    background: white url(http://localhost:8080/img/bar.png) no-repeat bottom;
+    background: white url(/img/bar.png) no-repeat bottom;
     position:fixed;
     width: 1080px;
     height: 64px;
