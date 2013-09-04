@@ -34,6 +34,11 @@ body {
     height: 64px;
 }
 
+highlight {
+    font-weight: bold;
+    font-color: red;
+}
+
 div.scroll_entry {
     padding: 0.5em;
     display: block;

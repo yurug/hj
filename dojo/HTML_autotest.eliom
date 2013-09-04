@@ -34,18 +34,12 @@ let fetch_result r = wait_for r (function
 )
 
 let show d s l =
+  let hl = if s = Done Failed then ["highlight"] else [] in
   P3 (
     span ~a:[a_class ["report"]] [pcdata d],
-    span ~a:[a_class ["report"]] [pcdata (string_of_test_state s)],
+    span ~a:[a_class ("report" :: hl)] [pcdata (string_of_test_state s)],
     div (List.map (fun s -> p [pcdata s]) (CORE_document.lines l))
   )
-
-let test_row b d s t = [
-  td ~a:[a_class ["button"]] [b];
-  td ~a:[a_class ["description"]] [d];
-  td ~a:[a_class ["status"]] [s];
-  td ~a:[a_class ["status"]] [t]
-]
 
 }}
 
