@@ -83,7 +83,11 @@ let test_entry t =
       button [b]. *)
   let b = button [I18N.cap I18N.String.run] {{ !$ %launch }} in
   let scroll =
-    HTML_scroll.hackojo_scroll (div [ status ]) (div [ description ]) ~start_shown:false ~description:details [b]
+    HTML_scroll.hackojo_scroll
+      (div [ status ])
+      (div [ description ])
+      ~start_shown:false
+      ~description:details [b]
   in
   return (scroll, launch)
 
@@ -97,19 +101,16 @@ let show_tests ts =
   let run_all = button [I18N.cap I18N.String.run_all] {{ !$ %run_all }} in
 
   (** Build the report for the test suite. *)
+  lwt scrolls = Lwt_list.map_s fst tests in
   lwt ts_scroll =
     HTML_scroll.hackojo_scroll
       (div [pcdata "bla"])
       (div [h1 [pcdata I18N.String.autotesting_title]])
       [ run_all ]
   in
-  Lwt.async (fun () ->
-    Lwt_list.iter_s (fun s ->
-      lwt scroll = fst s in
-      return (HTML_scroll.from_server (push (HTML_scroll.elt_of_hackojo_scroll scroll)) ts_scroll)
-    ) tests
-  );
-  return (HTML_scroll.elt_of_hackojo_scroll ts_scroll :> [ body_content_fun ] elt)
+  push_subscrolls scrolls ts_scroll;
+  return (HTML_scroll.elt_of_hackojo_scroll ts_scroll
+          :> [ body_content_fun ] elt)
 
 let () =
   let contents () =

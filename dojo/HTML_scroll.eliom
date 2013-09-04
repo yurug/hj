@@ -14,7 +14,7 @@ type div = [ Html5_types.div ] Eliom_content.Html5.D.elt
 
 {shared{
 
-type request =
+type subs_request =
   | Push of HTML_remote_fragment.idx
 deriving (Json)
 
@@ -22,9 +22,7 @@ deriving (Json)
 
 type hackojo_scroll = {
   elt      : div;
-  subs     : div;
-  commands : div;
-  send     : request -> unit
+  to_subs  : subs_request -> unit
 }
 
 let elt_of_hackojo_scroll x =
@@ -34,7 +32,7 @@ let create_subscroll () =
   let id = new_elt_id () in
   let subs = create_named_elt ~id (div ~a:[a_class ["scroll_item_subs"]] []) in
   lwt (reaction, sender) =
-    CORE_client_reaction.listening Json.t<request>
+    CORE_client_reaction.listening Json.t<subs_request>
     (fun c -> {{ install_automatic_client_reaction %c (function
       | Push idx ->
         lwt elt = HTML_remote_fragment.remote_get idx in
@@ -51,7 +49,7 @@ let hackojo_scroll
     ?(start_shown=true)
     ?(description:div=div[])
     commands =
-  lwt (subs, send) = create_subscroll () in
+  lwt (subs, to_subs) = create_subscroll () in
   let description =
     div ~a:[ a_class [ "scroll_description" ]] [ description ]
   in
@@ -78,9 +76,7 @@ let hackojo_scroll
   in
   let scroll = {
     elt = (elt :> div);
-    subs = subs;
-    commands = commands;
-    send = send
+    to_subs = to_subs;
   }
   in
   return scroll
@@ -88,5 +84,13 @@ let hackojo_scroll
 let push (elt : div) =
   Push (HTML_remote_fragment.local_push (elt :> HTML_remote_fragment.elt))
 
-let from_server request s =
-  s.send request
+let from_server_to_subs request s =
+  s.to_subs request
+
+let push_subscrolls ss ms =
+  Lwt.async (fun () ->
+    Lwt_list.iter_s (fun s ->
+      let elt = elt_of_hackojo_scroll s in
+      return (from_server_to_subs (push elt) ms)
+    ) ss
+  )

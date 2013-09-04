@@ -32,8 +32,10 @@ val hackojo_scroll :
 val elt_of_hackojo_scroll
   : hackojo_scroll -> div
 
-type request
+val push_subscrolls : hackojo_scroll list -> hackojo_scroll -> unit
 
-val push : div -> request
+type subs_request
 
-val from_server : request -> hackojo_scroll -> unit
+val push : div -> subs_request
+
+val from_server_to_subs : subs_request -> hackojo_scroll -> unit
