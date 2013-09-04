@@ -1,7 +1,8 @@
 (* -*- tuareg -*- *)
 
 (** Use the root of the data directory to store our ressources. *)
-let ressource_root = Ocsigen_config.get_datadir ()
+let ressource_root =
+  Filename.concat (Ocsigen_config.get_datadir ()) "root"
 
 (** Check the AUTOTEST environment variable. *)
 let autotest_enabled () =

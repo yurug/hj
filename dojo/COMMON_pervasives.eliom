@@ -2,6 +2,8 @@
 
 {shared{
 
+open Lwt
+
 let ( $> ) f g () = f (); g ()
 
 let ( !$ ) f x = f ()
@@ -9,6 +11,21 @@ let ( !$ ) f x = f ()
 let ( !* ) f x = f [x]
 
 type 'a only = Only of 'a
+
+let lwt_if c pt pe =
+  c >>= function
+    | true -> pt
+    | false -> pe
+
+let continue_while_is v ps =
+  let rec aux = function
+    | [] ->
+      Lwt.return v
+    | p :: ps ->
+      lwt r = p () in
+      if r = v then aux ps else Lwt.return r
+  in
+  aux ps
 
 let forever what =
   let rec aux () = what aux in aux ()

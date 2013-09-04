@@ -6,6 +6,15 @@ let cap = String.capitalize
 
 module Fr : I18N_sig.Text = struct
 
+  let form things singular plural =
+    if List.length things > 1 then plural else singular
+
+  let of' things =
+    form things "du" "des"
+
+  let mark' things =
+    form things "" "s"
+
   let the_hacking_dojo = "Le Dojo de la Programmation"
 
   let assignments = "exercices"
@@ -89,10 +98,13 @@ module Fr : I18N_sig.Text = struct
   let there_is_no_repository_at_ressource_root =
     "Il n'y a pas de dépôt GIT à la racine de l'emplacement des ressources."
 
-  let the_following_file_is_untracked f =
+  let the_following_files_are_untracked fs =
     Printf.sprintf
-      "L'histoire du fichier suivant n'est pas pris en charge: `%s'"
-      f
+      "L'histoire %s fichier%s suivant%s n'est pas pris en charge: `%s'"
+      (of' fs)
+      (mark' fs)
+      (mark' fs)
+      (String.concat " " fs)
 
   let the_filesystem_is_consistent =
     "Le système de fichier est cohérent."

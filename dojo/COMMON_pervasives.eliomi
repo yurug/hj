@@ -64,6 +64,14 @@ val ( !* ) : ('a list -> 'b) -> 'a -> 'b
     mailbox [m]. *)
 val wait_for : 'a Lwt_mvar.t -> ('a -> 'b option) -> 'b Lwt.t
 
+(** [lwt_if c pt pe] lifts [if then else] to Lwt. *)
+val lwt_if : bool Lwt.t -> 'a Lwt.t -> 'a Lwt.t -> 'a Lwt.t
+
+(** [continue_while_is v ps] executes the sequence of [ps] while [v]
+    is produced by each process. Returns the first result that does
+    not produce [v] or [v] if there is no such result. *)
+val continue_while_is : 'a -> (unit -> 'a Lwt.t) list -> 'a Lwt.t
+
 val proj_1_3 : 'a * 'b * 'c -> 'a
 val proj_2_3 : 'a * 'b * 'c -> 'b
 val proj_3_3 : 'a * 'b * 'c -> 'c

@@ -45,7 +45,7 @@ sig
   val the_asynchronous_communication_layer_is_ok : string
   val the_vfs_is_coherent : string
   val there_is_no_repository_at_ressource_root : string
-  val the_following_file_is_untracked : string -> string
+  val the_following_files_are_untracked : string list -> string
   val the_filesystem_is_consistent: string
   val consistent : string
 end

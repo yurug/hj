@@ -31,14 +31,14 @@
 *)
 
 (** A file system contains files. *)
-type file
+type filename = string
 
 (** The VFS might be incoherent for one of the following reasons: *)
 type inconsistency =
   (** There is no repository rooted at [CORE_config.ressource_root]. *)
   | NoRootRepository
   (** There exists a file that is not tracked by any repository. *)
-  | Untracked of file
+  | Untracked of filename list
 
 (** File system consistency.*)
 type consistency_level =
