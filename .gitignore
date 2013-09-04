@@ -8,3 +8,12 @@
 *.cmxs
 *.cmxa
 vms
+*~
+*.intf.html
+*.impl.html
+*.log
+.depend
+_deps
+_server
+_client
+local
