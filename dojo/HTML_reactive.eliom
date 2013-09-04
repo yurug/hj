@@ -27,7 +27,23 @@ type ('a, 'b) c = 'a EltProduct.prod * 'b CORE_client_reaction.c
     CORE_client_reaction.install_automatic_client_reaction bus (
       update_elts elts reaction
     )
+
+  exception StopBackground
+
+  let on_background elt behavior =
+    Eliom_client.onload (fun () ->
+      Lwt.async (fun () ->
+        try_lwt
+          forever (fun continue ->
+            Lwt_js.sleep 1.
+            >> update_elts (P1 (Only elt)) (fun () ->
+              lwt y = behavior (fun () -> Lwt.fail StopBackground) in
+              return (P1 (Only y))) ()
+            >> continue ()
+          )
+        with StopBackground -> return ()))
 }}
+
 
 let async_elts inits json computation reaction =
   let elts = EltProduct.map { fapply = Html5.Id.create_global_elt } inits in

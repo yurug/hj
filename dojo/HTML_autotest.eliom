@@ -28,6 +28,11 @@ let string_of_test_state = function
   | Running s -> s
   | Done s -> string_of_test_result s
 
+let fetch_result r = wait_for r (function
+  | Done s -> Some s
+  | _ -> None
+)
+
 let show d s l =
   P3 (
     span ~a:[a_class ["report"]] [pcdata d],
@@ -66,14 +71,16 @@ let test_entry t =
       In the meantime, we log the messages inside a document that can
       be read later on using a freshly created reading service.
   *)
+  let m = {test_state Lwt_mvar.t { Lwt_mvar.create_empty () }} in
   let initial_report = show (description t) Waiting CORE_document.empty_text in
-  lwt (P3 (description, status, details)) =
+  lwt ((P3 (description, status, details))) =
     async_elts initial_report json run_test (fun c ->
       {reaction {react %c (
         let log = ref CORE_document.empty_text in
         fun (description, value) ->
-        log := CORE_document.add_line !log (string_of_test_state value);
-        return (show description value !log))
+          log := CORE_document.add_line !log (string_of_test_state value);
+          Lwt_mvar.put %m value >>
+          return (show description value !log))
       }})
   in
   (** Finally, we return a table row containing a button [b] to launch
@@ -89,22 +96,43 @@ let test_entry t =
       ~start_shown:false
       ~description:details [b]
   in
-  return (scroll, launch)
+  return (scroll, launch, {test_result Lwt.t{ fetch_result %m }})
 
 let show_tests ts =
   (** Connect the test suite to the user interface. *)
   lwt tests = Lwt_list.map_s test_entry CORE_autotest.all in
 
   (** Build a button to launch all the tests. *)
-  lwt launchers = Lwt_list.map_s (fun s -> return (snd s)) tests in
+  lwt launchers = Lwt_list.map_s (fun s -> return (proj_2_3 s)) tests in
   let run_all = {unit -> unit{ List.fold_left ( $> ) ignore %launchers }} in
   let run_all = button [I18N.cap I18N.String.run_all] {{ !$ %run_all }} in
 
-  (** Build the report for the test suite. *)
-  lwt scrolls = Lwt_list.map_s fst tests in
+  (** Build the synthetic status for the test suite. *)
+  let statuses = List.map proj_3_3 tests in
+  let ntests = List.length statuses in
+  let show_status = div [pcdata (Printf.sprintf "[%d]" ntests)] in
+  let status = Html5.Id.create_global_elt (div [show_status]) in
+  let _ = {unit{on_background %status (
+    let tests_status = ref %statuses in
+    let oks = ref 0 and kos = ref 0 in
+    let show () = div [pcdata (Printf.sprintf "%d/%d/%d" !oks !kos %ntests)] in
+    fun stop ->
+      (if !tests_status = [] then stop () else return ()) >>
+        lwt finished, running = nchoose_split !tests_status in
+        tests_status := running;
+        List.iter (function
+          | Passed -> incr oks
+          | Failed -> incr kos
+        ) finished;
+        return (show ())
+  )}}
+  in
+
+  (** Build the detailed report for the test suite. *)
+  lwt scrolls = Lwt_list.map_s proj_1_3 tests in
   lwt ts_scroll =
     HTML_scroll.hackojo_scroll
-      (div [pcdata "bla"])
+      status
       (div [h1 [pcdata I18N.String.autotesting_title]])
       [ run_all ]
   in

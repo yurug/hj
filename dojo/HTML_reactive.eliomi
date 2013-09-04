@@ -84,5 +84,12 @@ val async_elts :
   -> 'a EltProduct.prod Lwt.t
 
 {client{
+
   val react : ('a, 'b) c -> ('b -> 'a EltProduct.prod Lwt.t) -> reaction
+
+  val on_background :
+    'a Eliom_content_core.Html5.elt
+    -> ((unit -> unit Lwt.t) -> 'a Eliom_content_core.Html5.elt Lwt.t)
+    -> unit
+
 }}

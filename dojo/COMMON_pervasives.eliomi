@@ -60,4 +60,12 @@ val ( !$ ) : (unit -> 'a) -> 'b -> 'a
 (** [!* f] is [fun x -> f [x]]. *)
 val ( !* ) : ('a list -> 'b) -> 'a -> 'b
 
+(** [wait_for m p] blocks until [p] found what it wants in the
+    mailbox [m]. *)
+val wait_for : 'a Lwt_mvar.t -> ('a -> 'b option) -> 'b Lwt.t
+
+val proj_1_3 : 'a * 'b * 'c -> 'a
+val proj_2_3 : 'a * 'b * 'c -> 'b
+val proj_3_3 : 'a * 'b * 'c -> 'c
+
 }}

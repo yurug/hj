@@ -13,6 +13,12 @@ type 'a only = Only of 'a
 let forever what =
   let rec aux () = what aux in aux ()
 
+let rec wait_for m p =
+  lwt v = Lwt_mvar.take m in
+  match p v with
+    | None -> wait_for m p
+    | Some x -> Lwt.return x
+
 module type MapProduct_sig = sig
   type 'a t
 
@@ -90,5 +96,9 @@ module MapProduct (T : sig type 'a t end)
       | _, _ -> assert false
 
 end
+
+let proj_1_3 (x, _, _) = x
+let proj_2_3 (_, x, _) = x
+let proj_3_3 (_, _, x) = x
 
 }}
