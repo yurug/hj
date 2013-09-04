@@ -11,7 +11,7 @@ open COMMON_pervasives
 type onclick_cb = (Dom_html.mouseEvent Js.t -> unit) client_value
 
 let button labels onclick =
-  let id = Id.new_elt_id () in
+  let id = Id.new_elt_id ~global:true () in
   let onclick = {{
     let state = ref 0 in
     let next () =
@@ -49,6 +49,7 @@ let toggle s e =
 {shared{
 
 let show_or_hide ?(start_shown=true) (e : [ body_content_fun ] elt) =
+  let e = Id.create_global_elt e in
   let see : [ body_content_fun ] elt =
     let labels = [I18N.cap I18N.String.hide; I18N.cap I18N.String.see] in
     let labels = if start_shown then labels else List.rev labels in
