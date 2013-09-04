@@ -9,6 +9,7 @@ open Html5_types
 open HTML_app
 open HTML_reactive
 open HTML_widget
+open HTML_scroll
 open CORE_document
 open CORE_autotest
 open CORE_client_reaction
@@ -82,9 +83,9 @@ let test_entry t =
       button [b]. *)
   let b = button [I18N.cap I18N.String.run] {{ !$ %launch }} in
   let scroll =
-    HTML_app.hackojo_scroll status description ~start_shown:false details [b]
+    HTML_scroll.hackojo_scroll status description ~start_shown:false details [b]
   in
-  return (HTML_app.elt_of_hackojo_scroll scroll, launch)
+  return (HTML_scroll.elt_of_hackojo_scroll scroll, launch)
 
 let show_tests ts =
   (** Connect the test suite to the user interface. *)
