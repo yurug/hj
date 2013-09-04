@@ -83,9 +83,9 @@ let test_entry t =
       button [b]. *)
   let b = button [I18N.cap I18N.String.run] {{ !$ %launch }} in
   let scroll =
-    HTML_scroll.hackojo_scroll status description ~start_shown:false details [b]
+    HTML_scroll.hackojo_scroll (div [ status ]) (div [ description ]) ~start_shown:false ~description:details [b]
   in
-  return (HTML_scroll.elt_of_hackojo_scroll scroll, launch)
+  return (scroll, launch)
 
 let show_tests ts =
   (** Connect the test suite to the user interface. *)
@@ -96,16 +96,26 @@ let show_tests ts =
   let run_all = {unit -> unit{ List.fold_left ( $> ) ignore %launchers }} in
   let run_all = button [I18N.cap I18N.String.run_all] {{ !$ %run_all }} in
 
-  (** Build the HTML table for the test suite. *)
-  lwt scrolls = Lwt_list.map_s (fun s -> return (fst s)) tests in
-  return (div scrolls
-          :> [ body_content_fun ] elt)
+  (** Build the report for the test suite. *)
+  lwt ts_scroll =
+    HTML_scroll.hackojo_scroll
+      (div [pcdata "bla"])
+      (div [h1 [pcdata I18N.String.autotesting_title]])
+      [ run_all ]
+  in
+  Lwt.async (fun () ->
+    Lwt_list.iter_s (fun s ->
+      lwt scroll = fst s in
+      return (HTML_scroll.from_server (push (HTML_scroll.elt_of_hackojo_scroll scroll)) ts_scroll)
+    ) tests
+  );
+  return (HTML_scroll.elt_of_hackojo_scroll ts_scroll :> [ body_content_fun ] elt)
 
 let () =
   let contents () =
     if CORE_config.autotest_enabled () then
       lwt tests = show_tests CORE_autotest.all in
-      return (h1 [pcdata I18N.String.autotesting_title] :: [ tests ])
+      return [ tests ]
     else
       return [ p [pcdata I18N.String.sorry_autotesting_is_disabled ] ]
   in

@@ -22,11 +22,18 @@ type reaction = unit
     )
 }}
 
+let listening
+    (json        : 'a Deriving_Json.t)
+    (reaction    : 'a Eliom_bus.t -> unit Eliom_pervasives.client_value)
+    =
+  let bus = Eliom_bus.create json in
+  return (reaction bus, (fun x -> Eliom_bus.write bus x))
+
 let on
     (json        : 'a Deriving_Json.t)
     (computation : ('a -> unit) -> unit Lwt.t)
     (reaction    : 'a Eliom_bus.t -> unit Eliom_pervasives.client_value)
     =
-  let bus = Eliom_bus.create json in
-  Lwt.async (fun () -> computation (fun x -> Eliom_bus.write bus x));
-  return (reaction bus)
+  lwt (reaction, sender) = listening json reaction in
+  Lwt.async (fun () -> computation sender);
+  return (reaction)

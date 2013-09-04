@@ -13,6 +13,8 @@
 *)
 type hackojo_scroll
 
+type div = [ Html5_types.div ] Eliom_content.Html5.D.elt
+
 (** [hackojo_scroll status short_description ?start_shown description
     commands] creates a scroll with the given [status],
     [short_description], [description] and [commands]. [start_shown]
@@ -20,12 +22,18 @@ type hackojo_scroll
     or not. (Default is [true].)
 *)
 val hackojo_scroll :
-  [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
-  [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
+  div ->
+  div ->
   ?start_shown:bool ->
-  [< Html5_types.div_content_fun ] Eliom_content.Html5.D.elt ->
+  ?description:div ->
   [ Html5_types.body_content_fun ] Eliom_content.Html5.D.elt list ->
-  hackojo_scroll
+  hackojo_scroll Lwt.t
 
 val elt_of_hackojo_scroll
-  : hackojo_scroll -> [ Html5_types.body_content_fun ] Eliom_content.Html5.D.elt
+  : hackojo_scroll -> div
+
+type request
+
+val push : div -> request
+
+val from_server : request -> hackojo_scroll -> unit
