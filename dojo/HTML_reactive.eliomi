@@ -65,10 +65,7 @@ type ('a, 'b) c
     An update of a type described by [json_type] is conveyed from the
     [computation] to the [reaction]. In response to this notification,
     the [reaction] must produce a new HTML5 element of the same type
-    as the initial element [elt].
-
-
-*)
+    as the initial element [elt]. *)
 val async_elt :
   'a Eliom_content_core.Html5.elt
   -> 'b Deriving_Json.t
@@ -85,8 +82,13 @@ val async_elts :
 
 {client{
 
+  (** [react c behavior] describes a client reaction in order to update
+      a set of HTML5 elements in response to a value sent through the
+      channel [c]. *)
   val react : ('a, 'b) c -> ('b -> 'a EltProduct.prod Lwt.t) -> reaction
 
+  (** [on_background elt behavior] executes [behavior stop]
+      continuously unless [stop] is called by [behavior]. *)
   val on_background :
     'a Eliom_content_core.Html5.elt
     -> ((unit -> unit Lwt.t) -> 'a Eliom_content_core.Html5.elt Lwt.t)
