@@ -94,6 +94,9 @@ module Fr : I18N_sig.Text = struct
       "L'histoire du fichier suivant n'est pas pris en charge: `%s'"
       f
 
+  let the_filesystem_is_consistent =
+    "Le système de fichier est cohérent."
+
   let consistent =
     "cohérent"
 

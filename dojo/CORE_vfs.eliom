@@ -20,7 +20,7 @@ let string_of_inconsistency = function
     I18N.String.the_following_file_is_untracked (string_of_identifier f)
 
 let string_of_consistency_level = function
-  | Consistent -> I18N.String.consistent
+  | Consistent -> I18N.String.the_filesystem_is_consistent
   | Inconsistent c -> string_of_inconsistency c
 
 let check () =
