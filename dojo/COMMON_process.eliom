@@ -6,6 +6,7 @@ open Str
 open Lwt
 open Lwt_process
 open COMMON_log
+open COMMON_pervasives
 
 let ( @@ ) at c = Printf.sprintf "(cd %s && %s)" at c
 
@@ -17,11 +18,19 @@ let strace f (cmd, s) =
   log [Strace] s;
   f cmd
 
-let success c =
+let string_of_process_status = function
+  | Unix.WEXITED   d -> Printf.sprintf "Exited %d" d
+  | Unix.WSIGNALED d -> Printf.sprintf "Signaled %d" d
+  | Unix.WSTOPPED  d -> Printf.sprintf "Stopped %d" d
+
+let success ?(lraise=small_jump) c =
   strace (exec ~stdin:`Dev_null ~stdout:`Dev_null ~stderr:`Dev_null) c
   >>= function
-  | Unix.WEXITED 0 -> return_true
-  | _ -> return_false
+  | Unix.WEXITED 0 ->
+    return_true
+  | s ->
+    (lraise @* (`SystemError (string_of_process_status s)))
+    @| return_false
 
 let grep c pattern =
   let s = strace (pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c in

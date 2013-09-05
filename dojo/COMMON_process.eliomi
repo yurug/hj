@@ -10,6 +10,9 @@ type command
 
 val ( !% ) : string -> command
 
-val success : command -> bool Lwt.t
+val success :
+  ?lraise:([> `SystemError of string ] -> 'e)
+  -> command
+  -> bool Lwt.t
 
 val grep : command -> string -> string Lwt_stream.t
