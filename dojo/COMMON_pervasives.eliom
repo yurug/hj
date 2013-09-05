@@ -36,6 +36,40 @@ let rec wait_for m p =
     | None -> wait_for m p
     | Some x -> Lwt.return x
 
+exception LocalError
+let ltry what =
+  let error = ref None in
+  let lraise e =
+    error := Some e;
+    raise_lwt LocalError
+  in
+  try_lwt
+    lwt r = what lraise in
+    return (`OK r)
+  with LocalError ->
+    match !error with
+      | None -> assert false
+      | Some e -> return (`KO e)
+
+let lreturn x _ = return x
+
+let abs_error (f : [`OK of 'a | `KO of 'e] Lwt.t) lraise =
+  f >>= function
+    | `OK x -> return x
+    | `KO e -> lwt _ = lraise e in assert false
+
+exception SmallJump
+let small_jump _ = raise SmallJump
+let ( @| ) e p = try_lwt let _ = e () in p with SmallJump -> p
+
+let ( @* ) f x = fun () -> f x
+
+let ( >>> ) e f =
+  fun l -> e l >> f l
+
+let ( !>> ) e =
+  e
+
 module type MapProduct_sig = sig
   type 'a t
 
@@ -119,3 +153,12 @@ let proj_2_3 (_, x, _) = x
 let proj_3_3 (_, _, x) = x
 
 }}
+
+module ExtFilename = struct
+
+  let temp_filename ?(temp_dir = Filename.get_temp_dir_name ()) prefix suffix =
+    let fname = Filename.temp_file ~temp_dir prefix suffix in
+    Lwt_unix.unlink fname
+    >> return fname
+
+end

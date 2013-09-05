@@ -72,8 +72,46 @@ val lwt_if : bool Lwt.t -> 'a Lwt.t -> 'a Lwt.t -> 'a Lwt.t
     not produce [v] or [v] if there is no such result. *)
 val continue_while_is : 'a -> (unit -> 'a Lwt.t) list -> 'a Lwt.t
 
+(** [ltry what] executes [what lraise] where [lraise] can be
+    given any error of type ['a]. *)
+val ltry : (('e -> 'b Lwt.t) -> 'a Lwt.t) -> [`OK of 'a | `KO of 'e] Lwt.t
+
+(** [lreturn x] is [fun _ -> return x]. *)
+val lreturn : 'c -> ('a -> 'b Lwt.t) -> 'c Lwt.t
+
+(** [abs_error what raise] checks for the result [r] of [what] to
+    [raise] an error if [r] matches [`KO e]. Otherwise if [r] matches
+    [`OK x], returns [x]. *)
+val abs_error : [`OK of 'a | `KO of 'e] Lwt.t -> ('e -> 'b Lwt.t) -> 'a Lwt.t
+
+(** [p1 >>> p2] is [fun l -> p1 l >> l2 l]. *)
+val ( >>> ) : ('a -> 'b Lwt.t) -> ('a -> 'c Lwt.t) -> 'a -> 'c Lwt.t
+
+(** [!>> p] is [p]. (Only meant for indentation purpose.) *)
+val ( !>> ) : 'a -> 'a
+
+(** [ f @* x ] is [fun () -> f x] *)
+val ( @* ) : ('a -> 'b) -> 'a -> unit -> 'b
+
+(** [ e @| p ] is [try_lwt let _ = e () in p with SmallJump ->
+    p]. This combinator is useful to implement functions that wait for
+    a function to raise error. When error handling must be skipped for
+    some reason, this argument can be filled with [small_jump]
+    whose exception is immediately captured by the combinator. *)
+exception SmallJump
+val small_jump : 'a -> 'b
+val ( @| ) : (unit -> 'a) -> 'b Lwt.t -> 'b Lwt.t
+
 val proj_1_3 : 'a * 'b * 'c -> 'a
 val proj_2_3 : 'a * 'b * 'c -> 'b
 val proj_3_3 : 'a * 'b * 'c -> 'c
 
 }}
+
+module ExtFilename : sig
+
+  (** [temp_filename tmpdir prefix suffix] returns a fresh name for a
+      file. Only guarantee that the file does not exist when called. *)
+  val temp_filename : ?temp_dir:string -> string -> string -> string Lwt.t
+
+end
