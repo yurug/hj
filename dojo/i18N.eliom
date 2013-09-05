@@ -118,6 +118,11 @@ module Fr : I18N_sig.Text = struct
   let consistent =
     "cohérent"
 
+  let the_following_file_already_exists fname =
+    Printf.sprintf
+      "Le fichier `%s' existe déjà."
+      fname
+
 end
 
 module String = (val

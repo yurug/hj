@@ -6,6 +6,7 @@ open CORE_identifier
 open COMMON_pervasives
 open COMMON_process
 open COMMON_log
+open COMMON_unix
 
 (** {1 Functional part.} *)
 
@@ -17,6 +18,16 @@ let root relative p =
   else
     p
 
+let git_commit who where what message lraise =
+  success ~lraise
+    (!% (where
+         @@ (Printf.sprintf
+               ("git commit --author='%s' -m %s %s")
+               who (Filename.quote message)
+               (String.concat " " (List.map Filename.quote what))
+         )
+     ))
+
 let create who ?(relative = true) p =
   let p = root relative p in
   let ps = string_of_path p in
@@ -25,20 +36,13 @@ let create who ?(relative = true) p =
       ignore (Sys.is_directory ps);
       lraise (`AlreadyExists p)
     with Sys_error _ -> return ()
-  in
-  let create_directory lraise =
-    try_lwt
-      log [Strace] (Printf.sprintf "Create directory %s\n" ps);
-      Lwt_unix.mkdir ps 0o700
-    with Unix.Unix_error (e, _, _) ->
-      lraise (`SystemError (Unix.error_message e))
-  in
+   in
   let git_init lraise =
     success ~lraise (!% (ps @@ "git init"))
   in
   ltry (
     !>> check_if_already_exists
-    >>> create_directory
+    >>> mkdir ps
     >>> git_init
     >>> lreturn ()
   )
@@ -51,6 +55,8 @@ let create_tmp who =
     abs_error (create who ~relative:false (path_of_string dname))
     >>> lreturn dname
   )
+
+
 
 (** {1 Unit testing.} *)
 
@@ -108,18 +114,20 @@ let there_is_no_untracked_files () =
      let fs = List.map identifier_of_string fs in
      return (Untracked fs))
 
-let who = "system.test.vfs"
+let who = "system.test.vfs <here@hackojo.org>"
 
 let string_of_error = function
-  | `SystemError e -> "system: " ^ e
-  | _ -> "some errors (FIXME)"
+  | `SystemError e ->
+    "System: " ^ e
+  | `AlreadyExists p ->
+    I18N.String.the_following_file_already_exists (string_of_path p)
 
 let operation_works operation scenario =
   scenario >>= function
     | `OK _ -> return Consistent
     | `KO e -> return (Inconsistent (BrokenOperation {
       operation = operation;
-      reason = string_of_error e
+      reason    = string_of_error e
     }))
 
 let vfs_create_works () =

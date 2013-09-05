@@ -6,6 +6,7 @@
     following constants. *)
 module type Text =
 sig
+  (** Words. *)
   val the_hacking_dojo : string
   val assignments : string
   val submission : string
@@ -39,8 +40,11 @@ sig
   val connect : string
   val disconnect : string
   val new_submission : string
-  val sorry_autotesting_is_disabled : string
   val autotesting_title : string
+  val consistent : string
+
+  (** Sentences. *)
+  val sorry_autotesting_is_disabled : string
   val the_following_operation_is_broken : string -> string -> string
   val the_server_is_up : string
   val the_asynchronous_communication_layer_is_ok : string
@@ -48,7 +52,7 @@ sig
   val there_is_no_repository_at_ressource_root : string
   val the_following_files_are_untracked : string list -> string
   val the_filesystem_is_consistent: string
-  val consistent : string
+  val the_following_file_already_exists : string -> string
 end
 
 }}
