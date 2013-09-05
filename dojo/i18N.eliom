@@ -123,6 +123,11 @@ module Fr : I18N_sig.Text = struct
       "Le fichier `%s' existe déjà."
       fname
 
+  let the_following_directory_does_not_exist dname =
+    Printf.sprintf
+      "Le répertoire `%s' n'existe pas."
+      dname
+
 end
 
 module String = (val

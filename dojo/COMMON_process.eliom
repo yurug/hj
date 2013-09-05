@@ -32,13 +32,3 @@ let success ?(lraise=small_jump) c =
     (lraise @* (`SystemError (string_of_process_status s)))
     @| return_false
 
-let grep c pattern =
-  let s = strace (pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c in
-  Lwt_stream.filter_map (fun s ->
-    if string_match (regexp pattern) s 0 then
-      try
-        Some (matched_group 1 s)
-      with Not_found -> None
-    else
-      None
-  ) s

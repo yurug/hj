@@ -31,7 +31,7 @@ let git_commit who where what message lraise =
 let create who ?(relative = true) p =
   let p = root relative p in
   let ps = string_of_path p in
-  let check_if_already_exists lraise =
+  let check_if_filename_already_exists lraise =
     try_lwt
       ignore (Sys.is_directory ps);
       lraise (`AlreadyExists p)
@@ -41,7 +41,7 @@ let create who ?(relative = true) p =
     success ~lraise (!% (ps @@ "git init"))
   in
   ltry (
-    !>> check_if_already_exists
+    !>> check_if_filename_already_exists
     >>> mkdir ps
     >>> git_init
     >>> lreturn ()
@@ -51,12 +51,26 @@ let create_tmp who =
   lwt dname =
     ExtFilename.temp_filename ~temp_dir:CORE_config.ressource_root "tmp" ""
   in
+  let path = path_of_string dname in
   ltry (
-    abs_error (create who ~relative:false (path_of_string dname))
-    >>> lreturn dname
+    !>> abs_error (create who ~relative:false path)
+    >>> lreturn path
   )
 
-
+let delete who ?(relative = true) p =
+  let p = root relative p in
+  let ps = string_of_path p in
+  let check_if_directory_exists lraise =
+    try_lwt
+      return (Sys.is_directory ps)
+    with Sys_error _ ->
+      lraise (`DirectoryDoesNotExist p)
+   in
+  ltry (
+    !>> check_if_directory_exists
+    >>> rmdir ~content:true ps
+    >>> lreturn ()
+  )
 
 (** {1 Unit testing.} *)
 
@@ -66,7 +80,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create ];
+  operation : [`Create | `Delete ];
   reason    : string;
 }
 
@@ -76,6 +90,7 @@ type consistency_level =
 
 let string_of_operation = function
   | `Create -> "vfs.create"
+  | `Delete -> "vfs.delete"
 
 let string_of_inconsistency = function
   | NoRootRepository ->
@@ -121,6 +136,8 @@ let string_of_error = function
     "System: " ^ e
   | `AlreadyExists p ->
     I18N.String.the_following_file_already_exists (string_of_path p)
+  | `DirectoryDoesNotExist p ->
+    I18N.String.the_following_directory_does_not_exist (string_of_path p)
 
 let operation_works operation scenario =
   scenario >>= function
@@ -135,9 +152,20 @@ let vfs_create_works () =
     create_tmp who
   )
 
+let ( >=> ) e f lraise =
+  lwt x = e lraise in
+  f x lraise
+
+let vfs_delete_works () =
+  operation_works `Create (ltry (
+    !>> abs_error (create_tmp who)
+    >=> fun x -> abs_error (delete who ~relative:false x)
+  ))
+
 let check () =
   continue_while_is Consistent [
     there_is_repository_at_resssource_root;
     there_is_no_untracked_files;
     vfs_create_works;
+    vfs_delete_works;
   ]

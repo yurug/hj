@@ -25,13 +25,14 @@ type filename = CORE_identifier.t
 type inconsistency =
   (** There is no repository rooted at [CORE_config.ressource_root]. *)
   | NoRootRepository
-  (** There exists a file that is not tracked by any repository. *)
+  (** There exists a file or a directory that is not tracked by any
+      repository. *)
   | Untracked of filename list
   (** One of the basic operations is broken. *)
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create ];
+  operation : [`Create | `Delete];
   reason    : string;
 }
 
@@ -58,6 +59,19 @@ val create:
      | `KO of
          (** The path is already taken. *)
          [ `AlreadyExists of path
+         (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
+         | `SystemError of string
+         ]
+     ] Lwt.t
+
+(** [delete who path] deletes a subvfs at [path].  The [path] must
+    exist in the root vfs. *)
+val delete: string -> ?relative:bool -> path
+  -> [`OK of unit
+     | `KO of
+         (** The path is invalid. *)
+         [ `DirectoryDoesNotExist of path
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
          | `SystemError of string
