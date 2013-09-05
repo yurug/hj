@@ -18,7 +18,7 @@
 *)
 
 (** A file system contains files. *)
-type filename = string
+type filename = CORE_identifier.t
 
 (** The VFS might be incoherent for one of the following reasons: *)
 type inconsistency =

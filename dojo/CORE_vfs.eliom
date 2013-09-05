@@ -6,7 +6,7 @@ open CORE_identifier
 open COMMON_pervasives
 open COMMON_process
 
-type filename = string
+type filename = CORE_identifier.t
 
 type inconsistency =
   | NoRootRepository
@@ -20,7 +20,9 @@ let string_of_inconsistency = function
   | NoRootRepository ->
     I18N.String.there_is_no_repository_at_ressource_root
   | Untracked fs ->
-    I18N.String.the_following_files_are_untracked fs
+    I18N.String.the_following_files_are_untracked (
+      List.map string_of_identifier fs
+    )
 
 let string_of_consistency_level = function
   | Consistent -> I18N.String.the_filesystem_is_consistent
@@ -43,7 +45,9 @@ let there_is_no_untracked_files () =
   in
   ensure_consistency
     (is_empty untracked_files)
-    (lwt fs = to_list untracked_files in return (Untracked fs))
+    (lwt fs = to_list untracked_files in
+     let fs = List.map identifier_of_string fs in
+     return (Untracked fs))
 
 let check () =
   continue_while_is Consistent [
