@@ -15,19 +15,6 @@
     @see <http://git-scm.com/> the official GIT website for general
     information about this tool.
 
-    The hierarchical organization of the filesystem is implemented
-    using the GIT's mechanism called "submodule", @see
-    <http://git-scm.com/book/en/Git-Tools-Submodules> the
-    documentation for this feature.
-
-    The state of the filesystem might be changed by direct push
-    commands performed in its underlying GIT repositories. By
-    construction, we make sure that the system is notified each time
-    such an action is performed by installing hooks. Notice that we do
-    not yet take the responsability to handle the authentification of
-    the user that modifies the GIT repository that way. As a
-    consequence, the sysadmin must manually control the access rights
-    to the file system.
 *)
 
 (** A file system contains files. *)
