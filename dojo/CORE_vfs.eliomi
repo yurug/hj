@@ -41,7 +41,7 @@ type consistency_level =
   | Consistent
   | Inconsistent of inconsistency
 
-(** [string_of_consistency_level c] is human readable description
+(** [string_of_consistency_level c] is a human-readable description
     of the consistency level. *)
 val string_of_consistency_level : consistency_level -> string
 
