@@ -16,6 +16,7 @@
     information about this tool.
 
 *)
+open CORE_identifier
 
 (** A file system contains files. *)
 type filename = CORE_identifier.t
@@ -26,6 +27,13 @@ type inconsistency =
   | NoRootRepository
   (** There exists a file that is not tracked by any repository. *)
   | Untracked of filename list
+  (** One of the basic operations is broken. *)
+  | BrokenOperation of broken_operation_description
+
+and broken_operation_description = {
+  operation : [`Create ];
+  reason    : string;
+}
 
 (** File system consistency.*)
 type consistency_level =
@@ -39,3 +47,19 @@ val string_of_consistency_level : consistency_level -> string
 (** [check ()] if the file system rooted at
     [CORE_config.ressource_root] is in a coherent state.  *)
 val check: unit -> consistency_level Lwt.t
+
+(** [create who path] initializes a subvfs at [path], authored by
+    [who].  The [path] must not exist in the root vfs. All the needed
+    directories are created on-the-fly if they do not exist.
+*)
+val create:
+  string -> ?relative:bool -> path
+  -> [`OK of unit
+     | `KO of
+         (** The path is already taken. *)
+         [ `AlreadyExists of path
+         (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
+         | `SystemError of string
+         ]
+     ] Lwt.t

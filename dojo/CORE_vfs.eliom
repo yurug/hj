@@ -5,16 +5,71 @@ open Lwt_stream
 open CORE_identifier
 open COMMON_pervasives
 open COMMON_process
+open COMMON_log
+
+(** {1 Functional part.} *)
 
 type filename = CORE_identifier.t
+
+let root relative p =
+  if relative then
+    path_of_string CORE_config.ressource_root @ p
+  else
+    p
+
+let create who ?(relative = true) p =
+  let p = root relative p in
+  let ps = string_of_path p in
+  let check_if_already_exists lraise =
+    try_lwt
+      ignore (Sys.is_directory ps);
+      lraise (`AlreadyExists p)
+    with Sys_error _ -> return ()
+  in
+  let create_directory lraise =
+    try_lwt
+      log [Strace] (Printf.sprintf "Create directory %s\n" ps);
+      Lwt_unix.mkdir ps 0o700
+    with Unix.Unix_error (e, _, _) ->
+      lraise (`SystemError (Unix.error_message e))
+  in
+  let git_init lraise =
+    success ~lraise (!% (ps @@ "git init"))
+  in
+  ltry (
+    !>> check_if_already_exists
+    >>> create_directory
+    >>> git_init
+    >>> lreturn ()
+  )
+
+let create_tmp who =
+  lwt dname =
+    ExtFilename.temp_filename ~temp_dir:CORE_config.ressource_root "tmp" ""
+  in
+  ltry (
+    abs_error (create who ~relative:false (path_of_string dname))
+    >>> lreturn dname
+  )
+
+(** {1 Unit testing.} *)
 
 type inconsistency =
   | NoRootRepository
   | Untracked of filename list
+  | BrokenOperation of broken_operation_description
+
+and broken_operation_description = {
+  operation : [`Create ];
+  reason    : string;
+}
 
 type consistency_level =
   | Consistent
   | Inconsistent of inconsistency
+
+let string_of_operation = function
+  | `Create -> "vfs.create"
 
 let string_of_inconsistency = function
   | NoRootRepository ->
@@ -23,6 +78,10 @@ let string_of_inconsistency = function
     I18N.String.the_following_files_are_untracked (
       List.map string_of_identifier fs
     )
+  | BrokenOperation { operation; reason } ->
+    I18N.String.the_following_operation_is_broken
+      (string_of_operation operation)
+      reason
 
 let string_of_consistency_level = function
   | Consistent -> I18N.String.the_filesystem_is_consistent
@@ -49,8 +108,28 @@ let there_is_no_untracked_files () =
      let fs = List.map identifier_of_string fs in
      return (Untracked fs))
 
+let who = "system.test.vfs"
+
+let string_of_error = function
+  | `SystemError e -> "system: " ^ e
+  | _ -> "some errors (FIXME)"
+
+let operation_works operation scenario =
+  scenario >>= function
+    | `OK _ -> return Consistent
+    | `KO e -> return (Inconsistent (BrokenOperation {
+      operation = operation;
+      reason = string_of_error e
+    }))
+
+let vfs_create_works () =
+  operation_works `Create (
+    create_tmp who
+  )
+
 let check () =
   continue_while_is Consistent [
     there_is_repository_at_resssource_root;
-    there_is_no_untracked_files
+    there_is_no_untracked_files;
+    vfs_create_works;
   ]

@@ -86,6 +86,12 @@ module Fr : I18N_sig.Text = struct
 
   let autotesting_title = "Tests"
 
+  let the_following_operation_is_broken operation reason =
+    Printf.sprintf
+      "L'opération '%s' est défaillante. (%s)"
+      operation
+      reason
+
   let the_server_is_up =
     "Le serveur se lance correctement."
 

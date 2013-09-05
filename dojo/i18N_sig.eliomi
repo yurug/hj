@@ -41,6 +41,7 @@ sig
   val new_submission : string
   val sorry_autotesting_is_disabled : string
   val autotesting_title : string
+  val the_following_operation_is_broken : string -> string -> string
   val the_server_is_up : string
   val the_asynchronous_communication_layer_is_ok : string
   val the_vfs_is_coherent : string
