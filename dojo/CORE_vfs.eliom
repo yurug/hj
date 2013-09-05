@@ -28,9 +28,12 @@ let git_commit who where what message lraise =
          )
      ))
 
-let create who ?(relative = true) p =
+let on_path f ?(relative = true) p =
   let p = root relative p in
   let ps = string_of_path p in
+  f p ps
+
+let create who = on_path (fun p ps ->
   let check_if_filename_already_exists lraise =
     try_lwt
       ignore (Sys.is_directory ps);
@@ -45,7 +48,7 @@ let create who ?(relative = true) p =
     >>> mkdir ps
     >>> git_init
     >>> lreturn ()
-  )
+  ))
 
 let create_tmp who =
   lwt dname =
@@ -57,9 +60,7 @@ let create_tmp who =
     >>> lreturn path
   )
 
-let delete who ?(relative = true) p =
-  let p = root relative p in
-  let ps = string_of_path p in
+let delete who = on_path (fun p ps ->
   let check_if_directory_exists lraise =
     try_lwt
       return (Sys.is_directory ps)
@@ -70,7 +71,11 @@ let delete who ?(relative = true) p =
     !>> check_if_directory_exists
     >>> rmdir ~content:true ps
     >>> lreturn ()
-  )
+  ))
+
+let save who = on_path (fun p ps c ->
+  lreturn ()
+)
 
 (** {1 Unit testing.} *)
 
