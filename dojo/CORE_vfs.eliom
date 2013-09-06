@@ -23,7 +23,7 @@ type version = {
 
 let root relative p =
   if relative then
-    path_of_string CORE_config.ressource_root @ p
+    concat (path_of_string CORE_config.ressource_root) p
   else
     p
 
@@ -72,6 +72,10 @@ let git_show hash what lraise =
   let where = Filename.dirname what in
   let fname = Filename.basename what in
   pread (!% (where @@ Printf.sprintf "git show %s:./%s" hash fname))
+
+let git_toplevel where lraise =
+  pread_lines (!% (where @@ "git rev-parse --show-toplevel")) ~lraise
+  >>= last_new
 
 let on_path f ?(relative = true) p =
   let p = root relative p in
@@ -141,6 +145,10 @@ let save who = on_path (fun p ps fname where c -> ltry (
   >>> lreturn ()
 ))
 
+let owner = on_path (fun _ where _ _ -> ltry (
+  git_toplevel where
+  >-> fun s -> lreturn (path_of_string s)
+))
 
 (** {1 Unit testing.} *)
 
@@ -150,7 +158,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create | `Delete | `Save | `Versions | `Read ];
+  operation : [`Create | `Delete | `Save | `Versions | `Read | `Owner ];
   reason    : string;
 }
 
@@ -164,6 +172,7 @@ let string_of_operation = function
   | `Save     -> "vfs.save"
   | `Versions -> "vfs.versions"
   | `Read     -> "vfs.read"
+  | `Owner    -> "vfs.owner"
 
 let string_of_inconsistency = function
   | NoRootRepository ->
@@ -236,7 +245,7 @@ let vfs_save_works () =
   operation_works `Save (
     !>>> create_tmp who
     >>>= (fun x ->
-      save who ~relative:false (x @ [label "test"]) "Test"
+      save who ~relative:false (concat x (make [label "test"])) "Test"
       >>>= (delete who ~relative:false @* x)
     )
   )
@@ -245,7 +254,7 @@ let vfs_versions_works () =
   operation_works `Versions (
     !>>> create_tmp who
     >>>= (fun x ->
-      let fname = x @ [label "test"] in
+      let fname = concat x (make [label "test"]) in
       !>>> (save who ~relative:false fname "Test1")
       >>>= save who ~relative:false fname @* "Test2"
       >>>= (fun () ->
@@ -263,7 +272,7 @@ let vfs_read_works () =
   operation_works `Read (
     !>>> create_tmp who
     >>>= (fun x ->
-      let fname = x @ [label "test"] in
+      let fname = concat x (make [label "test"]) in
       !>>> (save who ~relative:false fname "Test1")
       >>>= save who ~relative:false fname @* "Test2"
       >>>= (fun () ->
@@ -283,6 +292,21 @@ let vfs_read_works () =
     )
   )
 
+let vfs_owner_works () =
+  operation_works `Owner (
+    !>>> create_tmp who
+    >>>= (fun x ->
+      owner ~relative:false x
+      >>>= (fun y ->
+        if x <> y then
+          return (`KO (`SystemError (Printf.sprintf "|%s| <> |%s|"
+                                       (string_of_path x)
+                                       (string_of_path y))))
+        else return (`OK ())
+      )
+    )
+  )
+
 let check () =
   continue_while_is Consistent [
     there_is_repository_at_resssource_root;
@@ -291,5 +315,6 @@ let check () =
     vfs_delete_works;
     vfs_save_works;
     vfs_versions_works;
-    vfs_read_works
+    vfs_read_works;
+    vfs_owner_works;
   ]

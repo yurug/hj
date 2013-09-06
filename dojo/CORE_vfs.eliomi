@@ -96,6 +96,16 @@ val read : version
          ]
      ] Lwt.t
 
+(** [owner path] returns the path of the nearest englobing [subvfs]
+    from [path]. *)
+val owner : ?relative:bool -> CORE_identifier.path
+  -> [ `OK of CORE_identifier.path
+     | `KO of (** Something went wrong at the system level.
+                  (It may be git-related or os-related.) *)
+         [ `SystemError of string
+         ]
+     ] Lwt.t
+
 (** {1 Unit tests.} *)
 
 (** The VFS might be incoherent for one of the following reasons: *)
@@ -109,7 +119,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create | `Delete | `Save | `Versions | `Read ];
+  operation : [ `Create | `Delete | `Save | `Versions | `Read | `Owner ];
   reason    : string;
 }
 
