@@ -235,25 +235,28 @@ let vfs_create_works () =
     create_tmp who
   )
 
+let in_tmp_dir f =
+  !>>> create_tmp who
+  >>>= (fun x ->
+    f x
+    >>>= delete who ~relative:false @* x)
+
 let vfs_delete_works () =
-  operation_works `Create (
+  operation_works `Delete (
     !>>> create_tmp who
     >>>= fun x -> delete who ~relative:false x
   )
 
 let vfs_save_works () =
   operation_works `Save (
-    !>>> create_tmp who
-    >>>= (fun x ->
+    in_tmp_dir (fun x ->
       save who ~relative:false (concat x (make [label "test"])) "Test"
-      >>>= (delete who ~relative:false @* x)
     )
   )
 
 let vfs_versions_works () =
   operation_works `Versions (
-    !>>> create_tmp who
-    >>>= (fun x ->
+    in_tmp_dir (fun x ->
       let fname = concat x (make [label "test"]) in
       !>>> (save who ~relative:false fname "Test1")
       >>>= save who ~relative:false fname @* "Test2"
@@ -264,14 +267,12 @@ let vfs_versions_works () =
         else
           return (`OK ())
       )
-      >>>= delete who ~relative:false @* x
     )
   )
 
 let vfs_read_works () =
   operation_works `Read (
-    !>>> create_tmp who
-    >>>= (fun x ->
+    in_tmp_dir (fun x ->
       let fname = concat x (make [label "test"]) in
       !>>> (save who ~relative:false fname "Test1")
       >>>= save who ~relative:false fname @* "Test2"
@@ -288,14 +289,12 @@ let vfs_read_works () =
           )
           | _ -> return (`KO (`SystemError "read because of version"))
       )
-      >>>= delete who ~relative:false @* x
     )
   )
 
 let vfs_owner_works () =
   operation_works `Owner (
-    !>>> create_tmp who
-    >>>= (fun x ->
+    in_tmp_dir (fun x ->
       owner ~relative:false x
       >>>= (fun y ->
         if x <> y then
