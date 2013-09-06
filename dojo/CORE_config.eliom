@@ -2,7 +2,14 @@
 
 (** Use the root of the data directory to store our ressources. *)
 let ressource_root =
-  Filename.concat (Ocsigen_config.get_datadir ()) "root"
+  let absolute_data_dir =
+    let ocs = Ocsigen_config.get_datadir () in
+    if Filename.is_relative ocs then
+      Filename.concat (Unix.getcwd ()) ocs
+    else
+      ocs
+  in
+  Filename.concat absolute_data_dir "root"
 
 (** Check the AUTOTEST environment variable. *)
 let autotest_enabled () =
