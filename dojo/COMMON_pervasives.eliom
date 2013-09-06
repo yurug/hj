@@ -164,6 +164,10 @@ exception SmallJump
 let small_jump _ =
   raise_lwt SmallJump
 
+let warn_only msg =
+  Ocsigen_messages.errlog (Printf.sprintf "Warning: %s\n" msg);
+  small_jump
+
 let ( @| ) e p =
   try_lwt
     lwt _ = e () in

@@ -150,3 +150,5 @@ val ( @* ) : ('a -> 'b) -> 'a -> unit -> 'b
 exception SmallJump
 val small_jump : 'a -> 'b Lwt.t
 val ( @| ) : (unit -> 'a Lwt.t) -> (unit -> 'b Lwt.t) -> 'b Lwt.t
+
+val warn_only : string -> 'a -> 'b Lwt.t
