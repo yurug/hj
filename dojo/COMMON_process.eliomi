@@ -17,6 +17,11 @@ val pread :
   -> command
   -> string Lwt.t
 
+val pread_lines :
+  ?lraise:([> `SystemError of string ] -> 'e Lwt.t)
+  -> command
+  -> string Lwt_stream.t Lwt.t
+
 val success :
   ?lraise:([> `SystemError of string ] -> 'e Lwt.t)
   -> command

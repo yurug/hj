@@ -30,6 +30,13 @@ let pread ?(lraise=small_jump) c =
     (lraise @* (`SystemError "pread"))
     @| (fun () -> return "(null)")
 
+let pread_lines ?(lraise=small_jump) c =
+  try_lwt
+    return (strace (pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c)
+  with _ ->
+    (lraise @* (`SystemError "pread_lines"))
+    @| (fun () -> return (Lwt_stream.of_list []))
+
 let success ?(lraise=small_jump) c =
   strace (exec ~stdin:`Dev_null ~stdout:`Dev_null ~stderr:`Dev_null) c
   >>= function
