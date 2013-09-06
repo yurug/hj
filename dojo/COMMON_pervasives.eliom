@@ -190,6 +190,9 @@ let ( !>> ) e =
 let ( !>>> ) e =
   e
 
+let ( !>>= ) e =
+  e ()
+
 let ( >>>= ) p1 p2 =
   p1 >>= function
     | `OK x -> p2 x

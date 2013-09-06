@@ -133,6 +133,7 @@ val ( >-> ) : ('a -> 'b Lwt.t) -> ('b -> 'a -> 'c Lwt.t) -> 'a -> 'c Lwt.t
 (** [!>> p] is [p]. (Only meant for indentation purpose.) *)
 val ( !>> )  : 'a -> 'a
 val ( !>>> ) : 'a -> 'a
+val ( !>>= ) : (unit -> 'a) -> 'a
 
 (** [p1 >>>= p2] composes [p1] and [p2] in the error monad. *)
 val ( >>>= ) :
