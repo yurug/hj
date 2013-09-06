@@ -14,6 +14,13 @@ open COMMON_unix
 
 type filename = CORE_identifier.t
 
+type version = {
+  number : string;
+  author : string;
+  date   : string;
+  path   : path;
+}
+
 let root relative p =
   if relative then
     path_of_string CORE_config.ressource_root @ p
@@ -40,16 +47,31 @@ let git_add where what lraise =
      ))
 
 let git_versions where what lraise =
-  lwt versions =
-    cut (!% (where
+  lwt log =
+    split (!% (where
              @@ (Printf.sprintf
-                   ("git log --oneline %s")
+                   ("git log --pretty=format:\"%%H %%an %%cd\" %s")
                    (Filename.quote what))))
       " "
-      0
       lraise
   in
-  Lwt_stream.to_list versions
+  let make_version l =
+    let get = List.nth l in
+    try
+      Some {
+        number = get 0;
+        author = get 1;
+        date   = get 2;
+        path   = CORE_identifier.path_of_string (Filename.concat where what)
+      }
+    with _ -> None
+  in
+  Lwt_stream.to_list (Lwt_stream.filter_map make_version log)
+
+let git_show hash what lraise =
+  let where = Filename.dirname what in
+  let fname = Filename.basename what in
+  pread (!% (where @@ Printf.sprintf "git show %s:./%s" hash fname))
 
 let on_path f ?(relative = true) p =
   let p = root relative p in
@@ -98,11 +120,19 @@ let delete who = on_path (fun p ps _ _ ->
     >>> lreturn ()
   ))
 
-type version = string
-
 let versions = on_path (fun _ _ fname where -> ltry (
   git_versions where fname
 ))
+
+let date v = v.date
+
+let author v = v.author
+
+let number v = v.number
+
+let read v = ltry (
+  git_show v.number (CORE_identifier.string_of_path v.path)
+)
 
 let save who = on_path (fun p ps fname where c -> ltry (
   !>> echo c ps
@@ -110,6 +140,7 @@ let save who = on_path (fun p ps fname where c -> ltry (
   >>> git_commit who where [fname] (I18N.String.saving ps)
   >>> lreturn ()
 ))
+
 
 (** {1 Unit testing.} *)
 
@@ -119,7 +150,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create | `Delete | `Save | `Versions ];
+  operation : [`Create | `Delete | `Save | `Versions | `Read ];
   reason    : string;
 }
 
@@ -132,6 +163,7 @@ let string_of_operation = function
   | `Delete   -> "vfs.delete"
   | `Save     -> "vfs.save"
   | `Versions -> "vfs.versions"
+  | `Read     -> "vfs.read"
 
 let string_of_inconsistency = function
   | NoRootRepository ->
@@ -227,6 +259,30 @@ let vfs_versions_works () =
     )
   )
 
+let vfs_read_works () =
+  operation_works `Read (
+    !>>> create_tmp who
+    >>>= (fun x ->
+      let fname = x @ [label "test"] in
+      !>>> (save who ~relative:false fname "Test1")
+      >>>= save who ~relative:false fname @* "Test2"
+      >>>= (fun () ->
+        versions ~relative:false fname >>>= function
+          | [ _; v ] -> (
+            read v >>= function
+              | `OK c ->
+                if c <> "Test1" then
+                  return (`KO (`SystemError "invalid file content"))
+                else
+                  return (`OK ())
+              | `KO s -> return (`KO s)
+          )
+          | _ -> return (`KO (`SystemError "read because of version"))
+      )
+      >>>= delete who ~relative:false @* x
+    )
+  )
+
 let check () =
   continue_while_is Consistent [
     there_is_repository_at_resssource_root;
@@ -234,5 +290,6 @@ let check () =
     vfs_create_works;
     vfs_delete_works;
     vfs_save_works;
-    vfs_versions_works
+    vfs_versions_works;
+    vfs_read_works
   ]

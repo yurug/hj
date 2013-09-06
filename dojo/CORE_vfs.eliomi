@@ -63,8 +63,8 @@ val save : string -> ?relative:bool -> path -> string
          ]
      ] Lwt.t
 
-(** [version] are represented by commit's hashes. *)
-type version = private string
+(** a [version] is timestamp file. *)
+type version
 
 (** [versions path] returns the list of versions of the file
     located at [path]. *)
@@ -72,6 +72,25 @@ val versions : ?relative:bool -> path
   -> [ `OK of version list
      | `KO of
          (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
+         [ `SystemError of string
+         ]
+     ] Lwt.t
+
+(** [number version] returns a string identifier for the
+    [version]. *)
+val number : version -> string
+
+(** [author version] returns the author of a [version]. *)
+val author : version -> string
+
+(** [date version] returns the date of a [version]. *)
+val date : version -> string
+
+(** [read version] returns the content of a version. *)
+val read : version
+  -> [ `OK of string
+     | `KO of (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
          [ `SystemError of string
          ]
@@ -90,7 +109,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create | `Delete | `Save | `Versions];
+  operation : [`Create | `Delete | `Save | `Versions | `Read ];
   reason    : string;
 }
 
