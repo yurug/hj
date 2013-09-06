@@ -36,40 +36,6 @@ let rec wait_for m p =
     | None -> wait_for m p
     | Some x -> Lwt.return x
 
-exception LocalError
-let ltry what =
-  let error = ref None in
-  let lraise e =
-    error := Some e;
-    raise_lwt LocalError
-  in
-  try_lwt
-    lwt r = what lraise in
-    return (`OK r)
-  with LocalError ->
-    match !error with
-      | None -> assert false
-      | Some e -> return (`KO e)
-
-let lreturn x _ = return x
-
-let abs_error (f : [`OK of 'a | `KO of 'e] Lwt.t) lraise =
-  f >>= function
-    | `OK x -> return x
-    | `KO e -> lwt _ = lraise e in assert false
-
-exception SmallJump
-let small_jump _ = raise SmallJump
-let ( @| ) e p = try_lwt let _ = e () in p with SmallJump -> p
-
-let ( @* ) f x = fun () -> f x
-
-let ( >>> ) e f =
-  fun l -> e l >> f l
-
-let ( !>> ) e =
-  e
-
 module type MapProduct_sig = sig
   type 'a t
 
@@ -162,3 +128,66 @@ module ExtFilename = struct
     >> return fname
 
 end
+
+type ('a, 'e) exn_free =
+  [`OK of 'a | `KO of 'e] Lwt.t
+
+type ('a, 'b, 'e) exn_abs =
+    (('e -> 'b Lwt.t) -> 'a Lwt.t)
+
+exception LocalError
+
+let ltry what =
+  let error = ref None in
+  let lraise e =
+    Ocsigen_messages.errlog "Raising";
+    error := Some e;
+    raise_lwt LocalError
+  in
+  try_lwt
+    lwt r = what lraise in
+    return (`OK r)
+  with LocalError ->
+    match !error with
+      | None -> assert false
+      | Some e ->
+        Ocsigen_messages.errlog "KO";
+        return (`KO e)
+
+let lreturn x = fun _ -> return x
+
+let abs_error (f : [`OK of 'a | `KO of 'e] Lwt.t) lraise =
+  f >>= function
+    | `OK x -> return x
+    | `KO e -> lwt _ = lraise e in assert false
+
+exception SmallJump
+
+let small_jump _ =
+  Ocsigen_messages.errlog "small jump!"; raise_lwt SmallJump
+
+let ( @| ) e p =
+  try_lwt
+    lwt _ = e () in
+    Ocsigen_messages.errlog "No exception!";
+    p ()
+  with SmallJump ->
+    p ()
+
+let ( @* ) f x = fun () -> f x
+
+let ( >>> ) e f =
+  fun l -> e l >> f l
+
+let ( !>> ) e =
+  e
+
+let ( !>>> ) e =
+  e
+
+let ( >>>= ) p1 p2 =
+  p1 >>= function
+    | `OK x -> p2 x
+    | `KO e -> return (`KO e)
+
+let ( >>>> ) p1 p2 = p1 >>>= (fun _ -> p2)

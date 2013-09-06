@@ -13,6 +13,6 @@ val strace : (Lwt_process.command -> 'a) -> command -> 'a
 val ( !% ) : string -> command
 
 val success :
-  ?lraise:([> `SystemError of string ] -> 'e)
+  ?lraise:([> `SystemError of string ] -> 'e Lwt.t)
   -> command
   -> bool Lwt.t

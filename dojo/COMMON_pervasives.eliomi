@@ -72,36 +72,6 @@ val lwt_if : bool Lwt.t -> 'a Lwt.t -> 'a Lwt.t -> 'a Lwt.t
     not produce [v] or [v] if there is no such result. *)
 val continue_while_is : 'a -> (unit -> 'a Lwt.t) list -> 'a Lwt.t
 
-(** [ltry what] executes [what lraise] where [lraise] can be
-    given any error of type ['a]. *)
-val ltry : (('e -> 'b Lwt.t) -> 'a Lwt.t) -> [`OK of 'a | `KO of 'e] Lwt.t
-
-(** [lreturn x] is [fun _ -> return x]. *)
-val lreturn : 'c -> ('a -> 'b Lwt.t) -> 'c Lwt.t
-
-(** [abs_error what raise] checks for the result [r] of [what] to
-    [raise] an error if [r] matches [`KO e]. Otherwise if [r] matches
-    [`OK x], returns [x]. *)
-val abs_error : [`OK of 'a | `KO of 'e] Lwt.t -> ('e -> 'b Lwt.t) -> 'a Lwt.t
-
-(** [p1 >>> p2] is [fun l -> p1 l >> l2 l]. *)
-val ( >>> ) : ('a -> 'b Lwt.t) -> ('a -> 'c Lwt.t) -> 'a -> 'c Lwt.t
-
-(** [!>> p] is [p]. (Only meant for indentation purpose.) *)
-val ( !>> ) : 'a -> 'a
-
-(** [ f @* x ] is [fun () -> f x] *)
-val ( @* ) : ('a -> 'b) -> 'a -> unit -> 'b
-
-(** [ e @| p ] is [try_lwt let _ = e () in p with SmallJump ->
-    p]. This combinator is useful to implement functions that wait for
-    a function to raise error. When error handling must be skipped for
-    some reason, this argument can be filled with [small_jump]
-    whose exception is immediately captured by the combinator. *)
-exception SmallJump
-val small_jump : 'a -> 'b
-val ( @| ) : (unit -> 'a) -> 'b Lwt.t -> 'b Lwt.t
-
 val proj_1_3 : 'a * 'b * 'c -> 'a
 val proj_2_3 : 'a * 'b * 'c -> 'b
 val proj_3_3 : 'a * 'b * 'c -> 'c
@@ -115,3 +85,68 @@ module ExtFilename : sig
   val temp_filename : ?temp_dir:string -> string -> string -> string Lwt.t
 
 end
+
+(** Please remember that exceptions are Achilles'heel of ML. Indeed,
+    there is no support in the language to statically track down
+    where an exception can come from. Thus, exceptions are better
+    used locally with clear barriers they cannot (or at least
+    should not) escape.
+
+    For this reason, we follow the convention that API-level functions
+    of main subsystems shall not communicate their failure
+    descriptions through exceptions but using a sum type.
+
+    For general purpose utility functions upon which API-level
+    functions are built, we allow exceptions by parameterizing them by
+    the function to report exceptions.
+*)
+
+(** [('a, 'e) exn_free] represents a process producing ['a]s that does
+    not raise exceptions but returns error code of type ['e]. *)
+type ('a, 'e) exn_free =
+  [`OK of 'a | `KO of 'e] Lwt.t
+
+(** [('a, 'e) exn_abs] represents a function [f] which may raise
+    error of type ['a] using a function [lraise] given as an
+    argument. *)
+type ('a, 'b, 'e) exn_abs =
+    (('e -> 'b Lwt.t) -> 'a Lwt.t)
+
+(** [ltry what] executes [what lraise] where [lraise] can be
+    given any error of type ['a]. *)
+val ltry : ('a, 'b, 'e) exn_abs -> ('a, 'e) exn_free
+
+(** [lreturn x] is [fun _ -> return x]. *)
+val lreturn : 'a -> ('a, 'b, 'e) exn_abs
+
+(** [abs_error what raise] checks for the result [r] of [what] to
+    [raise] an error if [r] matches [`KO e]. Otherwise if [r] matches
+    [`OK x], returns [x]. *)
+val abs_error : ('a, 'e) exn_free -> ('a, 'b, 'e) exn_abs
+
+(** [p1 >>> p2] is [fun l -> p1 l >> l2 l]. *)
+val ( >>> ) : ('a -> 'b Lwt.t) -> ('a -> 'c Lwt.t) -> 'a -> 'c Lwt.t
+
+(** [!>> p] is [p]. (Only meant for indentation purpose.) *)
+val ( !>> )  : 'a -> 'a
+val ( !>>> ) : 'a -> 'a
+
+(** [p1 >>>> p2] composes [p1] and [p2]. *)
+val ( >>>> ) :
+  ('a, 'e) exn_free -> ('b, 'e) exn_free -> ('b, 'e) exn_free
+
+(** [p1 >>>> p2] composes [p1] and [p2]. *)
+val ( >>>= ) :
+  ('a, 'e) exn_free -> ('a -> ('b, 'e) exn_free) -> ('b, 'e) exn_free
+
+(** [ f @* x ] is [fun () -> f x] *)
+val ( @* ) : ('a -> 'b) -> 'a -> unit -> 'b
+
+(** [ e @| p ] is [try_lwt let _ = e () in p with SmallJump ->
+    p]. This combinator is useful to implement functions that wait for
+    a function to raise an error. When error handling must be skipped
+    for some reason, this argument can be filled with [small_jump]
+    whose exception is immediately captured by the combinator. *)
+exception SmallJump
+val small_jump : 'a -> 'b Lwt.t
+val ( @| ) : (unit -> 'a Lwt.t) -> (unit -> 'b Lwt.t) -> 'b Lwt.t
