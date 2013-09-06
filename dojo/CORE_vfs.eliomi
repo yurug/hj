@@ -32,7 +32,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create | `Delete];
+  operation : [`Create | `Delete | `Save];
   reason    : string;
 }
 
@@ -55,7 +55,7 @@ val check: unit -> consistency_level Lwt.t
 *)
 val create:
   string -> ?relative:bool -> path
-  -> [`OK of unit
+  -> [ `OK of unit
      | `KO of
          (** The path is already taken. *)
          [ `AlreadyExists of path
@@ -68,12 +68,23 @@ val create:
 (** [delete who path] deletes a subvfs at [path].  The [path] must
     exist in the root vfs. *)
 val delete: string -> ?relative:bool -> path
-  -> [`OK of unit
+  -> [ `OK of unit
      | `KO of
          (** The path is invalid. *)
          [ `DirectoryDoesNotExist of path
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
          | `SystemError of string
+         ]
+     ] Lwt.t
+
+(** [save who path content] stores the string [content] in the file
+    at [path]. If there is no file at [path], it is created. *)
+val save : string -> ?relative:bool -> path -> string
+  -> [ `OK of unit
+     | `KO of
+         (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
+         [ `SystemError of string
          ]
      ] Lwt.t

@@ -128,6 +128,11 @@ module Fr : I18N_sig.Text = struct
       "Le répertoire `%s' n'existe pas."
       dname
 
+  let saving fname =
+    Printf.sprintf
+      "Sauvegarde de `%s'."
+      fname
+
 end
 
 module String = (val

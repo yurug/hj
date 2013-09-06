@@ -54,6 +54,7 @@ sig
   val the_filesystem_is_consistent: string
   val the_following_file_already_exists : string -> string
   val the_following_directory_does_not_exist : string -> string
+  val saving : string -> string
 end
 
 }}

@@ -2,6 +2,8 @@
 
 open Lwt
 open Lwt_stream
+open Lwt_io
+
 open CORE_identifier
 open COMMON_pervasives
 open COMMON_process
@@ -24,6 +26,15 @@ let git_commit who where what message lraise =
          @@ (Printf.sprintf
                ("git commit --author='%s' -m %s %s")
                who (Filename.quote message)
+               (String.concat " " (List.map Filename.quote what))
+         )
+     ))
+
+let git_add where what lraise =
+  success ~lraise
+    (!% (where
+         @@ (Printf.sprintf
+               ("git add %s")
                (String.concat " " (List.map Filename.quote what))
          )
      ))
@@ -73,9 +84,14 @@ let delete who = on_path (fun p ps ->
     >>> lreturn ()
   ))
 
-let save who = on_path (fun p ps c ->
-  lreturn ()
-)
+let save who = on_path (fun p ps c -> ltry (
+  let fname = Filename.basename ps in
+  let where = Filename.dirname ps in
+  !>> echo c ps
+  >>> git_add where [fname]
+  >>> git_commit who where [fname] (I18N.String.saving ps)
+  >>> lreturn ()
+))
 
 (** {1 Unit testing.} *)
 
@@ -85,7 +101,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create | `Delete ];
+  operation : [`Create | `Delete | `Save ];
   reason    : string;
 }
 
@@ -96,6 +112,7 @@ type consistency_level =
 let string_of_operation = function
   | `Create -> "vfs.create"
   | `Delete -> "vfs.delete"
+  | `Save   -> "vfs.save"
 
 let string_of_inconsistency = function
   | NoRootRepository ->
@@ -157,15 +174,18 @@ let vfs_create_works () =
     create_tmp who
   )
 
-let ( >=> ) e f lraise =
-  lwt x = e lraise in
-  f x lraise
-
 let vfs_delete_works () =
-  operation_works `Create (ltry (
-    !>> abs_error (create_tmp who)
-    >=> fun x -> abs_error (delete who ~relative:false x)
-  ))
+  operation_works `Create (
+    !>>> create_tmp who
+    >>>= fun x -> delete who ~relative:false x
+  )
+
+let vfs_save_works () =
+  operation_works `Create (
+    !>>> create_tmp who
+    >>>= fun x -> save who ~relative:false (x @ [label "test"]) "Test"
+    >>>> delete who ~relative:false x
+  )
 
 let check () =
   continue_while_is Consistent [
@@ -173,4 +193,5 @@ let check () =
     there_is_no_untracked_files;
     vfs_create_works;
     vfs_delete_works;
+    vfs_save_works;
   ]
