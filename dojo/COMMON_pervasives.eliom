@@ -140,7 +140,6 @@ exception LocalError
 let ltry what =
   let error = ref None in
   let lraise e =
-    Ocsigen_messages.errlog "Raising";
     error := Some e;
     raise_lwt LocalError
   in
@@ -151,7 +150,6 @@ let ltry what =
     match !error with
       | None -> assert false
       | Some e ->
-        Ocsigen_messages.errlog "KO";
         return (`KO e)
 
 let lreturn x = fun _ -> return x
@@ -164,12 +162,11 @@ let abs_error (f : [`OK of 'a | `KO of 'e] Lwt.t) lraise =
 exception SmallJump
 
 let small_jump _ =
-  Ocsigen_messages.errlog "small jump!"; raise_lwt SmallJump
+  raise_lwt SmallJump
 
 let ( @| ) e p =
   try_lwt
     lwt _ = e () in
-    Ocsigen_messages.errlog "No exception!";
     p ()
   with SmallJump ->
     p ()

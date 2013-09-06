@@ -30,8 +30,5 @@ let success ?(lraise=small_jump) c =
     return_true
   | s ->
     let s = string_of_process_status s in
-    log [Strace] (Printf.sprintf "   Status: %s\n" s);
     (lraise @* (`SystemError s))
-    @| (fun () ->
-      wrap (fun () -> log [Strace] (Printf.sprintf "   Escaping!"))
-      >> return_false)
+    @| (fun () -> return_false)
