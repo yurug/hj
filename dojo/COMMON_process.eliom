@@ -23,6 +23,13 @@ let string_of_process_status = function
   | Unix.WSIGNALED d -> Printf.sprintf "Signaled %d" d
   | Unix.WSTOPPED  d -> Printf.sprintf "Stopped %d" d
 
+let pread ?(lraise=small_jump) c =
+  try_lwt
+    strace (pread ~stdin:`Dev_null ~stderr:`Dev_null) c
+  with _ ->
+    (lraise @* (`SystemError "pread"))
+    @| (fun () -> return "(null)")
+
 let success ?(lraise=small_jump) c =
   strace (exec ~stdin:`Dev_null ~stdout:`Dev_null ~stderr:`Dev_null) c
   >>= function
