@@ -17,14 +17,34 @@ let label s =
 
 type path = label list
 
+let rec normalize = function
+  | [] -> []
+  | [x] -> [x]
+  | "" :: "" :: ls -> normalize ("" :: ls)
+  | x :: ls -> x :: normalize ls
+
+let pcompare x y = compare x y
+
 type identifier = path
 
 type t = identifier
 
 let path_of_string s =
-  List.filter (fun l -> l <> "") (Str.split (Str.regexp Filename.dir_sep) s)
+  normalize (Str.split_delim (Str.regexp Filename.dir_sep) s)
 
-let ( // ) = Filename.concat
+let ( // ) x y =
+  if x = "" then
+    Filename.dir_sep ^ y
+  else
+    Filename.concat x y
+
+let make s = normalize s
+
+let absolute = function
+  | "" :: _ -> true
+  | _ -> false
+
+let concat x y = normalize (x @ y)
 
 let ( /// ) p ps = List.fold_left ( // ) p ps
 
@@ -38,7 +58,7 @@ let string_of_identifier = string_of_path
 
 let identifier_of_string = path_of_string
 
-let compare_identifier = Pervasives.compare
+let compare_identifier = pcompare
 
 module Compare = struct
   type t = identifier

@@ -22,7 +22,19 @@ val label : string -> label
 exception InvalidLabel of string
 
 (** A path is a sequence of label from the root to a node. *)
-type path = label list
+type path = private label list
+
+(** [make x] turns a list of labels into a path. *)
+val make : label list -> path
+
+(** An absolute path starts with an empty label. *)
+val absolute : path -> bool
+
+(** [concat x y] appends [y] to [x]. *)
+val concat : path -> path -> path
+
+(** [pcompare x y] must be used to compare two paths. *)
+val pcompare : path -> path -> int
 
 (** An identifier is a singularized path. *)
 type identifier
@@ -54,7 +66,7 @@ module Set : Set.S with type elt = identifier
 
 type identifiers = Set.t
 
-(** [suffix prefix path] extracts the [prefix] of [path].
+(** [suffix prefix path] removes the [prefix] of [path].
     Raise InvalidPrefix if [prefix] is not a prefix of [path]. *)
 val suffix : path -> path -> path
 exception InvalidPrefix of path * path
