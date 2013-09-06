@@ -18,36 +18,10 @@
 *)
 open CORE_identifier
 
+(** {1 Functional parts.} *)
+
 (** A file system contains files. *)
 type filename = CORE_identifier.t
-
-(** The VFS might be incoherent for one of the following reasons: *)
-type inconsistency =
-  (** There is no repository rooted at [CORE_config.ressource_root]. *)
-  | NoRootRepository
-  (** There exists a file or a directory that is not tracked by any
-      repository. *)
-  | Untracked of filename list
-  (** One of the basic operations is broken. *)
-  | BrokenOperation of broken_operation_description
-
-and broken_operation_description = {
-  operation : [`Create | `Delete | `Save];
-  reason    : string;
-}
-
-(** File system consistency.*)
-type consistency_level =
-  | Consistent
-  | Inconsistent of inconsistency
-
-(** [string_of_consistency_level c] is a human-readable description
-    of the consistency level. *)
-val string_of_consistency_level : consistency_level -> string
-
-(** [check ()] if the file system rooted at
-    [CORE_config.ressource_root] is in a coherent state.  *)
-val check: unit -> consistency_level Lwt.t
 
 (** [create who path] initializes a subvfs at [path], authored by
     [who].  The [path] must not exist in the root vfs. All the needed
@@ -88,3 +62,47 @@ val save : string -> ?relative:bool -> path -> string
          [ `SystemError of string
          ]
      ] Lwt.t
+
+(** [version] are represented by hash. *)
+type version = private string
+
+(** [versions path] returns the list of versions of the file
+    located at [path]. *)
+val versions : ?relative:bool -> path
+  -> [ `OK of version list
+     | `KO of
+         (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
+         [ `SystemError of string
+         ]
+     ] Lwt.t
+
+(** {1 Unit tests.} *)
+
+(** The VFS might be incoherent for one of the following reasons: *)
+type inconsistency =
+  (** There is no repository rooted at [CORE_config.ressource_root]. *)
+  | NoRootRepository
+  (** There exists a file or a directory that is not tracked by any
+      repository. *)
+  | Untracked of filename list
+  (** One of the basic operations is broken. *)
+  | BrokenOperation of broken_operation_description
+
+and broken_operation_description = {
+  operation : [`Create | `Delete | `Save | `Versions];
+  reason    : string;
+}
+
+(** File system consistency.*)
+type consistency_level =
+  | Consistent
+  | Inconsistent of inconsistency
+
+(** [string_of_consistency_level c] is a human-readable description
+    of the consistency level. *)
+val string_of_consistency_level : consistency_level -> string
+
+(** [check ()] if the file system rooted at
+    [CORE_config.ressource_root] is in a coherent state.  *)
+val check: unit -> consistency_level Lwt.t

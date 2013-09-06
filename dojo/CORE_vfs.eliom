@@ -39,12 +39,26 @@ let git_add where what lraise =
          )
      ))
 
+let git_versions where what lraise =
+  lwt versions =
+    cut (!% (where
+             @@ (Printf.sprintf
+                   ("git log --oneline %s")
+                   (Filename.quote what))))
+      " "
+      0
+      lraise
+  in
+  Lwt_stream.to_list versions
+
 let on_path f ?(relative = true) p =
   let p = root relative p in
   let ps = string_of_path p in
-  f p ps
+  let fname = Filename.basename ps in
+  let where = Filename.dirname ps in
+  f p ps fname where
 
-let create who = on_path (fun p ps ->
+let create who = on_path (fun p ps _ _ ->
   let check_if_filename_already_exists lraise =
     try_lwt
       ignore (Sys.is_directory ps);
@@ -67,11 +81,11 @@ let create_tmp who =
   in
   let path = path_of_string dname in
   ltry (
-    !>> abs_error (create who ~relative:false path)
+    !!> (create who ~relative:false @* path)
     >>> lreturn path
   )
 
-let delete who = on_path (fun p ps ->
+let delete who = on_path (fun p ps _ _ ->
   let check_if_directory_exists lraise =
     try_lwt
       return (Sys.is_directory ps)
@@ -84,9 +98,13 @@ let delete who = on_path (fun p ps ->
     >>> lreturn ()
   ))
 
-let save who = on_path (fun p ps c -> ltry (
-  let fname = Filename.basename ps in
-  let where = Filename.dirname ps in
+type version = string
+
+let versions = on_path (fun _ _ fname where -> ltry (
+  git_versions where fname
+))
+
+let save who = on_path (fun p ps fname where c -> ltry (
   !>> echo c ps
   >>> git_add where [fname]
   >>> git_commit who where [fname] (I18N.String.saving ps)
@@ -101,7 +119,7 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [`Create | `Delete | `Save ];
+  operation : [`Create | `Delete | `Save | `Versions ];
   reason    : string;
 }
 
@@ -110,9 +128,10 @@ type consistency_level =
   | Inconsistent of inconsistency
 
 let string_of_operation = function
-  | `Create -> "vfs.create"
-  | `Delete -> "vfs.delete"
-  | `Save   -> "vfs.save"
+  | `Create   -> "vfs.create"
+  | `Delete   -> "vfs.delete"
+  | `Save     -> "vfs.save"
+  | `Versions -> "vfs.versions"
 
 let string_of_inconsistency = function
   | NoRootRepository ->
@@ -141,9 +160,10 @@ let there_is_repository_at_resssource_root () =
     (return NoRootRepository)
 
 let there_is_no_untracked_files () =
-  let untracked_files = grep
+  lwt untracked_files = grep
     (!% (CORE_config.ressource_root @@ "git status --porcelain"))
     ("\\?\\? \\(.*\\)")
+    (warn_only "core_vfs.there_is_no_untracked_files.grep failed.")
   in
   ensure_consistency
     (is_empty untracked_files)
@@ -181,10 +201,30 @@ let vfs_delete_works () =
   )
 
 let vfs_save_works () =
-  operation_works `Create (
+  operation_works `Save (
     !>>> create_tmp who
-    >>>= fun x -> save who ~relative:false (x @ [label "test"]) "Test"
-    >>>> delete who ~relative:false x
+    >>>= (fun x ->
+      save who ~relative:false (x @ [label "test"]) "Test"
+      >>>= (delete who ~relative:false @* x)
+    )
+  )
+
+let vfs_versions_works () =
+  operation_works `Versions (
+    !>>> create_tmp who
+    >>>= (fun x ->
+      let fname = x @ [label "test"] in
+      !>>> (save who ~relative:false fname "Test1")
+      >>>= save who ~relative:false fname @* "Test2"
+      >>>= (fun () ->
+        versions ~relative:false fname >>>= fun vs ->
+        if List.length vs <> 2 then
+          return (`KO (`SystemError "git log"))
+        else
+          return (`OK ())
+      )
+      >>>= delete who ~relative:false @* x
+    )
   )
 
 let check () =
@@ -194,4 +234,5 @@ let check () =
     vfs_create_works;
     vfs_delete_works;
     vfs_save_works;
+    vfs_versions_works
   ]
