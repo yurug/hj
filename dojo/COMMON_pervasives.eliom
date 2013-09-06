@@ -154,8 +154,8 @@ let ltry what =
 
 let lreturn x = fun _ -> return x
 
-let abs_error (f : [`OK of 'a | `KO of 'e] Lwt.t) lraise =
-  f >>= function
+let ( !!> ) (f : unit -> [`OK of 'a | `KO of 'e] Lwt.t) lraise =
+  f () >>= function
     | `OK x -> return x
     | `KO e -> lwt _ = lraise e in assert false
 
@@ -180,6 +180,10 @@ let ( @* ) f x = fun () -> f x
 let ( >>> ) e f =
   fun l -> e l >> f l
 
+let ( >-> ) e f =
+  fun l -> e l >>= (fun x -> f x l)
+
+
 let ( !>> ) e =
   e
 
@@ -190,5 +194,3 @@ let ( >>>= ) p1 p2 =
   p1 >>= function
     | `OK x -> p2 x
     | `KO e -> return (`KO e)
-
-let ( >>>> ) p1 p2 = p1 >>>= (fun _ -> p2)

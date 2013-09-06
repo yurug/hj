@@ -119,23 +119,22 @@ val ltry : ('a, 'b, 'e) exn_abs -> ('a, 'e) exn_free
 (** [lreturn x] is [fun _ -> return x]. *)
 val lreturn : 'a -> ('a, 'b, 'e) exn_abs
 
-(** [abs_error what raise] checks for the result [r] of [what] to
+(** [!!> what raise] checks for the result [r] of [what] to
     [raise] an error if [r] matches [`KO e]. Otherwise if [r] matches
     [`OK x], returns [x]. *)
-val abs_error : ('a, 'e) exn_free -> ('a, 'b, 'e) exn_abs
+val ( !!> ) : (unit -> ('a, 'e) exn_free) -> ('a, 'b, 'e) exn_abs
 
 (** [p1 >>> p2] is [fun l -> p1 l >> l2 l]. *)
 val ( >>> ) : ('a -> 'b Lwt.t) -> ('a -> 'c Lwt.t) -> 'a -> 'c Lwt.t
+
+(** [p1 >-> p2] is [fun l -> p1 l >>= fun x -> l2 x l]. *)
+val ( >-> ) : ('a -> 'b Lwt.t) -> ('b -> 'a -> 'c Lwt.t) -> 'a -> 'c Lwt.t
 
 (** [!>> p] is [p]. (Only meant for indentation purpose.) *)
 val ( !>> )  : 'a -> 'a
 val ( !>>> ) : 'a -> 'a
 
-(** [p1 >>>> p2] composes [p1] and [p2]. *)
-val ( >>>> ) :
-  ('a, 'e) exn_free -> ('b, 'e) exn_free -> ('b, 'e) exn_free
-
-(** [p1 >>>> p2] composes [p1] and [p2]. *)
+(** [p1 >>>= p2] composes [p1] and [p2] in the error monad. *)
 val ( >>>= ) :
   ('a, 'e) exn_free -> ('a -> ('b, 'e) exn_free) -> ('b, 'e) exn_free
 
