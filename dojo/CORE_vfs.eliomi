@@ -63,7 +63,7 @@ val save : string -> ?relative:bool -> path -> string
          ]
      ] Lwt.t
 
-(** [version] are represented by hash. *)
+(** [version] are represented by commit's hashes. *)
 type version = private string
 
 (** [versions path] returns the list of versions of the file
