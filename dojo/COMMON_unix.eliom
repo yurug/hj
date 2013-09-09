@@ -31,7 +31,9 @@ let rmdir ps ?(content=false) lraise =
 
 let grep c pattern =
   handle_unix_error (fun () ->
-    let s = strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c in
+    let s =
+      strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
+    in
     return (
       Lwt_stream.filter_map (fun s ->
         if string_match (regexp pattern) s 0 then
@@ -51,9 +53,18 @@ let echo c f =
     )
   ) ()
 
+let cat f =
+  handle_unix_error (fun () ->
+    let b = Buffer.create 13 in
+    Lwt_stream.iter (Buffer.add_string b) (Lwt_io.lines_of_file f)
+    >> return (Buffer.contents b)
+  ) "(empty)"
+
 let split c delim =
   handle_unix_error (fun () ->
-    let s = strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c in
+    let s =
+      strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
+    in
     return (
       Lwt_stream.filter_map (fun s ->
         try
