@@ -104,3 +104,10 @@ let suffix prefix p =
     suffix prefix p
   with Not_found ->
     raise (InvalidPrefix (prefix, p))
+
+let tests_path =
+  [ "tests" ]
+
+let fresh =
+  let r = ref 0 in
+  fun path p -> incr r; path @ [ p ^ string_of_int !r ]

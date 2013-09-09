@@ -27,6 +27,6 @@ module Make (D : sig type data deriving (Json) end) = struct
     return (`OK (Deriving_Json.from_string Json.t<D.data meta> raw))
 
   let exists id =
-    assert false
+    Sys.file_exists (string_of_path (metafile id))
 
 end

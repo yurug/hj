@@ -14,6 +14,8 @@ let dependency_image (x : dependencies) =
 
 let of_list x = x
 
+let to_list x = x
+
 type 'a meta = {
   identifier   : CORE_identifier.t;
   dependencies : dependencies;

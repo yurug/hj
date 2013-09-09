@@ -4,6 +4,7 @@
 
 open Lwt
 
+open CORE_identifier
 open CORE_inmemory_entity
 open COMMON_pervasives
 
@@ -72,7 +73,9 @@ module type S = sig
   type data
   type t = data entity
   val make:
-    ?init:(data * dependencies) -> data reaction -> CORE_identifier.t ->
+    ?init:(data * dependencies)
+    -> ?reaction:(data reaction)
+    -> CORE_identifier.t ->
     [ `OK of t
     | `KO of [
       | `UndefinedEntity of CORE_identifier.t
@@ -149,7 +152,7 @@ module Make (I : U) : S with type data = I.data = struct
             alive pool id reaction
 
   let pool = create_pool ()
-  let make = make pool
+  let make ?init ?(reaction = I.react) = make pool ?init reaction
 
   let apply dependencies e c =
     let content0 = content e.description in
@@ -195,5 +198,58 @@ end
 (*  Unit tests.   *)
 (* ************** *)
 
-let check () =
-  return ()
+module Tests = struct
+
+  type t = {
+    log   : string list;
+    count : int;
+  } deriving (Json)
+
+  module DummyEntity = Make (struct
+
+    type data = t deriving (Json)
+
+    let react deps new_content old_content =
+      let (count_log, count) =
+        match new_content with
+          | None ->
+            (Printf.sprintf "= %02d" old_content.count, old_content.count)
+          | Some nc ->
+            (Printf.sprintf "+ %02d" nc.count, nc.count)
+      in
+      let deps_log =
+        let ping_log rel ids id =
+          Printf.sprintf "? %s (%s) = %s"
+            rel
+            (String.concat ", " (List.map string_of_identifier ids))
+            (string_of_identifier id)
+        in
+        List.flatten (List.map (fun (label, fs) ->
+          List.map (fun (ids, id) -> ping_log label ids id) fs
+        ) (to_list deps))
+      in
+      let log s = Printf.sprintf "[%010f] %s" (Unix.gettimeofday ()) s in
+      return {
+        log = List.map log (count_log :: deps_log);
+        count
+      }
+
+  end)
+
+  module E = DummyEntity
+
+  let create_entity update =
+    let dummy = CORE_identifier.fresh CORE_identifier.tests_path "dummy" in
+    E.make ~init:({ log = []; count = 0 }, empty_dependencies) dummy
+    >>= function
+      | `OK e ->
+        update (I18N.String.created (string_of_identifier dummy));
+        return (`OK ())
+      | `KO e ->
+        return (`KO e)
+
+
+  let check update =
+    create_entity update
+
+end

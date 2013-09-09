@@ -75,3 +75,8 @@ type identifiers = Set.t
     Raise InvalidPrefix if [prefix] is not a prefix of [path]. *)
 val suffix : path -> path -> path
 exception InvalidPrefix of path * path
+
+(** {2 Standard identifiers} *)
+val tests_path : path
+
+val fresh : path -> string -> identifier

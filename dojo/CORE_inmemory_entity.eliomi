@@ -21,6 +21,10 @@ val of_list:
   (string * ((CORE_identifier.t list * CORE_identifier.t) list)) list
   -> dependencies
 
+val to_list:
+  dependencies
+  -> (string * ((CORE_identifier.t list * CORE_identifier.t) list)) list
+
 val make : CORE_identifier.t -> dependencies -> 'a -> 'a meta
 
 val identifier : 'a meta -> CORE_identifier.t

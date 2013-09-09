@@ -128,10 +128,18 @@ module Fr : I18N_sig.Text = struct
       "Le répertoire `%s' n'existe pas."
       dname
 
+  let the_entity_subsystem_works =
+    "Le sous-système des entités semble fonctionner."
+
   let saving fname =
     Printf.sprintf
       "Sauvegarde de `%s'."
       fname
+
+  let created name =
+    Printf.sprintf
+      "`%s' créé(e)."
+      name
 
 end
 

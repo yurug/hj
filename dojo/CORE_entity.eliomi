@@ -76,7 +76,9 @@ module type S = sig
       state of the system.
   *)
   val make:
-    ?init:(data * dependencies) -> data reaction -> CORE_identifier.t ->
+    ?init:(data * dependencies)
+    -> ?reaction:data reaction
+    -> CORE_identifier.t ->
     [ `OK of t
     | `KO of [
       | `UndefinedEntity of CORE_identifier.t
@@ -125,3 +127,8 @@ val passive : 'a reaction
 
 (** Instantiate a set of operations over a specific type of entity. *)
 module Make (I : U) : S with type data = I.data
+
+(** Unit testing. *)
+module Tests : sig
+  val check : (string -> unit) -> [`OK of unit | `KO of CORE_errors.all ] Lwt.t
+end

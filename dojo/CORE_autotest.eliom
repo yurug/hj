@@ -72,8 +72,17 @@ let server_versioned_file_system_is_in_a_coherent_state =
       return (if c = CORE_vfs.Consistent then Passed else Failed)
     )
 
+let entity_subsystem_works =
+  make I18N.String.the_entity_subsystem_works
+    (fun update ->
+      CORE_entity.Tests.check update >>= function
+        | `OK () -> return Passed
+        | `KO _ -> return Failed
+    )
+
 let all : test list =  [
   server_is_up;
   client_server_asynchronous_communication_works;
   server_versioned_file_system_is_in_a_coherent_state;
+  entity_subsystem_works
 ]
