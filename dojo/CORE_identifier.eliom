@@ -4,7 +4,7 @@
 
 open Lwt
 
-type label = string
+type label = string deriving (Json)
 
 exception InvalidLabel of string
 
@@ -15,7 +15,9 @@ let label s =
   with Not_found ->
     s
 
-type path = label list
+let label_to_string s = s
+
+type path = label list deriving (Json)
 
 let rec normalize = function
   | [] -> []
@@ -25,9 +27,9 @@ let rec normalize = function
 
 let pcompare x y = compare x y
 
-type identifier = path
+type identifier = path deriving (Json)
 
-type t = identifier
+type t = identifier deriving (Json)
 
 let path_of_string s =
   normalize (Str.split_delim (Str.regexp Filename.dir_sep) s)
@@ -58,12 +60,16 @@ let string_of_identifier = string_of_path
 
 let identifier_of_string = path_of_string
 
-let compare_identifier = pcompare
+let compare = pcompare
+
+let equal x y = (compare x y = 0)
 
 module Compare = struct
   type t = identifier
-  let compare = compare_identifier
+  let compare = compare
 end
+
+let hash = Hashtbl.hash
 
 module Set = Set.Make (Compare)
 
