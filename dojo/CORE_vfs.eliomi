@@ -32,7 +32,7 @@ val create:
   -> [ `OK of unit
      | `KO of
          (** The path is already taken. *)
-         [ `AlreadyExists of path
+         [> `AlreadyExists of path
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
          | `SystemError of string
@@ -45,7 +45,7 @@ val delete: string -> ?relative:bool -> path
   -> [ `OK of unit
      | `KO of
          (** The path is invalid. *)
-         [ `DirectoryDoesNotExist of path
+         [> `DirectoryDoesNotExist of path
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
          | `SystemError of string
@@ -59,7 +59,7 @@ val save : string -> ?relative:bool -> path -> string
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [ `SystemError of string
+         [> `SystemError of string
          ]
      ] Lwt.t
 
@@ -73,26 +73,37 @@ val versions : ?relative:bool -> path
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [ `SystemError of string
+         [> `SystemError of string
+         ]
+     ] Lwt.t
+
+(** [latest id] is the latest version of the file
+    located at [path]. *)
+val latest : ?relative:bool -> path
+  -> [ `OK of version
+     | `KO of
+         (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
+         [> `SystemError of string
          ]
      ] Lwt.t
 
 (** [number version] returns a string identifier for the
     [version]. *)
-val number : version -> string
+val number : version -> string Lwt.t
 
 (** [author version] returns the author of a [version]. *)
-val author : version -> string
+val author : version -> string Lwt.t
 
 (** [date version] returns the date of a [version]. *)
-val date : version -> string
+val date : version -> string Lwt.t
 
 (** [read version] returns the content of a version. *)
 val read : version
   -> [ `OK of string
      | `KO of (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [ `SystemError of string
+         [> `SystemError of string
          ]
      ] Lwt.t
 
@@ -102,7 +113,7 @@ val owner : ?relative:bool -> CORE_identifier.path
   -> [ `OK of CORE_identifier.path
      | `KO of (** Something went wrong at the system level.
                   (It may be git-related or os-related.) *)
-         [ `SystemError of string
+         [> `SystemError of string
          ]
      ] Lwt.t
 
