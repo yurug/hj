@@ -14,12 +14,16 @@ open COMMON_unix
 
 type filename = CORE_identifier.t
 
-type version = {
-  number : string;
-  author : string;
-  date   : string;
-  path   : path;
-}
+type stored_version = {
+    number : string;
+    author : string;
+    date   : string;
+    path   : path;
+  }
+
+type version =
+  | Latest of path * (unit -> version Lwt.t)
+  | Stored of stored_version
 
 let root relative p =
   if relative then
@@ -58,12 +62,12 @@ let git_versions where what lraise =
   let make_version l =
     let get = List.nth l in
     try
-      Some {
+      Some (Stored {
         number = get 0;
         author = get 1;
         date   = get 2;
         path   = CORE_identifier.path_of_string (Filename.concat where what)
-      }
+      })
     with _ -> None
   in
   Lwt_stream.to_list (Lwt_stream.filter_map make_version log)
@@ -128,14 +132,30 @@ let versions = on_path (fun _ _ fname where -> ltry (
   git_versions where fname
 ))
 
-let date v = v.date
+let rec get w = function
+  | Latest (_, r) -> r () >>= get w
+  | Stored s -> return (w s)
 
-let author v = v.author
+let date = get (fun s -> s.date)
 
-let number v = v.number
+let author = get (fun s -> s.author)
 
-let read v = ltry (
-  git_show v.number (CORE_identifier.string_of_path v.path)
+let number = get (fun s -> s.number)
+
+let path = get (fun s -> s.path)
+
+let latest = on_path (fun p _ fname where -> ltry (fun lraise ->
+  return (Latest (p, fun () ->
+    lwt vs = git_versions where fname lraise
+    in return (List.hd vs))))
+)
+
+let read v = ltry (fun lraise ->
+  match v with
+    | Latest (p, _) ->
+      COMMON_unix.cat (CORE_identifier.string_of_path p) lraise
+    | Stored v ->
+      git_show v.number (CORE_identifier.string_of_path v.path) lraise
 )
 
 let save who = on_path (fun p ps fname where c -> ltry (
