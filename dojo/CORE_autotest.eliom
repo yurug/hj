@@ -2,6 +2,8 @@
 
 open Lwt
 
+open CORE_error_messages
+
 (** Autotesting service (disabled by default). *)
 
 (** Test infrastructure *)
@@ -63,7 +65,6 @@ let client_server_asynchronous_communication_works =
       >> return Passed
     )
 
-
 let server_versioned_file_system_is_in_a_coherent_state =
   make I18N.String.the_vfs_is_coherent
     (fun update ->
@@ -77,7 +78,7 @@ let entity_subsystem_works =
     (fun update ->
       CORE_entity.Tests.check update >>= function
         | `OK () -> return Passed
-        | `KO _ -> return Failed
+        | `KO e  -> update (string_of_error e); return Failed
     )
 
 let all : test list =  [

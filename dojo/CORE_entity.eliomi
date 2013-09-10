@@ -80,9 +80,9 @@ module type S = sig
     -> ?reaction:data reaction
     -> CORE_identifier.t ->
     [ `OK of t
-    | `KO of [
+    | `KO of [>
       | `UndefinedEntity of CORE_identifier.t
-      | `AlreadyExists   of CORE_identifier.t
+      | `AlreadyExists   of CORE_identifier.path
       | `SystemError     of string
     ]] Lwt.t
 
@@ -130,5 +130,8 @@ module Make (I : U) : S with type data = I.data
 
 (** Unit testing. *)
 module Tests : sig
-  val check : (string -> unit) -> [`OK of unit | `KO of CORE_errors.all ] Lwt.t
+  val check : (string -> unit) -> [
+    `OK of unit
+  | `KO of [> CORE_errors.all ]
+  ] Lwt.t
 end

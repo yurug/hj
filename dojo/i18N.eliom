@@ -128,6 +128,11 @@ module Fr : I18N_sig.Text = struct
       "Le répertoire `%s' n'existe pas."
       dname
 
+  let does_not_exist name =
+    Printf.sprintf
+      "`%s' n'existe pas."
+      name
+
   let the_entity_subsystem_works =
     "Le sous-système des entités semble fonctionner."
 

@@ -5,6 +5,7 @@ open Lwt_stream
 open Lwt_io
 
 open CORE_identifier
+open CORE_error_messages
 open COMMON_pervasives
 open COMMON_process
 open COMMON_log
@@ -233,14 +234,6 @@ let there_is_no_untracked_files () =
      return (Untracked fs))
 
 let who = "system.test.vfs <here@hackojo.org>"
-
-let string_of_error = function
-  | `SystemError e ->
-    "System: " ^ e
-  | `AlreadyExists p ->
-    I18N.String.the_following_file_already_exists (string_of_path p)
-  | `DirectoryDoesNotExist p ->
-    I18N.String.the_following_directory_does_not_exist (string_of_path p)
 
 let operation_works operation scenario =
   scenario >>= function

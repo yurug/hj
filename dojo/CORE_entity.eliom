@@ -77,9 +77,9 @@ module type S = sig
     -> ?reaction:(data reaction)
     -> CORE_identifier.t ->
     [ `OK of t
-    | `KO of [
+    | `KO of [>
       | `UndefinedEntity of CORE_identifier.t
-      | `AlreadyExists   of CORE_identifier.t
+      | `AlreadyExists   of CORE_identifier.path
       | `SystemError     of string
     ]] Lwt.t
 
@@ -128,7 +128,7 @@ module Make (I : U) : S with type data = I.data = struct
 
   let initialize init dependencies reaction id =
     if OTD.exists id then
-      return (`KO (`AlreadyExists id))
+      return (`KO (`AlreadyExists (path_of_identifier id)))
     else
       let data = CORE_inmemory_entity.make id dependencies init in
       OTD.save data
@@ -247,7 +247,6 @@ module Tests = struct
         return (`OK ())
       | `KO e ->
         return (`KO e)
-
 
   let check update =
     create_entity update
