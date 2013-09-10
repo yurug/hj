@@ -24,6 +24,8 @@ type 'a entity = {
   mutable description : 'a meta;
   mutable state       : 'a state;
   (*   *) reaction    : 'a reaction;
+  (*   *) channel     : 'a CORE_client_reaction.c;
+  (*   *) push        : 'a -> unit;
 }
 
 type 'a t = 'a entity
@@ -83,6 +85,8 @@ let propagate_change id =
   in
   EntitySet.iter wake_up (watchers_of id)
 
+let channel e = e.channel
+
 (* *********************** *)
 (*  Instantiation functor  *)
 (* *********************** *)
@@ -135,7 +139,8 @@ module Make (I : U) : S with type data = I.data = struct
   let alive pool id reaction =
     OTD.load id >>= function
       | `OK description ->
-        let e = { description; reaction; state = UpToDate } in
+        let channel, push = CORE_client_reaction.channel () in
+        let e = { description; reaction; state = UpToDate; channel; push } in
         load pool id e;
         List.iter (register_dependency e) (dependency_image (dependencies e));
         return (`OK e)

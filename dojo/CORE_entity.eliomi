@@ -51,6 +51,9 @@ type 'a reaction =
 (** A [change] is a tranformation of the entity's content. *)
 and 'a change = 'a -> 'a Lwt.t
 
+(** On the client side, we can react to every change. *)
+val channel: 'a t -> 'a CORE_client_reaction.c
+
 (** The following module signature specifies the general operations
     over entities. *)
 module type S = sig
