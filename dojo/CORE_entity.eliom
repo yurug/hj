@@ -50,7 +50,7 @@ module Watchers = struct
   let get h k = try Some (find h k) with Not_found -> None
 end
 
-type watchers = some_t EntitySet.t Watchers.t
+type watchers = (string * CORE_identifier.t list) EntitySet.t Watchers.t
 
 let watchers = Watchers.create 13
 
@@ -59,11 +59,29 @@ let watchers = Watchers.create 13
 let watchers_of id =
   try
     Watchers.find watchers id
-  with Not_found -> EntitySet.create 13
+  with Not_found ->
+    let s = EntitySet.create 13 in
+    Watchers.add watchers id s;
+    s
 
 (** [e] depends on [e']. *)
-let register_dependency e id =
-  EntitySet.add (watchers_of id) (SomeEntity e) ()
+let register_dependency e (id, rel) =
+  EntitySet.add (watchers_of id) (SomeEntity e) rel
+
+(** [propagate_change id] wakes up all the reverse dependencies of [e]. *)
+let propagate_change id =
+  let wake_up (SomeEntity e) (l, xs) =
+    let (dependencies, queue) =
+      match e.state with
+        | UpToDate ->
+          (empty_dependencies, Queue.create ())
+        | Modified (dependencies, queue) ->
+          (dependencies, queue)
+    in
+    if Queue.is_empty queue then Queue.push (fun c -> return c) queue;
+    e.state <- Modified (push dependencies (l, (xs, id)), queue)
+  in
+  EntitySet.iter wake_up (watchers_of id)
 
 (* *********************** *)
 (*  Instantiation functor  *)
@@ -158,7 +176,8 @@ module Make (I : U) : S with type data = I.data = struct
     let content0 = content e.description in
     lwt content' = c content0 in
     lwt content  = e.reaction dependencies (Some content') content0 in
-    return (e.description <- update_content e.description content)
+    e.description <- update_content e.description content;
+    return ()
 
   let rec update e =
     match e.state with
@@ -178,6 +197,7 @@ module Make (I : U) : S with type data = I.data = struct
     e.state <- Modified (empty_dependencies, Queue.create ())
 
   let change e c =
+    propagate_change (identifier e);
     match e.state with
       | UpToDate ->
         now_only_accumulate_changes e;
@@ -217,6 +237,7 @@ module Tests = struct
           | Some nc ->
             (Printf.sprintf "+ %02d" nc.count, nc.count)
       in
+      let count = count + 1 in
       let deps_log =
         let ping_log rel ids id =
           Printf.sprintf "? %s (%s) = %s"
@@ -238,11 +259,11 @@ module Tests = struct
 
   module E = DummyEntity
 
-  let create_entity update =
+  let create_entity ?(dependencies = empty_dependencies) update =
     let dummy = CORE_identifier.fresh CORE_identifier.tests_path "dummy" in
     let sdummy = string_of_identifier dummy in
     update (I18N.String.(create entity sdummy));
-    E.make ~init:({ log = []; count = 0 }, empty_dependencies) dummy
+    E.make ~init:({ log = []; count = 0 }, dependencies) dummy
     >>= function
       | `OK e ->
         update (I18N.String.(created entity sdummy));
@@ -260,13 +281,34 @@ module Tests = struct
     return (`OK ())
 
   let change_entity e update =
-    E.change e (fun c -> return { c with count = c.count + 1 })
+    E.change e (fun c ->
+      return { c with count = c.count + 1 }
+    )
     >> return (`OK ())
+
+  let echo_entity e update =
+    let dependencies =
+      of_list [ ("echo", [ ([], identifier e) ]) ]
+    in
+    create_entity ~dependencies update >>>= fun e' ->
+    change_entity e update
+    >>>= (fun _ ->
+      E.observe e' (fun d ->
+        update (Printf.sprintf "%s.count = %d"
+                  (string_of_identifier (identifier e'))
+                  d.count);
+        return d.count
+      ) >>= fun c -> do_not_fail (fun () -> assert (c = 1))
+    )
+
 
   let check update =
     create_entity update
     >>>= fun e -> already_there e update
     >>>= fun _ -> change_entity e update
     >>>= fun _ -> observe_entity e update
+    >>>= fun _ -> change_entity e update
+    >>>= fun _ -> observe_entity e update
+    >>>= fun _ -> echo_entity e update
 
 end

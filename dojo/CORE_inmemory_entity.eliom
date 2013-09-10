@@ -10,7 +10,14 @@ let empty_dependencies =
   []
 
 let dependency_image (x : dependencies) =
-  List.map snd (List.flatten (List.map snd x))
+  List.flatten (List.map (fun (l, rel) ->
+    List.map (fun (xs, y) -> (y, (l, xs))) rel)
+  x )
+
+let push deps (l, (xs, y)) =
+  let rel = try List.assoc l deps with Not_found -> [] in
+  let deps = List.remove_assoc l deps in
+  (l, (xs, y) :: rel) :: deps
 
 let of_list x = x
 

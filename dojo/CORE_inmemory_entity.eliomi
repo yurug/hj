@@ -15,7 +15,10 @@ type dependencies
 
 val empty_dependencies : dependencies
 
-val dependency_image : dependencies -> CORE_identifier.t list
+val dependency_image : dependencies
+  -> (CORE_identifier.t * (string * CORE_identifier.t list)) list
+
+val push : dependencies -> (string * (CORE_identifier.t list * CORE_identifier.t)) -> dependencies
 
 val of_list:
   (string * ((CORE_identifier.t list * CORE_identifier.t) list)) list
