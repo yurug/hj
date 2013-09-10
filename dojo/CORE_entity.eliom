@@ -291,16 +291,13 @@ module Tests = struct
       of_list [ ("echo", [ ([], identifier e) ]) ]
     in
     create_entity ~dependencies update >>>= fun e' ->
-    change_entity e update
-    >>>= (fun _ ->
-      E.observe e' (fun d ->
-        update (Printf.sprintf "%s.count = %d"
-                  (string_of_identifier (identifier e'))
-                  d.count);
-        return d.count
-      ) >>= fun c -> do_not_fail (fun () -> assert (c = 1))
-    )
-
+    change_entity e update >>>= fun _ ->
+    E.observe e' (fun d ->
+      update (Printf.sprintf "%s.count = %d"
+                (string_of_identifier (identifier e'))
+                d.count);
+      return d.count
+    ) >>= fun c -> do_not_fail (fun () -> assert (c = 1))
 
   let check update =
     create_entity update
