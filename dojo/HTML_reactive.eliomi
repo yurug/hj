@@ -85,8 +85,8 @@ val async_elts :
       channel [c]. *)
   val react : ('a, 'b) c -> ('b -> 'a EltProduct.prod Lwt.t) -> reaction
 
-  (** [on_background elt behavior] executes [behavior stop]
-      continuously unless [stop] is called by [behavior]. *)
+  (** [on_background elt behavior] executes [behavior stop] to
+      update [elt] until [stop] is called by [behavior]. *)
   val on_background :
     'a Eliom_content_core.Html5.elt
     -> ((unit -> unit Lwt.t) -> 'a Eliom_content_core.Html5.elt Lwt.t)
