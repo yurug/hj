@@ -59,28 +59,26 @@ type ('a, 'b) c
     separation between layout and content computations.
 *)
 
-(** [async_elt elt json_type computation reaction] produces an HTML5
+(** [async_elt elt computation reaction] produces an HTML5
     element that is updated in [reaction] to a [computation].
 
-    An update of a type described by [json_type] is conveyed from the
-    [computation] to the [reaction]. In response to this notification,
-    the [reaction] must produce a new HTML5 element of the same type
-    as the initial element [elt]. *)
+    An update of a type is conveyed from the [computation] to the
+    [reaction]. In response to this notification, the [reaction] must
+    produce a new HTML5 element of the same type as the initial
+    element [elt]. *)
 val async_elt :
   'a Eliom_content_core.Html5.elt
-  -> 'b Deriving_Json.t
   -> (('b -> unit) -> unit Lwt.t)
   -> (('a only, 'b) c -> reaction Eliom_pervasives.client_value)
   -> 'a Eliom_content_core.Html5.elt Lwt.t
 
 val async_elts :
   'a EltProduct.prod
-  -> 'b Deriving_Json.t
   -> (('b -> unit) -> unit Lwt.t)
   -> (('a, 'b) c -> reaction Eliom_pervasives.client_value)
   -> 'a EltProduct.prod Lwt.t
 
-{client{
+  {client{
 
   (** [react c behavior] describes a client reaction in order to update
       a set of HTML5 elements in response to a value sent through the

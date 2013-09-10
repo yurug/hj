@@ -16,12 +16,10 @@ val install_automatic_client_reaction: 'a c -> ('a -> unit Lwt.t) -> reaction
 }}
 
 val listening :
-  'a Deriving_Json.t ->
   ('a c -> reaction Eliom_pervasives.client_value) ->
   (unit Eliom_pervasives.client_value * ('a -> unit)) Lwt.t
 
 val on :
-  'a Deriving_Json.t ->
   (('a -> unit) -> unit Lwt.t) ->
   ('a c -> reaction Eliom_pervasives.client_value) ->
   unit Eliom_pervasives.client_value Lwt.t

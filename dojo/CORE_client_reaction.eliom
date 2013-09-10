@@ -6,7 +6,7 @@
 open Lwt
 
 {shared{
-type 'a c = 'a Eliom_bus.t
+type 'a c = 'a Eliom_comet.Channel.t
 type reaction = unit
 }}
 
@@ -16,24 +16,23 @@ type reaction = unit
     using a serializable type of data. *)
 
 {client{
-  let install_automatic_client_reaction bus reaction =
+  let install_automatic_client_reaction channel reaction =
     Eliom_client.onload (fun () ->
-      Lwt.async (fun () -> Lwt_stream.iter_s reaction (Eliom_bus.stream bus))
+      Lwt.async (fun () -> Lwt_stream.iter_s reaction channel)
     )
 }}
 
 let listening
-    (json        : 'a Deriving_Json.t)
-    (reaction    : 'a Eliom_bus.t -> unit Eliom_pervasives.client_value)
+    (reaction    : 'a c -> unit Eliom_pervasives.client_value)
     =
-  let bus = Eliom_bus.create json in
-  return (reaction bus, (fun x -> Eliom_bus.write bus x))
+  let stream, push = Lwt_stream.create () in
+  let channel = Eliom_comet.Channel.create ~scope:`Site stream in
+  return (reaction channel, (fun x -> push (Some x)))
 
 let on
-    (json        : 'a Deriving_Json.t)
     (computation : ('a -> unit) -> unit Lwt.t)
-    (reaction    : 'a Eliom_bus.t -> unit Eliom_pervasives.client_value)
+    (reaction    : 'a c -> unit Eliom_pervasives.client_value)
     =
-  lwt (reaction, sender) = listening json reaction in
+  lwt (reaction, sender) = listening reaction in
   Lwt.async (fun () -> computation sender);
   return (reaction)

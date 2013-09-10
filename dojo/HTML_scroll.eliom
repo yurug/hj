@@ -32,7 +32,7 @@ let create_subscroll () =
   let id = new_elt_id () in
   let subs = create_named_elt ~id (div ~a:[a_class ["scroll_item_subs"]] []) in
   lwt (reaction, sender) =
-    CORE_client_reaction.listening Json.t<subs_request>
+    CORE_client_reaction.listening
     (fun c -> {{ install_automatic_client_reaction %c (function
       | Push idx ->
         lwt elt = HTML_remote_fragment.remote_get idx in

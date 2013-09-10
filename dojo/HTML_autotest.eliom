@@ -45,10 +45,6 @@ let show d s l =
 
 (** [test_entry t] connects a test [t] to the user interface. *)
 let test_entry t =
-  (** The test process transmits a report to the interface using string and a
-      state represented by a [test_state]. *)
-  let json = Json.t<string * test_state> in
-
   (** It is guarded by the client's user interface: the [launch] function
       must be called on the client side to effectively run the test. *)
   let run_test, launch = CORE_client_action.guard (fun report ->
@@ -68,7 +64,7 @@ let test_entry t =
   let m = {test_state Lwt_mvar.t { Lwt_mvar.create_empty () }} in
   let initial_report = show (description t) Waiting CORE_document.empty_text in
   lwt ((P3 (description, status, details))) =
-    async_elts initial_report json run_test (fun c ->
+    async_elts initial_report run_test (fun c ->
       {reaction {react %c (
         let log = ref CORE_document.empty_text in
         fun (description, value) ->
