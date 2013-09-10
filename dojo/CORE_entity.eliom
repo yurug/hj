@@ -254,8 +254,19 @@ module Tests = struct
     E.make (identifier e)
     >>>= fun e' -> do_not_fail (fun () -> assert (e == e'))
 
+  let observe_entity e update =
+    lwt log = E.observe e (fun d -> return d.log) in
+    List.iter update log;
+    return (`OK ())
+
+  let change_entity e update =
+    E.change e (fun c -> return { c with count = c.count + 1 })
+    >> return (`OK ())
+
   let check update =
     create_entity update
     >>>= fun e -> already_there e update
+    >>>= fun _ -> change_entity e update
+    >>>= fun _ -> observe_entity e update
 
 end
