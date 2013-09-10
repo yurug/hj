@@ -16,18 +16,22 @@ type reaction = unit
     using a serializable type of data. *)
 
 {client{
-  let install_automatic_client_reaction channel reaction =
+  let react channel reaction =
     Eliom_client.onload (fun () ->
       Lwt.async (fun () -> Lwt_stream.iter_s reaction channel)
     )
 }}
 
+let channel () : 'a c * ('a -> unit) =
+  let stream, push = Lwt_stream.create () in
+  let channel = Eliom_comet.Channel.create ~scope:`Site stream in
+  (channel, (fun x -> push (Some x)))
+
 let listening
     (reaction    : 'a c -> unit Eliom_pervasives.client_value)
     =
-  let stream, push = Lwt_stream.create () in
-  let channel = Eliom_comet.Channel.create ~scope:`Site stream in
-  return (reaction channel, (fun x -> push (Some x)))
+  let channel, sender = channel () in
+  return (reaction channel, sender)
 
 let on
     (computation : ('a -> unit) -> unit Lwt.t)

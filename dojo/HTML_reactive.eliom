@@ -24,7 +24,7 @@ type ('a, 'b) c = 'a EltProduct.prod * 'b CORE_client_reaction.c
     return ()
 
   let react ((elts, bus) : (_, _) c) reaction =
-    CORE_client_reaction.install_automatic_client_reaction bus (
+    CORE_client_reaction.react bus (
       update_elts elts reaction
     )
 

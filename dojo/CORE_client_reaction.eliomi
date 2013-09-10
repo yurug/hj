@@ -12,8 +12,10 @@ type reaction
 }}
 
 {client{
-val install_automatic_client_reaction: 'a c -> ('a -> unit Lwt.t) -> reaction
+val react : 'a c -> ('a -> unit Lwt.t) -> reaction
 }}
+
+val channel : unit -> 'a c * ('a -> unit)
 
 val listening :
   ('a c -> reaction Eliom_pervasives.client_value) ->

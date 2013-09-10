@@ -65,7 +65,7 @@ let test_entry t =
   let initial_report = show (description t) Waiting CORE_document.empty_text in
   lwt ((P3 (description, status, details))) =
     async_elts initial_report run_test (fun c ->
-      {reaction {react %c (
+      {reaction {HTML_reactive.react %c (
         let log = ref CORE_document.empty_text in
         fun (description, value) ->
           log := CORE_document.add_line !log (string_of_test_state value);
