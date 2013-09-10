@@ -23,6 +23,6 @@ let add_line d l =
       SomeDocument { dtype = Text; content = l :: content }
 
 let lines : t -> string list = function
-  | SomeDocument { dtype = Text; content } -> content
+  | SomeDocument { dtype = Text; content } -> List.rev content
 
 }}
