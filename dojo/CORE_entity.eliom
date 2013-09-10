@@ -12,14 +12,38 @@ open COMMON_pervasives
 (*  Type definitions  *)
 (* ****************** *)
 
+(** The reaction of an entity is triggered each time at least one of
+    its dependencies has changed and each time a new content is
+    suggested for it.  A reaction produces a change that is scheduled
+    for application. *)
 type 'a reaction = dependencies -> 'a option -> 'a change
 
+(** A change is a process that transforms the current content of the
+    entity into a new one. *)
 and 'a change = 'a -> 'a Lwt.t
 
+(** The state of an entity can be up-to-date or modified. In that
+    later case, the modified dependencies and the scheduled changes
+    are attached to the entity. *)
 type 'a state =
-| UpToDate
-| Modified of dependencies * 'a change Queue.t
+  | UpToDate
+  | Modified of dependencies * 'a change Queue.t
 
+(** Here is the internal representation of the entity:
+
+    - the [description] field stores the in-memory
+    representation of the entity. This description is
+    replicated in the versioned file system.
+
+    - the [state] denotes the status of the entity with
+    respect to its dependencies and scheduled changes.
+
+    - the [reaction] implements the behavior of the entity.
+
+    - the [channel] and [push] fields give a communication
+    device from the entity on the server to the client-side
+    code.
+*)
 type 'a entity = {
   mutable description : 'a meta;
   mutable state       : 'a state;
@@ -28,18 +52,26 @@ type 'a entity = {
   (*   *) push        : 'a -> unit;
 }
 
+(** Shortcut for the type of entities. *)
 type 'a t = 'a entity
 
+(** Some data structures contain entities with heterogeneous
+    content types. In that case, this type is hidden behind
+    an existential quantification. *)
 type some_t = SomeEntity : 'a t -> some_t
 
+(** Accessor to the dependencies. *)
 let dependencies e = CORE_inmemory_entity.dependencies e.description
 
+(** Accessor to the unique identifier of the entity. *)
 let identifier e = CORE_inmemory_entity.identifier e.description
 
 (* ********************** *)
 (*  Reverse dependencies  *)
 (* ********************** *)
 
+(** The server maintains an association between each entity
+    and its reverse dependencies. *)
 module EntitySet = Hashtbl.Make (struct
   type t = some_t
   let hash (SomeEntity x) = Hashtbl.hash (identifier x)
@@ -52,7 +84,7 @@ module Watchers = struct
   let get h k = try Some (find h k) with Not_found -> None
 end
 
-type watchers = (string * CORE_identifier.t list) EntitySet.t Watchers.t
+type watchers = (dependency_kind * identifier list) EntitySet.t Watchers.t
 
 let watchers = Watchers.create 13
 
@@ -72,6 +104,9 @@ let register_dependency e (id, rel) =
 
 (** [propagate_change id] wakes up all the reverse dependencies of [e]. *)
 let propagate_change id =
+  (** We traverse the reverse dependencies of [e] and trigger a
+      reaction to the change of [id] by marking them as being
+      modified... *)
   let wake_up (SomeEntity e) (l, xs) =
     let (dependencies, queue) =
       match e.state with
@@ -80,17 +115,23 @@ let propagate_change id =
         | Modified (dependencies, queue) ->
           (dependencies, queue)
     in
+    (** and by pushing a change that does nothing. *)
     if Queue.is_empty queue then Queue.push (fun c -> return c) queue;
+    (** We also notify [e] that [id] is one of its dependencies that
+        has changed. *)
     e.state <- Modified (push dependencies (l, (xs, id)), queue)
   in
   EntitySet.iter wake_up (watchers_of id)
 
+(** [channel e] gives a device for client-side code to be notified
+    each time [e] is changed. *)
 let channel e = e.channel
 
 (* *********************** *)
 (*  Instantiation functor  *)
 (* *********************** *)
 
+(** The base interface of an entity module. *)
 module type S = sig
   type data
   type t = data entity
@@ -109,25 +150,36 @@ module type S = sig
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
 end
 
+(** The client must provide the following information
+    about his specific entity. *)
 module type U = sig
   type data deriving (Json)
   val react : data reaction
 end
 
-let passive _ _ x = return x
+(** [passive] is the reaction that does nothing but accepting
+    any change to the content of the entity. *)
+let passive _ x' x =
+  match x' with
+    | None -> return x
+    | Some x' -> return x'
 
+(** The implementation of the operations over entities. *)
 module Make (I : U) : S with type data = I.data = struct
 
   type data = I.data
 
   type t = data entity
 
+  (** The following module implements on-the-disk replication
+      of entity descriptors. *)
   module OTD = CORE_onthedisk_entity.Make (I)
 
   (* ****** *)
   (*  Pool  *)
   (* ****** *)
 
+  (** There must be at most one instance of an entity. *)
   type pool = t Watchers.t
 
   let create_pool () = Watchers.create 13
@@ -174,8 +226,9 @@ module Make (I : U) : S with type data = I.data = struct
           | None ->
             alive pool id reaction
 
-  let pool = create_pool ()
-  let make ?init ?(reaction = I.react) = make pool ?init reaction
+  let make =
+    let pool = create_pool () in
+    fun ?init ?(reaction = I.react) -> make pool ?init reaction
 
   let apply dependencies e c =
     let content0 = content e.description in

@@ -6,34 +6,57 @@
     - specific data ;
     - multi-sorted dependencies to other entities
      (a set of entities, a set of functions from entity to entity,
-      a set of functions from a pair of entities to entity...) ;
+      a set of functions from a pair of entities to entity...).
 *)
 
+open CORE_identifier
+
+(** The entity descriptor in memory. *)
 type 'a meta deriving (Json)
 
-type dependencies
+(** [make id ds c] returns an entity description for entity
+    [id] with dependencies [ds] and content [c]. *)
+val make : identifier -> dependencies -> 'a -> 'a meta
 
-val empty_dependencies : dependencies
+(** [identifier m] returns the identifier of [m]. *)
+val identifier : 'a meta -> identifier
 
-val dependency_image : dependencies
-  -> (CORE_identifier.t * (string * CORE_identifier.t list)) list
-
-val push : dependencies -> (string * (CORE_identifier.t list * CORE_identifier.t)) -> dependencies
-
-val of_list:
-  (string * ((CORE_identifier.t list * CORE_identifier.t) list)) list
-  -> dependencies
-
-val to_list:
-  dependencies
-  -> (string * ((CORE_identifier.t list * CORE_identifier.t) list)) list
-
-val make : CORE_identifier.t -> dependencies -> 'a -> 'a meta
-
-val identifier : 'a meta -> CORE_identifier.t
-
-val dependencies : 'a meta -> dependencies
-
+(** [content m] returns the content of [m]. *)
 val content : 'a meta -> 'a
 
+(** [update_content m c] returns a new version of [m]
+    such that [content m = c]. *)
 val update_content : 'a meta -> 'a -> 'a meta
+
+(** The dependencies of an entity. *)
+type dependencies
+
+(** [dependencies m] returns the dependencies of [m]. *)
+val dependencies : 'a meta -> dependencies
+
+(** Dependencies are classified using names. *)
+type dependency_kind = string
+
+(** A dependency [(y, (k, xs)] of kind [k] of an identifier [x] is a
+    function from an a list of identifiers [xs] to an identifier [y].
+    We usually write it [k (xs) = y]. *)
+type dependency = identifier * (dependency_kind * identifier list)
+
+(** No dependency. *)
+val empty_dependencies : dependencies
+
+(** [dependency_image ds] returns all the identifiers included in
+    an identifier's dependencies [ds]. *)
+val dependency_image : dependencies -> dependency list
+
+(** [push ds d] is the dependencies [ds] with an extra dependency [d]. *)
+val push : dependencies -> dependency -> dependencies
+
+(** [of_list ls] turns an associative list into dependencies. *)
+val of_list:
+  (dependency_kind * ((identifier list * identifier) list)) list
+  -> dependencies
+
+(** [to_list ds] transforms dependencies [ds] into an associative list. *)
+val to_list:
+  dependencies -> (depedency_kind * ((identifier list * identifier) list)) list
