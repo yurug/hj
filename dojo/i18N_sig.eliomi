@@ -42,6 +42,7 @@ sig
   val new_submission : string
   val autotesting_title : string
   val consistent : string
+  val entity : string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string
@@ -57,7 +58,8 @@ sig
   val does_not_exist : string -> string
   val the_entity_subsystem_works : string
   val saving : string -> string
-  val created : string -> string
+  val created : string -> string -> string
+  val create : string -> string -> string
 end
 
 }}

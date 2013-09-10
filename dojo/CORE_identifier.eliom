@@ -105,6 +105,9 @@ let suffix prefix p =
   with Not_found ->
     raise (InvalidPrefix (prefix, p))
 
+let root =
+  path_of_string CORE_config.ressource_root
+
 let tests_path =
   [ "tests" ]
 

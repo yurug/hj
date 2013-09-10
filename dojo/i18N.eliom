@@ -118,6 +118,9 @@ module Fr : I18N_sig.Text = struct
   let consistent =
     "cohérent"
 
+  let entity =
+    "entité"
+
   let the_following_file_already_exists fname =
     Printf.sprintf
       "Le fichier `%s' existe déjà."
@@ -141,10 +144,15 @@ module Fr : I18N_sig.Text = struct
       "Sauvegarde de `%s'."
       fname
 
-  let created name =
+  let created what name =
     Printf.sprintf
-      "`%s' créé(e)."
-      name
+      "%s `%s' créé(e)."
+      (cap what) name
+
+  let create what name =
+    Printf.sprintf
+      "Création de %s `%s'."
+      what name
 
 end
 

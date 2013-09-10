@@ -240,10 +240,12 @@ module Tests = struct
 
   let create_entity update =
     let dummy = CORE_identifier.fresh CORE_identifier.tests_path "dummy" in
+    let sdummy = string_of_identifier dummy in
+    update (I18N.String.(create entity sdummy));
     E.make ~init:({ log = []; count = 0 }, empty_dependencies) dummy
     >>= function
       | `OK e ->
-        update (I18N.String.created (string_of_identifier dummy));
+        update (I18N.String.(created entity sdummy));
         return (`OK ())
       | `KO e ->
         return (`KO e)
