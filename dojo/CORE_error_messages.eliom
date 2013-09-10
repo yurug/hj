@@ -13,3 +13,5 @@ let string_of_error : [< CORE_errors.all ] -> string = function
     I18N.String.the_following_directory_does_not_exist (string_of_path p)
   | `UndefinedEntity id ->
     I18N.String.does_not_exist (string_of_identifier id)
+  | `AssertFailure s ->
+    s

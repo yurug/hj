@@ -26,12 +26,6 @@ type version =
   | Latest of path * (unit -> version Lwt.t)
   | Stored of stored_version
 
-let root relative p =
-  if relative then
-    concat (path_of_string CORE_config.ressource_root) p
-  else
-    p
-
 let git_commit who where what message lraise =
   success ~lraise
     (!% (where

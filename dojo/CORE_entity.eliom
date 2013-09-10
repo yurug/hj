@@ -246,11 +246,16 @@ module Tests = struct
     >>= function
       | `OK e ->
         update (I18N.String.(created entity sdummy));
-        return (`OK ())
+        return (`OK e)
       | `KO e ->
         return (`KO e)
 
+  let already_there e update =
+    E.make (identifier e)
+    >>>= fun e' -> do_not_fail (fun () -> assert (e == e'))
+
   let check update =
     create_entity update
+    >>>= fun e -> already_there e update
 
 end

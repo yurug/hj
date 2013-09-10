@@ -119,6 +119,14 @@ val ltry : ('a, 'b, 'e) exn_abs -> ('a, 'e) exn_free
 (** [lreturn x] is [fun _ -> return x]. *)
 val lreturn : 'a -> ('a, 'b, 'e) exn_abs
 
+(** [fail w] returns [`KO (`AssertFailure r)] when [r] is a failure
+    produced by the assertion [w]. *)
+val do_not_fail : (unit -> 'a)
+  -> [
+    `OK of unit
+  | `KO of [> `AssertFailure of string ]
+  ] Lwt.t
+
 (** [!!> what raise] checks for the result [r] of [what] to
     [raise] an error if [r] matches [`KO e]. Otherwise if [r] matches
     [`OK x], returns [x]. *)

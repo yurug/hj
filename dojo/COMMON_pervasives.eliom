@@ -154,6 +154,12 @@ let ltry what =
 
 let lreturn x = fun _ -> return x
 
+let do_not_fail f =
+  try
+    f (); return (`OK ())
+  with (Assert_failure _) as e ->
+    return (`KO (`AssertFailure (Printexc.to_string e)))
+
 let ( !!> ) (f : unit -> [`OK of 'a | `KO of 'e] Lwt.t) lraise =
   f () >>= function
     | `OK x -> return x

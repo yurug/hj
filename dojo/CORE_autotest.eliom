@@ -3,6 +3,8 @@
 open Lwt
 
 open CORE_error_messages
+open COMMON_unix
+open COMMON_pervasives
 
 (** Autotesting service (disabled by default). *)
 
@@ -42,7 +44,16 @@ let run t report = t.run report
 (** Testing the server *)
 
 let server_is_up =
-  make I18N.String.the_server_is_up (fun _ -> return Passed)
+  make I18N.String.the_server_is_up (fun update ->
+    (** Clean up the tests folder. *)
+    let path = CORE_identifier.(string_of_path (root true tests_path)) in
+    ltry (
+      !>> (rmdir path ~content:true)
+      >>> mkdir path
+    ) >>= function
+      | `OK () -> return Passed
+      | `KO e -> update (string_of_error e); return Failed
+  )
 
 let number_of_packets = 10
 let client_server_asynchronous_communication_works =

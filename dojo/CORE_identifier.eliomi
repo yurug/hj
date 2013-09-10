@@ -77,6 +77,9 @@ val suffix : path -> path -> path
 exception InvalidPrefix of path * path
 
 (** {2 Standard identifiers} *)
+
+val root : bool -> path -> path
+
 val tests_path : path
 
 val fresh : path -> string -> identifier
