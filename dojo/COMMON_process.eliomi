@@ -22,6 +22,8 @@ val pread_lines :
   -> command
   -> string Lwt_stream.t Lwt.t
 
+val blind_exec: command -> Unix.process_status Lwt.t
+
 val success :
   ?lraise:([> `SystemError of string ] -> 'e Lwt.t)
   -> command

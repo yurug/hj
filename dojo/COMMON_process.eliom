@@ -37,8 +37,11 @@ let pread_lines ?(lraise=small_jump) c =
     (lraise @* (`SystemError "pread_lines"))
     @| (fun () -> return (Lwt_stream.of_list []))
 
-let success ?(lraise=small_jump) c =
+let blind_exec c =
   strace (exec ~stdin:`Dev_null ~stdout:`Dev_null ~stderr:`Dev_null) c
+
+let success ?(lraise=small_jump) c =
+  blind_exec c
   >>= function
   | Unix.WEXITED 0 ->
     return_true
