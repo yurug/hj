@@ -89,6 +89,9 @@ module type S = sig
       | `SystemError     of string
     ]] Lwt.t
 
+  (** [identifier e] returns the identifier of [e]. *)
+  val identifier : t -> CORE_identifier.t
+
   (** [change e c] asks for the replacement of [e]'s content by [c
       e].  This attempt triggers the reaction of the entity, which is
       not atomic. This operation may block if a reaction is already

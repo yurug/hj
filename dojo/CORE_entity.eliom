@@ -151,6 +151,7 @@ module type S = sig
       | `SystemError     of string
     ]] Lwt.t
 
+  val identifier : t -> CORE_identifier.t
   val change  : t -> data change -> unit Lwt.t
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
 end
@@ -391,6 +392,8 @@ module Make (I : U) : S with type data = I.data = struct
         )
       )
     )
+
+  let identifier = identifier
 
 end
 
