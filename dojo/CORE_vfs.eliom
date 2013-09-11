@@ -4,6 +4,7 @@ open Lwt
 open Lwt_stream
 open Lwt_io
 
+open CORE_config
 open CORE_identifier
 open CORE_error_messages
 open COMMON_pervasives
@@ -61,7 +62,7 @@ let git_versions where what lraise =
         number = get 0;
         author = get 1;
         date   = get 2;
-        path   = CORE_identifier.path_of_string (Filename.concat where what)
+        path   = path_of_string (Filename.concat where what)
       })
     with _ -> None
   in
@@ -83,6 +84,31 @@ let on_path f ?(relative = true) p =
   let where = Filename.dirname ps in
   f p ps fname where
 
+let init_root () =
+  let create_dir_if_absent dir lraise =
+    let dir = string_of_path (root true dir) in
+    blind_exec (!% (ressource_root @@ (Printf.sprintf "test -d %s" dir)))
+    >>= function
+      | Unix.WEXITED 0 -> return ()
+      | _ -> mkdir dir lraise
+  in
+  let under_git lraise =
+    success ~lraise (!% (ressource_root @@ "test -d .git"))
+  in
+  let git_init lraise =
+    success ~lraise (!% (ressource_root @@ "git init"))
+  in
+  ltry (
+    !>> under_git
+    >-> (function
+      | true -> lreturn true
+      | false -> git_init
+    )
+    >>> create_dir_if_absent tests_path
+    >>> create_dir_if_absent users_path
+    >>> lreturn ()
+  )
+
 let create who = on_path (fun p ps _ _ ->
   let check_if_filename_already_exists lraise =
     try_lwt
@@ -102,7 +128,7 @@ let create who = on_path (fun p ps _ _ ->
 
 let create_tmp who =
   lwt dname =
-    ExtFilename.temp_filename ~temp_dir:CORE_config.ressource_root "tmp" ""
+    ExtFilename.temp_filename ~temp_dir:ressource_root "tmp" ""
   in
   let path = path_of_string dname in
   ltry (
@@ -148,9 +174,9 @@ let latest = on_path (fun p _ fname where -> ltry (fun lraise ->
 let read v = ltry (fun lraise ->
   match v with
     | Latest (p, _) ->
-      COMMON_unix.cat (CORE_identifier.string_of_path p) lraise
+      cat (string_of_path p) lraise
     | Stored v ->
-      git_show v.number (CORE_identifier.string_of_path v.path) lraise
+      git_show v.number (string_of_path v.path) lraise
 )
 
 let save who = on_path (fun p ps fname where c -> ltry (
@@ -212,12 +238,12 @@ let ensure_consistency test icp =
 
 let there_is_repository_at_resssource_root () =
   ensure_consistency
-    (success (!% (CORE_config.ressource_root @@ "test -d .git")))
+    (success (!% (ressource_root @@ "test -d .git")))
     (return NoRootRepository)
 
 let there_is_no_untracked_files () =
   lwt untracked_files = grep
-    (!% (CORE_config.ressource_root @@ "git status --porcelain"))
+    (!% (ressource_root @@ "git status --porcelain"))
     ("\\?\\? \\(.*\\)")
     (warn_only "core_vfs.there_is_no_untracked_files.grep failed.")
   in

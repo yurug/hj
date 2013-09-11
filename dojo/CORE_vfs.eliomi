@@ -23,6 +23,12 @@ open CORE_identifier
 (** A file system contains files. *)
 type filename = CORE_identifier.t
 
+(** [init_root ()] initializes the root of the file system if required. *)
+val init_root : unit
+  -> [ `OK of unit
+     | `KO of [ `SystemError of string ]
+     ] Lwt.t
+
 (** [create who path] initializes a subvfs at [path], authored by
     [who].  The [path] must not exist in the root vfs. All the needed
     directories are created on-the-fly if they do not exist.
