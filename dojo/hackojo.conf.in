@@ -4,7 +4,12 @@
 <!-- %%WARNING%% -->
 <ocsigen>
   <server>
-    <port>%%PORT%%</port>
+    <port protocol="HTTPS">%%PORT%%</port>
+    <ssl>
+       <certificate>%%SSLCERT%%</certificate>
+       <privatekey>%%SSLKEY%%</privatekey>
+    </ssl>
+
     %%% Only set for running, not for testing
     %%USERGROUP%%
     <logdir>%%LOGDIR%%</logdir>
