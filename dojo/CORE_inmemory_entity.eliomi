@@ -14,6 +14,9 @@ open CORE_identifier
 (** The entity descriptor in memory. *)
 type 'a meta deriving (Json)
 
+(** The dependencies of an entity. *)
+type dependencies
+
 (** [make id ds c] returns an entity description for entity
     [id] with dependencies [ds] and content [c]. *)
 val make : identifier -> dependencies -> 'a -> 'a meta
@@ -27,9 +30,6 @@ val content : 'a meta -> 'a
 (** [update_content m c] returns a new version of [m]
     such that [content m = c]. *)
 val update_content : 'a meta -> 'a -> 'a meta
-
-(** The dependencies of an entity. *)
-type dependencies
 
 (** [dependencies m] returns the dependencies of [m]. *)
 val dependencies : 'a meta -> dependencies
@@ -59,4 +59,4 @@ val of_list:
 
 (** [to_list ds] transforms dependencies [ds] into an associative list. *)
 val to_list:
-  dependencies -> (depedency_kind * ((identifier list * identifier) list)) list
+  dependencies -> (dependency_kind * ((identifier list * identifier) list)) list

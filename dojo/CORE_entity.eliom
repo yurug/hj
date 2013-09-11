@@ -119,7 +119,7 @@ let propagate_change id =
     if Queue.is_empty queue then Queue.push (fun c -> return c) queue;
     (** We also notify [e] that [id] is one of its dependencies that
         has changed. *)
-    e.state <- Modified (push dependencies (l, (xs, id)), queue)
+    e.state <- Modified (push dependencies (id, (l, xs)), queue)
   in
   EntitySet.iter wake_up (watchers_of id)
 
