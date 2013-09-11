@@ -29,22 +29,23 @@ let rmdir ps ?(content=false) lraise =
   success ~lraise (!% cmd)
   >> return ()
 
+let read c =
+  handle_unix_error (fun () -> return (
+    strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
+  )) (Lwt_stream.of_list [])
+
 let grep c pattern =
-  handle_unix_error (fun () ->
-    let s =
-      strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
-    in
-    return (
-      Lwt_stream.filter_map (fun s ->
-        if string_match (regexp pattern) s 0 then
-          try
-            Some (matched_group 1 s)
-          with Not_found -> None
-        else
-          None
-      ) s
-    )
-  ) (Lwt_stream.of_list [])
+  read c >-> (fun s ->
+  lreturn (
+    Lwt_stream.filter_map (fun s ->
+      if string_match (regexp pattern) s 0 then
+        try
+          Some (matched_group 1 s)
+        with Not_found -> None
+      else
+        None
+    ) s
+  ))
 
 let echo c f =
   handle_unix_error (fun () ->
@@ -73,3 +74,6 @@ let split c delim =
       ) s
     )
   ) (Lwt_stream.of_list [])
+
+let now lraise =
+  (read (!% "date") >-> fun s _ -> Lwt_stream.next s) lraise

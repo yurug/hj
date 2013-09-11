@@ -27,3 +27,6 @@ val cat : string -> ('a, 'b) raiser -> string Lwt.t
 val split :
   COMMON_process.command -> string -> ('a, 'b) raiser
   -> string list Lwt_stream.t Lwt.t
+
+(** [now ()] returns a string representation of the current time. *)
+val now : ('a, 'b) raiser -> string Lwt.t
