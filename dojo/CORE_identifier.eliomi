@@ -82,4 +82,8 @@ val root : bool -> path -> path
 
 val tests_path : path
 
+val users_path : path
+
+val std_paths : path list
+
 val fresh : path -> string -> identifier

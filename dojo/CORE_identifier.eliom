@@ -111,8 +111,10 @@ let root relative p =
   else
     p
 
-let tests_path =
-  [ "tests" ]
+let tests_path = [ "tests" ]
+let users_path = [ "users" ]
+
+let std_paths = [ tests_path; users_path ]
 
 let fresh =
   let r = ref 0 in
