@@ -203,3 +203,11 @@ let ( >>>= ) p1 p2 =
   p1 >>= function
     | `OK x -> p2 x
     | `KO e -> return (`KO e)
+
+module MRef = struct
+  open Lwt_mutex
+  type 'a t = { mutable content : 'a; mutex : Lwt_mutex.t }
+  let create x = { content = x; mutex = Lwt_mutex.create () }
+  let read x f = with_lock x.mutex (fun () -> f x.content)
+  let write x v = with_lock x.mutex (fun () -> return (x.content <- v))
+end
