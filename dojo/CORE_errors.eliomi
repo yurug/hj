@@ -8,4 +8,6 @@ type all = [
 | `SystemError           of string
 | `UndefinedEntity       of CORE_identifier.t
 | `AssertFailure         of string
+| `MaximalNumberOfLoginAttemptsReached
+| `BadLoginPasswordPair
 ]

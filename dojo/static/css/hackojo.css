@@ -103,26 +103,141 @@ h1 {
 }
 
 #connection_box {
+    margin-top: 1em;
     margin-left: auto;
     margin-right: auto;
     width: 30em;
-    border-radius: 15px;
-    border-style:solid;
-    border-width:5px;
 }
 
-#connection_box table {
+#connection_login {
+    margin-left: 2em;
+}
+
+#connection_login label {
+    padding-right: 25em;
+    font-weight:bold;
+    font-size: 0.8em;
+}
+
+#connection_form input {
+    width: 10em;
+    padding: 0.05em;
+    padding-left: 0.5em;
+    font-size: 1.2em;
+    border: 2px solid #dadada;
+    border-radius: 7px;
+}
+
+#connection_form input:focus {
+    outline: none;
+    border-color: #eeeeee;
+    box-shadow: 0 0 10px #fafafa;
+}
+
+#connection_password {
+    margin-top: 0.5em;
+    margin-left: 2em;
+}
+
+#connection_password label {
+    padding-right: 25em;
+    font-weight:bold;
+    font-size: 0.8em;
+}
+
+#connection_box_actions {
+    margin-top: 0.5em;
+    margin-left: 2em;
+}
+
+#connection_box_message {
+    margin-top: 1em;
+    margin-left: 2.5em;
+    font-weight: bold;
+    font-size: 0.8em;
+}
+
+#connection_box_signin {
+    font-size:0.6em;
+    font-weight:bold ;
+    cursor:pointer;
+    margin-right: 1em;
+    padding:5px 25px;
+    background: #dddddd;
+    border:1px solid #171410;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+    border-radius: 10px;
+    -webkit-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    font-color:#eeeeee;
+}
+
+#connection_box_signin:hover, connection_box_signin:focus {
+    background-color :#eeeeee;
+    -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+}
+
+#connection_box_actions a {
+    padding-left: 6em;
+    margin-top: 2em;
+    font-size: 0.8em;
+}
+
+#subscribe_box {
+    margin-top: 1em;
     margin-left: auto;
     margin-right: auto;
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
-    border-width:0px;
-    border-style:none;
+    width: 30em;
 }
 
-#connection_box td {
-    border-width:0px;
-    border-style:none;
+#subscribe_form label {
+    padding-right: 25em;
+    font-weight:bold;
+    font-size: 0.8em;
+}
+
+#subscribe_form input {
+    width: 10em;
+    padding: 0.05em;
+    padding-left: 0.5em;
+    font-size: 1.2em;
+    border: 2px solid #dadada;
+    border-radius: 7px;
+}
+
+#subscribe_form input:focus {
+    outline: none;
+    border-color: #eeeeee;
+    box-shadow: 0 0 10px #fafafa;
+}
+
+#subscribe_form_submit {
+    margin-top: 1em;
+    font-size:0.6em;
+    font-weight:bold ;
+    cursor:pointer;
+    margin-right: 1em;
+    padding:5px 25px;
+    background: #dddddd;
+    border:1px solid #171410;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+    border-radius: 10px;
+    -webkit-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    font-color:#eeeeee;
+}
+
+#subscribe_form_submit:hover, #subscribe_form_submit:focus {
+    background-color :#eeeeee;
+    -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 1px rgba(1, 1, 1, .75);
 }
 
 

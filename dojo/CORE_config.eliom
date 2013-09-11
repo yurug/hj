@@ -15,6 +15,8 @@ let ressource_root =
 let autotest_enabled () =
   try ignore (Sys.getenv "AUTOTEST"); true with Not_found -> false
 
+let number_of_login_attempts_per_second = 2
+
 {shared{
 
 (** We only support french for the moment. *)

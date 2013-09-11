@@ -65,6 +65,8 @@ module Fr : I18N_sig.Text = struct
 
   let username = "login"
 
+  let email = "email"
+
   let password = "mot de passe"
 
   let connect = "OK"
@@ -78,6 +80,12 @@ module Fr : I18N_sig.Text = struct
   let status = "status"
 
   let description = "description"
+
+  let subscribe = "s'inscrire"
+
+  let firstname = "prénom"
+
+  let surname = "nom"
 
   let new_submission = "Nouvelle soumission :"
 
@@ -153,6 +161,12 @@ module Fr : I18N_sig.Text = struct
     Printf.sprintf
       "Création de %s `%s'."
       what name
+
+  let you_reach_the_maximal_number_of_login_attempts =
+    "Vous avez atteint le nombre maximal de tentatives autorisé."
+
+  let bad_login_password_pair =
+    "Le login ou le mot de passe est invalide."
 
 end
 

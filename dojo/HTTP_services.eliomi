@@ -14,6 +14,51 @@ val root :
    [< Eliom_service.registrable > `Registrable ], 'a)
     Eliom_service.service
 
+(** The login service. *)
+val login :
+  (unit, string * string,
+   [> `Attached of
+       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+         Eliom_service.a_s ],
+   [ `WithoutSuffix ], unit,
+   [ `One of string ] Eliom_parameter.param_name *
+     [ `One of string ] Eliom_parameter.param_name,
+   [< Eliom_service.registrable > `Registrable ], 'a)
+    Eliom_service.service
+
+(** The logout service. *)
+val logout :
+  (unit, unit,
+   [> `Attached of
+       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+         Eliom_service.a_s ],
+   [ `WithoutSuffix ], unit, unit,
+   [< Eliom_service.registrable > `Registrable ], 'a)
+    Eliom_service.service
+
+(** The subscription form and service. *)
+val subscribe :
+    (unit, string * (string * (string * (string * string))),
+     [> `Attached of
+          ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+          Eliom_service.a_s ],
+     [ `WithoutSuffix ], unit,
+     [ `One of string ] Eliom_parameter.param_name *
+     ([ `One of string ] Eliom_parameter.param_name *
+      ([ `One of string ] Eliom_parameter.param_name *
+       ([ `One of string ] Eliom_parameter.param_name *
+        [ `One of string ] Eliom_parameter.param_name))),
+     [< Eliom_service.registrable > `Registrable ], 'a)
+    Eliom_service.service
+
+val subscribe_form :
+    (unit, unit,
+     [> `Attached of
+          ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+     [ `WithoutSuffix ], unit, unit,
+     [< Eliom_service.registrable > `Registrable ], 'a)
+    Eliom_service.service
+
 (** The autotest service. *)
 val autotest :
   (unit, unit,

@@ -62,3 +62,10 @@ let show_or_hide ?(start_shown=true) (e : [ body_content_fun ] elt) =
      (see, e)
 
 }}
+
+let field id name ?fieldname input_type text =
+  let input_a = match fieldname with None -> [] | Some id -> [ a_id id ] in
+  div ~a:[a_id id] [
+    label ~a:[a_for name] [ pcdata text ];
+    string_input ~a:input_a ~input_type ~name ()
+  ]

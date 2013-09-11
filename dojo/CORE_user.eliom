@@ -1,0 +1,158 @@
+(* -*- tuareg -*- *)
+
+open Lwt
+
+open CORE_entity
+open CORE_identifier
+open COMMON_pervasives
+
+type description = {
+    login           : string;
+    password_digest : string;
+    last_connection : string;
+} deriving (Json)
+
+include CORE_entity.Make (struct
+
+  type data = description deriving (Json)
+
+  let react = passive
+
+end)
+
+let password_digest e = observe e (fun u -> return u.password_digest)
+let login           e = observe e (fun u -> return u.login)
+let last_connection e = observe e (fun u -> return u.last_connection)
+
+(** By convention, users are stored in the "users" folder. *)
+
+let user_id username =
+  identifier_of_path (concat users_path (CORE_identifier.make [label username]))
+
+let user =
+  let module Limited = Lwt_throttle.Make (struct
+    type t = string
+    let hash = Hashtbl.hash
+    let equal x y = (x = y)
+  end) in
+  let limit =
+    Limited.create
+      CORE_config.number_of_login_attempts_per_second
+      max_int
+      13
+  in
+  fun username ->
+    Limited.wait limit username >>= function
+      | false -> return (`KO `MaximalNumberOfLoginAttemptsReached)
+      | true ->
+        make (user_id username) >>= function
+          | `OK u -> return (`OK u)
+          | `KO (`AlreadyExists _) -> assert false
+          | `KO (`UndefinedEntity _) -> return (`KO `BadLoginPasswordPair)
+          | `KO (`SystemError e) -> return (`KO (`SystemError e))
+
+(** Authentification system. *)
+
+(** The connected username is a server-side state which is shared with
+    the client using a cookie. If I am correct, this piece of
+    information cannot be forged without a knowledge of the
+    password. Of course, if the user is stupid enough to have his
+    cookies stolen, we cannot do anything for him.
+    (Seriously, is that too much to ask?) *)
+type cookie_state =
+  [ `NotLogged | `FailedLogin | `Logged of identifier ]
+
+let username =
+  Eliom_reference.eref
+    ~scope:Eliom_common.default_session_scope
+    (`NotLogged : cookie_state)
+
+let logged_user () =
+  Eliom_reference.get username >>= function
+    | `NotLogged -> return `NotLogged
+    | `FailedLogin -> return `FailedLogin
+    | `Logged id ->
+      make id >>= function
+        | `OK u -> return (`Logged u)
+        | `KO _ ->
+          (** Hmm, if [make e] fails, it means that:
+              - the cookie is corrupted ;
+              - or, the system is in bad state...
+              We log that and do not return a logged user. *)
+          COMMON_log.(unexpected_failure [Internal] (fun () -> assert false));
+          return `FailedLogin
+
+(** Authentification. *)
+
+let authenticate u password =
+  user u >>>= fun user ->
+  lwt login = login user in
+  let digest = Digest.to_hex (Digest.string (login ^ password)) in
+  lwt expected_digest = password_digest user in
+  if (expected_digest <> digest) then
+    return (`KO `BadLoginPasswordPair)
+  else (
+    ltry COMMON_unix.now >>>= fun date ->
+    change user (fun c -> return { c with last_connection = date })
+    >> return (`OK user)
+  )
+
+(** [login] is in the public API, login information
+    is passed using the POST method. *)
+let login_service ~fallback =
+  Eliom_service.post_service
+    ~fallback
+    ~post_params:Eliom_parameter.(string "login" ** string "password")
+    ()
+
+(** Login is an action on the state of the server. *)
+let register_login ~service =
+  Eliom_registration.Action.register
+    ~service
+    (fun () (login, password) ->
+      authenticate login password >>= fun r ->
+      Eliom_reference.set username (match r with
+        | `OK u -> `Logged (identifier u)
+        | `KO e -> `FailedLogin
+      )
+    )
+
+(** Disconnection *)
+
+let logout_service ~fallback =
+  Eliom_service.post_service
+    ~fallback
+    ~post_params:Eliom_parameter.unit
+    ()
+
+(** [disconnect] is an action on the state of the server
+    which also removes the status of being connected
+    in the client's state. *)
+let register_logout ~service =
+  Eliom_registration.Action.register
+    ~service
+    (fun () () ->
+      Eliom_reference.set username `NotLogged
+    )
+
+(** Subscription. *)
+
+(** [subscribe] is in the public API, registration information
+    is passed using the POST method. *)
+let subscribe_service ~fallback =
+  Eliom_service.post_service
+    ~fallback
+    ~post_params:Eliom_parameter.(
+      string "firstname" ** string "surname"
+      ** string "email"
+      ** string "login"  ** string "password"
+    ) ()
+
+(** Subscribing is an action on the state of the server. *)
+let register_subscribe ~service =
+  Eliom_registration.Action.register
+    ~service
+    (fun () (firstname, (surname, (email, (login, password)))) ->
+      Ocsigen_messages.errlog "subscribe failed";
+      return ()
+    )

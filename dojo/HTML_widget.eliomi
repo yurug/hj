@@ -22,3 +22,32 @@ val show_or_hide:
   -> [ body_content_fun ] elt * [ body_content_fun ] elt
 
 }}
+
+val field :
+    Html5_types.text ->
+    [< string Eliom_parameter.setoneradio ] Eliom_parameter.param_name ->
+    ?fieldname:Html5_types.text ->
+    [< `Button
+     | `Checkbox
+     | `Color
+     | `Date
+     | `Datetime
+     | `Datetime_local
+     | `Email
+     | `File
+     | `Hidden
+     | `Image
+     | `Month
+     | `Number
+     | `Password
+     | `Radio
+     | `Range
+     | `Reset
+     | `Search
+     | `Submit
+     | `Tel
+     | `Text
+     | `Time
+     | `Url
+     | `Week ] ->
+    string -> [> Html5_types.div ] Eliom_content.Html5.D.elt

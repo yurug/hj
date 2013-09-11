@@ -10,6 +10,9 @@ val ressource_root : string
     variable [AUTOTEST] is set. *)
 val autotest_enabled : unit -> bool
 
+(** [number_of_login_attempts_per_second] *)
+val number_of_login_attempts_per_second : int
+
 {shared{
 
 (** Supported human languages in the user interface. *)

@@ -15,10 +15,11 @@ let root = service ~path:[] ~get_params:unit ()
 (** The autotest service. *)
 let autotest = service ~path:["autotest"] ~get_params:unit ()
 
-(*
-  let login  = CORE_user.login_service ~fallback:root
-  let logout = CORE_user.logout_service ~fallback:root
-*)
+let login     = CORE_user.login_service ~fallback:root
+let logout    = CORE_user.logout_service ~fallback:root
+
+let subscribe_form = service ~path:["subscribe"] ~get_params:unit ()
+let subscribe = CORE_user.subscribe_service ~fallback:subscribe_form
 
 (** [page_of k]  is the service that serves the  HTML page of entities
     of kind  [k]. The GET  parameters are encoded  in a suffix  of the

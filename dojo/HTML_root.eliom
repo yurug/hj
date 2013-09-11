@@ -11,8 +11,9 @@ open HTML_app
 
 let () =
   Hackojo_app.register
+    ~secure_session:true
     ~service:HTTP_services.root
     (fun () () ->
-(*    lwt homepage = HTML_user.connect_homepage HTML_services.root in *)
-      return (hackojo_page [])
+      lwt homepage = HTML_user.homepage HTTP_services.root in
+      return (hackojo_page [homepage])
     )

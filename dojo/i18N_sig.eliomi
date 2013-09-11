@@ -33,6 +33,7 @@ sig
   val questions : string
   val username : string
   val password : string
+  val email : string
   val run : string
   val run_all : string
   val description : string
@@ -43,6 +44,9 @@ sig
   val autotesting_title : string
   val consistent : string
   val entity : string
+  val subscribe : string
+  val firstname : string
+  val surname : string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string
@@ -60,6 +64,8 @@ sig
   val saving : string -> string
   val created : string -> string -> string
   val create : string -> string -> string
+  val you_reach_the_maximal_number_of_login_attempts : string
+  val bad_login_password_pair : string
 end
 
 }}
