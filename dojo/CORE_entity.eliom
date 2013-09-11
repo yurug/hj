@@ -50,6 +50,9 @@ type 'a entity = {
   (*   *) reaction    : 'a reaction;
   (*   *) channel     : 'a CORE_client_reaction.c;
   (*   *) push        : 'a -> unit;
+  (*   *) commit_lock : Lwt_mutex.t;
+  (*   *) commit_cond : unit Lwt_condition.t;
+  mutable mode        : [ `Commit | `Observe of int ]
 }
 
 (** Shortcut for the type of entities. *)
@@ -79,10 +82,12 @@ module EntitySet = Hashtbl.Make (struct
     CORE_identifier.compare (identifier x) (identifier y) = 0
 end)
 
-module Watchers = struct
+module IdHashtbl = struct
   include Hashtbl.Make (CORE_identifier)
   let get h k = try Some (find h k) with Not_found -> None
 end
+
+module Watchers = IdHashtbl
 
 type watchers = (dependency_kind * identifier list) EntitySet.t Watchers.t
 
@@ -179,95 +184,212 @@ module Make (I : U) : S with type data = I.data = struct
   (*  Pool  *)
   (* ****** *)
 
-  (** There must be at most one instance of an entity. *)
-  type pool = t Watchers.t
+  (** There must be at most one instance of an entity.
+      We use a pool to look for alive entities. *)
+  let (loaded, load) =
+    let pool = IdHashtbl.create 13 in
+    (IdHashtbl.get pool, IdHashtbl.add pool)
 
-  let create_pool () = Watchers.create 13
-
-  let loaded pool id = Watchers.get pool id
-
-  let load pool id e = Watchers.add pool id e
-
-  let alive pool id reaction =
-    OTD.load id >>= function
-      | `OK description ->
+  (** [awake id reaction] loads the entity named [id] from the
+      file system and instantiate it in memory. *)
+  let wakeup id reaction =
+    OTD.load id >>>= fun description ->
+        (** Notice that the following sequence of operations are
+            is atomic w.r.t. the concurrency model. *)
         let channel, push = CORE_client_reaction.channel () in
-        let e = { description; reaction; state = UpToDate; channel; push } in
-        load pool id e;
+        let commit_lock = Lwt_mutex.create () in
+        let commit_cond = Lwt_condition.create () in
+        let e = {
+          description; reaction; state = UpToDate;
+          channel; push;
+          commit_lock; commit_cond;
+          mode = `Observe 0
+        } in
+        load id e;
         List.iter (register_dependency e) (dependency_image (dependencies e));
         return (`OK e)
-      | `KO (`UndefinedEntity e) ->
-        return (`KO (`UndefinedEntity e))
-      | `KO (`SystemError e) ->
-        return (`KO (`SystemError e))
 
-  let initialize init dependencies reaction id =
+  (** [initialize init deps id] creates the on-the-disk representation
+      of [id] so that it can be loaded afterwards.
+      Precondition: [id] must not already exist. *)
+  let initialize init dependencies id =
     if OTD.exists id then
       return (`KO (`AlreadyExists (path_of_identifier id)))
     else
-      let data = CORE_inmemory_entity.make id dependencies init in
-      OTD.save data
+      OTD.save (CORE_inmemory_entity.make id dependencies init)
 
   (* ************************** *)
   (*  Operations over entities  *)
   (* ************************** *)
 
-  let rec make pool ?init reaction id =
+  (** [make init reaction id] deals with the instanciation of [id] ... *)
+  let rec make ?init ?(reaction = I.react) id =
     match init with
       | Some (init, dependencies) ->
-        initialize init dependencies reaction id
-        >>>= fun () -> make pool reaction id
+        (** This is the first time for [id], we make room for it in
+            the file system ... *)
+        initialize init dependencies id
+        (** ... and we instanciate it from that. *)
+        >>>= fun () -> make ~reaction id
 
       | None ->
-        match loaded pool id with
-          | Some e ->
-            return (`OK e)
+        (** [id] already exists somewhere ...*)
+        match loaded id with
+          (** ... in memory, we return this unique instance. *)
+          | Some e -> return (`OK e)
+          (** ... on the disk, we load it from the file system. *)
+          | None -> wakeup id reaction
 
-          | None ->
-            alive pool id reaction
+  let wait_to_be_observer_free e commit =
+    Lwt_mutex.with_lock e.commit_lock (fun () -> return (
+      (** Set the commit mode, no observers are allowed to run. *)
+      e.mode <- `Commit;
+      (** Nobody is watching! Do your stuff! *)
+      commit ();
+      (** Done! *)
+      e.mode <- `Observe 0
+    ))
 
-  let make =
-    let pool = create_pool () in
-    fun ?init ?(reaction = I.react) -> make pool ?init reaction
-
+  (** [apply deps e c] does the effective change [c] of the
+      content of [e]. *)
   let apply dependencies e c =
+    (** First, we extract the current content. *)
     let content0 = content e.description in
-    lwt content' = c content0 in
-    lwt content  = e.reaction dependencies (Some content') content0 in
-    e.description <- update_content e.description content;
-    return ()
 
+    (** Second, we compute the changed content. *)
+    lwt content' = c content0 in
+
+    (** Third, the entity must react to this new version of the
+        content.  Notice that we globally maintain the invariant that
+        two reactions cannot run concurrently on the same entity. So,
+        during the execution of a reaction the current content of the
+        entity cannot change. *)
+    lwt content  = e.reaction dependencies (Some content') content0 in
+
+    (** Fourth, we commit the new content.
+        This requires to wait for all observers to have finished their
+        work. *)
+    wait_to_be_observer_free e (fun () ->
+      e.description <- update_content e.description content
+    )
+
+  (** [update e] is the process that applies scheduled changes. *)
   let rec update e =
     match e.state with
       | UpToDate ->
         return ()
+
       | Modified (dependencies, queue) ->
         let rec flush () =
-          try
+          try_lwt
             let c = Queue.take queue in
-            apply dependencies e c >> flush ()
+            apply dependencies e c
+            >> flush ()
           with Queue.Empty ->
             return (e.state <- UpToDate)
         in
         flush ()
 
+  (** As long as a change is being applied, we have to
+      push other required changes into a queue. *)
   let now_only_accumulate_changes e =
     e.state <- Modified (empty_dependencies, Queue.create ())
 
   let change e c =
+    (** Shake the reverse dependencies for them to wait for
+        a change of [e]. *)
     propagate_change (identifier e);
     match e.state with
       | UpToDate ->
+        (** Good, the change is applied immediately. *)
         now_only_accumulate_changes e;
-        apply empty_dependencies e c >> update e
+        apply empty_dependencies e c
+        >> update e
 
       | Modified (dependencies, queue) ->
+        (** This change is scheduled for further application. *)
         return (Queue.push c queue)
 
-  let observe e o =
+  let observe (type a) (e : t) (o : data -> a Lwt.t) : a Lwt.t =
+    (** We want the content to be as much fresh as possible. *)
     update e >> (
-      now_only_accumulate_changes e;
-      o (content e.description)
+      (let master = ref false in
+       (if Lwt_mutex.is_locked e.commit_lock then
+          match e.mode with
+            | `Commit ->
+              (** A commit is being applied, wait for it to finish. *)
+              Lwt_condition.wait ~mutex:e.commit_lock e.commit_cond
+
+            | `Observe x -> return (
+              (** An observer already took the mutex. *)
+              assert (x > 1);
+              (** Let us register our presence to him. *)
+              e.mode <- `Observe (x + 1)
+            )
+        else (
+         (** Neither a change nor an observer is working on that entity. *)
+         assert (e.mode = `Observe 0);
+
+         (** Entity, you are now observed. *)
+         e.mode <- `Observe 1;
+
+         (** This observer is called the "master" observer. *)
+         master := true;
+
+         (** The master observer owns the lock and it will release it
+             only when no more observation is required. This model
+             clearly gives priority to observations over changes,
+             which is a good property for user-reactivity.  Yet, we
+             will have to be careful not to totally starve changes
+             processes...
+
+             If I am correct, the fact that an observation first
+             calls [update] for changes to be applied prevents an
+             unbound creation of observers that could blocked the
+             effective application of changes.
+         *)
+         Lwt_mutex.lock e.commit_lock
+       )) >> (
+         (** At this point, the lock is taken and the mode is to observe. *)
+         assert (Lwt_mutex.is_locked e.commit_lock);
+         assert (match e.mode with `Observe _ -> true | _ -> false);
+
+         (** A good place for the observation to take place. *)
+         lwt ret = o (content e.description) in
+
+         (** We are done with this observation. Let us release
+             some time for other processes... *)
+         (if !master then
+
+             (** The master waits for other observers to finish. *)
+             let rec wait_for_other_observers () =
+               match e.mode with
+                 | `Observe 1 -> return (
+                   e.mode <- `Observe 0;
+                   Lwt_mutex.unlock e.commit_lock
+                 )
+                 | `Observe x when x > 1 ->
+                   Lwt_condition.wait e.commit_cond
+                   >> wait_for_other_observers ()
+                 | `Observe x -> assert false
+                 | `Commit -> assert false
+             in
+             wait_for_other_observers ()
+
+          else (
+
+           (** For others, it simply means to quit the master. *)
+           match e.mode with
+             | `Observe x when x > 1 -> return (
+               e.mode <- `Observe (x - 1);
+               Lwt_condition.signal e.commit_cond ()
+             )
+             | `Observe _ -> assert false
+             | `Commit -> assert false
+         )
+         ) >> return ret
+        )
+      )
     )
 
 end
