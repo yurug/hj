@@ -93,8 +93,8 @@ val subscribe_service :
     Eliom_service.service
 
 val register_subscribe :
-  service:(unit, 'a * ('b * ('c * ('d * 'e))),
+  service:(unit, string * (string * ('a * (string * string))),
            [< Eliom_service.internal_service_kind ], [< Eliom_service.suff ],
-           'f, 'g, [ `Registrable ], Eliom_registration.http_service)
+           'b, 'c, [ `Registrable ], Eliom_registration.http_service)
   Eliom_service.service ->
   unit

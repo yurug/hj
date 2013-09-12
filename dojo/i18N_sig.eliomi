@@ -66,6 +66,7 @@ sig
   val create : string -> string -> string
   val you_reach_the_maximal_number_of_login_attempts : string
   val bad_login_password_pair : string
+  val never_connected_before : string
 end
 
 }}

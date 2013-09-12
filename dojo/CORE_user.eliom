@@ -10,6 +10,8 @@ type description = {
     login           : string;
     password_digest : string;
     last_connection : string;
+    firstname       : string;
+    surname         : string;
 } deriving (Json)
 
 include CORE_entity.Make (struct
@@ -84,10 +86,13 @@ let logged_user () =
 
 (** Authentification. *)
 
+let make_password_digest login password =
+  Digest.to_hex (Digest.string (login ^ password))
+
 let authenticate u password =
   user u >>>= fun user ->
   lwt login = login user in
-  let digest = Digest.to_hex (Digest.string (login ^ password)) in
+  let digest = make_password_digest login password in
   lwt expected_digest = password_digest user in
   if (expected_digest <> digest) then
     return (`KO `BadLoginPasswordPair)
@@ -153,6 +158,14 @@ let register_subscribe ~service =
   Eliom_registration.Action.register
     ~service
     (fun () (firstname, (surname, (email, (login, password)))) ->
-      Ocsigen_messages.errlog "subscribe failed";
-      return ()
+      let id = user_id login in
+      let password_digest = make_password_digest login password in
+      let last_connection = I18N.String.never_connected_before in
+      let init =
+        ({ login; password_digest; last_connection; firstname; surname },
+         CORE_inmemory_entity.empty_dependencies)
+      in
+      make ~init id >>= function
+        | `OK e -> Ocsigen_messages.errlog "subscribe OK!"; return ()
+        | `KO e -> Ocsigen_messages.errlog ("subscribe KO!: " ^ CORE_error_messages.string_of_error e); return ()
     )

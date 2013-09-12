@@ -168,6 +168,9 @@ module Fr : I18N_sig.Text = struct
   let bad_login_password_pair =
     "Le login ou le mot de passe est invalide."
 
+  let never_connected_before =
+    "Jamais connecté auparavant."
+
 end
 
 module String = (val
