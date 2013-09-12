@@ -85,27 +85,28 @@ let on_path f ?(relative = true) p =
   f p ps fname where
 
 let init_root () =
-  let create_dir_if_absent dir lraise =
-    let dir = string_of_path (root true dir) in
+  let create_dir_if_absent relative dir lraise =
+    let dir = string_of_path (root relative dir) in
     blind_exec (!% (ressource_root @@ (Printf.sprintf "test -d %s" dir)))
     >>= function
       | Unix.WEXITED 0 -> return ()
       | _ -> mkdir dir lraise
   in
-  let under_git lraise =
-    success ~lraise (!% (ressource_root @@ "test -d .git"))
+  let under_git _ =
+    blind_exec (!% (ressource_root @@ "test -d .git"))
   in
-  let git_init lraise =
-    success ~lraise (!% (ressource_root @@ "git init"))
+  let git_init _ =
+    blind_exec (!% (ressource_root @@ "git init"))
   in
   ltry (
-    !>> under_git
+    !>> create_dir_if_absent false (path_of_string ressource_root)
+    >>> under_git
     >-> (function
-      | true -> lreturn true
-      | false -> git_init
+      | (Unix.WEXITED 0) as x -> lreturn x
+      | _ -> git_init
     )
-    >>> create_dir_if_absent tests_path
-    >>> create_dir_if_absent users_path
+    >>> create_dir_if_absent true tests_path
+    >>> create_dir_if_absent true users_path
     >>> lreturn ()
   )
 
