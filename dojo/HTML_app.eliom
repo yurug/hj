@@ -27,20 +27,23 @@ let get_img fname =
 let logo =
   get_img "logo.png"
 
-let about =
-  a ~a:[a_class ["menu_button"]]
-    ~service:HTTP_services.about
-    [pcdata I18N.(cap String.about)]
-    ()
+let menu_button service label x =
+  a ~a:[a_class ["menu_button"]] ~service [pcdata label] x
+
+let about = menu_button HTTP_services.about I18N.(cap String.about) ()
+
+let home = menu_button HTTP_services.root I18N.(cap String.home) ()
 
 let user_menu =
   Eliom_reference.eref
     ~scope:Eliom_common.default_session_scope
-    [ about ]
+    [ home; about ]
 
 let menu () =
   lwt menu = Eliom_reference.get user_menu in
-  return (div ~a:[a_id "menu"] (menu @ [ about ]))
+  return (div ~a:[a_id "menu"] (
+    home :: menu @ [ about ])
+  )
 
 let set_menu buttons =
   Eliom_reference.set user_menu buttons

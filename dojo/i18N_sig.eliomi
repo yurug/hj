@@ -49,6 +49,7 @@ sig
   val surname : string
   val about : string
   val home : string
+  val logout : string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string

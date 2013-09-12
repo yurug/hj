@@ -58,17 +58,17 @@ val register_login :
   unit
 
 val logout_service :
-  fallback:('a, unit,
-            [ `Attached of
-                ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
-                  Eliom_service.a_s ],
-            [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ], 'd)
-  Eliom_service.service ->
-  ('a, unit,
-   [> `Attached of
-       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
-         Eliom_service.a_s ],
-   'b, 'c, unit, [< Eliom_service.registrable > `Registrable ], 'e)
+   fallback:(unit, unit,
+              [ `Attached of
+                  ([ `Internal of [ `Service ] ], [ `Get ]) Eliom_service.a_s ],
+              [ `WithoutSuffix ], unit, unit, [< Eliom_service.registrable ],
+              'a)
+             Eliom_service.service ->
+    (unit, unit,
+     [> `Attached of
+          ([> `Internal of [> `Coservice ] ], [> `Get ]) Eliom_service.a_s ],
+     [ `WithoutSuffix ], unit, unit,
+     [< Eliom_service.registrable > `Registrable ], 'b)
     Eliom_service.service
 
 val register_logout :

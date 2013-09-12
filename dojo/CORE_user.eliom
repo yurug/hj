@@ -127,9 +127,9 @@ let register_login ~service =
 (** Disconnection *)
 
 let logout_service ~fallback =
-  Eliom_service.post_service
+  Eliom_service.coservice
     ~fallback
-    ~post_params:Eliom_parameter.unit
+    ~get_params:Eliom_parameter.unit
     ()
 
 (** [disconnect] is an action on the state of the server
@@ -139,7 +139,8 @@ let register_logout ~service =
   Eliom_registration.Action.register
     ~service
     (fun () () ->
-      Eliom_reference.set username `NotLogged
+      Eliom_state.discard ~scope:Eliom_common.default_session_scope ()
+      >> Eliom_reference.set username `NotLogged
     )
 
 (** Subscription. *)

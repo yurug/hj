@@ -39,7 +39,7 @@ val login :
 val logout :
   (unit, unit,
    [> `Attached of
-       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+       ([> `Internal of [ `Coservice | `Service ] ], [> `Get ])
          Eliom_service.a_s ],
    [ `WithoutSuffix ], unit, unit,
    [< Eliom_service.registrable > `Registrable ], 'a)

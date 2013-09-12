@@ -60,14 +60,11 @@ let () =
     user_profile
 
 let user_menu u =
-  let button service label x =
-    a ~a:[a_class ["menu_button"]] ~service [pcdata label] x
-  in
   lwt firstname = firstname u in
-  return [
-    button HTTP_services.root I18N.(cap String.home) ();
-    button page_of firstname (identifier_to_string_list (identifier u))
-  ]
+  return I18N.(HTTP_services.([
+    menu_button page_of firstname (identifier_to_string_list (identifier u));
+    menu_button logout (cap String.logout) ();
+  ]))
 
 (** Everybody must fill the connection box if he is not already
     connected. Once connected, it will be redirected to his

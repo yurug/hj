@@ -97,6 +97,8 @@ module Fr : I18N_sig.Text = struct
 
   let home = "accueil"
 
+  let logout = "déconnecte"
+
   let new_submission = "Nouvelle soumission :"
 
   let sorry_autotesting_is_disabled =

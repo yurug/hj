@@ -19,3 +19,12 @@ val hackojo_page : [ body_content_fun ] elt list -> html elt Lwt.t
 
 (** [set_menu buttons] customizes the buttons in the menu bar. *)
 val set_menu : [ div_content_fun ] elt list -> unit Lwt.t
+
+(** [menu_button service label x] produces a button that applies [service]
+    to [x] when clicked. *)
+val menu_button :
+  ('a, unit, [< Eliom_service.get_service_kind ], [< Eliom_service.suff ],
+   'b, unit, [< Eliom_service.registrable ], 'c)
+    Eliom_service.service ->
+  string ->
+  'a -> [> [> `PCDATA ] Html5_types.a ] Eliom_content_core.Html5.elt
