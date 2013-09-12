@@ -271,7 +271,8 @@ module Make (I : U) : S with type data = I.data = struct
         This requires to wait for all observers to have finished their
         work. *)
     wait_to_be_observer_free e (fun () ->
-      e.description <- update_content e.description content
+      e.description <- update_content e.description content;
+      OTD.save e.description
     )
 
   (** [update e] is the process that applies scheduled changes. *)
