@@ -4,6 +4,7 @@ open Lwt
 
 open CORE_entity
 open CORE_identifier
+open CORE_error_messages
 open COMMON_pervasives
 
 type description = {
@@ -157,12 +158,8 @@ let subscribe_service ~fallback =
     ) ()
 
 (** Subscribing is an action on the state of the server. *)
-(* let validate_subscribe ~service ~then_service report =
-  match report with
-    | `OK _ -> service
-    | `KO _ -> then_service *)
 
-let register_subscribe ~service = (* ~service ~then_service = *)
+let register_subscribe out_by ~service =
   Eliom_registration.Action.register
     ~service
     (fun () (firstname, (surname, (email, (login, password)))) ->
@@ -174,6 +171,8 @@ let register_subscribe ~service = (* ~service ~then_service = *)
          CORE_inmemory_entity.empty_dependencies)
       in
       make ~init id >>= function
-        | `OK e -> Ocsigen_messages.errlog "subscribe OK!"; return ()
-        | `KO e -> Ocsigen_messages.errlog ("subscribe KO!: " ^ CORE_error_messages.string_of_error e); return ()
+        | `OK e ->
+          Eliom_reference.set username (`Logged (identifier e))
+          >> out_by (`Right ())
+        | `KO e -> out_by (`Left (Some (string_of_error e)))
     )

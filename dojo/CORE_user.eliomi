@@ -99,6 +99,7 @@ val subscribe_service :
     Eliom_service.service
 
 val register_subscribe :
+  ([> `Left of string option | `Right of unit ] -> unit Lwt.t) ->
   service:(unit, string * (string * ('a * (string * string))),
            [< Eliom_service.internal_service_kind ], [< Eliom_service.suff ],
            'b, 'c, [ `Registrable ], Eliom_registration.http_service)

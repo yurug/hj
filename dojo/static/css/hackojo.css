@@ -225,6 +225,11 @@ h1 {
     width: 30em;
 }
 
+#subscribe_report {
+    padding-top: 1em;
+    color: red;
+}
+
 #subscribe_form label {
     padding-right: 25em;
     font-weight:bold;
