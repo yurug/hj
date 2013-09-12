@@ -2,7 +2,13 @@
 
 {shared{
 
-let cap = String.capitalize
+let cap s =
+  if s.[0] = '\195' && s.[1] = '\160' then (
+    let s' = String.copy s in
+    s'.[1] <- '\128';
+    s'
+  )
+  else String.capitalize s
 
 module Fr : I18N_sig.Text = struct
 
@@ -86,6 +92,10 @@ module Fr : I18N_sig.Text = struct
   let firstname = "prénom"
 
   let surname = "nom"
+
+  let about = "à propos"
+
+  let home = "accueil"
 
   let new_submission = "Nouvelle soumission :"
 

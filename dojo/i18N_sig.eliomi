@@ -47,6 +47,8 @@ sig
   val subscribe : string
   val firstname : string
   val surname : string
+  val about : string
+  val home : string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string

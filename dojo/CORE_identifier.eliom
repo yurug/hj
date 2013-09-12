@@ -60,6 +60,8 @@ let string_of_identifier = string_of_path
 
 let identifier_of_string = path_of_string
 
+let identifier_to_string_list x = x
+
 let compare = pcompare
 
 let equal x y = (compare x y = 0)
@@ -98,6 +100,11 @@ let rec suffix prefix p =
   | [], p -> p
   | p :: ps, x :: xs when p = x -> suffix ps xs
   | _, _ -> raise Not_found
+
+let is_prefix prefix p =
+  try
+    ignore (suffix prefix p); true
+  with Not_found -> false
 
 let suffix prefix p =
   try

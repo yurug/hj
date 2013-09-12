@@ -6,9 +6,11 @@ open Lwt
 open Eliom_content
 open Html5.D
 
+open HTTP_services
 open HTML_app
 open HTML_widget
 open CORE_user
+open CORE_identifier
 open I18N
 
 let homepage_div id =
@@ -16,8 +18,7 @@ let homepage_div id =
   | `NotLogged | `FailedLogin ->
     return (div [p [pcdata I18N.String.please_login]])
   | `Logged u ->
-    lwt username = CORE_user.login u in
-    return (div [p [pcdata ("Hello " ^ username)]])
+    return (div [])
   )
 
 let _ =
@@ -47,8 +48,26 @@ let () =
     ~secure_session:true
     ~service:HTTP_services.subscribe_form
     (fun () () ->
-      return (hackojo_page [subscribe_div ()])
+      hackojo_page [subscribe_div ()]
     )
+
+let user_profile id =
+  return (div [])
+
+let () =
+  HTML_entity.register_page_maker
+    (fun id -> CORE_identifier.(is_prefix (make [label "users"]) id))
+    user_profile
+
+let user_menu u =
+  let button service label x =
+    a ~a:[a_class ["menu_button"]] ~service [pcdata label] x
+  in
+  lwt firstname = firstname u in
+  return [
+    button HTTP_services.root I18N.(cap String.home) ();
+    button page_of firstname (identifier_to_string_list (identifier u))
+  ]
 
 (** Everybody must fill the connection box if he is not already
     connected. Once connected, it will be redirected to his
@@ -79,5 +98,6 @@ let homepage root_service =
     | `FailedLogin ->
       return (connection_box ~message:I18N.String.bad_login_password_pair ())
     | `Logged u ->
-      homepage_div u
+      lwt menu = user_menu u in
+      HTML_app.set_menu menu >> homepage_div u
   )

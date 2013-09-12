@@ -14,6 +14,15 @@ val root :
    [< Eliom_service.registrable > `Registrable ], 'a)
     Eliom_service.service
 
+(** The about service. *)
+val about :
+  (unit, unit,
+   [> `Attached of
+       ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+   [ `WithoutSuffix ], unit, unit,
+   [< Eliom_service.registrable > `Registrable ], 'a)
+    Eliom_service.service
+
 (** The login service. *)
 val login :
   (unit, string * string,
@@ -38,25 +47,25 @@ val logout :
 
 (** The subscription form and service. *)
 val subscribe :
-    (unit, string * (string * (string * (string * string))),
-     [> `Attached of
-          ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
-          Eliom_service.a_s ],
-     [ `WithoutSuffix ], unit,
-     [ `One of string ] Eliom_parameter.param_name *
+  (unit, string * (string * (string * (string * string))),
+   [> `Attached of
+       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+         Eliom_service.a_s ],
+   [ `WithoutSuffix ], unit,
+   [ `One of string ] Eliom_parameter.param_name *
      ([ `One of string ] Eliom_parameter.param_name *
-      ([ `One of string ] Eliom_parameter.param_name *
-       ([ `One of string ] Eliom_parameter.param_name *
-        [ `One of string ] Eliom_parameter.param_name))),
-     [< Eliom_service.registrable > `Registrable ], 'a)
+         ([ `One of string ] Eliom_parameter.param_name *
+             ([ `One of string ] Eliom_parameter.param_name *
+                 [ `One of string ] Eliom_parameter.param_name))),
+   [< Eliom_service.registrable > `Registrable ], 'a)
     Eliom_service.service
 
 val subscribe_form :
-    (unit, unit,
-     [> `Attached of
-          ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
-     [ `WithoutSuffix ], unit, unit,
-     [< Eliom_service.registrable > `Registrable ], 'a)
+  (unit, unit,
+   [> `Attached of
+       ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+   [ `WithoutSuffix ], unit, unit,
+   [< Eliom_service.registrable > `Registrable ], 'a)
     Eliom_service.service
 
 (** The autotest service. *)
@@ -80,4 +89,14 @@ val redirect_service :
        ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
    [ `WithoutSuffix ], unit, unit,
    [< Eliom_service.registrable > `Registrable ], 'c)
+    Eliom_service.service
+
+(** [page_of] is a service to get entities pages. *)
+val page_of :
+  (string list, unit,
+   [> `Attached of
+       ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+   [ `WithSuffix ],
+   [ `One of string ] Eliom_parameter.param_name Eliom_parameter.listnames,
+   unit, [< Eliom_service.registrable > `Registrable ], 'a)
     Eliom_service.service

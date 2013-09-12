@@ -58,6 +58,7 @@ val path_of_string : string -> path
 val string_of_path : path -> string
 val identifier_of_string : string -> identifier
 val string_of_identifier : identifier -> string
+val identifier_to_string_list : identifier -> string list
 
 module Map : Map.S with type key = identifier
 
@@ -70,6 +71,9 @@ val lwt_map_fold
 module Set : Set.S with type elt = identifier
 
 type identifiers = Set.t
+
+(** [is_prefix p id] returns [true] if [p] is a prefix of [id]. *)
+val is_prefix : path -> identifier -> bool
 
 (** [suffix prefix path] removes the [prefix] of [path].
     Raise InvalidPrefix if [prefix] is not a prefix of [path]. *)

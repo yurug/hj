@@ -24,6 +24,8 @@ end)
 
 let password_digest e = observe e (fun u -> return u.password_digest)
 let login           e = observe e (fun u -> return u.login)
+let firstname       e = observe e (fun u -> return u.firstname)
+let surname         e = observe e (fun u -> return u.surname)
 let last_connection e = observe e (fun u -> return u.last_connection)
 
 (** By convention, users are stored in the "users" folder. *)
@@ -154,7 +156,12 @@ let subscribe_service ~fallback =
     ) ()
 
 (** Subscribing is an action on the state of the server. *)
-let register_subscribe ~service =
+(* let validate_subscribe ~service ~then_service report =
+  match report with
+    | `OK _ -> service
+    | `KO _ -> then_service *)
+
+let register_subscribe ~service = (* ~service ~then_service = *)
   Eliom_registration.Action.register
     ~service
     (fun () (firstname, (surname, (email, (login, password)))) ->

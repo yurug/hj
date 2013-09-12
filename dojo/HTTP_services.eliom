@@ -21,11 +21,13 @@ let logout    = CORE_user.logout_service ~fallback:root
 let subscribe_form = service ~path:["subscribe"] ~get_params:unit ()
 let subscribe = CORE_user.subscribe_service ~fallback:subscribe_form
 
-(** [page_of k]  is the service that serves the  HTML page of entities
-    of kind  [k]. The GET  parameters are encoded  in a suffix  of the
-    URL.  For  instance,  the  page  of  user  "luke"  is  located  at
+(** [page_of]  is the service that serves the  HTML page of entities.
+    The GET  parameters are encoded  in a suffix  of the
+    URL.  For  instance,  the  page  of  "users/luke"  is  located  at
     [users/luke]. *)
-let page_of k = service ~path:[k] ~get_params:(suffix (string "id")) ()
+let page_of = service ~path:[] ~get_params:(suffix (list "id" (string "label"))) ()
+
+let about = service ~path:["about"] ~get_params:unit ()
 
 (*
   let exercise = page_of "exercice"

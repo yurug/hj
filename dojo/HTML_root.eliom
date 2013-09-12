@@ -15,5 +15,5 @@ let () =
     ~service:HTTP_services.root
     (fun () () ->
       lwt homepage = HTML_user.homepage HTTP_services.root in
-      return (hackojo_page [homepage])
+      hackojo_page [homepage]
     )

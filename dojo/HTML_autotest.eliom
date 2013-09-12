@@ -142,5 +142,5 @@ let () =
     ~service:HTTP_services.autotest
     (fun () () ->
       lwt body = contents () in
-      return (hackojo_page body)
+      hackojo_page body
     )

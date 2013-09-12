@@ -27,18 +27,43 @@ let get_img fname =
 let logo =
   get_img "logo.png"
 
-let bar =
-  div ~a:[a_id "bar"] [
-    logo;
-  ]
+let about =
+  a ~a:[a_class ["menu_button"]]
+    ~service:HTTP_services.about
+    [pcdata I18N.(cap String.about)]
+    ()
+
+let user_menu =
+  Eliom_reference.eref
+    ~scope:Eliom_common.default_session_scope
+    [ about ]
+
+let menu () =
+  lwt menu = Eliom_reference.get user_menu in
+  return (div ~a:[a_id "menu"] (menu @ [ about ]))
+
+let set_menu buttons =
+  Eliom_reference.set user_menu buttons
+
+let bar () =
+  lwt menu = menu () in
+  return (
+    div ~a:[a_id "bar"] [
+      logo;
+      menu
+    ]
+  )
 
 let hackojo_page body_contents =
-  Eliom_tools.F.html
-    ~title:I18N.String.the_hacking_dojo
-    ~css:[["css";"hackojo.css"]]
-    (body ~a:[a_id "global"]
-       (bar
-        :: [
-          div ~a:[a_id "bar_space"] [];
-          div ~a:[a_id "contents"] body_contents
-        ]))
+  lwt bar = bar () in
+  return (
+    Eliom_tools.F.html
+      ~title:I18N.String.the_hacking_dojo
+      ~css:[["css";"hackojo.css"]]
+      (body ~a:[a_id "global"]
+         (bar
+          :: [
+            div ~a:[a_id "bar_space"] [];
+            div ~a:[a_id "contents"] body_contents
+          ]))
+  )
