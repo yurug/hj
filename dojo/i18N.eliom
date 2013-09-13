@@ -21,7 +21,7 @@ module Fr : I18N_sig.Text = struct
   let mark' things =
     form things "" "s"
 
-  let the_hacking_dojo = "Le Dojo de la Programmation"
+  let the_hacking_dojo = "Le Dojo de Programmation"
 
   let assignments = "exercices"
 
