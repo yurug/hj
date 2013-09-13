@@ -23,7 +23,7 @@ let redirect_service s x =
 
 let conditional_redirect_service default ls rs =
   let r =
-    Eliom_reference.eref ~scope:Eliom_common.default_session_scope default
+    Eliom_reference.eref ~scope:Eliom_common.default_process_scope default
   in
   (Eliom_registration.Redirection.register_service
     ~path:["redir"]
