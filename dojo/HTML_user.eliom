@@ -21,7 +21,7 @@ let homepage_div id =
     return (div [])
   )
 
-let subscribe_then_root, subscribe_out =
+let subscribe_then_root, subscribe_out, subscribe_result =
   HTTP_services.subscribe HTTP_services.root
 
 let _ =
@@ -30,12 +30,16 @@ let _ =
   register_subscribe subscribe_out ~service:subscribe_then_root
 
 (** Subscription form. *)
-let subscribe_div report =
+let subscribe_div () =
   logged_user () >>= (function
     | `NotLogged | `FailedLogin ->
-      let report_div = match report with
-        | None -> []
-        | Some s -> [ div ~a:[a_id "subscribe_report"] [pcdata s] ]
+      lwt report_div = subscribe_result () >>= function
+        | `Right _ ->
+           assert false
+        | `Left None ->
+          return []
+        | `Left (Some s) ->
+          return [ div ~a:[a_id "subscribe_report"] [pcdata s] ]
       in
       return (div ~a:[a_id "subscribe_box"] ([
         post_form
@@ -63,8 +67,8 @@ let () =
   Hackojo_app.register
     ~secure_session:true
     ~service:HTTP_services.subscribe_form
-    (fun report () ->
-      lwt div = subscribe_div report in
+    (fun () () ->
+      lwt div = subscribe_div () in
       hackojo_page [div]
     )
 
@@ -100,7 +104,7 @@ let homepage root_service =
             div ~a:[a_id "connection_box_actions"] [
               string_input ~a:[a_id "connection_box_signin"]
                 ~input_type:`Submit ~value:I18N.String.connect ();
-              a HTTP_services.subscribe_form [pcdata I18N.String.subscribe ] None;
+              a HTTP_services.subscribe_form [pcdata I18N.String.subscribe ] ();
             ];
             div ~a:[a_id "connection_box_message"] [pcdata message]
           ]]) ()

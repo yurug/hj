@@ -30,9 +30,11 @@ let conditional_redirect_service default ls rs =
     ~get_params:unit
     (fun () () ->
       Eliom_reference.get r >>= function
-        | `Left x -> return (preapply ls x)
-        | `Right x -> return (preapply rs x)
-    ), (Eliom_reference.set r))
+        | `Left _ -> return ls
+        | `Right _ -> return rs
+    ),
+   (Eliom_reference.set r),
+   (fun () -> Eliom_reference.get r))
 
 (** The root service. *)
 let root = service ~path:[] ~get_params:unit ()
@@ -43,14 +45,13 @@ let autotest = service ~path:["autotest"] ~get_params:unit ()
 let login     = CORE_user.login_service ~fallback:root
 let logout    = CORE_user.logout_service ~fallback:root
 
-let subscribe_form =
-  service ~path:["subscribe"] ~get_params:(opt (string "report")) ()
+let subscribe_form = service ~path:["subscribe"] ~get_params:unit ()
 
 let subscribe and_then =
-  let fallback, decide =
+  let fallback, decide, result =
     conditional_redirect_service (`Left None) subscribe_form and_then
   in
-  (CORE_user.subscribe_service ~fallback, decide)
+  (CORE_user.subscribe_service ~fallback, decide, result)
 
 (** [page_of]  is the service that serves the  HTML page of entities.
     The GET  parameters are encoded  in a suffix  of the
