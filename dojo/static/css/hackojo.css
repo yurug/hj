@@ -252,7 +252,9 @@ h1 {
 }
 
 #subscribe_form span {
-    font-style: italic;
+    padding-left: 1em;
+    font-weight: bold;
+    font-size: 0.7em;
 }
 
 #subscribe_form_submit {
