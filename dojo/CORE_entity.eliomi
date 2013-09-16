@@ -79,7 +79,7 @@ module type S = sig
       state of the system.
   *)
   val make:
-    ?init:(data * dependencies)
+    ?init:(data * dependencies * CORE_property.set)
     -> ?reaction:data reaction
     -> CORE_identifier.t ->
     [ `OK of t

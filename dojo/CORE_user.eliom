@@ -168,7 +168,8 @@ let register_subscribe out_by ~service =
       let last_connection = I18N.String.never_connected_before in
       let init =
         ({ login; password_digest; last_connection; firstname; surname },
-         CORE_inmemory_entity.empty_dependencies)
+         CORE_inmemory_entity.empty_dependencies,
+         CORE_property.empty)
       in
       make ~init id >>= function
         | `OK e ->

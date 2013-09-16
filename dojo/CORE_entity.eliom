@@ -141,7 +141,7 @@ module type S = sig
   type data
   type t = data entity
   val make:
-    ?init:(data * dependencies)
+    ?init:(data * dependencies * CORE_property.set)
     -> ?reaction:(data reaction)
     -> CORE_identifier.t ->
     [ `OK of t
@@ -213,11 +213,11 @@ module Make (I : U) : S with type data = I.data = struct
   (** [initialize init deps id] creates the on-the-disk representation
       of [id] so that it can be loaded afterwards.
       Precondition: [id] must not already exist. *)
-  let initialize init dependencies id =
+  let initialize init dependencies properties id =
     if OTD.exists id then
       return (`KO (`AlreadyExists (path_of_identifier id)))
     else
-      OTD.save (CORE_inmemory_entity.make id dependencies init)
+      OTD.save (CORE_inmemory_entity.make id dependencies properties init)
 
   (* ************************** *)
   (*  Operations over entities  *)
@@ -226,10 +226,10 @@ module Make (I : U) : S with type data = I.data = struct
   (** [make init reaction id] deals with the instanciation of [id] ... *)
   let rec make ?init ?(reaction = I.react) id =
     match init with
-      | Some (init, dependencies) ->
+      | Some (init, dependencies, properties) ->
         (** This is the first time for [id], we make room for it in
             the file system ... *)
-        initialize init dependencies id
+        initialize init dependencies properties id
         (** ... and we instanciate it from that. *)
         >>>= fun () -> make ~reaction id
 
@@ -443,11 +443,14 @@ module Tests = struct
 
   module E = DummyEntity
 
-  let create_entity ?(dependencies = empty_dependencies) update =
+  let create_entity
+      ?(dependencies = empty_dependencies)
+      ?(properties = CORE_property.empty)
+      update =
     let dummy = CORE_identifier.fresh CORE_identifier.tests_path "dummy" in
     let sdummy = string_of_identifier dummy in
     update (I18N.String.(create entity sdummy));
-    E.make ~init:({ log = []; count = 0 }, dependencies) dummy
+    E.make ~init:({ log = []; count = 0 }, dependencies, properties) dummy
     >>= function
       | `OK e ->
         update (I18N.String.(created entity sdummy));

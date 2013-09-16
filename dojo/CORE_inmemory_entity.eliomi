@@ -19,7 +19,7 @@ type dependencies
 
 (** [make id ds c] returns an entity description for entity
     [id] with dependencies [ds] and content [c]. *)
-val make : identifier -> dependencies -> 'a -> 'a meta
+val make : identifier -> dependencies -> CORE_property.set -> 'a -> 'a meta
 
 (** [identifier m] returns the identifier of [m]. *)
 val identifier : 'a meta -> identifier
@@ -27,9 +27,16 @@ val identifier : 'a meta -> identifier
 (** [content m] returns the content of [m]. *)
 val content : 'a meta -> 'a
 
+(** [properties m] returns the properties of [m]. *)
+val properties : 'a meta -> CORE_property.set
+
 (** [update_content m c] returns a new version of [m]
     such that [content m = c]. *)
 val update_content : 'a meta -> 'a -> 'a meta
+
+(** [update_properties m p] returns a new version of [m]
+    such that [properties m = p]. *)
+val update_properties : 'a meta -> CORE_property.set -> 'a meta
 
 (** [dependencies m] returns the dependencies of [m]. *)
 val dependencies : 'a meta -> dependencies

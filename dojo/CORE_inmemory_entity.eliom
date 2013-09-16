@@ -30,17 +30,23 @@ let of_list x = x
 let to_list x = x
 
 type 'a meta = {
-  identifier   : CORE_identifier.t;
-  dependencies : dependencies;
+  identifier      : CORE_identifier.t;
+  dependencies    : dependencies;
+  properties      : CORE_property.set;
   content         : 'a;
 } deriving (Json)
 
-let make identifier dependencies content = { identifier; dependencies; content }
+let make identifier dependencies properties content =
+  { identifier; dependencies; content; properties }
 
 let identifier e = e.identifier
 
 let dependencies e = e.dependencies
 
+let properties e = e.properties
+
 let content e = e.content
 
 let update_content e c = { e with content = c }
+
+let update_properties e s = { e with properties = s }
