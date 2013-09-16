@@ -183,6 +183,9 @@ module Fr : I18N_sig.Text = struct
   let never_connected_before =
     "Jamais connecté auparavant."
 
+  let this_field_must_not_be_empty =
+    "Ce champ ne peut pas être vide."
+
 end
 
 module String = (val

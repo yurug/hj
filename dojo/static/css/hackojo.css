@@ -251,6 +251,10 @@ h1 {
     box-shadow: 0 0 10px #fafafa;
 }
 
+#subscribe_form span {
+    font-style: italic;
+}
+
 #subscribe_form_submit {
     margin-top: 1em;
     font-size:0.6em;

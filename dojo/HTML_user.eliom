@@ -41,22 +41,26 @@ let subscribe_div () =
         | `Left (Some s) ->
           return [ div ~a:[a_id "subscribe_report"] [pcdata s] ]
       in
-      return (div ~a:[a_id "subscribe_box"] ([
+      let text_field id name = field id ~validator:nonempty_field name `Text in
+      let mail_field id name = field id name `Email in
+      let password_field id name = field id name `Password in
+      return (div ~a:[a_id "subscribe_box"] (I18N.(String.([
         post_form
           ~service:subscribe_then_root
-          (fun (fn, (sn, (email, (login, p)))) -> let f = field in [
+          (fun (fn, (sn, (email, (login, p)))) -> [
             div ~a:[a_id "subscribe_form"] [
-              f "subscribe_form_firstname" fn `Text I18N.(cap String.firstname);
-              f "subscribe_form_surname" sn `Text I18N.(cap String.surname);
-              f "subscribe_form_email" email `Email I18N.(cap String.email);
-              f "subscribe_form_login" login `Text I18N.(cap String.username);
-              f "subscribe_form_password" p `Password I18N.(cap String.password)
+              text_field "subscribe_form_firstname" fn   (cap String.firstname);
+              text_field "subscribe_form_surname"   sn    (cap String.surname);
+              mail_field "subscribe_form_email"     email (cap String.email);
+              text_field "subscribe_form_login"     login (cap String.username);
+              password_field "subscribe_form_password"  p (cap String.password)
             ];
-            string_input ~a:[a_id "subscribe_form_submit"]
+            string_input
+              ~a:[a_id "subscribe_form_submit"]
               ~input_type:`Submit
               ~value:I18N.String.connect ()
           ]) ();
-      ] @ report_div))
+      ] @ report_div))))
     | `Logged _ ->
       let root = HTTP_services.root in
       ignore {unit Lwt.t{ Eliom_client.change_page ~service:%root () () }};

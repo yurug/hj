@@ -63,9 +63,60 @@ let show_or_hide ?(start_shown=true) (e : [ body_content_fun ] elt) =
 
 }}
 
-let field id name ?fieldname input_type text =
-  let input_a = match fieldname with None -> [] | Some id -> [ a_id id ] in
+let always_valid : (string -> string option) client_value =
+  {{ fun (_ : string) -> (None : string option) }}
+
+let nonempty_field : (string -> string option) client_value =
+  {{ fun (s : string) ->
+    if String.length s = 0 then
+      Some I18N.String.this_field_must_not_be_empty
+    else
+      None
+   }}
+
+let validate_input validator id =
+  let message = span [] in
+  let validator =
+    {{
+      let open Eliom_content.Html5 in
+      let nb = ref 0 in
+      fun _ ->
+        incr nb;
+        let nb_now = !nb in
+        let input_elt = Id.get_element %id in
+        let input_value = (To_dom.of_input input_elt)##value in
+        Lwt.async (fun () -> Lwt_js.sleep 0.5 >>
+          if !nb = nb_now then
+            let v =
+              match %validator (Js.to_string input_value) with
+                | None -> "✓ OK"
+                | Some reason -> "❌ " ^ reason
+            in
+            Lwt.return (
+              Manip.replaceAllChild %message [pcdata v]
+            ) else Lwt.return ()
+        )
+   }}
+  in
+  ([ a_oninput validator; a_onchange validator ], message)
+
+let field
+    id name
+    ?(validator = always_valid)
+    ?(fieldname : [ `Input ] Id.id option) input_type text =
+  let input_id : [> `Input ] Id.id =
+    match fieldname with
+      | None -> Id.new_elt_id ~global:true ()
+      | Some id -> (id :> [ `Input ] Id.id)
+  in
+  let input_validator, message = validate_input validator input_id in
+  let input =
+    Id.create_named_elt input_id  (
+      string_input ~a:input_validator ~input_type ~name ()
+    )
+  in
   div ~a:[a_id id] [
     label ~a:[a_for name] [ pcdata text ];
-    string_input ~a:input_a ~input_type ~name ()
+    (input :> [ div_content ] elt);
+    message
   ]
