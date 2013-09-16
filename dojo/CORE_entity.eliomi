@@ -61,6 +61,7 @@ module type S = sig
   (** The operations are indexed by the type of the content. *)
   type data
   type t = data entity
+  type reference deriving (Json)
 
   (** [make ?init reaction id] returns a representation of the entity
       [id] in memory whose behavior is defined by [reaction].
@@ -114,6 +115,8 @@ module type S = sig
   *)
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
 
+  (** [refer_to x] creates a reference to [t]. *)
+  val refer_to : t -> reference
 end
 
 (** The following module interface has to be implemented to instantiate

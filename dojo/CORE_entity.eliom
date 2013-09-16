@@ -140,6 +140,7 @@ let channel e = e.channel
 module type S = sig
   type data
   type t = data entity
+  type reference deriving (Json)
   val make:
     ?init:(data * dependencies * CORE_property.set)
     -> ?reaction:(data reaction)
@@ -154,6 +155,7 @@ module type S = sig
   val identifier : t -> CORE_identifier.t
   val change  : t -> data change -> unit Lwt.t
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
+  val refer_to : t -> reference
 end
 
 (** The client must provide the following information
@@ -176,6 +178,8 @@ module Make (I : U) : S with type data = I.data = struct
   type data = I.data
 
   type t = data entity
+
+  type reference = CORE_identifier.identifier deriving (Json)
 
   (** The following module implements on-the-disk replication
       of entity descriptors. *)
@@ -395,6 +399,8 @@ module Make (I : U) : S with type data = I.data = struct
     )
 
   let identifier = identifier
+
+  let refer_to = identifier
 
 end
 

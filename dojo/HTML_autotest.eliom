@@ -38,7 +38,7 @@ let show d s l =
   P3 (
     span ~a:[a_class ["report"]] [pcdata d],
     span ~a:[a_class ("report" :: hl)] [pcdata (string_of_test_state s)],
-    div (List.map (fun s -> p [pcdata s]) (CORE_document.lines l))
+    div (List.map (fun s -> p [pcdata s]) (CORE_document.Text.lines l))
   )
 
 }}
@@ -62,13 +62,13 @@ let test_entry t =
       be read later on using a freshly created reading service.
   *)
   let m = {test_state Lwt_mvar.t { Lwt_mvar.create_empty () }} in
-  let initial_report = show (description t) Waiting CORE_document.empty_text in
+  let initial_report = show (description t) Waiting CORE_document.Text.empty in
   lwt ((P3 (description, status, details))) =
     async_elts initial_report run_test (fun c ->
       {reaction {HTML_reactive.react %c (
-        let log = ref CORE_document.empty_text in
+        let log = ref CORE_document.Text.empty in
         fun (description, value) ->
-          log := CORE_document.add_line !log (string_of_test_state value);
+          log := CORE_document.Text.add_line !log (string_of_test_state value);
           Lwt_mvar.put %m value >>
           return (show description value !log))
       }})
