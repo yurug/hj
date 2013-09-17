@@ -93,6 +93,9 @@ module type S = sig
   (** [identifier e] returns the identifier of [e]. *)
   val identifier : t -> CORE_identifier.t
 
+  (** [properties e] returns the properties of [e]. *)
+  val properties : t -> CORE_property.set
+
   (** [change e c] asks for the replacement of [e]'s content by [c
       e].  This attempt triggers the reaction of the entity, which is
       not atomic. This operation may block if a reaction is already
@@ -117,6 +120,15 @@ module type S = sig
 
   (** [refer_to x] creates a reference to [t]. *)
   val refer_to : t -> reference
+
+  (** [deref x] follows the reference [x]. *)
+  val deref : reference ->
+    [ `OK of t
+    | `KO of [>
+      | `UndefinedEntity of CORE_identifier.t
+      | `SystemError     of string
+    ]] Lwt.t
+
 end
 
 (** The following module interface has to be implemented to instantiate

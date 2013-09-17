@@ -19,3 +19,7 @@ let string_of_error : [< CORE_errors.all ] -> string = function
     I18N.String.bad_login_password_pair
   | `AssertFailure s ->
     s
+
+let fatal_error e =
+  Printf.eprintf "Fatal error: %s\n" (string_of_error e);
+  exit 1

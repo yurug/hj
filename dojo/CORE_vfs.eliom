@@ -107,6 +107,7 @@ let init_root () =
     )
     >>> create_dir_if_absent true tests_path
     >>> create_dir_if_absent true users_path
+    >>> create_dir_if_absent true system_path
     >>> lreturn ()
   )
 

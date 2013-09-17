@@ -120,8 +120,9 @@ let root relative p =
 
 let tests_path = [ "tests" ]
 let users_path = [ "users" ]
+let system_path = [ "system" ]
 
-let std_paths = [ tests_path; users_path ]
+let std_paths = [ tests_path; users_path; system_path ]
 
 let fresh =
   let r = ref 0 in

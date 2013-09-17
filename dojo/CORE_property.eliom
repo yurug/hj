@@ -20,15 +20,23 @@ let is = List.mem
 
 let assign s p = p :: s
 
-type binop = And | Or
+type binop = And | Or deriving (Json)
 
-type unop = Not
+type unop = Not deriving (Json)
 
 type rule =
   | True
   | Is    of t
   | BinOp of binop * rule * rule
   | UnOp  of unop * rule
+deriving (Json)
+
+let conj a b =
+  match a, b with
+    | True, a | a, True -> a
+    | a, b -> BinOp (And, a, b)
+
+let conjs = List.fold_left conj True
 
 let rec evaluate s = function
   | True -> true

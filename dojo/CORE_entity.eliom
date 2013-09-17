@@ -69,6 +69,9 @@ let dependencies e = CORE_inmemory_entity.dependencies e.description
 (** Accessor to the unique identifier of the entity. *)
 let identifier e = CORE_inmemory_entity.identifier e.description
 
+(** Accessor to the properties. *)
+let properties e = CORE_inmemory_entity.properties e.description
+
 (* ********************** *)
 (*  Reverse dependencies  *)
 (* ********************** *)
@@ -153,9 +156,16 @@ module type S = sig
     ]] Lwt.t
 
   val identifier : t -> CORE_identifier.t
+  val properties : t -> CORE_property.set
   val change  : t -> data change -> unit Lwt.t
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
   val refer_to : t -> reference
+  val deref : reference ->
+    [ `OK of t
+    | `KO of [>
+      | `UndefinedEntity of CORE_identifier.t
+      | `SystemError     of string
+    ]] Lwt.t
 end
 
 (** The client must provide the following information
@@ -400,7 +410,15 @@ module Make (I : U) : S with type data = I.data = struct
 
   let identifier = identifier
 
+  let properties = properties
+
   let refer_to = identifier
+
+  let deref id = make id >>= function
+    | `OK e -> return (`OK e)
+    | `KO (`SystemError e) -> return (`KO (`SystemError e))
+    | `KO (`UndefinedEntity e) -> return (`KO (`UndefinedEntity e))
+    | `KO (`AlreadyExists _) -> assert false
 
 end
 

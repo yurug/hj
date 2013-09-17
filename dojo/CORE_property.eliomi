@@ -30,18 +30,22 @@ val assign : set -> t -> set
 
 (** {1 Rules}
 
-    Formulas over properties.
+    Propositional formulas over properties.
 
 *)
-type binop = And | Or
+type binop = And | Or deriving (Json)
 
-type unop = Not
+type unop = Not deriving (Json)
 
 type rule =
   | True
   | Is    of t
   | BinOp of binop * rule * rule
   | UnOp  of unop * rule
+deriving (Json)
+
+(** [conjs rs] returns the conjunction of rules [rs]. *)
+val conjs : rule list -> rule
 
 (** [rule_of_string s] parses [s] as a formula expressed as an (S-exp). *)
 val rule_of_string : string -> rule
@@ -51,4 +55,3 @@ val rule_to_string : rule -> string
 
 (** [evaluate s r] returns true if the formula [r] is valid under [s]. *)
 val evaluate : set -> rule -> bool
-
