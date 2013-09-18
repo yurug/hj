@@ -30,15 +30,19 @@ module Make (D : sig type data deriving (Json) end) = struct
       return (`OK ())
     ) >>>= fun () -> CORE_vfs.save who ~relative:false (metafile path) raw
 
-  let load id =
-    let path = path_of_identifier id in
-    CORE_vfs.latest (metafile path)
-    >>>= fun latest_version -> CORE_vfs.read latest_version
-    >>>= fun raw ->
-    return (`OK (Deriving_Json.from_string Json.t<D.data meta> raw))
-
   let exists id =
     let path = root true (path_of_identifier id) in
     Sys.file_exists (string_of_path (metafile path))
+
+  let load id =
+    let path = path_of_identifier id in
+    (if not (exists id) then
+        return (`KO (`UndefinedEntity id))
+     else
+        return (`OK ()))
+    >>>= (fun () -> CORE_vfs.latest (metafile path))
+    >>>= fun latest_version -> CORE_vfs.read latest_version
+    >>>= fun raw ->
+    return (`OK (Deriving_Json.from_string Json.t<D.data meta> raw))
 
 end
