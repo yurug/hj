@@ -21,17 +21,17 @@ let redirect_service s x =
     ~get_params:unit
     (fun () () -> return (preapply s x))
 
-let conditional_redirect_service default ls rs =
+let conditional_redirect_service default ls rs lparams =
   let r =
     Eliom_reference.eref ~scope:Eliom_common.default_process_scope default
   in
   (Eliom_registration.Redirection.register_service
     ~path:["redir"]
-    ~get_params:unit
-    (fun () () ->
+    ~get_params:lparams
+    (fun ps () ->
       Eliom_reference.get r >>= function
-        | `Left _ -> return ls
-        | `Right _ -> return rs
+        | `Left _ -> return (preapply ls ps)
+        | `Right d -> return (preapply rs d)
     ),
    (Eliom_reference.set r),
    (fun () -> Eliom_reference.get r))
@@ -49,7 +49,7 @@ let subscribe_form = service ~path:["subscribe"] ~get_params:unit ()
 
 let subscribe and_then =
   let fallback, decide, result =
-    conditional_redirect_service (`Left None) subscribe_form and_then
+    conditional_redirect_service (`Left None) subscribe_form and_then unit
   in
   (CORE_user.subscribe_service ~fallback, decide, result)
 
@@ -62,11 +62,14 @@ let page_of =
 
 let about = service ~path:["about"] ~get_params:unit ()
 
-(*
-  let exercise = page_of "exercice"
+let create_form = service ~path:["create"] ~get_params:(string "kind") ()
 
-  let question = page_of "question"
-
-  let document = page_of "document"
-*)
-
+let create creation_service and_then =
+  let fallback, decide, result =
+    conditional_redirect_service
+      (`Left None)
+      create_form
+      and_then
+      (string "kind")
+  in
+  (creation_service ~fallback, decide, result)
