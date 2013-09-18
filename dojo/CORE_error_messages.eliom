@@ -13,6 +13,8 @@ let string_of_error : [< CORE_errors.all ] -> string = function
     I18N.String.the_following_directory_does_not_exist (string_of_path p)
   | `UndefinedEntity id ->
     I18N.String.does_not_exist (string_of_identifier id)
+  | `InvalidLabel _ ->
+    I18N.String.invalid_label_in_identifier
   | `MaximalNumberOfLoginAttemptsReached ->
     I18N.String.you_reach_the_maximal_number_of_login_attempts
   | `BadLoginPasswordPair ->
@@ -21,5 +23,7 @@ let string_of_error : [< CORE_errors.all ] -> string = function
     s
 
 let fatal_error e =
-  Printf.eprintf "Fatal error: %s\n" (string_of_error e);
+  Ocsigen_messages.errlog (
+    Printf.sprintf "Fatal error: %s\n" (string_of_error e)
+  );
   exit 1

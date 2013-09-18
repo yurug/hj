@@ -107,6 +107,14 @@ module Fr : I18N_sig.Text = struct
 
   let can_do = "accessibles"
 
+  let new_ = "nouveau"
+
+  let yes = "oui"
+
+  let no = "non"
+
+  let identifier = "identifier"
+
   let new_submission = "Nouvelle soumission :"
 
   let sorry_autotesting_is_disabled =
@@ -164,6 +172,9 @@ module Fr : I18N_sig.Text = struct
       "`%s' n'existe pas."
       name
 
+  let do_you_want_to_create_it =
+    "Est-ce vous souhaitez la créer?"
+
   let the_entity_subsystem_works =
     "Le sous-système des entités semble fonctionner."
 
@@ -193,6 +204,9 @@ module Fr : I18N_sig.Text = struct
 
   let this_field_must_not_be_empty =
     "Ce champ ne peut pas être vide."
+
+  let invalid_label_in_identifier =
+    "Identificateur invalide lexicalement."
 
 end
 

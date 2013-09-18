@@ -15,3 +15,26 @@ val register_page_maker:
   (identifier -> bool) ->
   (identifier -> [ body_content ] elt Lwt.t) ->
   unit
+
+val offer_creation :
+    (CORE_identifier.identifier ->
+     [< `KO of [< CORE_errors.all > `UndefinedEntity ] | `OK of 'a ] Lwt.t) ->
+    (('b ->
+      (unit, unit,
+       [> `Attached of
+            ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+       [ `WithoutSuffix ], unit, unit,
+       [< Eliom_service.registrable > `Unregistrable ], 'c)
+      Eliom_service.service) ->
+     ('d ->
+      (unit, unit,
+       [> `Attached of
+            ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+       [ `WithoutSuffix ], unit, unit,
+       [< Eliom_service.registrable > `Unregistrable ], 'e)
+      Eliom_service.service) ->
+     (string list, unit, [< Eliom_service.get_service_kind ],
+      [< Eliom_service.suff ], 'f, unit, [< Eliom_service.registrable ], 'g)
+     Eliom_service.service) ->
+    ('a -> ([> Html5_types.div ] as 'h) Eliom_content.Html5.D.elt) ->
+    CORE_identifier.identifier -> 'h Eliom_content.Html5.D.elt Lwt.t

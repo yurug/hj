@@ -15,18 +15,16 @@ open CORE_identifier
 open I18N
 
 let exercises_scroll u =
-  let title = p [pcdata String.exercises] in
+  let title = p [pcdata (cap String.exercises)] in
   lwt scroll = hackojo_scroll (div []) (div [title]) [] in
 
   (** For each kind of exercise assignment, we define a subscroll
       that itself contains one subscroll per assignment. *)
   let create_subscroll (kind, label) =
-    let title = p [pcdata label] in
+    let title = p [pcdata (cap label)] in
     hackojo_scroll (div []) (div [title]) []
   in
-  let kinds =
-    [ `Must, String.must_do; `Should, String.should_do; `Can, String.can_do ]
-  in
+  let kinds = String.([ `Must, must_do; `Should, should_do; `Can, can_do ]) in
   lwt subs = Lwt_list.map_s create_subscroll kinds in
   push_subscrolls subs scroll;
   return (elt_of_hackojo_scroll scroll)

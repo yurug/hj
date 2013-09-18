@@ -45,19 +45,21 @@ let create_subscroll () =
 let hackojo_scroll
     (status : div)
     (short_description : div)
-    ?(start_shown=true)
-    ?(description:div=div[])
+    ?(start_shown = true)
+    ?(description : div option)
     commands =
   lwt (subs, to_subs) = create_subscroll () in
-  let description =
-    div ~a:[ a_class [ "scroll_description" ]] [ description ]
+  let (description, commands) =
+    match description with
+      | None -> (div [], commands)
+      | Some description ->
+        let d = div ~a:[ a_class [ "scroll_description" ]] [ description ] in
+        let (expand_button, description) =
+          HTML_widget.show_or_hide ~start_shown d
+        in
+        (description, expand_button :: commands)
   in
-  let (expand_button, description) =
-    HTML_widget.show_or_hide ~start_shown description
-  in
-  let commands =
-    div ~a:[ a_class [ "scroll_commands" ]] (expand_button :: commands)
-  in
+  let commands = div ~a:[ a_class [ "scroll_commands" ]] commands in
   let short_description =
     div ~a:[ a_class [ "scroll_short_description" ]] [ short_description ];
   in

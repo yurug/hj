@@ -25,14 +25,22 @@ let conditional_redirect_service default ls rs lparams =
   let r =
     Eliom_reference.eref ~scope:Eliom_common.default_process_scope default
   in
-  (Eliom_registration.Redirection.register_service
-    ~path:["redir"]
-    ~get_params:lparams
-    (fun ps () ->
-      Eliom_reference.get r >>= function
-        | `Left _ -> return (preapply ls ps)
-        | `Right d -> return (preapply rs d)
-    ),
+  let path = "redir" in
+  let redirect_service =
+   Eliom_registration.Redirection.register_service
+     ~path:[path]
+     ~options:`TemporaryRedirect
+     ~get_params:lparams
+     (fun ps () ->
+       Eliom_reference.get r >>= function
+         | `Left _ ->
+           return (preapply ls ps)
+         | `Right d ->
+           return (preapply rs d)
+     )
+  in
+  (Ocsigen_messages.errlog ("Redir push " ^ path);
+   redirect_service,
    (Eliom_reference.set r),
    (fun () -> Eliom_reference.get r))
 
@@ -58,18 +66,6 @@ let subscribe and_then =
     URL.  For  instance,  the  page  of  "users/luke"  is  located  at
     [users/luke]. *)
 let page_of =
-  service ~path:[] ~get_params:(suffix (list "id" (string "label"))) ()
+  service ~path:[] ~get_params:(suffix (all_suffix "id")) ()
 
 let about = service ~path:["about"] ~get_params:unit ()
-
-let create_form = service ~path:["create"] ~get_params:(string "kind") ()
-
-let create creation_service and_then =
-  let fallback, decide, result =
-    conditional_redirect_service
-      (`Left None)
-      create_form
-      and_then
-      (string "kind")
-  in
-  (creation_service ~fallback, decide, result)

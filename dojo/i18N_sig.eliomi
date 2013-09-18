@@ -54,6 +54,10 @@ sig
   val must_do : string
   val can_do : string
   val should_do : string
+  val new_ : string
+  val identifier : string
+  val yes : string
+  val no : string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string
@@ -68,6 +72,7 @@ sig
   val the_following_directory_does_not_exist : string -> string
   val this_field_must_not_be_empty : string
   val does_not_exist : string -> string
+  val do_you_want_to_create_it: string
   val the_entity_subsystem_works : string
   val saving : string -> string
   val created : string -> string -> string
@@ -75,6 +80,7 @@ sig
   val you_reach_the_maximal_number_of_login_attempts : string
   val bad_login_password_pair : string
   val never_connected_before : string
+  val invalid_label_in_identifier : string
 end
 
 }}
