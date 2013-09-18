@@ -44,10 +44,10 @@ include CORE_entity.Make (struct
 
 end)
 
-lwt assigner =
+let assigner () =
   let initialize () =
     make
-      ~init:({ rules = [] }, empty_dependencies, CORE_property.empty)
+       ~init:({ rules = [] }, empty_dependencies, CORE_property.empty)
       CORE_standard_identifiers.assigner
   in
   make CORE_standard_identifiers.assigner >>= function
@@ -65,12 +65,14 @@ lwt assigner =
       return e
 
 let rules k =
-  observe assigner (fun e -> return (
+  lwt a = assigner () in
+  observe a (fun e -> return (
     try List.assoc k e.rules with Not_found -> []
   ))
 
 let push_assignment_rule k r e =
-  change assigner (fun a ->
+  lwt a = assigner () in
+  change a (fun a ->
     let rec aux = function
       | (k', rs) :: ks when k = k' -> (k, (r, [e]) :: rs) :: ks
       | k :: ks -> k :: aux ks
