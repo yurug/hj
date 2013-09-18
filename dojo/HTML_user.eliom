@@ -9,16 +9,40 @@ open Html5.D
 open HTTP_services
 open HTML_app
 open HTML_widget
+open HTML_scroll
 open CORE_user
 open CORE_identifier
 open I18N
+
+let exercises_scroll u =
+  let title = p [pcdata String.exercises] in
+  lwt scroll = hackojo_scroll (div []) (div [title]) [] in
+
+  (** For each kind of exercise assignment, we define a subscroll
+      that itself contains one subscroll per assignment. *)
+  let create_subscroll (kind, label) =
+    let title = p [pcdata label] in
+    hackojo_scroll (div []) (div [title]) []
+  in
+  let kinds =
+    [ `Must, String.must_do; `Should, String.should_do; `Can, String.can_do ]
+  in
+  lwt subs = Lwt_list.map_s create_subscroll kinds in
+  push_subscrolls subs scroll;
+  return (elt_of_hackojo_scroll scroll)
+
+let homepage u =
+  lwt exercises = exercises_scroll u in
+  return (div [
+    exercises
+  ])
 
 let homepage_div id =
   logged_user () >>= (function
   | `NotLogged | `FailedLogin ->
     return (div [p [pcdata I18N.String.please_login]])
   | `Logged u ->
-    return (div [])
+    homepage u
   )
 
 let subscribe_then_root, subscribe_out, subscribe_result =

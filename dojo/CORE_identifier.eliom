@@ -42,6 +42,8 @@ let ( // ) x y =
 
 let make s = normalize s
 
+let from_strings s = make s
+
 let absolute = function
   | "" :: _ -> true
   | _ -> false
@@ -112,18 +114,3 @@ let suffix prefix p =
   with Not_found ->
     raise (InvalidPrefix (prefix, p))
 
-let root relative p =
-  if relative then
-    concat (path_of_string CORE_config.ressource_root) p
-  else
-    p
-
-let tests_path = [ "tests" ]
-let users_path = [ "users" ]
-let system_path = [ "system" ]
-
-let std_paths = [ tests_path; users_path; system_path ]
-
-let fresh =
-  let r = ref 0 in
-  fun path p -> incr r; path @ [ p ^ string_of_int !r ]

@@ -99,6 +99,14 @@ module Fr : I18N_sig.Text = struct
 
   let logout = "déconnecte"
 
+  let exercises = "exercices"
+
+  let must_do = "à faire"
+
+  let should_do = "suggérés"
+
+  let can_do = "accessibles"
+
   let new_submission = "Nouvelle soumission :"
 
   let sorry_autotesting_is_disabled =

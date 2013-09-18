@@ -2,6 +2,7 @@
 
 open Lwt
 
+open CORE_standard_identifiers
 open CORE_error_messages
 open COMMON_unix
 open COMMON_pervasives

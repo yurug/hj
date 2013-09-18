@@ -5,6 +5,7 @@
 open Lwt
 
 open CORE_identifier
+open CORE_standard_identifiers
 open CORE_inmemory_entity
 open COMMON_pervasives
 
@@ -471,7 +472,7 @@ module Tests = struct
       ?(dependencies = empty_dependencies)
       ?(properties = CORE_property.empty)
       update =
-    let dummy = CORE_identifier.fresh CORE_identifier.tests_path "dummy" in
+    let dummy = fresh tests_path "dummy" in
     let sdummy = string_of_identifier dummy in
     update (I18N.String.(create entity sdummy));
     E.make ~init:({ log = []; count = 0 }, dependencies, properties) dummy

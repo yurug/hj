@@ -7,6 +7,7 @@ open Lwt
 open COMMON_pervasives
 open CORE_inmemory_entity
 open CORE_identifier
+open CORE_standard_identifiers
 
 module Make (D : sig type data deriving (Json) end) = struct
 

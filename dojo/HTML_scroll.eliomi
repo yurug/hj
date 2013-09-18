@@ -2,7 +2,7 @@
 
 (** The Swiss Army Knife widget. *)
 
-(** an [hackojo_scroll] is aimed to be the most common user interface
+(** An [hackojo_scroll] is aimed to be the most common user interface
     widget of the system. It returns a scroll that is a hierarchical
     representation of something.
 
@@ -29,8 +29,7 @@ val hackojo_scroll :
   [ Html5_types.body_content_fun ] Eliom_content.Html5.D.elt list ->
   hackojo_scroll Lwt.t
 
-val elt_of_hackojo_scroll
-  : hackojo_scroll -> div
+val elt_of_hackojo_scroll : hackojo_scroll -> div
 
 val push_subscrolls : hackojo_scroll list -> hackojo_scroll -> unit
 

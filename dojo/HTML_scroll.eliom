@@ -42,7 +42,6 @@ let create_subscroll () =
   in
   return (subs, sender)
 
-
 let hackojo_scroll
     (status : div)
     (short_description : div)

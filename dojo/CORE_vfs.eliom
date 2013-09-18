@@ -6,6 +6,7 @@ open Lwt_io
 
 open CORE_config
 open CORE_identifier
+open CORE_standard_identifiers
 open CORE_error_messages
 open COMMON_pervasives
 open COMMON_process

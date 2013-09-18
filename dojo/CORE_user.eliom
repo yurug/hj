@@ -3,7 +3,9 @@
 open Lwt
 
 open CORE_entity
+open CORE_inmemory_entity
 open CORE_identifier
+open CORE_standard_identifiers
 open CORE_error_messages
 open COMMON_pervasives
 
@@ -166,9 +168,15 @@ let register_subscribe out_by ~service =
       let id = user_id login in
       let password_digest = make_password_digest login password in
       let last_connection = I18N.String.never_connected_before in
+      let dependencies =
+        let deps = empty_dependencies in
+        (** A user depends on the assigner entity. *)
+        let deps = push deps (assigner, ("assigner", [])) in
+        deps
+      in
       let init =
         ({ login; password_digest; last_connection; firstname; surname },
-         CORE_inmemory_entity.empty_dependencies,
+         dependencies,
          CORE_property.empty)
       in
       make ~init id >>= function

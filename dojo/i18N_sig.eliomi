@@ -50,6 +50,10 @@ sig
   val about : string
   val home : string
   val logout : string
+  val exercises : string
+  val must_do : string
+  val can_do : string
+  val should_do : string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string

@@ -45,15 +45,12 @@ include CORE_entity.Make (struct
 end)
 
 lwt assigner =
-  let id =
-    identifier_of_path (
-      concat system_path (CORE_identifier.make [ label "assigner" ])
-    )
-  in
   let initialize () =
-    make ~init:({ rules = [] }, empty_dependencies, CORE_property.empty) id
+    make
+      ~init:({ rules = [] }, empty_dependencies, CORE_property.empty)
+      CORE_standard_identifiers.assigner
   in
-  make id >>= function
+  make CORE_standard_identifiers.assigner >>= function
     | `KO (`UndefinedEntity _) ->
       (** The assigner does not exist. *)
       (initialize () >>= function
