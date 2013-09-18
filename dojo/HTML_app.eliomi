@@ -23,6 +23,7 @@ val set_menu : [ div_content_fun ] elt list -> unit Lwt.t
 (** [menu_button service label x] produces a button that applies [service]
     to [x] when clicked. *)
 val menu_button :
+  ?xa:Html5_types.a_attrib Eliom_content.Html5.D.attrib list ->
   ('a, unit, [< Eliom_service.get_service_kind ], [< Eliom_service.suff ],
    'b, unit, [< Eliom_service.registrable ], 'c)
     Eliom_service.service ->

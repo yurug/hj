@@ -49,12 +49,12 @@ let url_of id _ =
 let creation_page lid sid creation_service =
   let goto_page_of _ = preapply HTTP_services.page_of lid in
   let yes_service = creation_service goto_page_of goto_page_of in
-  div ~a:[a_class ["message_box"]] I18N.String.([
+  div ~a:[a_class ["message_box"]] I18N.(String.([
     p [ pcdata (does_not_exist sid) ];
     p [ pcdata do_you_want_to_create_it ];
-    menu_button yes_service yes lid;
-    menu_button HTTP_services.root no ();
-  ])
+    menu_button ~xa:[a_class ["left_side"]] yes_service (cap yes) lid;
+    menu_button ~xa:[a_class ["right_side"]] HTTP_services.root (cap no) ();
+  ]))
 
 let error_page msg =
   div ~a:[a_class ["message_box"]] I18N.String.([
@@ -65,6 +65,9 @@ let offer_creation emake creation_service page id =
   let lid = identifier_to_string_list id in
   let sid = string_of_identifier id in
   emake id >>= function
-    | `OK e -> return (page e)
-    | `KO (`UndefinedEntity e) -> return (creation_page lid sid creation_service)
-    | `KO e -> return (error_page (CORE_error_messages.string_of_error e))
+    | `OK e ->
+      return (page e)
+    | `KO (`UndefinedEntity e) ->
+      return (creation_page lid sid creation_service)
+    | `KO e ->
+      return (error_page (CORE_error_messages.string_of_error e))

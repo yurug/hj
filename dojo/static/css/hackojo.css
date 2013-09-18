@@ -137,7 +137,7 @@ h1 {
     margin-top: 1em;
     margin-left: auto;
     margin-right: auto;
-    width: 30em;
+    width: 15em;
 }
 
 #connection_login {
@@ -145,7 +145,7 @@ h1 {
 }
 
 #connection_login label {
-    padding-right: 25em;
+    padding-right: 10em;
     font-weight:bold;
     font-size: 0.8em;
 }
@@ -171,7 +171,7 @@ h1 {
 }
 
 #connection_password label {
-    padding-right: 25em;
+    padding-right: 5em;
     font-weight:bold;
     font-size: 0.8em;
 }
@@ -222,7 +222,7 @@ h1 {
     margin-top: 1em;
     margin-left: auto;
     margin-right: auto;
-    width: 30em;
+    width: 15em;
 }
 
 #subscribe_report {
@@ -231,7 +231,7 @@ h1 {
 }
 
 #subscribe_form label {
-    padding-right: 25em;
+    padding-right: 10em;
     font-weight:bold;
     font-size: 0.8em;
 }
@@ -329,4 +329,19 @@ span.button:hover, span.button:focus {
 
 span.report {
     font-weight:italic;
+}
+
+.message_box {
+    margin-top: 3em;
+    margin-left: auto;
+    margin-right: auto;
+    width: 15em;
+}
+
+.left_side {
+    float : left;
+}
+
+.right_side {
+    float : right;
 }

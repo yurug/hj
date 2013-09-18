@@ -173,7 +173,7 @@ module Fr : I18N_sig.Text = struct
       name
 
   let do_you_want_to_create_it =
-    "Est-ce vous souhaitez la créer?"
+    "Est-ce vous souhaitez le créer?"
 
   let the_entity_subsystem_works =
     "Le sous-système des entités semble fonctionner."

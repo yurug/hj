@@ -27,8 +27,8 @@ let get_img fname =
 let logo =
   get_img "logo.png"
 
-let menu_button service label x =
-  a ~a:[a_class ["menu_button"]] ~service [pcdata label] x
+let menu_button ?(xa =[]) service label x =
+  a ~a:(xa @ [a_class ["menu_button"]]) ~service [pcdata label] x
 
 let about = menu_button HTTP_services.about I18N.(cap String.about) ()
 
