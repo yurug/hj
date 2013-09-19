@@ -59,7 +59,8 @@ val path_of_string : string -> path
 val string_of_path : path -> string
 val identifier_of_string : string -> identifier
 val string_of_identifier : identifier -> string
-val identifier_to_string_list : identifier -> string list
+val string_list_of_identifier : identifier -> string list
+val identifier_of_string_list : string list -> identifier
 
 module Map : Map.S with type key = identifier
 

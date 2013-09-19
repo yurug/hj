@@ -109,7 +109,7 @@ let () =
 let user_menu u =
   lwt firstname = firstname u in
   return I18N.(HTTP_services.([
-    menu_button page_of firstname (identifier_to_string_list (identifier u));
+    menu_button page_of firstname (string_list_of_identifier (identifier u));
     menu_button logout (cap String.logout) ();
   ]))
 

@@ -62,7 +62,9 @@ let string_of_identifier = string_of_path
 
 let identifier_of_string = path_of_string
 
-let identifier_to_string_list x = x
+let string_list_of_identifier x = x
+
+let identifier_of_string_list ls = make (List.map label ls)
 
 let compare = pcompare
 

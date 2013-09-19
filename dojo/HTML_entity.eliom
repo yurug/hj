@@ -44,7 +44,7 @@ let () =
     )
 
 let url_of id _ =
-  preapply HTTP_services.page_of (identifier_to_string_list id)
+  preapply HTTP_services.page_of (string_list_of_identifier id)
 
 let creation_page lid sid creation_service =
   let goto_page_of _ = preapply HTTP_services.page_of lid in
@@ -62,7 +62,7 @@ let error_page msg =
   ])
 
 let offer_creation emake creation_service page id =
-  let lid = identifier_to_string_list id in
+  let lid = string_list_of_identifier id in
   let sid = string_of_identifier id in
   emake id >>= function
     | `OK e ->

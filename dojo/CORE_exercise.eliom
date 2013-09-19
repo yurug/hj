@@ -50,7 +50,7 @@ let create_service ok_page ko_page =
     ~get_params:Eliom_parameter.(suffix (list "id" (string "label")))
     (fun id () ->
       try_lwt
-        let id = identifier_of_path (CORE_identifier.make (List.map label id)) in
+        let id = identifier_of_string_list id in
         let assignment_rules = [] in
         let questions = Seq [] in
         let init = (
