@@ -1,15 +1,27 @@
 (* -*- tuareg -*- *)
 
 (** Use the root of the data directory to store our ressources. *)
+let absolute_data_dir () =
+  let ocs = Ocsigen_config.get_datadir () in
+  if Filename.is_relative ocs then
+    Filename.concat (Unix.getcwd ()) ocs
+  else
+    ocs
+
 let ressource_root =
-  let absolute_data_dir =
-    let ocs = Ocsigen_config.get_datadir () in
-    if Filename.is_relative ocs then
-      Filename.concat (Unix.getcwd ()) ocs
+  Filename.concat (absolute_data_dir ()) "root"
+
+(** Ace editor location. *)
+let ace_editor_src () =
+  let ocs = absolute_data_dir () in
+  let lcs = Filename.concat ocs "ace-builds" in
+  Ocsigen_messages.errlog lcs;
+  Eliom_content_core.Xml.uri_of_string (
+    if Sys.file_exists lcs then
+      "/ace-builds/src-noconflict/ace.js"
     else
-      ocs
-  in
-  Filename.concat absolute_data_dir "root"
+      "https://raw.github.com/ajaxorg/ace-builds/master/src-noconflict/ace.js"
+  )
 
 (** Check the AUTOTEST environment variable. *)
 let autotest_enabled () =
