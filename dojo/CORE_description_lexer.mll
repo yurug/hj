@@ -1,7 +1,7 @@
 (** Lexers for description languages. *)
 
 {
-  open Description_parser
+  open CORE_description_parser
   open Lexing
 
   type error = [

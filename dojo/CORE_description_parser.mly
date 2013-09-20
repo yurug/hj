@@ -1,7 +1,7 @@
 (** Parsers for description languages. *)
 
 %{
-  open Description_CST
+  open CORE_description_CST
 
   let merge c q1 q2 =
     match q1, q2 with
@@ -16,7 +16,7 @@
 
 %}
 
-%start<Description_CST.questions> questions_description
+%start<CORE_description_CST.questions> questions_description
 
 (** Literals. *)
 %token<string> ID
