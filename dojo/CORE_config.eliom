@@ -13,15 +13,7 @@ let ressource_root =
 
 (** Ace editor location. *)
 let ace_editor_src () =
-  let ocs = absolute_data_dir () in
-  let lcs = Filename.concat ocs "ace-builds" in
-  Ocsigen_messages.errlog lcs;
-  Eliom_content_core.Xml.uri_of_string (
-    if Sys.file_exists lcs then
-      "/ace-builds/src-noconflict/ace.js"
-    else
-      "https://raw.github.com/ajaxorg/ace-builds/master/src-noconflict/ace.js"
-  )
+  Eliom_content_core.Xml.uri_of_string "/ace-builds/src-noconflict/ace.js"
 
 (** Check the AUTOTEST environment variable. *)
 let autotest_enabled () =

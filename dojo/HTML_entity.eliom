@@ -66,7 +66,7 @@ let offer_creation emake creation_service page id =
   let sid = string_of_identifier id in
   emake id >>= function
     | `OK e ->
-      return (page e)
+      page e
     | `KO (`UndefinedEntity e) ->
       return (creation_page lid sid creation_service)
     | `KO e ->

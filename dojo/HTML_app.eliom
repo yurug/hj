@@ -58,7 +58,12 @@ let bar () =
   )
 
 let editor_script =
-  script ~a:[a_src (CORE_config.ace_editor_src ())] (pcdata "")
+  script
+    ~a:[a_src (CORE_config.ace_editor_src ());
+        a_mime_type "text/javascript";
+        a_charset "utf-8"
+       ]
+    (pcdata "")
 
 let hackojo_page body_contents =
   lwt bar = bar () in
