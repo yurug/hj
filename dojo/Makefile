@@ -18,6 +18,8 @@ JS_OF_ELIOM       := js_of_eliom
 ELIOMDEP          := eliomdep
 OCSIGENSERVER     := ocsigenserver
 OCSIGENSERVER.OPT := ocsigenserver.opt
+MENHIR		  := menhir
+OCAMLLEX          := ocamllex
 
 ## Where to put intermediate object files.
 ## - ELIOM_{SERVER,CLIENT}_DIR must be distinct
@@ -38,8 +40,24 @@ endif
 ##----------------------------------------------------------------------
 ## General
 
-.PHONY: all byte opt
-all: byte opt
+.PHONY: prepare all byte opt
+all: prepare byte opt
+
+prepare: CORE_description_parser.eliom CORE_description_parser.eliomi CORE_description_lexer.eliom
+
+CORE_description_parser.eliom CORE_description_parser.eliomi: CORE_description_parser.mly
+	$(MENHIR) CORE_description_parser.mly
+	echo '{shared{' | tee CORE_description_parser.eliom > CORE_description_parser.eliomi
+	cat CORE_description_parser.mli >> CORE_description_parser.eliomi
+	cat CORE_description_parser.ml >> CORE_description_parser.eliom
+	echo '}}' | tee -a CORE_description_parser.eliom >> CORE_description_parser.eliomi
+
+CORE_description_lexer.eliom: CORE_description_lexer.mll
+	$(OCAMLLEX) CORE_description_lexer.mll
+	echo '{shared{' > CORE_description_lexer.eliom
+	cat CORE_description_lexer.ml >> CORE_description_lexer.eliom
+	echo '}}' >> CORE_description_lexer.eliom
+
 byte opt:: $(TEST_PREFIX)$(ELIOMSTATICDIR)/${PROJECT_NAME}.js
 byte opt:: $(TEST_PREFIX)$(ETCDIR)/$(PROJECT_NAME).conf
 byte opt:: $(TEST_PREFIX)$(ETCDIR)/$(PROJECT_NAME)-test.conf
