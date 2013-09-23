@@ -4,6 +4,8 @@
 open Lwt
 open Eliom_content
 open Html5.D
+
+open CORE_description_CST
 }}
 
 open HTTP_services
@@ -15,23 +17,23 @@ open CORE_identifier
 open I18N
 
 let exercise_page e =
-  let x = ref 0 in
+  lwt init = raw_user_description e in
   lwt editor =
     HTML_editor.create
+      init
       {{ fun echo (s : string) ->
         match CORE_description_format.questions_of_string s with
           | `OK cst ->
             echo "";
-            Lwt.return (Some cst)
+            return (Some cst)
           | `KO e ->
             echo (CORE_error_messages.string_of_error e);
-            Lwt.return None
+            return None
        }}
-      (server_function Json.t<CORE_description_CST.questions> (fun cst ->
-        incr x;
-        Ocsigen_messages.errlog ("Update" ^ string_of_int !x);
-        return ())
-      )
+      (server_function Json.t<questions with_raw> (fun cst ->
+        change_from_user_description e cst
+        >> return ()
+       ))
   in
   return editor
 

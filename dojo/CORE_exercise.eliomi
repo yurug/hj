@@ -10,6 +10,12 @@ type assignment_kind = [ `Must | `Should | `Can | `Cannot ]
     exercise [e] for the assignment kind [k]. *)
 val assignment_rule : t -> assignment_kind -> CORE_property.rule Lwt.t
 
+open CORE_description_CST
+
+val change_from_user_description : t -> questions with_raw -> unit list Lwt.t
+
+val raw_user_description : t -> string Lwt.t
+
 val create_service :
   (t ->
    (unit, unit, Eliom_service.get_service_kind, [ `WithoutSuffix ], unit,

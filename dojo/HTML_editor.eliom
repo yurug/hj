@@ -28,6 +28,7 @@ type 'i remote_process = ('i, unit) server_function
     class type editor = object
       method getSession : session t meth
       method getValue : js_string t meth
+      method setValue : js_string t -> unit meth
     end
 
     let make id : editor Js.t =
@@ -40,6 +41,7 @@ type 'i remote_process = ('i, unit) server_function
 }}
 
 let create
+    (init           : string)
     (local_process  : 'a local_process)
     (remote_process : 'a remote_process)
 =
@@ -53,16 +55,17 @@ let create
   let on_load = a_onload {#Dom_html.event Js.t -> unit{ fun _ ->
       let open Js.Unsafe in
       let open Lwt in
-      let e = Ace.make %id in
+      let editor = Ace.make %id in
       let hi = Js.wrap_callback (fun _ ->
-        (%local_process %echo (Js.to_string (e##getValue ())) >>= function
+        (%local_process %echo (Js.to_string (editor##getValue ())) >>= function
           | None -> return ()
           | Some v -> %remote_process v);
          Js._false
       )
       in
-      let session = e##getSession () in
-      session##on (Js.string "change", hi)
+      let session = editor##getSession () in
+      session##on (Js.string "change", hi);
+      editor##setValue (Js.string %init)
   }}
   in
   let editor = div ~a:[a_class ["editor_box"]] [

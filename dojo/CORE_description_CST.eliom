@@ -40,4 +40,12 @@ deriving (Json)
 
 exception ParseError of Lexing.position * Lexing.position * string
 
+type 'a with_raw = string * 'a deriving (Json)
+
+let with_raw s cst = (s, cst)
+
+let raw = fst
+
+let data = snd
+
 }}

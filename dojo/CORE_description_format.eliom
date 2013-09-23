@@ -18,7 +18,12 @@ let process ~lexer_init ~lexer_fun ~parser_fun ~input  =
     | ParseError (start, stop, msg) -> `KO (`SyntaxError (start, stop, msg))
 
 let process_string parser_fun s =
-  process ~lexer_init:Lexing.from_string ~lexer_fun:main ~parser_fun ~input:s
+  let ret =
+    process ~lexer_init:Lexing.from_string ~lexer_fun:main ~parser_fun ~input:s
+  in
+  match ret with
+    | `OK cst -> `OK (with_raw s cst)
+    | `KO e -> `KO e
 
 let questions_of_string = process_string questions_description
 

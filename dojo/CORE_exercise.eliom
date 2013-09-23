@@ -23,18 +23,23 @@ type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
 
 type description = {
   assignment_rules : (assignment_kind * CORE_property.rule list) list;
-  questions : questions
+  questions        : questions;
+  raw_questions    : string;
 } deriving (Json)
 
-let rec questions_from_cst = function
+let questions_from_cst c =
+  let online_questions = ref [] in
+  let rec aux = function
   | C.Compose (c, qs) ->
-    Compose (composer_from_cst c, List.map questions_from_cst qs)
+    Compose (composer_from_cst c, List.map aux qs)
   | C.Single (C.Question (id, _)) ->
     Question (identifier_of_string id.C.node)
-
-and composer_from_cst = function
-  | C.Par -> Par
-  | C.Seq -> Seq
+  and composer_from_cst = function
+    | C.Par -> Par
+    | C.Seq -> Seq
+  in
+  let c = aux c in
+  (!online_questions, c)
 
 include CORE_entity.Make (struct
 
@@ -43,6 +48,22 @@ include CORE_entity.Make (struct
   let react = passive
 
 end)
+
+let raw_user_description e =
+  observe e (fun d -> return  d.raw_questions)
+
+let change_from_user_description x cr =
+  let online_definitions, questions =
+    questions_from_cst (C.data cr)
+  in
+  let data = {
+    assignment_rules = [];
+    questions;
+    raw_questions    = C.raw cr
+  }
+  in
+  change x (fun _ -> return data)
+  >> return online_definitions
 
 let assignment_rule e k =
   observe e (fun c -> return (
@@ -66,7 +87,7 @@ let create_service ok_page ko_page =
         let assignment_rules = [] in
         let questions = Compose (Seq, []) in
         let init = (
-          { assignment_rules; questions },
+          { assignment_rules; questions; raw_questions = "" },
           CORE_inmemory_entity.empty_dependencies,
           CORE_property.empty
         ) in
