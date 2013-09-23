@@ -1,6 +1,7 @@
 (* -*- tuareg -*- *)
 
 (** Parsers for the description format. *)
+{shared{
 
 val questions_of_string :
   string ->
@@ -8,3 +9,5 @@ val questions_of_string :
       [> `SyntaxError of Lexing.position * Lexing.position * string
       | `SystemError of string ]
   | `OK of CORE_description_CST.questions ]
+
+}}

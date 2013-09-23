@@ -211,6 +211,12 @@ module Fr : I18N_sig.Text = struct
   let parse_error =
     "Erreur de syntaxe."
 
+  let lexing_unexpected_character =
+    "Caractère surprenant."
+
+  let lexing_eof_in_raw =
+    "Définition non terminée. (Il doit manquer une accolade fermante.)"
+
 end
 
 module String = (val

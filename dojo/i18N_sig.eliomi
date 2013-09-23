@@ -82,6 +82,8 @@ sig
   val never_connected_before : string
   val invalid_label_in_identifier : string
   val parse_error: string
+  val lexing_unexpected_character: string
+  val lexing_eof_in_raw: string
 end
 
 }}

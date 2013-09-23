@@ -1,14 +1,13 @@
 (* -*- tuareg -*- *)
 
 (** A widget for user edition with immediate feedback. *)
+{shared{
 open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
 
-{shared{
-
 type 'a local_process = (
-  string -> 'a option Lwt.t
+  (string -> unit) -> string -> 'a option Lwt.t
 ) client_value
 
 type 'i remote_process = ('i, unit) server_function
@@ -45,12 +44,18 @@ let create
     (remote_process : 'a remote_process)
 =
   let id = "editor" in
+  let message_box = div ~a:[a_class ["editor_message"]] [] in
+  let echo = {string -> unit{ fun s ->
+    Eliom_content.Html5.Manip.replaceAllChild %message_box [
+      pcdata s
+    ]
+  }} in
   let on_load = a_onload {#Dom_html.event Js.t -> unit{ fun _ ->
       let open Js.Unsafe in
       let open Lwt in
       let e = Ace.make %id in
       let hi = Js.wrap_callback (fun _ ->
-        (%local_process (Js.to_string (e##getValue ())) >>= function
+        (%local_process %echo (Js.to_string (e##getValue ())) >>= function
           | None -> return ()
           | Some v -> %remote_process v);
          Js._false
@@ -60,5 +65,8 @@ let create
       session##on (Js.string "change", hi)
   }}
   in
-  let editor = div [ div ~a:[a_id id; on_load; a_class ["editor"]] []] in
+  let editor = div ~a:[a_class ["editor_box"]] [
+    div ~a:[a_id id; on_load; a_class ["editor"]] [];
+    message_box
+  ] in
   return editor

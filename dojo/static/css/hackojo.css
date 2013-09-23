@@ -346,11 +346,25 @@ span.report {
     float : right;
 }
 
+.editor_box {
+   width: 51em;
+   height: 42em;
+   position: relative;
+   margin-top: 1em;
+   margin-left: auto;
+   margin-right: auto;
+}
+
 .editor {
-    position: relative;
-    width: 50em;
-    height: 10em;
-    margin-top: 1em;
-    margin-left: auto;
-    margin-right: auto;
+   position: relative;
+   width: 50em;
+   height: 40em;
+ }
+
+.editor_message {
+   font-size: 0.9em;
+   margin-top: 0.2em;
+   font-weight: bold;
+   background-color: #EEEEEE;
+   width: 51em;
 }

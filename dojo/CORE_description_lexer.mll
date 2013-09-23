@@ -1,15 +1,12 @@
 (** Lexers for description languages. *)
 
 {
+  open CORE_description_CST
   open CORE_description_parser
   open Lexing
 
-  type error = [
-    `UnexpectedEOFinRaw
-  ]
-
-  exception LexicalError of error
-
+  let error lexbuf e =
+    raise (ParseError (lexbuf.lex_start_p, lexbuf.lex_curr_p, e))
 
  (** This function increments the line number in the buffer [lexbuf]
      and calls [f] on it. *)
@@ -55,10 +52,7 @@ rule main = parse
 | identifier as id                      { ID id }
 
 | _ {
-  raise (CORE_description_CST.ParseError (
-    lexbuf.Lexing.lex_start_p,
-    lexbuf.Lexing.lex_curr_p,
-    "Lexing"))
+  error lexbuf I18N.String.lexing_unexpected_character
 }
 
 and raw chunk level = parse
@@ -75,7 +69,7 @@ and raw chunk level = parse
     raw chunk (level + 1) lexbuf
   }
   | eof {
-    raise (LexicalError `UnexpectedEOFinRaw)
+    error lexbuf I18N.String.lexing_eof_in_raw
   }
   | _ as c {
     Buffer.add_char chunk c;
