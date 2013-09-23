@@ -137,7 +137,7 @@ h1 {
     margin-top: 1em;
     margin-left: auto;
     margin-right: auto;
-    width: 15em;
+    width: 25em;
 }
 
 #connection_login {
@@ -151,7 +151,7 @@ h1 {
 }
 
 #connection_form input {
-    width: 10em;
+    width: 12em;
     padding: 0.05em;
     padding-left: 0.5em;
     font-size: 1.2em;
@@ -192,7 +192,7 @@ h1 {
     font-size:0.6em;
     font-weight:bold ;
     cursor:pointer;
-    margin-right: 1em;
+    margin-right: 0em;
     padding:5px 25px;
     background: #dddddd;
     border:1px solid #171410;
