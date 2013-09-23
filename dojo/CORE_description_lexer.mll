@@ -34,7 +34,7 @@ let blank   = [' ' '\009' '\012']
 
 let label = [ 'a' - 'z' 'A' - 'Z' '0' - '9' ]+
 
-let identifier = label ('/' label)+
+let identifier = label ('/' label)*
 
 rule main = parse
 (** Layout. *)
@@ -53,6 +53,13 @@ rule main = parse
 (** Literal. *)
 | "{"                                   { raw (Buffer.create 13) 0 lexbuf }
 | identifier as id                      { ID id }
+
+| _ {
+  raise (CORE_description_CST.ParseError (
+    lexbuf.Lexing.lex_start_p,
+    lexbuf.Lexing.lex_curr_p,
+    "Lexing"))
+}
 
 and raw chunk level = parse
   | "}" {

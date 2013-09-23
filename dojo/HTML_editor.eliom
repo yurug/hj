@@ -32,7 +32,7 @@ type 'i remote_process = ('i, unit) server_function
     end
 
     let make id : editor Js.t =
-      let ace = Js.Unsafe.variable "ace" in
+      let ace = Js.Unsafe.variable "ace_library" in
       let e = (coerce ace)##edit (Js.string id) in
       e
 

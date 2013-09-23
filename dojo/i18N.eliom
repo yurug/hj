@@ -208,6 +208,9 @@ module Fr : I18N_sig.Text = struct
   let invalid_label_in_identifier =
     "Identificateur invalide lexicalement."
 
+  let parse_error =
+    "Erreur de syntaxe."
+
 end
 
 module String = (val

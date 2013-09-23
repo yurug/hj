@@ -37,6 +37,13 @@
 questions_description: qs=questions EOF {
   qs
 }
+| error {
+  raise (CORE_description_CST.ParseError (
+    $startpos,
+    $endpos,
+    I18N.String.parse_error
+  ))
+}
 
 questions: q1=questions THEN q2=questions {
   merge Seq q1 q2

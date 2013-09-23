@@ -1,13 +1,25 @@
+(* -*- tuareg -*- *)
+
 (** Concrete syntax trees. *)
 {shared{
 
+type position = { line : int; character : int } deriving (Json)
+
+let from_lexing_position p =
+  { line = p.Lexing.pos_lnum; character = p.Lexing.pos_cnum }
+
 type 'a located = {
   node     : 'a;
-  start    : Lexing.position;
-  stop     : Lexing.position;
+  start    : position;
+  stop     : position;
 }
+deriving (Json)
 
-let locate start stop node = { node; start; stop }
+let locate pstart pstop node = {
+  node;
+  start = from_lexing_position pstart;
+  stop = from_lexing_position pstop;
+}
 
 type questions =
   | Compose of composer * questions list
@@ -23,5 +35,9 @@ and question_definition = {
 }
 
 and identifier = string located
+
+deriving (Json)
+
+exception ParseError of Lexing.position * Lexing.position * string
 
 }}

@@ -15,6 +15,9 @@ let ressource_root =
 let ace_editor_src () =
   Eliom_content_core.Xml.uri_of_string "/ace-builds/src-noconflict/ace.js"
 
+let ace_alias_src () =
+  Eliom_content_core.Xml.uri_of_string "/ace-alias.js"
+
 (** Check the AUTOTEST environment variable. *)
 let autotest_enabled () =
   try ignore (Sys.getenv "AUTOTEST"); true with Not_found -> false

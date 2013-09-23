@@ -2,7 +2,13 @@
 
 (** Errors, and their user messages. *)
 
+{shared{
+
 open CORE_identifier
+open Lexing
+
+let string_of_position p =
+  Printf.sprintf "line %d, characters %d" p.pos_lnum p.pos_cnum
 
 let string_of_error : [< CORE_errors.all ] -> string = function
   | `SystemError e ->
@@ -19,8 +25,13 @@ let string_of_error : [< CORE_errors.all ] -> string = function
     I18N.String.you_reach_the_maximal_number_of_login_attempts
   | `BadLoginPasswordPair ->
     I18N.String.bad_login_password_pair
+  | `SyntaxError (start, stop, msg) ->
+    string_of_position start ^ ", "
+    ^ string_of_position stop ^ ": " ^ msg
   | `AssertFailure s ->
     s
+
+}}
 
 let fatal_error e =
   Ocsigen_messages.errlog (

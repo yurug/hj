@@ -81,6 +81,7 @@ sig
   val bad_login_password_pair : string
   val never_connected_before : string
   val invalid_label_in_identifier : string
+  val parse_error: string
 end
 
 }}

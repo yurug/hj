@@ -9,12 +9,14 @@ open CORE_entity
 open CORE_identifier
 open CORE_standard_identifiers
 open CORE_error_messages
+module C = CORE_description_CST
 open COMMON_pervasives
 
+type composer = Par | Seq deriving (Json)
+
 type questions =
-  | Seq      of questions list
-  | Par      of questions list
-  | Question of CORE_question.reference
+  | Compose  of composer * questions list
+  | Question of identifier (* CORE_question.reference *)
  deriving (Json)
 
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
@@ -23,6 +25,16 @@ type description = {
   assignment_rules : (assignment_kind * CORE_property.rule list) list;
   questions : questions
 } deriving (Json)
+
+let rec questions_from_cst = function
+  | C.Compose (c, qs) ->
+    Compose (composer_from_cst c, List.map questions_from_cst qs)
+  | C.Single (C.Question (id, _)) ->
+    Question (identifier_of_string id.C.node)
+
+and composer_from_cst = function
+  | C.Par -> Par
+  | C.Seq -> Seq
 
 include CORE_entity.Make (struct
 
@@ -52,7 +64,7 @@ let create_service ok_page ko_page =
       try_lwt
         let id = identifier_of_string_list id in
         let assignment_rules = [] in
-        let questions = Seq [] in
+        let questions = Compose (Seq, []) in
         let init = (
           { assignment_rules; questions },
           CORE_inmemory_entity.empty_dependencies,

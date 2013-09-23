@@ -1,8 +1,10 @@
 (** -*- tuareg -*- *)
 
+{shared{
 open Lwt
 open Eliom_content
 open Html5.D
+}}
 
 open HTTP_services
 open HTML_app
@@ -17,10 +19,14 @@ let exercise_page e =
   lwt editor =
     HTML_editor.create
       {{ fun (s : string) ->
-        Firebug.console##log (s ^ string_of_int (! %x));
-        Lwt.return (Some ())
+        match CORE_description_format.questions_of_string s with
+          | `OK cst ->
+            Lwt.return (Some cst)
+          | `KO e ->
+            Firebug.console##log (CORE_error_messages.string_of_error e);
+            Lwt.return None
        }}
-      (server_function Json.t<unit> (fun () ->
+      (server_function Json.t<CORE_description_CST.questions> (fun cst ->
         incr x;
         Ocsigen_messages.errlog ("Update" ^ string_of_int !x);
         return ())

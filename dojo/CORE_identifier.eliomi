@@ -1,5 +1,7 @@
 (* -*- tuareg -*- *)
 
+{shared{
+
 (** This module implements abstract types for paths and identifiers.
 
     Given a tree whose node are labelled, we characterize a node [n]
@@ -81,3 +83,5 @@ val is_prefix : path -> identifier -> bool
     Raise InvalidPrefix if [prefix] is not a prefix of [path]. *)
 val suffix : path -> path -> path
 exception InvalidPrefix of path * path
+
+}}

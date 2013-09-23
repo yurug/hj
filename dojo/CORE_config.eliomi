@@ -14,6 +14,11 @@ val autotest_enabled : unit -> bool
     in the project. *)
 val ace_editor_src : unit -> Eliom_content_core.Xml.uri
 
+(** [ace_alias_src ()] returns the alias to the [ace editor] in the
+    project, avoiding common name clash with identifiers generated
+    by js_of_ocaml (!). *)
+val ace_alias_src : unit -> Eliom_content_core.Xml.uri
+
 (** [number_of_login_attempts_per_second] *)
 val number_of_login_attempts_per_second : int
 

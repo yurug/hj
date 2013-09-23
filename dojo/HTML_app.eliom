@@ -57,13 +57,20 @@ let bar () =
     ]
   )
 
-let editor_script =
+let editor_script = [
   script
     ~a:[a_src (CORE_config.ace_editor_src ());
         a_mime_type "text/javascript";
         a_charset "utf-8"
        ]
+    (pcdata "");
+  script
+    ~a:[a_src (CORE_config.ace_alias_src ());
+        a_mime_type "text/javascript";
+        a_charset "utf-8"
+       ]
     (pcdata "")
+]
 
 let hackojo_page body_contents =
   lwt bar = bar () in
@@ -71,7 +78,7 @@ let hackojo_page body_contents =
     Eliom_tools.F.html
       ~title:I18N.String.the_hacking_dojo
       ~css:[["css";"hackojo.css"]]
-      ~other_head:[ editor_script ]
+      ~other_head:editor_script
       (body ~a:[a_id "global"]
          (bar
           :: [

@@ -1,5 +1,7 @@
 (* -*- tuareg -*- *)
 
+{shared{
+
 (* FIXME: This module implementation is naive. *)
 
 open Lwt
@@ -9,10 +11,9 @@ type label = string deriving (Json)
 exception InvalidLabel of string
 
 let label s =
-  try
-    ignore (Str.search_forward (Str.regexp Filename.dir_sep) s 0);
+  if String.contains s (Filename.dir_sep.[0]) then
     raise (InvalidLabel s)
-  with Not_found ->
+  else
     s
 
 let label_to_string s = s
@@ -31,8 +32,26 @@ type identifier = path deriving (Json)
 
 type t = identifier deriving (Json)
 
+let split_delim c s =
+  let b = Buffer.create 13 in
+  let push c = Buffer.add_char b c in
+  let flush () = let s = Buffer.contents b in Buffer.clear b; s in
+  let rec aux parts i =
+    if i = String.length s then
+      let s = flush () in
+      List.rev (s :: parts)
+    else if s.[i] = c then
+      let s = flush () in
+      aux (s :: parts) (i + 1)
+    else (
+      push s.[i];
+      aux parts (i + 1)
+    )
+  in
+  aux [] 0
+
 let path_of_string s =
-  normalize (Str.split_delim (Str.regexp Filename.dir_sep) s)
+  normalize (split_delim Filename.dir_sep.[0] s)
 
 let ( // ) x y =
   if x = "" then
@@ -116,3 +135,4 @@ let suffix prefix p =
   with Not_found ->
     raise (InvalidPrefix (prefix, p))
 
+}}
