@@ -48,6 +48,7 @@ type 'a state =
 type 'a entity = {
   mutable description : 'a meta;
   mutable state       : 'a state;
+  mutable sources     : CORE_source.map;
   (*   *) reaction    : 'a reaction;
   (*   *) channel     : 'a CORE_client_reaction.c;
   (*   *) push        : 'a -> unit;
@@ -146,7 +147,7 @@ module type S = sig
   type t = data entity
   type reference deriving (Json)
   val make:
-    ?init:(data * dependencies * CORE_property.set)
+    ?init:(data * dependencies * CORE_property.set * CORE_source.filename list)
     -> ?reaction:(data reaction)
     -> CORE_identifier.t ->
     [ `OK of t
@@ -167,6 +168,10 @@ module type S = sig
       | `UndefinedEntity of CORE_identifier.t
       | `SystemError     of string
     ]] Lwt.t
+  val source : CORE_source.filename ->
+    (CORE_source.filename
+     * (t -> CORE_source.t Lwt.t)
+     * (CORE_identifier.t, string) server_function)
 end
 
 (** The client must provide the following information
@@ -209,30 +214,33 @@ module Make (I : U) : S with type data = I.data = struct
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
   let wakeup id reaction =
-    OTD.load id >>>= fun description ->
+    OTD.load id >>>= fun (description, sources) ->
         (** Notice that the following sequence of operations are
             is atomic w.r.t. the concurrency model. *)
-        let channel, push = CORE_client_reaction.channel () in
-        let commit_lock = Lwt_mutex.create () in
-        let commit_cond = Lwt_condition.create () in
-        let e = {
-          description; reaction; state = UpToDate;
-          channel; push;
-          commit_lock; commit_cond;
-          mode = `Observe 0
-        } in
-        load id e;
-        List.iter (register_dependency e) (dependency_image (dependencies e));
-        return (`OK e)
+    let channel, push = CORE_client_reaction.channel () in
+    let commit_lock = Lwt_mutex.create () in
+    let commit_cond = Lwt_condition.create () in
+    let e = {
+      description; reaction; state = UpToDate;
+      channel; push;
+      commit_lock; commit_cond;
+      mode = `Observe 0;
+      sources = CORE_source.map_of_list sources;
+    } in
+    load id e;
+    List.iter (register_dependency e) (dependency_image (dependencies e));
+    return (`OK e)
 
-  (** [initialize init deps id] creates the on-the-disk representation
-      of [id] so that it can be loaded afterwards.
+  (** [initialize init deps fnames id] creates the on-the-disk
+      representation of [id] so that it can be loaded afterwards.
       Precondition: [id] must not already exist. *)
-  let initialize init dependencies properties id =
+  let initialize init deps properties fnames id =
     if OTD.exists id then
       return (`KO (`AlreadyExists (path_of_identifier id)))
     else
-      OTD.save (CORE_inmemory_entity.make id dependencies properties init)
+      let sources = List.map CORE_source.empty fnames in
+      let data = CORE_inmemory_entity.make id deps properties fnames init in
+      OTD.save data sources
 
   (* ************************** *)
   (*  Operations over entities  *)
@@ -241,10 +249,10 @@ module Make (I : U) : S with type data = I.data = struct
   (** [make init reaction id] deals with the instanciation of [id] ... *)
   let rec make ?init ?(reaction = I.react) id =
     match init with
-      | Some (init, dependencies, properties) ->
+      | Some (init, dependencies, properties, filenames) ->
         (** This is the first time for [id], we make room for it in
             the file system ... *)
-        initialize init dependencies properties id
+        initialize init dependencies properties filenames id
         (** ... and we instanciate it from that. *)
         >>>= fun () -> make ~reaction id
 
@@ -288,7 +296,7 @@ module Make (I : U) : S with type data = I.data = struct
     wait_to_be_observer_free e (fun () ->
       e.description <- update_content e.description content;
       e.push (CORE_inmemory_entity.content e.description);
-      OTD.save e.description
+      OTD.save e.description (CORE_source.list_of_map e.sources)
     )
 
   (** [update e] is the process that applies scheduled changes. *)
@@ -422,6 +430,22 @@ module Make (I : U) : S with type data = I.data = struct
     | `KO (`UndefinedEntity e) -> return (`KO (`UndefinedEntity e))
     | `KO (`AlreadyExists _) -> assert false
 
+  let source id =
+    let get x =
+      try_lwt
+        return (CORE_source.Map.find id x.sources)
+      with Not_found -> assert false
+    in
+    let retrieve = server_function Json.t<CORE_identifier.t> (fun id ->
+      make id >>= function
+        | `OK e ->
+          lwt s = get e in
+          return (CORE_source.content s)
+        | _ -> assert false
+    )
+    in
+    (id, get, retrieve)
+
 end
 
 (* ************** *)
@@ -472,11 +496,12 @@ module Tests = struct
   let create_entity
       ?(dependencies = empty_dependencies)
       ?(properties = CORE_property.empty)
+      ?(sources = [])
       update =
     let dummy = fresh tests_path "dummy" in
     let sdummy = string_of_identifier dummy in
     update (I18N.String.(create entity sdummy));
-    E.make ~init:({ log = []; count = 0 }, dependencies, properties) dummy
+    E.make ~init:({ log = []; count = 0 }, dependencies, properties, sources) dummy
     >>= function
       | `OK e ->
         update (I18N.String.(created entity sdummy));

@@ -80,7 +80,7 @@ module type S = sig
       state of the system.
   *)
   val make:
-    ?init:(data * dependencies * CORE_property.set)
+    ?init:(data * dependencies * CORE_property.set * CORE_source.filename list)
     -> ?reaction:data reaction
     -> CORE_identifier.t ->
     [ `OK of t
@@ -128,6 +128,15 @@ module type S = sig
       | `UndefinedEntity of CORE_identifier.t
       | `SystemError     of string
     ]] Lwt.t
+
+  (** [source s] returns a triple made of
+      - [s]
+      - a server-side accessor of entity [x] for the source [s].
+      - a server RPC to retrieve the content of the source [s]. *)
+  val source : CORE_source.filename ->
+    (CORE_source.filename
+     * (t -> CORE_source.t Lwt.t)
+     * (CORE_identifier.t, string) server_function)
 
 end
 

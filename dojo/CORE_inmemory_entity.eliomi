@@ -19,7 +19,12 @@ type dependencies
 
 (** [make id ds c] returns an entity description for entity
     [id] with dependencies [ds] and content [c]. *)
-val make : identifier -> dependencies -> CORE_property.set -> 'a -> 'a meta
+val make :
+  identifier
+  -> dependencies
+  -> CORE_property.set
+  -> CORE_source.filename list
+  -> 'a -> 'a meta
 
 (** [identifier m] returns the identifier of [m]. *)
 val identifier : 'a meta -> identifier
@@ -29,6 +34,9 @@ val content : 'a meta -> 'a
 
 (** [properties m] returns the properties of [m]. *)
 val properties : 'a meta -> CORE_property.set
+
+(** [sources m] returns the filenames of [m]'s sources. *)
+val sources : 'a meta -> CORE_source.filename list
 
 (** [update_content m c] returns a new version of [m]
     such that [content m = c]. *)

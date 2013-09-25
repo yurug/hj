@@ -20,9 +20,10 @@ open CORE_description_CST
 }}
 
 let exercise_page e =
-  lwt init = observe e raw_user_description in
+  let id = identifier e in
+  lwt init = raw_user_description_source e in
   lwt (editor_div, editor_id) =
-    HTML_editor.create init
+    HTML_editor.create (CORE_source.content init)
       {{ fun echo (s : string) ->
         match CORE_description_format.questions_of_string s with
           | `OK cst ->
@@ -40,8 +41,7 @@ let exercise_page e =
   let e_channel = CORE_entity.channel e in
   ignore {unit{ CORE_client_reaction.react_on_background %e_channel (
     fun data ->
-      lwt content = CORE_exercise.raw_user_description data in
-      Firebug.console##log (content);
+      lwt content = CORE_exercise.raw_user_description %id in
       HTML_editor.refresh %editor_id content;
       Lwt.return ()
   )}};

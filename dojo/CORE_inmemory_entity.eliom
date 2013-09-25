@@ -33,11 +33,14 @@ type 'a meta = {
   identifier      : CORE_identifier.t;
   dependencies    : dependencies;
   properties      : CORE_property.set;
+  sources         : CORE_source.filename list;
   content         : 'a;
 } deriving (Json)
 
-let make identifier dependencies properties content =
-  { identifier; dependencies; content; properties }
+let make identifier dependencies properties sources content =
+  { identifier; dependencies; content; properties; sources }
+
+let sources e = e.sources
 
 let identifier e = e.identifier
 

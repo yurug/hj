@@ -177,7 +177,8 @@ let register_subscribe out_by ~service =
       let init =
         ({ login; password_digest; last_connection; firstname; surname },
          dependencies,
-         CORE_property.empty)
+         CORE_property.empty,
+         [])
       in
       make ~init id >>= function
         | `OK e ->

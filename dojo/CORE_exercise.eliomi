@@ -23,8 +23,10 @@ open CORE_description_CST
 
 val change_from_user_description : t -> questions with_raw -> unit list Lwt.t
 
-{shared{
-val raw_user_description : description -> string Lwt.t
+val raw_user_description_source : t -> CORE_source.t Lwt.t
+
+{client{
+val raw_user_description : CORE_identifier.t -> string Lwt.t
 }}
 
 val create_service :

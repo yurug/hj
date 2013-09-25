@@ -21,13 +21,13 @@
 
 module Make (D : sig type data deriving (Json) end) : sig
 
-  val save : D.data CORE_inmemory_entity.meta ->
+  val save : D.data CORE_inmemory_entity.meta -> CORE_source.t list ->
     [ `OK of unit
     | `KO of [> `SystemError of string ]
     ] Lwt.t
 
   val load : CORE_identifier.t ->
-    [ `OK of D.data CORE_inmemory_entity.meta
+    [ `OK of D.data CORE_inmemory_entity.meta * CORE_source.t list
     | `KO of [>
       `UndefinedEntity of CORE_identifier.t
     | `SystemError of string

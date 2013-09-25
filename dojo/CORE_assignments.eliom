@@ -47,7 +47,7 @@ end)
 let assigner () =
   let initialize () =
     make
-       ~init:({ rules = [] }, empty_dependencies, CORE_property.empty)
+       ~init:({ rules = [] }, empty_dependencies, CORE_property.empty, [])
       CORE_standard_identifiers.assigner
   in
   make CORE_standard_identifiers.assigner >>= function

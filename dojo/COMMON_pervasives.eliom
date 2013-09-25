@@ -197,7 +197,7 @@ let ( >>>= ) p1 p2 =
     | `OK x -> p2 x
     | `KO e -> return (`KO e)
 
-let rec list_map_s f l = function
+let rec list_map_s f = function
   | [] ->
     return (`OK [])
   | x :: xs ->

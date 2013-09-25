@@ -27,7 +27,6 @@ type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
 type description = {
   assignment_rules : (assignment_kind * CORE_property.rule list) list;
   questions        : questions;
-  raw_questions    : string;
 } deriving (Json)
 
 }}
@@ -35,8 +34,6 @@ type description = {
 {client{
 type data = description
 }}
-
-
 
 let questions_from_cst c =
   let online_questions = ref [] in
@@ -60,11 +57,18 @@ include CORE_entity.Make (struct
 
 end)
 
-{shared{
+let (raw_user_description_filename,
+     raw_user_description_source,
+     raw_user_description_retrieve)
+    = source "description.txt"
 
-let raw_user_description d = Lwt.return d.raw_questions
-
+{client{
+let raw_user_description id = %raw_user_description_retrieve id
 }}
+
+let initial_source_filenames = [
+  raw_user_description_filename
+]
 
 let change_from_user_description x cr =
   let online_definitions, questions =
@@ -73,9 +77,10 @@ let change_from_user_description x cr =
   let data = {
     assignment_rules = [];
     questions;
-    raw_questions    = C.raw cr
   }
   in
+  lwt source = raw_user_description_source x in
+  CORE_source.set_content source (C.raw cr);
   change x (fun data_now -> return data)
   >> return online_definitions
 
@@ -101,9 +106,10 @@ let create_service ok_page ko_page =
         let assignment_rules = [] in
         let questions = Compose (Seq, []) in
         let init = (
-          { assignment_rules; questions; raw_questions = "" },
+          { assignment_rules; questions },
           CORE_inmemory_entity.empty_dependencies,
-          CORE_property.empty
+          CORE_property.empty,
+          initial_source_filenames
         ) in
         make ~init id >>= function
           | `OK e ->

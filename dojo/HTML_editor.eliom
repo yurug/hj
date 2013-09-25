@@ -52,15 +52,26 @@ type 'i remote_process = ('i, unit) server_function
       let e = (coerce ace)##edit (Js.string id) in
       e
 
+    let h = Hashtbl.create 13
+
     let get =
-      let h = Hashtbl.create 13 in
       fun id ->
         try
-          Hashtbl.find h id
+          fst (Hashtbl.find h id)
         with Not_found ->
           let e = make id in
-          Hashtbl.add h id e;
+          Hashtbl.add h id (e, None);
           e
+
+    let set_last_update id c =
+      Hashtbl.replace h id (get id, c)
+
+    let get_last_update id =
+      try
+        let up = snd (Hashtbl.find h id) in
+        set_last_update id None;
+        up
+      with Not_found -> None
 
   end
 
@@ -88,9 +99,15 @@ let create
           let nb_now = !nb in
           (Lwt_js.sleep 0.5 >>
             if !nb = nb_now then
-              (%local_process %echo (Js.to_string (editor##getValue ())) >>= function
+              let content = Js.to_string (editor##getValue ()) in
+              let process () = (%local_process %echo content >>= function
                 | None -> return ()
                 | Some v -> %remote_process v)
+              in
+              match Ace.get_last_update %id with
+                | None -> process ()
+                | Some c when c <> content -> process ()
+                | _ -> return ()
             else return ());
          Js._false
       )
@@ -114,6 +131,7 @@ let create
     if String.compare (Js.to_string (editor##getValue ())) content <> 0 then (
       let s = editor##getSession () in
       let d = s##getDocument () in
+      Ace.set_last_update id (Some content);
       d##setValue (Js.string content);
     )
 
