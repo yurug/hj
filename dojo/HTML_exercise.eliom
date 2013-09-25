@@ -41,6 +41,8 @@ let exercise_page e =
   let e_channel = CORE_entity.channel e in
   ignore {unit{ CORE_client_reaction.react_on_background %e_channel (
     fun data ->
+      (* FIXME: in the future, we will try to "merge" the current state
+         FIXME: of the editor. *)
       lwt content = CORE_exercise.raw_user_description %id in
       HTML_editor.refresh %editor_id content;
       Lwt.return ()
