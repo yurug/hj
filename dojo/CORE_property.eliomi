@@ -2,8 +2,12 @@
 
 (** This module implements set of properties. *)
 
+{shared{
+
 (** A property. *)
 type t deriving (Json)
+
+}}
 
 (** {1 Atoms} *)
 
@@ -33,6 +37,7 @@ val assign : set -> t -> set
     Propositional formulas over properties.
 
 *)
+{shared{
 type binop = And | Or deriving (Json)
 
 type unop = Not deriving (Json)
@@ -43,6 +48,7 @@ type rule =
   | BinOp of binop * rule * rule
   | UnOp  of unop * rule
 deriving (Json)
+}}
 
 (** [conjs rs] returns the conjunction of rules [rs]. *)
 val conjs : rule list -> rule

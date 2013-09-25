@@ -1,6 +1,10 @@
 (* -*- tuareg -*- *)
 
+{shared{
+
 type t = string deriving (Json)
+
+}}
 
 let valid_atom_spec =
   Str.regexp "[a-zA-Z0-9]+"
@@ -20,6 +24,8 @@ let is = List.mem
 
 let assign s p = p :: s
 
+{shared{
+
 type binop = And | Or deriving (Json)
 
 type unop = Not deriving (Json)
@@ -30,6 +36,8 @@ type rule =
   | BinOp of binop * rule * rule
   | UnOp  of unop * rule
 deriving (Json)
+
+}}
 
 let conj a b =
   match a, b with

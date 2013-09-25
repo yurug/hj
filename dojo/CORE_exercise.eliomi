@@ -2,9 +2,18 @@
 
 (** Exercise entities. *)
 
-include CORE_entity.S
+{shared{
+type description
+}}
+
+include CORE_entity.S with type data = description
+
+{client{
+type data = description
+}}
 
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ]
+
 
 (** [assignment_rule e k] returns the assignment rule of the
     exercise [e] for the assignment kind [k]. *)
@@ -14,7 +23,9 @@ open CORE_description_CST
 
 val change_from_user_description : t -> questions with_raw -> unit list Lwt.t
 
-val raw_user_description : t -> string Lwt.t
+{shared{
+val raw_user_description : description -> string Lwt.t
+}}
 
 val create_service :
   (t ->

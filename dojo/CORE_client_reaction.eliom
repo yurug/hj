@@ -20,6 +20,8 @@ type reaction = unit
     Eliom_client.onload (fun () ->
       Lwt.async (fun () -> Lwt_stream.iter_s reaction channel)
     )
+
+  let react_on_background = react
 }}
 
 let channel () : 'a c * ('a -> unit) =

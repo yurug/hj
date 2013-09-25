@@ -6,11 +6,14 @@ open Lwt
 open Eliom_parameter
 
 open CORE_entity
-open CORE_identifier
 open CORE_standard_identifiers
 open CORE_error_messages
 module C = CORE_description_CST
 open COMMON_pervasives
+
+{shared{
+
+open CORE_identifier
 
 type composer = Par | Seq deriving (Json)
 
@@ -26,6 +29,14 @@ type description = {
   questions        : questions;
   raw_questions    : string;
 } deriving (Json)
+
+}}
+
+{client{
+type data = description
+}}
+
+
 
 let questions_from_cst c =
   let online_questions = ref [] in
@@ -49,8 +60,11 @@ include CORE_entity.Make (struct
 
 end)
 
-let raw_user_description e =
-  observe e (fun d -> return  d.raw_questions)
+{shared{
+
+let raw_user_description d = Lwt.return d.raw_questions
+
+}}
 
 let change_from_user_description x cr =
   let online_definitions, questions =
@@ -62,7 +76,7 @@ let change_from_user_description x cr =
     raw_questions    = C.raw cr
   }
   in
-  change x (fun _ -> return data)
+  change x (fun data_now -> return data)
   >> return online_definitions
 
 let assignment_rule e k =

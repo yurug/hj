@@ -287,6 +287,7 @@ module Make (I : U) : S with type data = I.data = struct
         work. *)
     wait_to_be_observer_free e (fun () ->
       e.description <- update_content e.description content;
+      e.push (CORE_inmemory_entity.content e.description);
       OTD.save e.description
     )
 
