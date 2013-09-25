@@ -174,13 +174,6 @@ let warn_only msg =
   Ocsigen_messages.errlog (Printf.sprintf "Warning: %s\n" msg);
   small_jump
 
-let ( @| ) e p =
-  try_lwt
-    lwt _ = e () in
-    p ()
-  with SmallJump ->
-    p ()
-
 let ( @* ) f x = fun () -> f x
 
 let ( >>> ) e f =
@@ -203,6 +196,23 @@ let ( >>>= ) p1 p2 =
   p1 >>= function
     | `OK x -> p2 x
     | `KO e -> return (`KO e)
+
+let rec list_map_s f l = function
+  | [] ->
+    return (`OK [])
+  | x :: xs ->
+    f x >>>= (fun fx ->
+      list_map_s f xs >>>= (fun fxs ->
+        return (`OK (fx :: fxs))
+      )
+    )
+
+let ( @| ) e p =
+  try_lwt
+    lwt _ = e () in
+    p ()
+  with SmallJump ->
+    p ()
 
 module MRef = struct
   open Lwt_mutex

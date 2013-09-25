@@ -127,6 +127,9 @@ val do_not_fail : (unit -> 'a)
   | `KO of [> `AssertFailure of string ]
   ] Lwt.t
 
+(** [list_map_s f s] lifts [List.map] to exception free expressions.  *)
+val list_map_s : ('a -> ('b, 'e) exn_free) -> 'a list -> ('b list, 'e) exn_free
+
 (** [!!> what raise] checks for the result [r] of [what] to
     [raise] an error if [r] matches [`KO e]. Otherwise if [r] matches
     [`OK x], returns [x]. *)
