@@ -8,6 +8,7 @@ open Eliom_content.Html5.D
 
 type user_request =
   | Confirm of string * (unit, unit) server_function
+  | Message of string
 
 type 'a local_process = (
   (string -> unit) -> string -> 'a option Lwt.t
@@ -18,6 +19,9 @@ type 'i remote_process = ('i, user_request list) server_function
 
 let confirm msg what =
   Confirm (msg, what)
+
+let message msg =
+  Message msg
 
 {client{
 
@@ -100,25 +104,57 @@ let create
   }} in
   let questions_box = div ~a:[a_class ["editor_questions_box"]] [] in
   let process_request = {user_request -> unit Lwt.t{
-    let button id (label, what) =
+    let now () = (jsnew Js.date_now ())##valueOf () in
+    let hello, bye, lookup =
+      let h = Hashtbl.create 13 in
+      let hello s = Hashtbl.add h s (now ()) in
+      let bye s = Hashtbl.remove h s in
+      let lookup s = try Some (Hashtbl.find h s) with Not_found -> None in
+      (hello, bye, lookup)
+    in
+    let button msg id (label, what) =
       let onclick = fun _ ->
         Lwt.async what;
-        Manip.removeChild %questions_box (Id.get_element id)
+        Manip.removeChild %questions_box (Id.get_element id);
+        bye msg
       in
       span ~a:[a_class ["editor_message_button"];
                a_onclick onclick] [pcdata label]
     in
-    let question msg buttons =
-      let id = Id.new_elt_id () in
-      Id.create_named_elt ~id (div ~a:[a_class ["editor_message"]] (
-        pcdata msg :: List.map (button id) buttons
-      ))
+    let question ?(timeout = 10.) msg buttons =
+      match lookup msg with
+        | Some _ -> None
+        | None ->
+          hello msg;
+          let id = Id.new_elt_id () in
+          let onload _ =
+            Lwt.async (fun () -> Lwt_js.sleep timeout >> (
+              Manip.removeChild %questions_box (Id.get_element id);
+              return (bye msg)
+            )
+            )
+          in
+          Some (Id.create_named_elt ~id
+            (div
+               ~a:[a_class ["editor_message"];
+                   a_onload onload
+                  ] (
+                 pcdata msg :: List.map (button msg id) buttons
+               )))
     in
-    let push e = return (Manip.appendChild %questions_box e) in
+    let message msg = question ~timeout:10. msg [] in
+    let push e =
+      return (match e with
+        | None -> ()
+        | Some e -> Manip.appendChild %questions_box e
+      )
+    in
     function
     | Confirm (msg, what) ->
       push (question msg [ I18N.String.no, (fun _ -> return ());
                            I18N.String.yes, what; ])
+    | Message msg ->
+      push (message msg)
   }}
   in
   let on_load = a_onload {#Dom_html.event Js.t -> unit{ fun _ ->

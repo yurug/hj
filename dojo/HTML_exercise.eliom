@@ -37,7 +37,6 @@ let exercise_page e =
     in
     fun (id, user_description) ->
       let sid = string_of_identifier id in
-      Ocsigen_messages.errlog ("Confirm creation of " ^ sid);
 
       (** There is a user interface problem here: At some point,
           someone may refuse the creation of some entity X and, so,
@@ -47,15 +46,12 @@ let exercise_page e =
           its first answer.  Maybe a solution would be to attach a
           timeout to negative answers. *)
 
-      let first_time = not (Hashtbl.mem ods id) in
       Hashtbl.replace ods id user_description;
-      return (if first_time then
-          [HTML_editor.confirm
-              (I18N.String.do_you_really_want_to_create_a_question_named sid)
-              (server_function Json.t<unit> (fun () -> create id))]
-        else
-          []
-      )
+      return [
+        HTML_editor.confirm
+          (I18N.String.do_you_really_want_to_create_a_question_named sid)
+          (server_function Json.t<unit> (fun () -> create id))
+      ]
   in
   lwt (editor_div, editor_id) =
     HTML_editor.create (CORE_source.content init)
@@ -69,9 +65,12 @@ let exercise_page e =
             return None
        }}
       (server_function Json.t<questions with_raw> (fun cst ->
-        lwt new_ods = change_from_user_description e cst in
-        lwt rqs = Lwt_list.map_s push_online_definition new_ods in
-        return (List.flatten rqs)
+        change_from_user_description e cst >>= function
+          | `OK new_ods ->
+            lwt rqs = Lwt_list.map_s push_online_definition new_ods in
+            return (List.flatten rqs)
+          | `KO e ->
+            return [HTML_editor.message (CORE_error_messages.string_of_error e)]
        ))
   in
   let e_channel = CORE_entity.channel e in

@@ -18,8 +18,9 @@ open CORE_identifier
 type composer = Par | Seq deriving (Json)
 
 type questions =
-  | Compose  of composer * questions list
-  | Question of identifier (* CORE_question.reference *)
+  | Compose           of composer * questions list
+  | InlineQuestion    of identifier * string
+  | QuestionReference of CORE_question.reference
  deriving (Json)
 
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
@@ -35,26 +36,35 @@ type description = {
 type data = description
 }}
 
+exception Error of [ `UndefinedEntity of CORE_identifier.t
+                   | `AlreadyExists   of CORE_identifier.path
+                   | `SystemError     of string]
+
 let questions_from_cst c =
-  let online_questions = ref [] in
+  let inline_questions = ref [] in
   let rec aux = function
   | C.Compose (c, qs) ->
-    Compose (composer_from_cst c, List.map aux qs)
+    lwt qs = Lwt_list.map_s aux qs in
+    return (Compose (composer_from_cst c, qs))
+
   | C.Single (C.Question (id, def)) ->
     let id = identifier_of_string id.C.node in
     begin match def with
       | Some def ->
         let sdef = def.C.statement.C.node in
-        online_questions := (id, sdef) :: !online_questions;
-      | None -> ()
-    end;
-    Question id
+        inline_questions := (id, sdef) :: !inline_questions;
+        return (InlineQuestion (id, sdef))
+      | None ->
+        CORE_question.make id >>= function
+          | `OK q -> return (QuestionReference (CORE_question.refer_to q))
+          | `KO e -> raise (Error e)
+    end
   and composer_from_cst = function
     | C.Par -> Par
     | C.Seq -> Seq
   in
-  let c = aux c in
-  (!online_questions, c)
+  lwt c = aux c in
+  return (!inline_questions, c)
 
 include CORE_entity.Make (struct
 
@@ -78,18 +88,21 @@ let initial_source_filenames = [
 ]
 
 let change_from_user_description x cr =
-  let online_definitions, questions =
-    questions_from_cst (C.data cr)
-  in
-  let data = {
-    assignment_rules = [];
-    questions;
-  }
-  in
-  lwt source = raw_user_description_source x in
-  CORE_source.set_content source (C.raw cr);
-  change x (fun data_now -> return data)
-  >> return online_definitions
+  try_lwt
+    lwt inline_definitions, questions =
+      questions_from_cst (C.data cr)
+    in
+    let data = {
+      assignment_rules = [];
+      questions;
+    }
+    in
+    lwt source = raw_user_description_source x in
+    CORE_source.set_content source (C.raw cr);
+    change x (fun data_now -> return data)
+    >> return (`OK inline_definitions)
+  with Error e ->
+    return (`KO e)
 
 let assignment_rule e k =
   observe e (fun c -> return (

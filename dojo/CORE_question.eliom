@@ -19,5 +19,9 @@ include CORE_entity.Make (struct
 
 end)
 
+{client{
+  type reference = CORE_identifier.t deriving (Json)
+}}
+
 let create_from_user_description id cst =
   return (`OK ())
