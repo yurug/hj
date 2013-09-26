@@ -138,6 +138,12 @@ module type S = sig
      * (t -> CORE_source.t Lwt.t)
      * (CORE_identifier.t, string) server_function)
 
+  val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit
+
+  val newer_than : t -> some_t -> [ `OK of bool | `KO of [>
+      | `UndefinedEntity of CORE_identifier.t
+      | `SystemError     of string
+    ]] Lwt.t
 end
 
 (** The following module interface has to be implemented to instantiate

@@ -54,7 +54,7 @@ type 'a entity = {
   (*   *) push        : 'a -> unit;
   (*   *) commit_lock : Lwt_mutex.t;
   (*   *) commit_cond : unit Lwt_condition.t;
-  mutable mode        : [ `Commit | `Observe of int ]
+  mutable mode        : [ `Commit | `Observe of int ];
 }
 
 (** Shortcut for the type of entities. *)
@@ -118,6 +118,9 @@ let propagate_change id =
       reaction to the change of [id] by marking them as being
       modified... *)
   let wake_up (SomeEntity e) (l, xs) =
+    Ocsigen_messages.errlog (
+      "Wake up " ^ string_of_identifier (identifier e) ^ " because of "
+      ^ (string_of_identifier id));
     let (dependencies, queue) =
       match e.state with
         | UpToDate ->
@@ -127,7 +130,7 @@ let propagate_change id =
     in
     (** and by pushing a change that does nothing. *)
     if Queue.is_empty queue then Queue.push (fun c -> return c) queue;
-    (** We also notify [e] that [id] is one of its dependencies that
+    (** We also notify [e] that [id] has one of its dependencies that
         has changed. *)
     e.state <- Modified (push dependencies (id, (l, xs)), queue)
   in
@@ -168,10 +171,18 @@ module type S = sig
       | `UndefinedEntity of CORE_identifier.t
       | `SystemError     of string
     ]] Lwt.t
+
   val source : CORE_source.filename ->
     (CORE_source.filename
      * (t -> CORE_source.t Lwt.t)
      * (CORE_identifier.t, string) server_function)
+
+  val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit
+
+  val newer_than : t -> some_t -> [ `OK of bool | `KO of [>
+      | `UndefinedEntity of CORE_identifier.t
+      | `SystemError     of string
+    ]] Lwt.t
 end
 
 (** The client must provide the following information
@@ -445,6 +456,26 @@ module Make (I : U) : S with type data = I.data = struct
     )
     in
     (id, get, retrieve)
+
+  let push_dependency e kind xs y =
+    let y_id = match y with SomeEntity e -> identifier e in
+    let xs_id = List.map (function SomeEntity e -> identifier e) xs in
+    e.description <- update_dependencies e.description (
+      push (dependencies e) (y_id, (kind, xs_id))
+    )
+
+  let newer_than e (SomeEntity other) =
+    CORE_onthedisk_entity.(
+      timestamp (identifier e) >>>= fun ts1 ->
+      timestamp (identifier other) >>>= fun ts2 ->
+    (*      Ocsigen_messages.errlog (Printf.sprintf "%s [%s] ?> %s [%s]"
+                                 (string_of_identifier (identifier e))
+                                 (Int64.to_string ts1)
+                                 (string_of_identifier (identifier other))
+                                 (Int64.to_string ts2));
+    *)
+      return (`OK (ts1 > ts2))
+    )
 
 end
 

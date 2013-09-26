@@ -12,6 +12,7 @@ open HTML_widget
 open HTML_scroll
 open CORE_exercise
 open CORE_identifier
+open COMMON_pervasives
 open I18N
 
 {shared{
@@ -24,16 +25,22 @@ let exercise_page e =
   let id = identifier e in
   lwt init = raw_user_description_source e in
 
+  let patch_request (start, stop, what) =
+    return (HTML_editor.patch start stop what)
+  in
+
   let push_online_definition =
     let ods = Hashtbl.create 13 in
     let create id =
-      CORE_question.create_from_user_description id (Hashtbl.find ods id)
-      >>= function
+      (CORE_question.make_blank id
+       >>>= fun e ->
+       CORE_question.change_from_user_description e (Hashtbl.find ods id)
+      ) >>= function
         | `OK _ ->
-          return ()
-        | `KO _ ->
+          return []
+        | `KO e ->
           Ocsigen_messages.errlog "Error during question creation";
-          return ()
+          return [ HTML_editor.message (CORE_error_messages.string_of_error e)]
     in
     fun (id, user_description) ->
       let sid = string_of_identifier id in
@@ -56,6 +63,7 @@ let exercise_page e =
   lwt (editor_div, editor_id) =
     HTML_editor.create (CORE_source.content init)
       {{ fun echo (s : string) ->
+        Firebug.console##log_2 ("Change into ", Js.string s);
         match CORE_description_format.questions_of_string s with
           | `OK cst ->
             echo "";
@@ -66,9 +74,13 @@ let exercise_page e =
        }}
       (server_function Json.t<questions with_raw> (fun cst ->
         change_from_user_description e cst >>= function
-          | `OK new_ods ->
+          | `OK (new_ods, patch) ->
             lwt rqs = Lwt_list.map_s push_online_definition new_ods in
-            return (List.flatten rqs)
+            lwt ps = match patch with
+              | None -> return []
+              | Some p -> lwt r = patch_request p in return [r]
+            in
+            return (List.flatten rqs @ ps)
           | `KO e ->
             return [HTML_editor.message (CORE_error_messages.string_of_error e)]
        ))

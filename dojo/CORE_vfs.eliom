@@ -18,10 +18,11 @@ open COMMON_unix
 type filename = CORE_identifier.t
 
 type stored_version = {
-    number : string;
-    author : string;
-    date   : string;
-    path   : path;
+    number    : string;
+    author    : string;
+    date      : string;
+    timestamp : Int64.t;
+    path      : path;
   }
 
 type version =
@@ -51,21 +52,24 @@ let git_versions where what lraise =
   lwt log =
     split (!% (where
              @@ (Printf.sprintf
-                   ("git log --pretty=format:\"%%H %%an %%cd\" %s")
+                   ("git log --pretty=format:\"%%H|%%an|%%ct|%%cd\" %s")
                    (Filename.quote what))))
-      " "
+      "|"
       lraise
   in
   let make_version l =
     let get = List.nth l in
     try
       Some (Stored {
-        number = get 0;
-        author = get 1;
-        date   = get 2;
-        path   = path_of_string (Filename.concat where what)
+        number    = get 0;
+        author    = get 1;
+        date      = get 3;
+        timestamp = Int64.of_string (get 2);
+        path      = path_of_string (Filename.concat where what);
       })
-    with _ -> None
+    with _ ->
+      Ocsigen_messages.errlog ("Fail");
+      None
   in
   Lwt_stream.to_list (Lwt_stream.filter_map make_version log)
 
@@ -109,6 +113,7 @@ let init_root () =
     >>> create_dir_if_absent true tests_path
     >>> create_dir_if_absent true users_path
     >>> create_dir_if_absent true exercises_path
+    >>> create_dir_if_absent true questions_path
     >>> create_dir_if_absent true system_path
     >>> lreturn ()
   )
@@ -162,6 +167,8 @@ let rec get w = function
   | Stored s -> return (w s)
 
 let date = get (fun s -> s.date)
+
+let timestamp = get (fun s -> s.timestamp)
 
 let author = get (fun s -> s.author)
 

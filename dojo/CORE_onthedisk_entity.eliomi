@@ -36,3 +36,10 @@ module Make (D : sig type data deriving (Json) end) : sig
   val exists : CORE_identifier.t -> bool
 
 end
+
+val timestamp : CORE_identifier.t ->
+  [ `OK of Int64.t
+  | `KO of [>
+      `UndefinedEntity of CORE_identifier.t
+    | `SystemError of string
+  ]] Lwt.t

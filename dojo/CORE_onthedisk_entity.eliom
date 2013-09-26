@@ -10,15 +10,22 @@ open CORE_inmemory_entity
 open CORE_identifier
 open CORE_standard_identifiers
 
+let file path fname =
+  concat path (make [label fname])
+
+let metafile path =
+  file path ".meta.json"
+
+let timestamp id =
+  let path = path_of_identifier id in
+  CORE_vfs.latest (metafile path) >>>= (function v ->
+    lwt timestamp = CORE_vfs.timestamp v in
+    return (`OK timestamp)
+  )
+
 module Make (D : sig type data deriving (Json) end) = struct
 
   let who = "system.onthedisk_entity <here@hackojo.org>"
-
-  let file path fname =
-    concat path (make [label fname])
-
-  let metafile path =
-    file path ".meta.json"
 
   let save (m : D.data meta) (ss : CORE_source.t list) =
     let raw = to_string Json.t<D.data meta> m in

@@ -6,9 +6,13 @@ open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
 
+(* FIXME: Relax this dependency. *)
+module C = CORE_description_CST
+
 type user_request =
-  | Confirm of string * (unit, unit) server_function
+  | Confirm of string * (unit, user_request list) server_function
   | Message of string
+  | Patch   of C.position * C.position * string
 
 type 'a local_process = (
   (string -> unit) -> string -> 'a option Lwt.t
@@ -23,6 +27,9 @@ let confirm msg what =
 let message msg =
   Message msg
 
+let patch start stop what =
+  Patch (start, stop, what)
+
 {client{
 
   open Js
@@ -36,10 +43,19 @@ let message msg =
   let true_object = jsnew new_boolean (_true)
   let false_object = jsnew new_boolean (_false)
 
+  class type js_object = object end
+
   module Ace = struct
+
+    class type range = object end
+
+    let new_range
+        : (int -> int -> int -> int -> range t) constr =
+      Js.Unsafe.variable ("ace_range")
 
     class type document = object
       method setValue : js_string t -> unit meth
+      method replace : range t -> js_string t -> js_object meth
     end
 
     class type session = object
@@ -47,6 +63,8 @@ let message msg =
       method setUseSoftTabs : boolean t -> unit meth
       method getDocument : document t meth
       method on : js_string t -> ('a, 'b) meth_callback -> unit meth
+      method replace : range t -> js_string t -> js_object meth
+      method remove : range t -> js_object meth
     end
 
     class type editor = object
@@ -82,6 +100,20 @@ let message msg =
         up
       with Not_found -> None
 
+    let range_from_lexing_position start stop =
+      (* FIXME: relax this dependency by creating a general purpose
+         text location module. *)
+      let open C in
+        Firebug.console##log_4 (start.line,
+                                min start.character stop.character,
+                                stop.line,
+                                max start.character stop.character);
+
+        jsnew new_range (start.line - 1,
+                         start.character - 1,
+                         stop.line - 1,
+                         stop.character)
+
   end
 
 }}
@@ -95,12 +127,17 @@ let create
     (local_process  : 'a local_process)
     (remote_process : 'a remote_process)
 =
-  let id = fresh_editor_id () in
+  let editor_id = fresh_editor_id () in
   let message_box = div ~a:[a_class ["editor_message"]] [] in
   let echo = {string -> unit{ fun s ->
     Manip.replaceAllChild %message_box [
       pcdata s
     ]
+  }} in
+  let push_job = {(unit -> unit Lwt.t) -> unit{
+    let jobs, push = Lwt_stream.create () in
+    Lwt.async (fun () -> Lwt_stream.iter_s (fun job -> job ()) jobs);
+    fun job -> push (Some job)
   }} in
   let questions_box = div ~a:[a_class ["editor_questions_box"]] [] in
   let process_request = {user_request -> unit Lwt.t{
@@ -112,16 +149,19 @@ let create
       let lookup s = try Some (Hashtbl.find h s) with Not_found -> None in
       (hello, bye, lookup)
     in
-    let button msg id (label, what) =
+    let button process_request msg id (label, what) =
       let onclick = fun _ ->
-        Lwt.async what;
+        Lwt.async (fun () ->
+          lwt rqs = what () in
+          Lwt_list.iter_s process_request rqs
+        );
         Manip.removeChild %questions_box (Id.get_element id);
         bye msg
       in
       span ~a:[a_class ["editor_message_button"];
                a_onclick onclick] [pcdata label]
     in
-    let question ?(timeout = 10.) msg buttons =
+    let question process_request ?(timeout = 10.) msg buttons =
       match lookup msg with
         | Some _ -> None
         | None ->
@@ -139,28 +179,45 @@ let create
                ~a:[a_class ["editor_message"];
                    a_onload onload
                   ] (
-                 pcdata msg :: List.map (button msg id) buttons
+                 pcdata msg :: List.map (button process_request msg id) buttons
                )))
     in
-    let message msg = question ~timeout:10. msg [] in
+    let message aux msg = question aux ~timeout:10. msg [] in
     let push e =
       return (match e with
         | None -> ()
         | Some e -> Manip.appendChild %questions_box e
       )
     in
-    function
-    | Confirm (msg, what) ->
-      push (question msg [ I18N.String.no, (fun _ -> return ());
-                           I18N.String.yes, what; ])
-    | Message msg ->
-      push (message msg)
+    let rec aux =
+      function
+        | Confirm (msg, what) ->
+          push (question aux msg [ I18N.String.no, (fun _ -> return []);
+                                   I18N.String.yes, what; ])
+        | Message msg ->
+          push (message aux msg)
+
+        | Patch (start, stop, what) ->
+          (** Ace prevents modifications of the document inside
+              on_change handlers, which is quite reasonable.
+              We push the patches as background jobs. *)
+          return (%push_job (fun () ->
+            (** FIXME: Remove the following hack: *)
+            Lwt_js.sleep 0.1 >>
+            let e = Ace.get %editor_id in
+            let s = e##getSession () in
+            let r = Ace.range_from_lexing_position start stop in
+            ignore (s##replace (r, Js.string what));
+            return ()
+          ))
+    in
+    aux
   }}
   in
   let on_load = a_onload {#Dom_html.event Js.t -> unit{ fun _ ->
       let open Js.Unsafe in
       let open Lwt in
-      let editor = Ace.get %id in
+      let editor = Ace.get %editor_id in
       let hi = Js.wrap_callback (
         let nb = ref 0 in fun _ ->
           incr nb;
@@ -175,7 +232,7 @@ let create
                   lwt urqs = %remote_process v in
                   Lwt_list.iter_s %process_request urqs)
               in
-              match Ace.get_last_update %id with
+              match Ace.get_last_update %editor_id with
                 | None -> process ()
                 | Some c when c <> content -> process ()
                 | _ -> return ()
@@ -190,11 +247,11 @@ let create
   }}
   in
   let editor = div ~a:[a_class ["editor_box"]] [
-    div ~a:[a_id id; on_load; a_class ["editor"]] [];
+    div ~a:[a_id editor_id; on_load; a_class ["editor"]] [];
     message_box;
     questions_box
   ] in
-  return (editor, id)
+  return (editor, editor_id)
 
 {client{
 

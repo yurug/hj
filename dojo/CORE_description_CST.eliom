@@ -6,7 +6,9 @@
 type position = { line : int; character : int } deriving (Json)
 
 let from_lexing_position p =
-  { line = p.Lexing.pos_lnum; character = p.Lexing.pos_cnum }
+  { line      = p.Lexing.pos_lnum;
+    character = p.Lexing.pos_cnum - p.Lexing.pos_bol;
+  }
 
 type 'a located = {
   node     : 'a;

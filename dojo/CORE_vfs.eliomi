@@ -104,6 +104,9 @@ val author : version -> string Lwt.t
 (** [date version] returns the date of a [version]. *)
 val date : version -> string Lwt.t
 
+(** [timestamp version] returns the UNIX timestamp of a [version]. *)
+val timestamp : version -> Int64.t Lwt.t
+
 (** [read version] returns the content of a version. *)
 val read : version
   -> [ `OK of string

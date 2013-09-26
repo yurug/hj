@@ -21,9 +21,11 @@ val assignment_rule : t -> assignment_kind -> CORE_property.rule Lwt.t
 
 open CORE_description_CST
 
+type patch = position * position * string
+
 val change_from_user_description
   : t -> questions with_raw -> [
-  | `OK of (CORE_identifier.t * string) list
+  | `OK of (CORE_identifier.t * string) list * patch option
   | `KO of [
     | `UndefinedEntity of CORE_identifier.t
     | `AlreadyExists   of CORE_identifier.path

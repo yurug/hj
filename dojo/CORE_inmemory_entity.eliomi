@@ -49,6 +49,10 @@ val update_properties : 'a meta -> CORE_property.set -> 'a meta
 (** [dependencies m] returns the dependencies of [m]. *)
 val dependencies : 'a meta -> dependencies
 
+(** [update_dependencies m p] returns a new version of [m]
+    such that [properties m = p]. *)
+val update_dependencies : 'a meta -> dependencies -> 'a meta
+
 (** Dependencies are classified using names. *)
 type dependency_kind = string
 

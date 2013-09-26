@@ -11,12 +11,7 @@
  (** This function increments the line number in the buffer [lexbuf]
      and calls [f] on it. *)
   let next_line_and f lexbuf  =
-    let pos = lexbuf.lex_curr_p in
-    lexbuf.lex_curr_p <-
-      { pos with
-        pos_lnum = pos.pos_lnum + 1;
-        pos_bol  = pos.pos_cnum;
-      };
+    Lexing.new_line lexbuf;
     f lexbuf
 
 }
@@ -48,7 +43,12 @@ rule main = parse
 | ")"                                   { RPAREN }
 
 (** Literal. *)
-| "{"                                   { raw (Buffer.create 13) 0 lexbuf }
+| "{"                                   {
+  let p = lexbuf.Lexing.lex_curr_p in
+  let token = raw (Buffer.create 13) 0 lexbuf in
+  lexbuf.lex_start_p <- p;
+  token
+}
 | identifier as id                      { ID id }
 
 | _ {
@@ -70,6 +70,10 @@ and raw chunk level = parse
   }
   | eof {
     error lexbuf I18N.String.lexing_eof_in_raw
+  }
+  | newline as c {
+    Buffer.add_string chunk c;
+    next_line_and (raw chunk level) lexbuf
   }
   | _ as c {
     Buffer.add_char chunk c;

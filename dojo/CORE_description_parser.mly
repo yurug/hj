@@ -69,10 +69,10 @@ question: x=identifier {
   id
 }
 
-question_definition: statement=located(RAW) {
-  { statement }
+question_definition: statement=RAW {
+  { statement = locate $startpos $endpos statement }
 }
 
-%inline located(X): x=X {
-  locate $startpos(x) $endpos(x) x
+located(X): x=X {
+  locate $startpos $endpos x
 }
