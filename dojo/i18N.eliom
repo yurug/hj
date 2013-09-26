@@ -217,6 +217,10 @@ module Fr : I18N_sig.Text = struct
   let lexing_eof_in_raw =
     "Définition non terminée. (Il doit manquer une accolade fermante.)"
 
+  let do_you_really_want_to_create_a_question_named id =
+    Printf.sprintf
+      "Souhaitez-vous vraiment créer une question nommée `%s' ?" id
+
 end
 
 module String = (val

@@ -21,7 +21,7 @@ val assignment_rule : t -> assignment_kind -> CORE_property.rule Lwt.t
 
 open CORE_description_CST
 
-val change_from_user_description : t -> questions with_raw -> unit list Lwt.t
+val change_from_user_description : t -> questions with_raw -> (CORE_identifier.t * string) list Lwt.t
 
 val raw_user_description_source : t -> CORE_source.t Lwt.t
 

@@ -18,3 +18,6 @@ include CORE_entity.Make (struct
   let react = passive
 
 end)
+
+let create_from_user_description id cst =
+  return (`OK ())

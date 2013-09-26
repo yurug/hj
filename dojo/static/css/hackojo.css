@@ -364,7 +364,37 @@ span.report {
 .editor_message {
    font-size: 0.9em;
    margin-top: 0.2em;
-   font-weight: bold;
+   font-style: italic;
    background-color: #EEEEEE;
    width: 51em;
+   height: 1.7em;
+   padding-left: 1em;
+   padding-top: 5px;
+}
+
+span.editor_message_button {
+    font-style: normal;
+    font-weight:bold;
+    cursor:pointer;
+    float: right;
+    margin-left: 1em;
+    margin-right: 0.2em;
+    padding:1px 15px;
+    background: #AAA69C;
+    border:1px solid #171410;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+    border-radius: 10px;
+    -webkit-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    font-color:#FFFFFF;
+    font-size:0.9em;
+}
+
+span.editor_message_button:hover, span.editor_message_button:focus {
+    background-color :#99969C;
+    -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 1px rgba(1, 1, 1, .75);
 }

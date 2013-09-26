@@ -40,8 +40,15 @@ let questions_from_cst c =
   let rec aux = function
   | C.Compose (c, qs) ->
     Compose (composer_from_cst c, List.map aux qs)
-  | C.Single (C.Question (id, _)) ->
-    Question (identifier_of_string id.C.node)
+  | C.Single (C.Question (id, def)) ->
+    let id = identifier_of_string id.C.node in
+    begin match def with
+      | Some def ->
+        let sdef = def.C.statement.C.node in
+        online_questions := (id, sdef) :: !online_questions;
+      | None -> ()
+    end;
+    Question id
   and composer_from_cst = function
     | C.Par -> Par
     | C.Seq -> Seq
