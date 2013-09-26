@@ -49,7 +49,9 @@ let grep c pattern =
 
 let echo c f =
   handle_unix_error (fun () ->
-    with_file ~flags:[Unix.O_CREAT; Unix.O_WRONLY ] ~mode:output f (fun oc ->
+    with_file
+      ~flags:[Unix.O_CREAT; Unix.O_WRONLY; Unix.O_TRUNC ]
+      ~mode:output f (fun oc ->
       write oc c
     )
   ) ()
@@ -57,7 +59,9 @@ let echo c f =
 let cat f =
   handle_unix_error (fun () ->
     let b = Buffer.create 13 in
-    Lwt_stream.iter (Buffer.add_string b) (Lwt_io.lines_of_file f)
+    Lwt_stream.iter
+      (fun s -> Buffer.add_string b s; Buffer.add_char b '\n')
+      (Lwt_io.lines_of_file f)
     >> return (Buffer.contents b)
   ) "(empty)"
 
