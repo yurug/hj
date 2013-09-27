@@ -221,6 +221,9 @@ module Fr : I18N_sig.Text = struct
     Printf.sprintf
       "Souhaitez-vous vraiment créer une question nommée `%s' ?" id
 
+  let no_title =
+    "Sans titre"
+
 end
 
 module String = (val

@@ -51,8 +51,25 @@ type 'a reaction =
 (** A [change] is a tranformation of the entity's content. *)
 and 'a change = 'a -> 'a Lwt.t
 
+{shared{
+
+(** A timestamp represents a version number for an entity. *)
+type timestamp deriving (Json)
+
+(** Two kinds of events are possibly happening to an entity. *)
+type 'a event =
+    (** A dependency of the entity has been updated, so at
+        some point, the entity will be asked to update itself
+        if necessary. *)
+  | MayChange
+
+   (** The entity has been updated with a new content of type ['a]. *)
+  | HasChanged of 'a
+
+}}
+
 (** On the client side, we can react to every change. *)
-val channel: 'a t -> 'a CORE_client_reaction.c
+val channel: 'a t -> 'a event CORE_client_reaction.c
 
 (** The following module signature specifies the general operations
     over entities. *)
@@ -95,6 +112,9 @@ module type S = sig
 
   (** [properties e] returns the properties of [e]. *)
   val properties : t -> CORE_property.set
+
+  (** [timestamp e] returns the timestamp of [e]. *)
+  val timestamp : t -> timestamp
 
   (** [change e c] asks for the replacement of [e]'s content by [c
       e].  This attempt triggers the reaction of the entity, which is
@@ -140,10 +160,8 @@ module type S = sig
 
   val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit
 
-  val newer_than : t -> some_t -> [ `OK of bool | `KO of [>
-      | `UndefinedEntity of CORE_identifier.t
-      | `SystemError     of string
-    ]] Lwt.t
+  val newer_than : t -> some_t -> bool
+
 end
 
 (** The following module interface has to be implemented to instantiate

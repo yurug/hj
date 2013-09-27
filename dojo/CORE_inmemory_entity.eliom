@@ -37,11 +37,13 @@ type 'a meta = {
   properties      : CORE_property.set;
   sources         : CORE_source.filename list;
   content         : 'a;
-  tick            : int;
+  tick            : float;
 } deriving (Json)
 
+let now e = { e with tick = Unix.gettimeofday () }
+
 let make identifier dependencies properties sources content =
-  { identifier; dependencies; content; properties; sources; tick = 0 }
+  now { identifier; dependencies; content; properties; sources; tick = 0. }
 
 let sources e = e.sources
 
@@ -53,10 +55,10 @@ let properties e = e.properties
 
 let content e = e.content
 
-let update e = { e with tick = e.tick + 1 }
+let timestamp e = e.tick
 
-let update_content e c = update { e with content = c }
+let update_content e c = now { e with content = c }
 
-let update_properties e s = update { e with properties = s }
+let update_properties e s = now { e with properties = s }
 
-let update_dependencies e d = update { e with dependencies = d }
+let update_dependencies e d = now { e with dependencies = d }

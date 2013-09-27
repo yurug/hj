@@ -85,6 +85,7 @@ sig
   val lexing_unexpected_character: string
   val lexing_eof_in_raw: string
   val do_you_really_want_to_create_a_question_named : string -> string
+  val no_title: string
 end
 
 }}

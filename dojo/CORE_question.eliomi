@@ -23,3 +23,20 @@ val make_blank
   ] Lwt.t
 
 val statement : t -> string Lwt.t
+
+val create_service :
+  (t ->
+   (unit, unit, Eliom_service.get_service_kind, [ `WithoutSuffix ], unit,
+    unit, Eliom_service.registrable, 'a)
+     Eliom_service.service) ->
+  (string ->
+   (unit, unit, Eliom_service.get_service_kind, [ `WithoutSuffix ], unit,
+    unit, Eliom_service.registrable, 'a)
+     Eliom_service.service) ->
+  (string list, unit,
+   [> `Attached of
+       ([> `Internal of [> `Service ] ], [> `Get ]) Eliom_service.a_s ],
+   [ `WithSuffix ],
+   [ `One of string ] Eliom_parameter.param_name Eliom_parameter.listnames,
+   unit, [< Eliom_service.registrable > `Registrable ], 'a)
+    Eliom_service.service

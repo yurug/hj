@@ -38,6 +38,12 @@ val properties : 'a meta -> CORE_property.set
 (** [sources m] returns the filenames of [m]'s sources. *)
 val sources : 'a meta -> CORE_source.filename list
 
+(** [timestamp m] returns the timestamp of [m]. *)
+val timestamp : 'a meta -> float
+
+(** [now m] puts a timestamp on [m]. *)
+val now : 'a meta -> 'a meta
+
 (** [update_content m c] returns a new version of [m]
     such that [content m = c]. *)
 val update_content : 'a meta -> 'a -> 'a meta

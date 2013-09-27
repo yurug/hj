@@ -30,6 +30,23 @@ type 'a state =
   | UpToDate
   | Modified of dependencies * 'a change Queue.t
 
+{shared{
+
+(** A timestamp represents a version number for an entity. *)
+type timestamp = float deriving (Json)
+
+(** Two kinds of events are possibly happening to an entity. *)
+type 'a event =
+    (** A dependency of the entity has been updated, so at
+        some point, the entity will be asked to update itself
+        if necessary. *)
+  | MayChange
+
+   (** The entity has been updated with a new content of type ['a]. *)
+  | HasChanged of 'a
+
+}}
+
 (** Here is the internal representation of the entity:
 
     - the [description] field stores the in-memory
@@ -50,8 +67,8 @@ type 'a entity = {
   mutable state       : 'a state;
   mutable sources     : CORE_source.map;
   (*   *) reaction    : 'a reaction;
-  (*   *) channel     : 'a CORE_client_reaction.c;
-  (*   *) push        : 'a -> unit;
+  (*   *) channel     : 'a event CORE_client_reaction.c;
+  (*   *) push        : 'a event -> unit;
   (*   *) commit_lock : Lwt_mutex.t;
   (*   *) commit_cond : unit Lwt_condition.t;
   mutable mode        : [ `Commit | `Observe of int ];
@@ -73,6 +90,9 @@ let identifier e = CORE_inmemory_entity.identifier e.description
 
 (** Accessor to the properties. *)
 let properties e = CORE_inmemory_entity.properties e.description
+
+(** Accessor to the timestamp. *)
+let timestamp e = CORE_inmemory_entity.timestamp e.description
 
 (* ********************** *)
 (*  Reverse dependencies  *)
@@ -121,6 +141,8 @@ let propagate_change id =
     Ocsigen_messages.errlog (
       "Wake up " ^ string_of_identifier (identifier e) ^ " because of "
       ^ (string_of_identifier id));
+
+    e.push MayChange;
     let (dependencies, queue) =
       match e.state with
         | UpToDate ->
@@ -162,6 +184,7 @@ module type S = sig
 
   val identifier : t -> CORE_identifier.t
   val properties : t -> CORE_property.set
+  val timestamp : t -> timestamp
   val change  : t -> data change -> unit Lwt.t
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
   val refer_to : t -> reference
@@ -179,10 +202,8 @@ module type S = sig
 
   val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit
 
-  val newer_than : t -> some_t -> [ `OK of bool | `KO of [>
-      | `UndefinedEntity of CORE_identifier.t
-      | `SystemError     of string
-    ]] Lwt.t
+  val newer_than : t -> some_t -> bool
+
 end
 
 (** The client must provide the following information
@@ -306,7 +327,7 @@ module Make (I : U) : S with type data = I.data = struct
         work. *)
     wait_to_be_observer_free e (fun () ->
       e.description <- update_content e.description content;
-      e.push (CORE_inmemory_entity.content e.description);
+      e.push (HasChanged (CORE_inmemory_entity.content e.description));
       OTD.save e.description (CORE_source.list_of_map e.sources)
     )
 
@@ -435,6 +456,8 @@ module Make (I : U) : S with type data = I.data = struct
 
   let refer_to = identifier
 
+  let timestamp = timestamp
+
   let deref id = make id >>= function
     | `OK e -> return (`OK e)
     | `KO (`SystemError e) -> return (`KO (`SystemError e))
@@ -465,17 +488,7 @@ module Make (I : U) : S with type data = I.data = struct
     )
 
   let newer_than e (SomeEntity other) =
-    CORE_onthedisk_entity.(
-      timestamp (identifier e) >>>= fun ts1 ->
-      timestamp (identifier other) >>>= fun ts2 ->
-    (*      Ocsigen_messages.errlog (Printf.sprintf "%s [%s] ?> %s [%s]"
-                                 (string_of_identifier (identifier e))
-                                 (Int64.to_string ts1)
-                                 (string_of_identifier (identifier other))
-                                 (Int64.to_string ts2));
-    *)
-      return (`OK (ts1 > ts2))
-    )
+      (timestamp e > timestamp other)
 
 end
 

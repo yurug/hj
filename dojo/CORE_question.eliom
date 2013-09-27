@@ -31,7 +31,7 @@ end)
 let (statement_filename, statement_source, statement_retrieve)
     = source "statement.txt"
 
-let all_sources = [ statement_filename ]
+let initial_source_filenames = [ statement_filename ]
 
 let change_from_user_description q def =
   lwt source = statement_source q in
@@ -40,11 +40,29 @@ let change_from_user_description q def =
   >> return (`OK ())
 
 let make_blank id =
-  let data  = { title = "" }
+  let data  = { title = I18N.String.no_title }
   and deps  = CORE_inmemory_entity.empty_dependencies
   and psets = CORE_property.empty in
-  make ~init:(data, deps, psets, all_sources) id
+  make ~init:(data, deps, psets, initial_source_filenames) id
 
 let statement x =
-  lwt source = statement_source x in
-  return (CORE_source.content source)
+  observe x (fun _ ->
+    lwt source = statement_source x in
+    return (CORE_source.content source)
+  )
+
+let create_service ok_page ko_page =
+  Eliom_registration.Redirection.register_service
+    ~path:["create_question"]
+    ~get_params:Eliom_parameter.(suffix (list "id" (string "label")))
+    (fun id () ->
+      try_lwt
+        let id = identifier_of_string_list id in
+        make_blank id >>= function
+          | `OK e ->
+            return (ok_page e)
+          | `KO e ->
+            return (ko_page (string_of_error e))
+      with InvalidLabel _ ->
+       return (ko_page (string_of_error (`InvalidLabel (String.concat "/" id))))
+    )

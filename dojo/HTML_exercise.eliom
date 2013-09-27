@@ -12,6 +12,7 @@ open HTML_widget
 open HTML_scroll
 open CORE_exercise
 open CORE_identifier
+open CORE_entity
 open COMMON_pervasives
 open I18N
 
@@ -32,9 +33,9 @@ let exercise_page e =
   let push_online_definition =
     let ods = Hashtbl.create 13 in
     let create id =
-      (CORE_question.make_blank id
-       >>>= fun e ->
-       CORE_question.change_from_user_description e (Hashtbl.find ods id)
+      (CORE_question.make_blank id >>>= fun q ->
+       push_dependency e "questions" [] (SomeEntity q);
+       CORE_question.change_from_user_description q (Hashtbl.find ods id)
       ) >>= function
         | `OK _ ->
           return []
@@ -60,39 +61,57 @@ let exercise_page e =
           (server_function Json.t<unit> (fun () -> create id))
       ]
   in
-  lwt (editor_div, editor_id) =
-    HTML_editor.create (CORE_source.content init)
-      {{ fun echo (s : string) ->
-        Firebug.console##log_2 ("Change into ", Js.string s);
-        match CORE_description_format.questions_of_string s with
-          | `OK cst ->
-            echo "";
-            return (Some cst)
-          | `KO e ->
-            echo (CORE_error_messages.string_of_error e);
-            return None
-       }}
-      (server_function Json.t<questions with_raw> (fun cst ->
-        change_from_user_description e cst >>= function
-          | `OK (new_ods, patch) ->
-            lwt rqs = Lwt_list.map_s push_online_definition new_ods in
-            lwt ps = match patch with
-              | None -> return []
-              | Some p -> lwt r = patch_request p in return [r]
-            in
-            return (List.flatten rqs @ ps)
-          | `KO e ->
-            return [HTML_editor.message (CORE_error_messages.string_of_error e)]
-       ))
+  let client_change =
+    {{ fun echo (s : string) ->
+      Firebug.console##log ("Client change!");
+      match CORE_description_format.questions_of_string s with
+        | `OK cst ->
+          echo "";
+          return (Some cst)
+        | `KO e ->
+          echo (CORE_error_messages.string_of_error e);
+          return None
+     }}
+  in
+  let server_change =
+    (server_function Json.t<questions with_raw> (fun cst ->
+      Ocsigen_messages.errlog ("Serveur change!");
+      change_from_user_description e cst >>= function
+        | `OK new_ods ->
+          lwt rqs = Lwt_list.map_s push_online_definition new_ods in
+          return (List.flatten rqs)
+        | `KO (`NeedPatch p) ->
+          lwt r = patch_request p in
+          return [r]
+        | `KO (#CORE_errors.all as e) ->
+          return [HTML_editor.message (CORE_error_messages.string_of_error e)]
+     ))
+  in
+  lwt (editor_div, editor_id, editor_process) =
+    HTML_editor.create (CORE_source.content init) client_change server_change
   in
   let e_channel = CORE_entity.channel e in
-  ignore {unit{ CORE_client_reaction.react_on_background %e_channel (
-    fun data ->
-      (* FIXME: in the future, we will try to "merge" the current state
-         FIXME: of the editor. *)
-      lwt content = CORE_exercise.raw_user_description %id in
-      HTML_editor.refresh %editor_id content;
-      Lwt.return ()
+  ignore {unit{ CORE_client_reaction.react_on_background %e_channel (fun data ->
+    lwt content = CORE_exercise.raw_user_description %id in
+    match data with
+    (* FIXME: in the future, we will try to "merge" the current state
+       FIXME: of the editor. *)
+    | CORE_entity.MayChange ->
+      (** Oh, a question definition must have changed. *)
+      Firebug.console##log ("May have changed!");
+      begin match CORE_description_format.questions_of_string content with
+        | `OK cst ->
+          lwt rqs = %server_change cst in
+          Lwt_list.iter_s %editor_process rqs
+        | `KO _ ->
+          Firebug.console##log ("This should not happen.");
+          return ()
+      end
+
+    | CORE_entity.HasChanged _ ->
+      Firebug.console##log ("Has changed!");
+      return (HTML_editor.refresh %editor_id content)
+
   )}};
   return editor_div
 

@@ -105,9 +105,9 @@ let patch start stop what =
          text location module. *)
       let open C in
         Firebug.console##log_4 (start.line,
-                                min start.character stop.character,
+                                start.character,
                                 stop.line,
-                                max start.character stop.character);
+                                stop.character);
 
         jsnew new_range (start.line - 1,
                          start.character,
@@ -202,8 +202,9 @@ let create
               on_change handlers, which is quite reasonable.
               We push the patches as background jobs. *)
           return (%push_job (fun () ->
+            Firebug.console##log ("Patching...");
             (** FIXME: Remove the following hack: *)
-            Lwt_js.sleep 0.1 >>
+            Lwt_js.sleep 0.5 >>
             let e = Ace.get %editor_id in
             let s = e##getSession () in
             let r = Ace.range_from_lexing_position start stop in
@@ -251,7 +252,7 @@ let create
     message_box;
     questions_box
   ] in
-  return (editor, editor_id)
+  return (editor, editor_id, process_request)
 
 {client{
 
