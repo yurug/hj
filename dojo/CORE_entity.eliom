@@ -532,7 +532,9 @@ module Tests = struct
     let dummy = fresh tests_path "dummy" in
     let sdummy = string_of_identifier dummy in
     update (I18N.String.(create entity sdummy));
-    E.make ~init:({ log = []; count = 0 }, dependencies, properties, sources) dummy
+    E.make
+      ~init:({ log = []; count = 0 }, dependencies, properties, sources)
+      dummy
     >>= function
       | `OK e ->
         update (I18N.String.(created entity sdummy));
