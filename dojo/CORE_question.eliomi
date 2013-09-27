@@ -9,7 +9,8 @@ include CORE_entity.S
 }}
 
 val change_from_user_description
-  : t -> string -> [ `OK of unit | `KO of 'a ] Lwt.t
+  : t -> CORE_description_CST.question_definition ->
+  [ `OK of unit | `KO of 'a ] Lwt.t
 
 val make_blank
   : CORE_identifier.t ->

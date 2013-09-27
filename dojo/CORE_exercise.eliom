@@ -77,40 +77,36 @@ let questions_from_cst e c =
             push_dependency e "questions" [] (SomeEntity q);
 
             lwt statement = CORE_question.statement q in
-            lwt statement =
-              if statement <> sdef then
+            (if statement <> sdef then
                 (** There is a conflict between the two definitions of
                     the question statement. *)
-                lwt is_newer = (!!> (fun () -> newer_than e (SomeEntity q))
-                ) local_error
-                in
-                if is_newer then (
+              lwt is_newer = (!!> (fun () -> newer_than e (SomeEntity q))
+              ) local_error
+              in
+              if is_newer then (
                   (** The inline definition is newer. Let us push the
                       new statement in the question. *)
-                  CORE_question.change_from_user_description q sdef >>= function
-                    | `OK () -> return sdef
-                    | `KO e -> raise (Error e)
-                ) else
+                CORE_question.change_from_user_description q def >>= function
+                  | `OK () -> return ()
+                  | `KO e -> raise (Error e)
+              ) else
                   (** The definition has a new statement. Update the
                       inline definition in the exercise. *)
-                  let patch =
-                    C.(def.statement.start, def.statement.stop,
-                       "{" ^ statement ^ "}\n")
-                  in (
-                    patch_inline_question := Some patch;
-                    return statement
-                  )
-              else
-                return statement
-            in
-            return (QuestionReference (CORE_question.refer_to q))
+                let patch =
+                  C.(def.statement.start, def.statement.stop,
+                     "{" ^ statement ^ "}\n")
+                in (
+                  patch_inline_question := Some patch;
+                  return ()
+                ) else return ()
+            ) >> return (QuestionReference (CORE_question.refer_to q))
 
           | `KO e ->
             (** The question does not exist. We ask the user
                 for its creation. We keep the inline definition
                 in the AST as this is the only place where it
                 exists for now. *)
-            inline_questions := (id, sdef) :: !inline_questions;
+            inline_questions := (id, def) :: !inline_questions;
             return (InlineQuestion (id, sdef))
       )
       | None ->
@@ -152,9 +148,11 @@ let change_from_user_description x cr =
       questions;
     }
     in
-    lwt source = raw_user_description_source x in
-    CORE_source.set_content source (C.raw cr);
-    change x (fun data_now -> return data)
+    (if patches = None then (
+      lwt source = raw_user_description_source x in
+      CORE_source.set_content source (C.raw cr);
+      change x (fun data_now -> return data)
+     ) else return ())
     >> return (`OK (inline_definitions, patches))
   with Error e ->
     return (`KO e)

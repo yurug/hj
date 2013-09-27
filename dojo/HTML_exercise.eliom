@@ -42,7 +42,7 @@ let exercise_page e =
           Ocsigen_messages.errlog "Error during question creation";
           return [ HTML_editor.message (CORE_error_messages.string_of_error e)]
     in
-    fun (id, user_description) ->
+    fun (id, (user_description : question_definition)) ->
       let sid = string_of_identifier id in
 
       (** There is a user interface problem here: At some point,

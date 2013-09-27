@@ -33,6 +33,7 @@ and question =
   | Question of identifier * question_definition option
 
 and question_definition = {
+  title     : string located;
   statement : string located;
 }
 

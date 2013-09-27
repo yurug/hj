@@ -25,7 +25,7 @@ type patch = position * position * string
 
 val change_from_user_description
   : t -> questions with_raw -> [
-  | `OK of (CORE_identifier.t * string) list * patch option
+  | `OK of (CORE_identifier.t * question_definition) list * patch option
   | `KO of [
     | `UndefinedEntity of CORE_identifier.t
     | `AlreadyExists   of CORE_identifier.path
