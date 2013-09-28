@@ -184,7 +184,9 @@ let change_from_user_description x cr =
           | [] ->
             Ocsigen_messages.errlog ("Pull done, let us push.");
             lwt questions = questions_from_cst x cst in
-            lwt changed = observe x (fun data -> return (data.questions <> questions)) in
+            lwt changed =
+              observe x (fun d -> return (d.questions <> questions))
+            in
               (if changed then
                 let data = { assignment_rules = []; questions; } in
                 lwt source = raw_user_description_source x in
