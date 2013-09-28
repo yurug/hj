@@ -184,14 +184,14 @@ let change_from_user_description x cr =
           | [] ->
             Ocsigen_messages.errlog ("Pull done, let us push.");
             lwt questions = questions_from_cst x cst in
-            observe x (fun data ->
-              (if data.questions <> questions then
+            lwt changed = observe x (fun data -> return (data.questions <> questions)) in
+              (if changed then
                 let data = { assignment_rules = []; questions; } in
                 lwt source = raw_user_description_source x in
                 CORE_source.set_content source (C.raw cr);
                 change x (fun data_now -> return data)
                else return ())
-              >> return (`OK []))
+              >> return (`OK [])
           | p :: _ ->
             Ocsigen_messages.errlog ("Patch needed");
             return (`KO (`NeedPatch p))
