@@ -183,17 +183,19 @@ let change_from_user_description x cr =
         (outdated_questions x cst >>= function
           | [] ->
             Ocsigen_messages.errlog ("Pull done, let us push.");
-            lwt questions = questions_from_cst x cst in
-            lwt changed =
-              observe x (fun d -> return (d.questions <> questions))
-            in
+            lwt source = raw_user_description_source x in
+            if CORE_source.content source <> (C.raw cr) then (
+              lwt questions = questions_from_cst x cst in
+              lwt changed =
+                observe x (fun d -> return (d.questions <> questions))
+              in
               (if changed then
-                let data = { assignment_rules = []; questions; } in
-                lwt source = raw_user_description_source x in
-                CORE_source.set_content source (C.raw cr);
-                change x (fun data_now -> return data)
+                  let data = { assignment_rules = []; questions; } in
+                  CORE_source.set_content source (C.raw cr);
+                  change x (fun data_now -> return data)
                else return ())
               >> return (`OK [])
+            ) else return (`OK [])
           | p :: _ ->
             Ocsigen_messages.errlog ("Patch needed");
             return (`KO (`NeedPatch p))
