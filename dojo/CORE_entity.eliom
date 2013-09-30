@@ -130,7 +130,7 @@ let watchers_of id =
 
 (** [e] depends on [e']. *)
 let register_dependency e (id, rel) =
-  EntitySet.add (watchers_of id) (SomeEntity e) rel
+  EntitySet.replace (watchers_of id) (SomeEntity e) rel
 
 (** [propagate_change id] wakes up all the reverse dependencies of [e]. *)
 let propagate_change id =
@@ -483,6 +483,7 @@ module Make (I : U) : S with type data = I.data = struct
   let push_dependency e kind xs y =
     let y_id = match y with SomeEntity e -> identifier e in
     let xs_id = List.map (function SomeEntity e -> identifier e) xs in
+    register_dependency e (y_id, (kind, xs_id));
     e.description <- update_dependencies e.description (
       push (dependencies e) (y_id, (kind, xs_id))
     )

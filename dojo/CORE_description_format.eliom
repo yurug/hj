@@ -25,6 +25,6 @@ let process_string parser_fun s =
     | `OK cst -> `OK (with_raw s cst)
     | `KO e -> `KO e
 
-let questions_of_string = process_string questions_description
+let exercise_of_string = process_string description
 
 }}

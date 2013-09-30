@@ -60,8 +60,8 @@ let cat f =
   handle_unix_error (fun () ->
     let b = Buffer.create 13 in
     Lwt_stream.iter
-      (fun s -> Buffer.add_string b s; Buffer.add_char b '\n')
-      (Lwt_io.lines_of_file f)
+      (Buffer.add_char b)
+      (Lwt_io.chars_of_file f)
     >> return (Buffer.contents b)
   ) "(empty)"
 

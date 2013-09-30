@@ -110,7 +110,7 @@ let patch start stop what =
                                 stop.character);
 
         jsnew new_range (start.line - 1,
-                         start.character,
+                         start.character - 1,
                          stop.line - 1,
                          stop.character)
 

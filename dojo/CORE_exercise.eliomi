@@ -23,9 +23,16 @@ open CORE_description_CST
 
 type patch = position * position * string
 
+val make_blank : CORE_identifier.t -> [ `OK of t
+    | `KO of [>
+      | `UndefinedEntity of CORE_identifier.t
+      | `AlreadyExists   of CORE_identifier.path
+      | `SystemError     of string
+    ]] Lwt.t
+
 val change_from_user_description
-  : t -> questions with_raw -> [
-  | `OK of (CORE_identifier.t * question_definition) list
+  : t -> exercise with_raw -> [
+  | `OK of (CORE_identifier.t * exercise with_raw) list
   | `KO of [
     | `UndefinedEntity of CORE_identifier.t
     | `NeedPatch       of patch

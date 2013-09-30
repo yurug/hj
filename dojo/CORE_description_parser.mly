@@ -16,26 +16,31 @@
 
 %}
 
-%start<CORE_description_CST.questions> questions_description
+%start<CORE_description_CST.exercise> description
 
 (** Literals. *)
 %token<string> ID
 %token<string> RAW
 
 (** Punctation. *)
-%token EOF LPAREN RPAREN
+%token EOF LPAREN RPAREN LBRACKET RBRACKET QMARK
 
 (** Operators *)
-%token THEN ORELSE
+%token THEN ORELSE CHECK
 
 (** Priorities *)
+%right RAW
 %right ORELSE
 %right THEN
 
 %%
 
-questions_description: qs=questions EOF {
-  qs
+description: e=exercise EOF {
+  e
+}
+
+exercise: title=located(RAW) questions=questions {
+  { title; questions }
 }
 | error {
   raise (CORE_description_CST.ParseError (
@@ -54,23 +59,21 @@ questions: q1=questions THEN q2=questions {
 | LPAREN q=questions RPAREN {
   q
 }
-| q = question {
-  Single q
+| statement=located(RAW) qs=questions {
+  Statement (statement, qs)
 }
-
-question: x=identifier {
-  Question (x, None)
+| CHECK i=identifier {
+  Checkpoint i
 }
-| x=identifier qdef=question_definition {
-  Question (x, Some qdef)
+| LBRACKET i=identifier d=located(exercise)? RBRACKET {
+  Sub (i, d)
+}
+| LBRACKET i=identifier _d=QMARK RBRACKET {
+  Include (i, from_lexing_position $startpos(_d), from_lexing_position $endpos(_d))
 }
 
 %inline identifier: id=located(ID) {
   id
-}
-
-question_definition: title=located(RAW) statement=located(RAW) {
-  { title; statement }
 }
 
 %inline located(X): x=X {

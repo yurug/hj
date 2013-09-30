@@ -14,7 +14,6 @@ let tests_path = from_strings [ "tests" ]
 let users_path = from_strings [ "users" ]
 let system_path = from_strings [ "system" ]
 let exercises_path = from_strings [ "exercises" ]
-let questions_path = from_strings [ "questions" ]
 
 let std_paths = [ tests_path; users_path; system_path ]
 

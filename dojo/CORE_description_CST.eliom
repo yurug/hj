@@ -23,19 +23,19 @@ let locate pstart pstop node = {
   stop = from_lexing_position pstop;
 }
 
-type questions =
-  | Compose of composer * questions list
-  | Single  of question
+type exercise = {
+  title : string located;
+  questions : questions;
+}
+
+and questions =
+  | Compose    of composer * questions list
+  | Statement  of string located * questions
+  | Checkpoint of identifier
+  | Include    of identifier * position * position
+  | Sub        of identifier * exercise located option
 
 and composer = Seq | Par
-
-and question =
-  | Question of identifier * question_definition option
-
-and question_definition = {
-  title     : string located;
-  statement : string located;
-}
 
 and identifier = string located
 
@@ -51,4 +51,54 @@ let raw = fst
 
 let data = snd
 
+let rec equivalent_exercises e1 e2 =
+  e1.title.node = e2.title.node &&
+  equivalent_questions e1.questions e2.questions
+
+and equivalent_questions q1 q2 =
+  match q1, q2 with
+    | Compose (c1, qs1), Compose (c2, qs2) when c1 = c2 ->
+      (try List.for_all2 equivalent_questions qs1 qs2 with _ -> false)
+    | Statement (s1, q1), Statement (s2, q2) ->
+      s1.node = s2.node && equivalent_questions q1 q2
+    | Checkpoint c1, Checkpoint c2 ->
+      c1.node = c2.node
+    | Include (s1, _, _), Include (s2, _, _) ->
+      s1.node = s2.node
+    | Sub (s1, None), Sub (s2, None) ->
+      s1.node = s2.node
+    | Sub (s1, Some e1), Sub (s2, Some e2) ->
+      s1.node = s2.node && equivalent_exercises e1.node e2.node
+    | _, _ -> false
+
+let dummy_position = { line = -1; character = -1 }
+
+let dummy_loc x = { node = x; start = dummy_position; stop = dummy_position }
+
+let blank = {
+  title = dummy_loc I18N.String.no_title;
+  questions = Compose (Seq, [])
+}
+
+(** precondition: Assume that [s] contains a least [l] lines. *)
+let offset_of { line = l; character = c } s =
+  let rec goto_line b i =
+    if i = 0 then b
+    else if s.[b] = '\n' then goto_line (b + 1) (i - 1)
+    else goto_line (b + 1) i
+  in
+  goto_line 0 (l - 1) + (c - 1)
+
+let slice start stop s =
+  let ostart = offset_of start s in
+  let ostop = offset_of stop s in
+  String.sub s ostart (ostop - ostart + 1)
+
 }}
+
+let with_sub_raw raw n =
+  Ocsigen_messages.errlog (Printf.sprintf "Slice %d-%d %d-%d\n%s\n"
+                            n.start.line n.start.character
+                            n.stop.line n.stop.character
+                            raw);
+  (slice n.start n.stop raw, n.node)

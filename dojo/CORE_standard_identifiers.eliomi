@@ -12,8 +12,6 @@ val users_path : path
 
 val exercises_path : path
 
-val questions_path : path
-
 val system_path : path
 
 val std_paths : path list

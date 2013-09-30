@@ -5,12 +5,12 @@
 
   open CORE_description_CST
 
-  val questions_of_string :
+  val exercise_of_string :
     string ->
     [> `KO of
         [> `SyntaxError of Lexing.position * Lexing.position * string
         | `SystemError of string ]
-    | `OK of questions with_raw
+    | `OK of exercise with_raw
     ]
 
 }}

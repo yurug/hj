@@ -33,17 +33,19 @@ let exercise_page e =
   let push_online_definition =
     let ods = Hashtbl.create 13 in
     let create id =
-      (CORE_question.make_blank id >>>= fun q ->
+      (CORE_exercise.make_blank id >>>= fun q ->
        push_dependency e "questions" [] (SomeEntity q);
-       CORE_question.change_from_user_description q (Hashtbl.find ods id)
+       CORE_exercise.change_from_user_description q (Hashtbl.find ods id)
       ) >>= function
         | `OK _ ->
           return []
-        | `KO e ->
-          Ocsigen_messages.errlog "Error during question creation";
-          return [ HTML_editor.message (CORE_error_messages.string_of_error e)]
+        | `KO (`NeedPatch p) ->
+          lwt r = patch_request p in
+          return [r]
+        | `KO (#CORE_errors.all as e) ->
+          return [HTML_editor.message (CORE_error_messages.string_of_error e)]
     in
-    fun (id, (user_description : question_definition)) ->
+    fun (id, user_description) ->
       let sid = string_of_identifier id in
 
       (** There is a user interface problem here: At some point,
@@ -64,7 +66,7 @@ let exercise_page e =
   let client_change =
     {{ fun echo (s : string) ->
       Firebug.console##log ("Client change!");
-      match CORE_description_format.questions_of_string s with
+      match CORE_description_format.exercise_of_string s with
         | `OK cst ->
           echo "";
           return (Some cst)
@@ -74,7 +76,7 @@ let exercise_page e =
      }}
   in
   let server_change =
-    (server_function Json.t<questions with_raw> (fun cst ->
+    (server_function Json.t<exercise with_raw> (fun cst ->
       Ocsigen_messages.errlog ("Serveur change!");
       change_from_user_description e cst >>= function
         | `OK new_ods ->
@@ -99,7 +101,7 @@ let exercise_page e =
     | CORE_entity.MayChange ->
       (** Oh, a question definition must have changed. *)
       Firebug.console##log ("May have changed!");
-      begin match CORE_description_format.questions_of_string content with
+      begin match CORE_description_format.exercise_of_string content with
         | `OK cst ->
           lwt rqs = %server_change cst in
           Lwt_list.iter_s %editor_process rqs

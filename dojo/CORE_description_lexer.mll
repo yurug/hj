@@ -37,10 +37,15 @@ rule main = parse
 (** Operators. *)
 | "or else"                             { ORELSE }
 | "then"                                { THEN   }
+| "check"                               { CHECK  }
 
 (** Punctuations. *)
 | "("                                   { LPAREN }
 | ")"                                   { RPAREN }
+| "["                                   { LBRACKET }
+| "]"                                   { RBRACKET }
+| "?"                                   { QMARK }
+
 
 (** Literal. *)
 | "{"                                   {
