@@ -35,8 +35,10 @@ let initial_source_filenames = [ statement_filename ]
 
 let change_from_user_description q def =
   lwt source = statement_source q in
-  CORE_source.set_content source C.(def.statement.node);
-  change q (fun data -> return { title = C.(def.title.node) })
+  (if (C.(def.statement.node) <> CORE_source.content source) then (
+    CORE_source.set_content source C.(def.statement.node);
+    change q (fun data -> return { title = C.(def.title.node) })
+  ) else return ())
   >> return (`OK ())
 
 let make_blank id =
