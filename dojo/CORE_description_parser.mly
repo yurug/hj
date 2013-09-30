@@ -69,7 +69,9 @@ questions: q1=questions THEN q2=questions {
   Sub (i, d)
 }
 | LBRACKET i=identifier _d=QMARK RBRACKET {
-  Include (i, from_lexing_position $startpos(_d), from_lexing_position $endpos(_d))
+  Include (i,
+           from_lexing_position $startpos(_d),
+           from_lexing_position $endpos(_d))
 }
 
 %inline identifier: id=located(ID) {
