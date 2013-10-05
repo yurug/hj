@@ -11,11 +11,11 @@ open Eliom_content.Html5.D
 open Eliom_content.Html5.Id
 open Eliom_lib
 
-module Hackojo_app = Eliom_registration
-(*   Eliom_registration.App (
+module Hackojo_app =
+  Eliom_registration.App (
     struct
       let application_name = "hackojo"
-    end) *)
+    end)
 
 let get_img fname =
   img

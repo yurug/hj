@@ -104,11 +104,6 @@ let patch start stop what =
       (* FIXME: relax this dependency by creating a general purpose
          text location module. *)
       let open C in
-        Firebug.console##log_4 (start.line,
-                                start.character,
-                                stop.line,
-                                stop.character);
-
         jsnew new_range (start.line - 1,
                          start.character - 1,
                          stop.line - 1,
