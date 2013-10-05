@@ -10,7 +10,7 @@ open Html5_types
     interface. *)
 
 (** The Web application. *)
-module Hackojo_app : Eliom_registration.ELIOM_APPL
+(* module Hackojo_app : Eliom_registration.ELIOM_APPL *)
 
 (** [hackojo_page elts] produces an  HTML page containing  [elts] and
     everything  that  is   common  the  all  the  pages   of  the  web

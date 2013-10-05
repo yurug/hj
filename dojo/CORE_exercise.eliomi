@@ -8,7 +8,8 @@ type composer = Par | Seq deriving (Json)
 type questions =
   | Compose           of composer * questions list
   | Statement         of string * questions
-  | Checkpoint        of CORE_identifier.t
+  | ContextRule       of CORE_context.rule * questions
+  | Checkpoint        of CORE_identifier.t * questions
   | Sub               of CORE_identifier.t * CORE_entity.timestamp
  deriving (Json)
 

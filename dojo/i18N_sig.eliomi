@@ -86,6 +86,8 @@ sig
   val lexing_eof_in_raw: string
   val do_you_really_want_to_create_a_question_named : string -> string
   val no_title: string
+  val answer_expected : string -> string
+  val in_a_file_named : string -> string
 end
 
 }}

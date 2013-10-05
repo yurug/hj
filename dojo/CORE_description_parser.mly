@@ -26,12 +26,14 @@
 %token EOF LPAREN RPAREN LBRACKET RBRACKET QMARK
 
 (** Operators *)
-%token THEN ORELSE CHECK
+%token THEN ORELSE CHECK ANSWER IN FILE
 
 (** Priorities *)
 %right RAW
+%right IN
 %right ORELSE
 %right THEN
+%nonassoc ID
 
 %%
 
@@ -59,11 +61,11 @@ questions: q1=questions THEN q2=questions {
 | LPAREN q=questions RPAREN {
   q
 }
-| statement=located(RAW) qs=questions {
+| statement=located(RAW) qs=oquestions {
   Statement (statement, qs)
 }
-| CHECK i=identifier {
-  Checkpoint i
+| CHECK i=identifier qs=oquestions {
+  Checkpoint (i, qs)
 }
 | LBRACKET i=identifier d=located(exercise)? RBRACKET {
   Sub (i, d)
@@ -72,6 +74,21 @@ questions: q1=questions THEN q2=questions {
   Include (i,
            from_lexing_position $startpos(_d),
            from_lexing_position $endpos(_d))
+}
+| cr=context_rule IN qs=questions {
+  ContextRule (cr, qs)
+}
+
+%inline oquestions: /* empty */
+{
+  Compose (Seq, [])
+}
+| q=questions {
+  q
+}
+
+context_rule: ANSWER IN FILE fname=RAW {
+  Answer (fname)
 }
 
 %inline identifier: id=located(ID) {

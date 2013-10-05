@@ -224,6 +224,12 @@ module Fr : I18N_sig.Text = struct
   let no_title =
     "Sans titre"
 
+  let answer_expected what =
+    Printf.sprintf "Réponse attendue %s." what
+
+  let in_a_file_named what =
+    Printf.sprintf "dans un fichier nommé `%s'" what
+
 end
 
 module String = (val

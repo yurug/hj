@@ -48,7 +48,7 @@ prepare: CORE_description_parser.eliom CORE_description_parser.eliomi CORE_descr
 CORE_description_parser.eliom : CORE_description_CST.eliom
 
 CORE_description_parser.eliom CORE_description_parser.eliomi: CORE_description_parser.mly
-	$(MENHIR) CORE_description_parser.mly
+	$(MENHIR) --explain CORE_description_parser.mly
 	echo '{shared{' | tee CORE_description_parser.eliom > CORE_description_parser.eliomi
 	cat CORE_description_parser.mli >> CORE_description_parser.eliomi
 	cat CORE_description_parser.ml >> CORE_description_parser.eliom

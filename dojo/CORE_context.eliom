@@ -1,6 +1,8 @@
 (** -*- tuareg -*- *)
 
-(** Evaluation context entities. *)
+{shared{
+
+(** Evaluation context. *)
 
 open Lwt
 
@@ -9,14 +11,26 @@ open CORE_identifier
 open CORE_error_messages
 open COMMON_pervasives
 
-type description =
-  | Generic of string
+type rule =
+  | Answer of string
 deriving (Json)
 
-include CORE_entity.Make (struct
+type context =
+  | Empty
+  | Compose of rule * context
+deriving (Json)
 
-  type data = description deriving (Json)
+let empty = Empty
 
-  let react = passive
+let push r c = Compose (r, c)
 
-end)
+let answer fname = Answer fname
+
+let get_answer_form c =
+  let rec aux last = function
+  | Empty -> last
+  | Compose (Answer fname, qs) -> aux (Some (`Filename fname)) qs
+  in
+  aux None c
+
+}}

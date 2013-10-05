@@ -29,15 +29,19 @@ type exercise = {
 }
 
 and questions =
-  | Compose    of composer * questions list
-  | Statement  of string located * questions
-  | Checkpoint of identifier
-  | Include    of identifier * position * position
-  | Sub        of identifier * exercise located option
+  | Compose     of composer * questions list
+  | Statement   of string located * questions
+  | ContextRule of context_rule * questions
+  | Checkpoint  of identifier * questions
+  | Include     of identifier * position * position
+  | Sub         of identifier * exercise located option
 
 and composer = Seq | Par
 
 and identifier = string located
+
+and context_rule =
+  | Answer of string
 
 deriving (Json)
 
@@ -61,14 +65,22 @@ and equivalent_questions q1 q2 =
       (try List.for_all2 equivalent_questions qs1 qs2 with _ -> false)
     | Statement (s1, q1), Statement (s2, q2) ->
       s1.node = s2.node && equivalent_questions q1 q2
-    | Checkpoint c1, Checkpoint c2 ->
-      c1.node = c2.node
+    | ContextRule (r1, q1), ContextRule (r2, q2) ->
+      equivalent_context_rule r1 r2 && equivalent_questions q1 q2
+    | Checkpoint (c1, q1), Checkpoint (c2, q2) ->
+      c1.node = c2.node && equivalent_questions q1 q2
     | Include (s1, _, _), Include (s2, _, _) ->
       s1.node = s2.node
     | Sub (s1, None), Sub (s2, None) ->
       s1.node = s2.node
     | Sub (s1, Some e1), Sub (s2, Some e2) ->
       s1.node = s2.node && equivalent_exercises e1.node e2.node
+    | _, _ -> false
+
+and equivalent_context_rule r1 r2 =
+  match r1, r2 with
+    | Answer fname1, Answer fname2 ->
+      fname1 = fname2
     | _, _ -> false
 
 let dummy_position = { line = -1; character = -1 }

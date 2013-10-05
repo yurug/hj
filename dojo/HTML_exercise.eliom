@@ -120,6 +120,7 @@ let editor_div e =
 
 let exercise_div e =
   let exercise_div = Id.create_global_elt (div []) in
+  let e_id = identifier e in
   let data_of = server_function Json.t<CORE_identifier.t> (fun x ->
     CORE_exercise.make x >>= function
       | `OK ex -> observe ex (fun d -> return (`OK d))
@@ -127,25 +128,29 @@ let exercise_div e =
   ) in
   let display_exercise =
     {CORE_exercise.data -> [Html5_types.flow5] elt list Lwt.t{
-      let rec display_exercise data =
-        let rec display_questions = function
+      let rec display_exercise ctx data =
+        let rec display_questions ctx = function
           | CORE_exercise.Compose (_, qs) ->
-            lwt ds = Lwt_list.map_s display_questions qs in
+            lwt ds = Lwt_list.map_s (display_questions ctx) qs in
             return (List.flatten ds)
           | CORE_exercise.Statement (s, q) ->
-            lwt d = display_questions q in
+            lwt d = display_questions ctx q in
             return (p [pcdata s] :: d)
-          | CORE_exercise.Checkpoint s ->
-            return ([p [pcdata "Check"]])
+          | CORE_exercise.ContextRule (r, qs) ->
+            display_questions (CORE_context.(push r ctx)) qs
+          | CORE_exercise.Checkpoint (s, qs) ->
+            lwt c = HTML_context.display_checkpoint %e_id ctx s in
+            lwt d = display_questions ctx qs in
+            return (c @ d)
           | CORE_exercise.Sub (x, _) ->
             %data_of x >>= function
-              | `OK ex -> display_exercise ex
+              | `OK ex -> display_exercise ctx ex
               | `KO _ -> return [p [pcdata "error"]]
         in
-        lwt d = display_questions (CORE_exercise.questions data) in
+        lwt d = display_questions ctx (CORE_exercise.questions data) in
         return (h1 [pcdata (CORE_exercise.title data)] :: d)
       in
-      display_exercise
+      display_exercise CORE_context.empty
     }}
   in
   let e_channel = CORE_entity.channel e in

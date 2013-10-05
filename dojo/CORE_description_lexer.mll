@@ -38,6 +38,9 @@ rule main = parse
 | "or else"                             { ORELSE }
 | "then"                                { THEN   }
 | "check"                               { CHECK  }
+| "answer"                              { ANSWER  }
+| "in"                                  { IN  }
+| "file"                                { FILE }
 
 (** Punctuations. *)
 | "("                                   { LPAREN }

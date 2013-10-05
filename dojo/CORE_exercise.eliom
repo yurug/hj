@@ -21,7 +21,8 @@ type composer = Par | Seq deriving (Json)
 type questions =
   | Compose           of composer * questions list
   | Statement         of string * questions
-  | Checkpoint        of CORE_identifier.t
+  | ContextRule       of CORE_context.rule * questions
+  | Checkpoint        of CORE_identifier.t * questions
   | Sub               of CORE_identifier.t * CORE_entity.timestamp
  deriving (Json)
 
@@ -40,6 +41,7 @@ let timestamp_of_sub questions rkey =
   let rec aux = function
     | Compose (_, qs) -> List.flatten (List.map aux qs)
     | Statement (_, qs) -> aux qs
+    | ContextRule (_, qs) -> aux qs
     | Sub (r, ts) when r = rkey -> [ ts ]
     | Sub _ -> []
     | Checkpoint _ -> []
@@ -118,6 +120,9 @@ let collect_on_subs cst f =
 
     | C.Statement (_, q) ->
        aux q
+
+    | C.ContextRule (_, q) ->
+      aux q
 
     | C.Checkpoint _ ->
       return []
@@ -198,9 +203,21 @@ let rec questions_from_cst raw e cst =
       (** Includes should have been processed at this point. *)
       assert false
 
-    | C.Checkpoint id ->
-      (* FIXME: Should probably be rooted at [e.id]. *)
-      return (Checkpoint (CORE_identifier.identifier_of_string id.C.node))
+    | C.ContextRule (r, qs) ->
+      lwt qs = aux qs in
+      return (ContextRule (context_rule r, qs))
+
+    | C.Checkpoint (id, qs) ->
+      let id = CORE_identifier.(
+        identifier_of_path (
+          concat
+            (path_of_identifier (identifier e))
+            (path_of_string id.C.node)
+        )
+      )
+      in
+      lwt qs = aux qs in
+      return (Checkpoint (id, qs))
 
     | C.Statement (s, qs) ->
       lwt qs = aux qs in
@@ -226,6 +243,10 @@ let rec questions_from_cst raw e cst =
         | `KO e -> with_local_error e
   in
   aux cst.C.questions
+
+and context_rule = function
+  | C.Answer f ->
+    CORE_context.answer f
 
 (** Compare an entity with the user description CST to decide if
     the user description is different from the entity. *)
