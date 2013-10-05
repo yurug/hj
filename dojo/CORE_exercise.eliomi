@@ -3,6 +3,15 @@
 (** Exercise entities. *)
 
 {shared{
+type composer = Par | Seq deriving (Json)
+
+type questions =
+  | Compose           of composer * questions list
+  | Statement         of string * questions
+  | Checkpoint        of CORE_identifier.t
+  | Sub               of CORE_identifier.t * CORE_entity.timestamp
+ deriving (Json)
+
 type description
 }}
 
@@ -14,6 +23,13 @@ type data = description
 
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ]
 
+{shared{
+(** [title e] returns the title of [e]. *)
+val title : description -> string
+
+(** [questions e] returns the questions of [e]. *)
+val questions : description -> questions
+}}
 
 (** [assignment_rule e k] returns the assignment rule of the
     exercise [e] for the assignment kind [k]. *)

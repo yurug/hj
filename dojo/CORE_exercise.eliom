@@ -65,6 +65,12 @@ include CORE_entity.Make (struct
 
 end)
 
+{shared{
+let title d = d.title
+
+let questions d = d.questions
+}}
+
 let (raw_user_description_filename,
      raw_user_description_source,
      raw_user_description_retrieve)
@@ -221,6 +227,13 @@ let rec questions_from_cst raw e cst =
   in
   aux cst.C.questions
 
+(** Compare an entity with the user description CST to decide if
+    the user description is different from the entity. *)
+and changed x questions cst =
+  lwt o1 = observe x (fun d -> return (d.questions <> questions)) in
+  lwt o2 = observe x (fun d -> return (d.title <> cst.C.title.C.node)) in
+  return (o1 || o2)
+
 (** Take an exercise [x] and a user description [cr] and produce a
     change on [x] to be up-to-date with respect to [cr].
 
@@ -244,9 +257,7 @@ and change_from_user_description x cr =
                 lwt source = raw_user_description_source x in
                 if CORE_source.content source <> (C.raw cr) then (
                   lwt questions = questions_from_cst (C.raw cr) x cst in
-                  lwt changed =
-                    observe x (fun d -> return (d.questions <> questions))
-                  in
+                  lwt changed = changed x questions cst in
                   (if changed then
                       let data = {
                         title = cst.C.title.C.node;

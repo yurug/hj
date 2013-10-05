@@ -12,6 +12,13 @@ let ( !* ) f x = f [x]
 
 type 'a only = Only of 'a
 
+let lwt_list_join cs =
+  List.fold_right (fun c xs ->
+      lwt xs = xs in
+      lwt x = c in return (x :: xs))
+      cs
+      (return [])
+
 let lwt_if c pt pe =
   c >>= function
     | true -> pt

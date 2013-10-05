@@ -64,6 +64,9 @@ val ( !* ) : ('a list -> 'b) -> 'a -> 'b
     mailbox [m]. *)
 val wait_for : 'a Lwt_mvar.t -> ('a -> 'b option) -> 'b Lwt.t
 
+(** [lwt_list_join cs] concatenates the result of all the processes [cs]. *)
+val lwt_list_join : 'a Lwt.t list -> 'a list Lwt.t
+
 (** [lwt_if c pt pe] lifts [if then else] to Lwt. *)
 val lwt_if : bool Lwt.t -> 'a Lwt.t -> 'a Lwt.t -> 'a Lwt.t
 
