@@ -9,7 +9,7 @@ type questions =
   | Compose           of composer * questions list
   | Statement         of string * questions
   | ContextRule       of CORE_context.rule * questions
-  | Checkpoint        of CORE_identifier.t * questions
+  | Checkpoint        of string * questions
   | Sub               of CORE_identifier.t * CORE_entity.timestamp
  deriving (Json)
 

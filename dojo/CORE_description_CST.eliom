@@ -32,7 +32,7 @@ and questions =
   | Compose     of composer * questions list
   | Statement   of string located * questions
   | ContextRule of context_rule * questions
-  | Checkpoint  of identifier * questions
+  | Checkpoint  of string located * questions
   | Include     of identifier * position * position
   | Sub         of identifier * exercise located option
 
@@ -81,7 +81,6 @@ and equivalent_context_rule r1 r2 =
   match r1, r2 with
     | Answer fname1, Answer fname2 ->
       fname1 = fname2
-    | _, _ -> false
 
 let dummy_position = { line = -1; character = -1 }
 

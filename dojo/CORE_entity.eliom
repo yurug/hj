@@ -185,6 +185,7 @@ module type S = sig
   val identifier : t -> CORE_identifier.t
   val properties : t -> CORE_property.set
   val timestamp : t -> timestamp
+  val dependencies : t -> CORE_inmemory_entity.dependencies
   val change  : t -> data change -> unit Lwt.t
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
   val refer_to : t -> reference
@@ -195,12 +196,15 @@ module type S = sig
       | `SystemError     of string
     ]] Lwt.t
 
+  val update_source : t -> CORE_source.filename -> CORE_source.t -> unit Lwt.t
+
   val source : CORE_source.filename ->
     (CORE_source.filename
      * (t -> CORE_source.t Lwt.t)
      * (CORE_identifier.t, string) server_function)
 
-  val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit
+  val push_dependency
+    : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
 
   val newer_than : t -> some_t -> bool
 
@@ -454,6 +458,8 @@ module Make (I : U) : S with type data = I.data = struct
 
   let properties = properties
 
+  let dependencies = dependencies
+
   let refer_to = identifier
 
   let timestamp = timestamp
@@ -463,6 +469,12 @@ module Make (I : U) : S with type data = I.data = struct
     | `KO (`SystemError e) -> return (`KO (`SystemError e))
     | `KO (`UndefinedEntity e) -> return (`KO (`UndefinedEntity e))
     | `KO (`AlreadyExists _) -> assert false
+
+  let update_source x id s =
+    change x (fun d ->
+      x.sources <- CORE_source.Map.add id s x.sources;
+      return d
+    )
 
   let source id =
     let get x =
@@ -486,7 +498,8 @@ module Make (I : U) : S with type data = I.data = struct
     register_dependency e (y_id, (kind, xs_id));
     e.description <- update_dependencies e.description (
       push (dependencies e) (y_id, (kind, xs_id))
-    )
+    );
+    change e (fun x -> return x) >> update e
 
   let newer_than e (SomeEntity other) =
       (timestamp e > timestamp other)

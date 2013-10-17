@@ -32,9 +32,12 @@ module Make (D : sig type data deriving (Json) end) = struct
     let id = identifier m in
     let path = root true (path_of_identifier id) in
     let save_source s =
-      CORE_vfs.save who ~relative:false
-        (file path (CORE_source.filename s))
-        (CORE_source.content s)
+      (* FIXME: Do that only if the source has been modified. *)
+      let fname = file path (CORE_source.filename s) in
+      CORE_vfs.save who ~relative:false fname (CORE_source.content s)
+      (* FIXME: We ignore errors at this point because we should instead try
+         to log all the errors and present them in an uniform way. *)
+      >>= function _ -> return (`OK ())
     in
     (if not (Sys.file_exists (string_of_path path)) then
        CORE_vfs.create who ~relative:false path
@@ -45,8 +48,9 @@ module Make (D : sig type data deriving (Json) end) = struct
     else
       return (`OK ())
     )
-    >>>= fun () -> list_map_s save_source ss
     >>>= fun _ -> CORE_vfs.save who ~relative:false (metafile path) raw
+    >>>= fun _ -> list_map_s save_source ss
+    >>>= fun _ -> return (`OK ())
 
   let exists id =
     let path = root true (path_of_identifier id) in

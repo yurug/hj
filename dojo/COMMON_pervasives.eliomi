@@ -173,3 +173,5 @@ module MRef : sig
   val read : 'a t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
   val write : 'a t -> 'a -> unit Lwt.t
 end
+
+val update_assoc : 'a -> 'b -> ('a * 'b) list -> ('a * 'b) list

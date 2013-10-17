@@ -29,6 +29,11 @@ let rmdir ps ?(content=false) lraise =
   success ~lraise (!% cmd)
   >> return ()
 
+let cp src dst lraise =
+  let cmd = Printf.sprintf "cp %s %s" src dst in
+  success ~lraise (!% cmd)
+  >> return ()
+
 let read c =
   handle_unix_error (fun () -> return (
     strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c

@@ -22,7 +22,7 @@ type questions =
   | Compose           of composer * questions list
   | Statement         of string * questions
   | ContextRule       of CORE_context.rule * questions
-  | Checkpoint        of CORE_identifier.t * questions
+  | Checkpoint        of string * questions
   | Sub               of CORE_identifier.t * CORE_entity.timestamp
  deriving (Json)
 
@@ -208,12 +208,10 @@ let rec questions_from_cst raw e cst =
       return (ContextRule (context_rule r, qs))
 
     | C.Checkpoint (id, qs) ->
-      let id = CORE_identifier.(
-        identifier_of_path (
-          concat
-            (path_of_identifier (identifier e))
-            (path_of_string id.C.node)
-        )
+      let id = string_of_path (
+        concat
+          (path_of_identifier (identifier e))
+          (path_of_string id.C.node)
       )
       in
       lwt qs = aux qs in

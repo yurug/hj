@@ -116,6 +116,9 @@ module type S = sig
   (** [timestamp e] returns the timestamp of [e]. *)
   val timestamp : t -> timestamp
 
+  (** [dependencies e] returns the dependencies of [e]. *)
+  val dependencies : t -> CORE_inmemory_entity.dependencies
+
   (** [change e c] asks for the replacement of [e]'s content by [c
       e].  This attempt triggers the reaction of the entity, which is
       not atomic. This operation may block if a reaction is already
@@ -149,6 +152,10 @@ module type S = sig
       | `SystemError     of string
     ]] Lwt.t
 
+  (** [update_source e fname s] notifies [e] that source [fname] is
+      now [s]. *)
+  val update_source : t -> CORE_source.filename -> CORE_source.t -> unit Lwt.t
+
   (** [source s] returns a triple made of
       - [s]
       - a server-side accessor of entity [x] for the source [s].
@@ -158,7 +165,7 @@ module type S = sig
      * (t -> CORE_source.t Lwt.t)
      * (CORE_identifier.t, string) server_function)
 
-  val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit
+  val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
 
   val newer_than : t -> some_t -> bool
 

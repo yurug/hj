@@ -74,6 +74,12 @@ val empty_dependencies : dependencies
     an identifier's dependencies [ds]. *)
 val dependency_image : dependencies -> dependency list
 
+(** [dependency d k xs] returns [Some (k (xs))] if there is
+    a [y] in [d] such that [k (xs) = y]. Otherwise, returns
+    [None]. *)
+val dependency
+  : dependencies -> dependency_kind -> identifier list -> identifier option
+
 (** [push ds d] is the dependencies [ds] with an extra dependency [d]. *)
 val push : dependencies -> dependency -> dependencies
 

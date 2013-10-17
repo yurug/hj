@@ -31,6 +31,11 @@ let of_list x = x
 
 let to_list x = x
 
+let dependency d k xs =
+  try
+    Some (List.assoc xs (List.assoc k d))
+  with Not_found -> None
+
 type 'a meta = {
   identifier      : CORE_identifier.t;
   dependencies    : dependencies;

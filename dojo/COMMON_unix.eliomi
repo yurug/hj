@@ -10,6 +10,9 @@ val mkdir : string -> ('a, 'b) raiser -> unit Lwt.t
 (** [rmdir rdir ~content:f]. *)
 val rmdir : string -> ?content:bool -> ('a, 'b) raiser -> unit Lwt.t
 
+(** [cp src dest]. *)
+val cp : string -> string -> ('a, 'b) raiser -> unit Lwt.t
+
 (** [grep cmd regexp] returns the stream of lines produces by [cmd]
     that match [regexp]. *)
 val grep :

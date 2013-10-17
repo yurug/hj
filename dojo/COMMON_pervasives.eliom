@@ -228,3 +228,7 @@ module MRef = struct
   let read x f = with_lock x.mutex (fun () -> f x.content)
   let write x v = with_lock x.mutex (fun () -> return (x.content <- v))
 end
+
+let update_assoc k v l =
+  let l = List.remove_assoc k l in
+  (k, v) :: l
