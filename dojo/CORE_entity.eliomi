@@ -165,7 +165,8 @@ module type S = sig
      * (t -> CORE_source.t Lwt.t)
      * (CORE_identifier.t, string) server_function)
 
-  val push_dependency : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
+  val push_dependency
+    : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
 
   val newer_than : t -> some_t -> bool
 

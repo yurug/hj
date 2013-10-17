@@ -15,18 +15,89 @@ type submission = string deriving (Json)
 (** Relation with other entities:
     - authors    : CORE_user.t list
     - exercise   : CORE_exercise.t
-    - evaluation : CORE_evaluation.t
 *)
 
-type description = {
-  contents : (string * submission) list;
+type evaluation_dynamic_state =
+  | Unevaluated
+  | Evaluated      of CORE_context.score
+  | BeingEvaluated of CORE_context.job
+deriving (Json)
+
+type evaluation_state = {
+  estate        : evaluation_dynamic_state;
+  rule          : CORE_context.rule list;
+  esubmission   : submission option;
 } deriving (Json)
+
+type submission_dynamic_state =
+  | New
+  | Handled
+deriving (Json)
+
+type submission_state = {
+  submission    : submission;
+  sstate        : submission_dynamic_state;
+} deriving (Json)
+
+type description = {
+  submissions : (CORE_exercise.checkpoint * submission_state) list;
+  evaluations : (CORE_exercise.checkpoint * evaluation_state) list;
+} deriving (Json)
+
+let answer_to_dependency_kind = "answer_to"
+
+let answer_of_dependency_kind = "answer_of"
+
+
 
 include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react = passive
+  let react deps a old =
+    lwt changed_exo =
+      match dependency deps answer_to_dependency_kind [] with
+        | None -> return None
+        | Some exo_id ->
+          CORE_exercise.make exo_id >>= function
+            | `OK exo -> return (Some exo)
+            | `KO exo -> (* FIXME: Handle this inconsistency error.  *)
+              Ocsigen_messages.errlog "Error loading exercise in answer.";
+              assert false
+    in
+    (** There are several kind of events to react to:
+
+        - the exercise had been modified, so the evaluation
+          context may have been updated and the evaluation
+          must redone on all the submissions ;
+
+        - some part of the submissions had been modified, so this
+        part must be evaluated again. *)
+
+    lwt checkpoints_to_be_rechecked =
+      match changed_exo with
+        | Some exo ->
+          Ocsigen_messages.errlog "Exo changed";
+        (** The exercise is updated. All its checkpoints are
+            potentially impacted. *)
+          CORE_exercise.all_checkpoints exo
+
+        | None ->
+          match a with
+            | None -> return []
+            | Some a ->
+              (** At least one of the submission is updated. *)
+              Ocsigen_messages.errlog "Submission changed";
+              return (fst (List.split (List.filter (function
+                | (c, { submission; sstate = New }) -> true
+                | _ -> false
+              ) a.submissions)))
+    in
+    (** Recheck checkpoints. *)
+    match a with
+      | None -> return old
+      | Some a -> return a
+
 
 end)
 
@@ -39,14 +110,14 @@ let path_of_exercise_answers exo_id =
   CORE_vfs.create who path
   >>= function _ -> return path
 
-let answer_dependency_kind = "answer_of"
-
 let answer_of exo author =
   let author_id = CORE_user.identifier author in
-  dependency (CORE_exercise.dependencies exo) answer_dependency_kind [author_id]
+  dependency
+    (CORE_exercise.dependencies exo)
+    answer_of_dependency_kind [author_id]
 
 let assign_answer exo answer author =
-  CORE_exercise.push_dependency exo answer_dependency_kind
+  CORE_exercise.push_dependency exo answer_of_dependency_kind
     [SomeEntity author]
     (SomeEntity answer)
 
@@ -99,8 +170,9 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
     | `Initialization ->
 
       let rec aux salt () =
-        let data = { contents = [] } in
-        let init = (data, empty_dependencies, CORE_property.empty, []) in
+        let data = { submissions = []; evaluations = [] } in
+        let dependencies = of_list [(answer_to_dependency_kind, [([], CORE_exercise.identifier exo)])] in
+        let init = (data, dependencies, CORE_property.empty, []) in
         lwt path = path_of_exercise_answers exo_id in
         lwt ids_from_authors = Lwt_list.map_s (fun a ->
           lwt f = CORE_user.firstname a in
@@ -137,8 +209,9 @@ let submit_file answer checkpoint tmp_filename original_filename =
     lwt content = COMMON_unix.cat tmp_filename lraise in
     let sfname = Filename.basename original_filename in
     let source = CORE_source.make sfname content in
+    let sstate = { submission = sfname; sstate = New } in
     change answer (fun a ->
-      let a = { contents = update_assoc checkpoint sfname a.contents } in
-      return a
+      let submissions = update_assoc checkpoint sstate a.submissions in
+      return { a with submissions }
     ) >> update_source answer checkpoint source
   )

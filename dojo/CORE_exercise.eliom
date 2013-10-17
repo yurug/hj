@@ -18,11 +18,13 @@ open CORE_identifier
 
 type composer = Par | Seq deriving (Json)
 
+type checkpoint = string deriving (Json)
+
 type questions =
   | Compose           of composer * questions list
   | Statement         of string * questions
   | ContextRule       of CORE_context.rule * questions
-  | Checkpoint        of string * questions
+  | Checkpoint        of checkpoint * questions
   | Sub               of CORE_identifier.t * CORE_entity.timestamp
  deriving (Json)
 
@@ -139,8 +141,8 @@ let new_inline_subs raw e cst =
     make id >>= function
       | `OK e' ->
         (** We enforce the fact that the entity [e] depends on [e']. *)
-        push_dependency e "subs" [] (SomeEntity e');
-        return []
+        push_dependency e "subs" [] (SomeEntity e')
+        >> return []
       | `KO e ->
         match def with
           | None ->
@@ -301,6 +303,18 @@ and change_from_user_description x cr =
         return (`KO (`NeedPatch p))
   with Error e ->
     return (`KO e)
+
+let all_checkpoints e =
+  observe e (fun c ->
+    let rec aux = function
+      | Compose (_, qs) -> List.flatten (List.map aux qs)
+      | Sub _ -> []
+      | Statement (_, qs) -> aux qs
+      | ContextRule (_, qs) -> aux qs
+      | Checkpoint (c, qs) -> c :: aux qs
+    in
+    return (aux c.questions)
+  )
 
 let assignment_rule e k =
   observe e (fun c -> return (

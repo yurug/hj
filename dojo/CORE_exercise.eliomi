@@ -5,11 +5,13 @@
 {shared{
 type composer = Par | Seq deriving (Json)
 
+type checkpoint = string deriving (Json)
+
 type questions =
   | Compose           of composer * questions list
   | Statement         of string * questions
   | ContextRule       of CORE_context.rule * questions
-  | Checkpoint        of string * questions
+  | Checkpoint        of checkpoint * questions
   | Sub               of CORE_identifier.t * CORE_entity.timestamp
  deriving (Json)
 
@@ -35,6 +37,10 @@ val questions : description -> questions
 (** [assignment_rule e k] returns the assignment rule of the
     exercise [e] for the assignment kind [k]. *)
 val assignment_rule : t -> assignment_kind -> CORE_property.rule Lwt.t
+
+(** [all_checkpoints e] returns all the checkpoints in the description
+    of [e]. *)
+val all_checkpoints : t -> checkpoint list Lwt.t
 
 open CORE_description_CST
 

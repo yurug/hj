@@ -35,8 +35,8 @@ let editor_div e =
     let ods = Hashtbl.create 13 in
     let create id =
       (CORE_exercise.make_blank id >>>= fun q ->
-       push_dependency e "questions" [] (SomeEntity q);
-       CORE_exercise.change_from_user_description q (Hashtbl.find ods id)
+       push_dependency e "questions" [] (SomeEntity q)
+       >> CORE_exercise.change_from_user_description q (Hashtbl.find ods id)
       ) >>= function
         | `OK _ ->
           return []

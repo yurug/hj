@@ -7,6 +7,7 @@ open Lwt
 open CORE_entity
 open CORE_identifier
 open CORE_error_messages
+open CORE_exercise
 open COMMON_pervasives
 
 type description = unit deriving (Json)

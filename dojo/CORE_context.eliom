@@ -20,6 +20,12 @@ type context =
   | Compose of rule * context
 deriving (Json)
 
+type criteria = string deriving (Json)
+
+type grade = int * int deriving (Json)
+
+type score = (criteria * grade) list deriving (Json)
+
 let empty = Empty
 
 let push r c = Compose (r, c)
@@ -34,3 +40,7 @@ let get_answer_form c =
   aux None c
 
 }}
+
+type job =
+  | ExecutableJob of CORE_machine.command_job
+deriving (Json)
