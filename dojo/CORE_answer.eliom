@@ -85,12 +85,15 @@ include CORE_entity.Make (struct
 
     let evaluate a cp =
       lwt context = CORE_exercise.context_of_checkpoint questions cp in
+      let change_evaluation_state_of cp estate =
+        assert false
+      in
       lwt evaluation =
         CORE_context.evaluate
           (opt_assoc cp a.submissions)
           (opt_assoc cp a.evaluations)
           context
-          (fun _ -> assert false) (* FIXME *)
+          (change_evaluation_state_of cp) (* FIXME *)
       in
       return { a with evaluations = update_assoc cp evaluation a.evaluations }
     in
