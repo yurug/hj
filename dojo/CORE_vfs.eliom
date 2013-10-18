@@ -33,7 +33,10 @@ let git_commit who where what message lraise =
   success ~lraise
     (!% (where
          @@ (Printf.sprintf
-               ("git commit --author='%s' -m %s %s")
+               (** We use --allow-empty because we want to record the
+                   commit action, even if it has no effect on the
+                   file system. *)
+               ("git commit --allow-empty --author='%s' -m %s %s")
                who (Filename.quote message)
                (String.concat " " (List.map Filename.quote what))
          )

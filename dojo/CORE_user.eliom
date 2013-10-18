@@ -103,7 +103,7 @@ let authenticate u password =
     return (`KO `BadLoginPasswordPair)
   else (
     ltry COMMON_unix.now >>>= fun date ->
-    change user (fun c -> return { c with last_connection = date })
+    change user (fun c -> return (Some { c with last_connection = date }))
     >> return (`OK user)
   )
 

@@ -10,94 +10,96 @@ open CORE_identifier
 open CORE_error_messages
 open COMMON_pervasives
 
-type submission = string deriving (Json)
-
-(** Relation with other entities:
-    - authors    : CORE_user.t list
-    - exercise   : CORE_exercise.t
-*)
-
-type evaluation_dynamic_state =
-  | Unevaluated
-  | Evaluated      of CORE_context.score
-  | BeingEvaluated of CORE_context.job
-deriving (Json)
-
-type evaluation_state = {
-  estate        : evaluation_dynamic_state;
-  rule          : CORE_context.rule list;
-  esubmission   : submission option;
-} deriving (Json)
-
-type submission_dynamic_state =
-  | New
-  | Handled
-deriving (Json)
-
-type submission_state = {
-  submission    : submission;
-  sstate        : submission_dynamic_state;
-} deriving (Json)
-
 type description = {
-  submissions : (CORE_exercise.checkpoint * submission_state) list;
-  evaluations : (CORE_exercise.checkpoint * evaluation_state) list;
+  current_questions : CORE_exercise.questions;
+  submissions : (CORE_exercise.checkpoint * CORE_context.submission_state) list;
+  evaluations : (CORE_exercise.checkpoint * CORE_context.evaluation_state) list;
 } deriving (Json)
 
 let answer_to_dependency_kind = "answer_to"
 
 let answer_of_dependency_kind = "answer_of"
 
-
-
 include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react deps a old =
-    lwt changed_exo =
+  let react deps new_a old =
+    Ocsigen_messages.errlog "Reacting";
+
+    (** Consider the user version of the answer as the new version. *)
+
+    let a = match new_a with None -> old | Some a -> a in
+
+    lwt changed_exo, new_questions =
       match dependency deps answer_to_dependency_kind [] with
-        | None -> return None
+        | None -> return (None, None)
         | Some exo_id ->
           CORE_exercise.make exo_id >>= function
-            | `OK exo -> return (Some exo)
-            | `KO exo -> (* FIXME: Handle this inconsistency error.  *)
-              Ocsigen_messages.errlog "Error loading exercise in answer.";
+            | `OK exo ->
+              (** The answer is only interested in changes
+                  of the [questions]. *)
+              lwt exo_questions =
+                CORE_exercise.(observe exo (fun a -> return (questions a)))
+              in
+              if exo_questions = a.current_questions then
+                return (None, None)
+              else
+                return (Some exo, Some exo_questions)
+            | `KO e -> (* FIXME: Handle this inconsistency error.  *)
+              warn e;
               assert false
     in
-    (** There are several kind of events to react to:
+
+    (** There are several kinds of events to react to:
 
         - the exercise had been modified, so the evaluation
           context may have been updated and the evaluation
           must redone on all the submissions ;
 
         - some part of the submissions had been modified, so this
-        part must be evaluated again. *)
+          part must be evaluated again. *)
 
     lwt checkpoints_to_be_rechecked =
       match changed_exo with
         | Some exo ->
           Ocsigen_messages.errlog "Exo changed";
-        (** The exercise is updated. All its checkpoints are
-            potentially impacted. *)
+          (** The exercise is updated. All its checkpoints are
+              potentially impacted. *)
           CORE_exercise.all_checkpoints exo
 
         | None ->
-          match a with
-            | None -> return []
-            | Some a ->
-              (** At least one of the submission is updated. *)
-              Ocsigen_messages.errlog "Submission changed";
-              return (fst (List.split (List.filter (function
-                | (c, { submission; sstate = New }) -> true
-                | _ -> false
-              ) a.submissions)))
+          (** At least one of the submission is updated. *)
+          Ocsigen_messages.errlog "Check for submission changed";
+          return List.(fst (split (filter (fun (c, s) ->
+            CORE_context.is_new_submission s
+          ) a.submissions)))
     in
-    (** Recheck checkpoints. *)
-    match a with
-      | None -> return old
-      | Some a -> return a
+    let questions =
+      match new_questions with
+        | None -> a.current_questions
+        | Some questions -> questions
+    in
 
+    (** Re-evaluate checkpoints. *)
+
+    let evaluate a cp =
+      lwt context = CORE_exercise.context_of_checkpoint questions cp in
+      lwt evaluation =
+        CORE_context.evaluate
+          (opt_assoc cp a.submissions)
+          (opt_assoc cp a.evaluations)
+          context
+          (fun _ -> assert false) (* FIXME *)
+      in
+      return { a with evaluations = update_assoc cp evaluation a.evaluations }
+    in
+    lwt a = Lwt_list.fold_left_s evaluate a checkpoints_to_be_rechecked in
+    return (match new_questions with
+      | None when new_a = None && checkpoints_to_be_rechecked = [] -> None
+      | None -> Some a
+      | Some qs -> Some { a with current_questions = qs }
+    )
 
 end)
 
@@ -123,6 +125,9 @@ let assign_answer exo answer author =
 
 let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
   let exo_id = CORE_exercise.identifier exo in
+  lwt current_questions =
+    CORE_exercise.(observe exo (fun a -> return (questions a)))
+  in
 
   (** Determine what are the current answers of the
       given authors list. *)
@@ -155,51 +160,47 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
 
   let rec discriminate first_answer answers =
     match first_answer, answers with
-      | None, [] -> `Initialization
-      | None, x :: xs -> discriminate x xs
-      | Some a, [] -> `Standard a
-      | Some a, (Some b) :: xs ->
-        if CORE_identifier.equal a b then
-          discriminate first_answer xs
-        else
-          `Join a
-      | _, None :: xs ->
-        discriminate first_answer xs
+      | None, []                              -> `Initialization
+      | None, x :: xs                         -> discriminate x xs
+      | Some a, []                            -> `Standard a
+      | Some a, (Some b) :: xs when equal a b -> discriminate first_answer xs
+      | Some a, (Some b) :: xs                -> `Join a
+      | _, None :: xs                         -> discriminate first_answer xs
   in
-  (match discriminate None authors_answers with
-    | `Initialization ->
 
-      let rec aux salt () =
-        let data = { submissions = []; evaluations = [] } in
-        let dependencies = of_list [(answer_to_dependency_kind, [([], CORE_exercise.identifier exo)])] in
-        let init = (data, dependencies, CORE_property.empty, []) in
-        lwt path = path_of_exercise_answers exo_id in
-        lwt ids_from_authors = Lwt_list.map_s (fun a ->
-          lwt f = CORE_user.firstname a in
-          lwt s = CORE_user.surname a in
-          return (f ^ "_" ^ s)
-        ) authors
-        in
-        let id = identifier_of_path (
-          concat path (from_strings [
-            String.concat "_" ids_from_authors ^ salt
-          ])
-        )
-        in
-        make ~init id >>= function
-          | `OK a -> return (`OK a)
-          | `KO (`AlreadyExists _) -> aux (salt ^ "_") ()
-          | `KO e -> return (`KO e)
+  let initialize () =
+    let rec aux salt () =
+      let data = { submissions = []; evaluations = []; current_questions } in
+      let dependencies =
+        of_list [(answer_to_dependency_kind, [
+          ([],
+           CORE_exercise.identifier exo)])]
       in
-      aux "" ()
+      let init = (data, dependencies, CORE_property.empty, []) in
+      lwt path = path_of_exercise_answers exo_id in
+      lwt ids_from_authors = Lwt_list.map_s (fun a ->
+        lwt f = CORE_user.firstname a in
+        lwt s = CORE_user.surname a in
+        return (f ^ "_" ^ s)
+      ) authors
+      in
+      let id = identifier_of_path (
+        concat path (from_strings [ String.concat "-" ids_from_authors ^ salt ])
+      )
+      in
+      make ~init id >>= function
+        | `OK a                  -> return (`OK a)
+        | `KO (`AlreadyExists _) -> aux (salt ^ "_") ()
+        | `KO e                  -> warn e; return (`KO e)
+    in
+    aux "" ()
+  in
 
-    | `Standard a ->
-      make a
-
-    | `Join a ->
-      (* FIXME: To be implemented. See previous comment. *)
-      assert false
-
+  (match discriminate None authors_answers with
+    | `Initialization -> initialize ()
+    | `Standard a -> make a
+    (* FIXME: To be implemented. See previous comment. *)
+    | `Join a -> assert false
   ) >>>= fun a ->
   Lwt_list.iter_s (assign_answer exo a) authors
   >> return (`OK a)
@@ -209,9 +210,10 @@ let submit_file answer checkpoint tmp_filename original_filename =
     lwt content = COMMON_unix.cat tmp_filename lraise in
     let sfname = Filename.basename original_filename in
     let source = CORE_source.make sfname content in
-    let sstate = { submission = sfname; sstate = New } in
-    change answer (fun a ->
+    let sstate = CORE_context.new_submission sfname in
+    update_source answer checkpoint source;
+    >> change ~immediate:true answer (fun a ->
       let submissions = update_assoc checkpoint sstate a.submissions in
-      return { a with submissions }
-    ) >> update_source answer checkpoint source
+      return (Some { a with submissions })
+    )
   )

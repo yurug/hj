@@ -175,3 +175,5 @@ module MRef : sig
 end
 
 val update_assoc : 'a -> 'b -> ('a * 'b) list -> ('a * 'b) list
+
+val opt_assoc : 'a -> ('a * 'b) list -> 'b option

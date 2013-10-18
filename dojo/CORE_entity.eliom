@@ -21,7 +21,7 @@ type 'a reaction = dependencies -> 'a option -> 'a change
 
 (** A change is a process that transforms the current content of the
     entity into a new one. *)
-and 'a change = 'a -> 'a Lwt.t
+and 'a change = 'a -> 'a option Lwt.t
 
 (** The state of an entity can be up-to-date or modified. In that
     later case, the modified dependencies and the scheduled changes
@@ -151,7 +151,7 @@ let propagate_change id =
           (dependencies, queue)
     in
     (** and by pushing a change that does nothing. *)
-    if Queue.is_empty queue then Queue.push (fun c -> return c) queue;
+    if Queue.is_empty queue then Queue.push (fun c -> return None) queue;
     (** We also notify [e] that [id] has one of its dependencies that
         has changed. *)
     e.state <- Modified (push dependencies (id, (l, xs)), queue)
@@ -186,7 +186,7 @@ module type S = sig
   val properties : t -> CORE_property.set
   val timestamp : t -> timestamp
   val dependencies : t -> CORE_inmemory_entity.dependencies
-  val change  : t -> data change -> unit Lwt.t
+  val change  : ?immediate:bool -> t -> data change -> unit Lwt.t
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
   val refer_to : t -> reference
   val deref : reference ->
@@ -221,8 +221,8 @@ end
     any change to the content of the entity. *)
 let passive _ x' x =
   match x' with
-    | None -> return x
-    | Some x' -> return x'
+    | None -> return None
+    | Some x' -> return (Some x')
 
 (** The implementation of the operations over entities. *)
 module Make (I : U) : S with type data = I.data = struct
@@ -324,20 +324,29 @@ module Make (I : U) : S with type data = I.data = struct
         two reactions cannot run concurrently on the same entity. So,
         during the execution of a reaction the current content of the
         entity cannot change. *)
-    lwt content  = e.reaction dependencies (Some content') content0 in
-
-    (** Fourth, we commit the new content.
-        This requires to wait for all observers to have finished their
-        work. *)
-    wait_to_be_observer_free e (fun () ->
-      e.description <- update_content e.description content;
-      e.push (HasChanged (CORE_inmemory_entity.content e.description));
-      OTD.save e.description (CORE_source.list_of_map e.sources)
-    )
+    e.reaction dependencies content' content0 >>= function
+      | None ->
+        (** The reaction is void. *)
+        return ()
+      | Some content ->
+        (** The reaction produced a new [content]. *)
+        (** Fourth, we commit the new content.
+            This requires to wait for all observers to have finished their
+            work. *)
+        wait_to_be_observer_free e (fun () ->
+          e.description <- update_content e.description content;
+          e.push (HasChanged (CORE_inmemory_entity.content e.description));
+          OTD.save e.description (CORE_source.list_of_map e.sources)
+        )
 
   (** [update e] is the process that applies scheduled changes. *)
   let rec update e =
-    match e.state with
+    let d = Random.bits () in
+    Ocsigen_messages.errlog (Printf.sprintf "Update %d entity %s\n"
+                               d
+                               (string_of_identifier (identifier e)));
+
+    begin match e.state with
       | UpToDate ->
         return ()
 
@@ -351,16 +360,30 @@ module Make (I : U) : S with type data = I.data = struct
             return (e.state <- UpToDate)
         in
         flush ()
+    end >>
+    (Ocsigen_messages.errlog (Printf.sprintf "Update %d entity %s finished\n"
+                               d
+                               (string_of_identifier (identifier e)));
+    return ())
+
 
   (** As long as a change is being applied, we have to
       push other required changes into a queue. *)
   let now_only_accumulate_changes e =
     e.state <- Modified (empty_dependencies, Queue.create ())
 
-  let change e c =
+  let change ?(immediate = false) e c =
     (** Shake the reverse dependencies for them to wait for
         a change of [e]. *)
+    Ocsigen_messages.errlog (Printf.sprintf "Change entity %s\n"
+                               (string_of_identifier (identifier e)));
+
     propagate_change (identifier e);
+
+    Ocsigen_messages.errlog (Printf.sprintf "Proceeding with change on entity %s\n"
+                               (string_of_identifier (identifier e)));
+
+
     match e.state with
       | UpToDate ->
         (** Good, the change is applied immediately. *)
@@ -370,7 +393,8 @@ module Make (I : U) : S with type data = I.data = struct
 
       | Modified (dependencies, queue) ->
         (** This change is scheduled for further application. *)
-        return (Queue.push c queue)
+        Queue.push c queue;
+        if immediate then update e else return ()
 
   let observe (type a) (e : t) (o : data -> a Lwt.t) : a Lwt.t =
     (** We want the content to be as much fresh as possible. *)
@@ -470,11 +494,11 @@ module Make (I : U) : S with type data = I.data = struct
     | `KO (`UndefinedEntity e) -> return (`KO (`UndefinedEntity e))
     | `KO (`AlreadyExists _) -> assert false
 
-  let update_source x id s =
-    change x (fun d ->
-      x.sources <- CORE_source.Map.add id s x.sources;
-      return d
-    )
+  let update_source e id s =
+    e.sources <- CORE_source.Map.add id s e.sources;
+    OTD.save e.description (CORE_source.list_of_map e.sources)
+    (* FIXME: Do not ignore errors. *)
+    >> return ()
 
   let source id =
     let get x =
@@ -499,7 +523,9 @@ module Make (I : U) : S with type data = I.data = struct
     e.description <- update_dependencies e.description (
       push (dependencies e) (y_id, (kind, xs_id))
     );
-    change e (fun x -> return x) >> update e
+    OTD.save e.description []
+    (* FIXME: Do not ignore errors. *)
+    >> return ()
 
   let newer_than e (SomeEntity other) =
       (timestamp e > timestamp other)
@@ -542,10 +568,10 @@ module Tests = struct
         ) (to_list deps))
       in
       let log s = Printf.sprintf "[%010f] %s" (Unix.gettimeofday ()) s in
-      return {
+      return (Some {
         log = List.map log (count_log :: deps_log);
         count
-      }
+      })
 
   end)
 
@@ -580,7 +606,7 @@ module Tests = struct
 
   let change_entity e update =
     E.change e (fun c ->
-      return { c with count = c.count + 1 }
+      return (Some { c with count = c.count + 1 })
     )
     >> return (`OK ())
 

@@ -11,6 +11,7 @@ open CORE_context
 open CORE_answer
 open CORE_exercise
 open CORE_identifier
+open CORE_error_messages
 open COMMON_pervasives
 }}
 
@@ -36,14 +37,12 @@ let submit_file =
               submit_file a name file.tmp_filename file.original_basename
 
             | `KO e ->
-              return (`OK (
-                Ocsigen_messages.errlog (
-                  "Oups: "
-                         ^ CORE_error_messages.string_of_error e)
-              ))
+              warn e;
+              return (`OK ())
         )
-        | `KO _ ->
-          return (`OK (Ocsigen_messages.errlog "Authent failed.")))
+        | `KO e ->
+          warn e;
+          return (`OK ()))
       >>= function
         | _ -> (* FIXME *) return ()
     )

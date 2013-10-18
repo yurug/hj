@@ -78,7 +78,7 @@ let push_assignment_rule k r e =
       | k :: ks -> k :: aux ks
       | [] -> [(k, [(r, [e])])]
     in
-    return { rules = aux a.rules }
+    return (Some { rules = aux a.rules })
   )
 
 let assignments k u =

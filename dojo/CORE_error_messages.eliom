@@ -38,3 +38,8 @@ let fatal_error e =
     Printf.sprintf "Fatal error: %s\n" (string_of_error e)
   );
   exit 1
+
+let warn e =
+  Ocsigen_messages.errlog (
+    Printf.sprintf "Warning: %s\n" (string_of_error e)
+  )

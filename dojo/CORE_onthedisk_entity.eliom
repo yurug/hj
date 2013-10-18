@@ -37,7 +37,9 @@ module Make (D : sig type data deriving (Json) end) = struct
       CORE_vfs.save who ~relative:false fname (CORE_source.content s)
       (* FIXME: We ignore errors at this point because we should instead try
          to log all the errors and present them in an uniform way. *)
-      >>= function _ -> return (`OK ())
+      >>= function
+        | `OK _ -> return (`OK ())
+        | `KO e -> CORE_error_messages.warn e; return (`OK ())
     in
     (if not (Sys.file_exists (string_of_path path)) then
        CORE_vfs.create who ~relative:false path

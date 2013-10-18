@@ -48,8 +48,10 @@ type 'a reaction =
     -> 'a option  (** ... of its content *)
     -> 'a change
 
-(** A [change] is a tranformation of the entity's content. *)
-and 'a change = 'a -> 'a Lwt.t
+(** A [change] is a tranformation of the entity's content.
+    If the change returns [None], it is equivalent to the
+    identity. *)
+and 'a change = 'a -> 'a option Lwt.t
 
 {shared{
 
@@ -133,7 +135,7 @@ module type S = sig
       The code describing the change is atomic with respect
       to the state of the entity.
   *)
-  val change : t -> data change -> unit Lwt.t
+  val change : ?immediate:bool -> t -> data change -> unit Lwt.t
 
   (** [observe e o] evaluates [o] with the up-to-date content of [e].
       As long as [o] is not finished, the requested changes to [e] are

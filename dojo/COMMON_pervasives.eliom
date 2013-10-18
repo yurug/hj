@@ -232,3 +232,6 @@ end
 let update_assoc k v l =
   let l = List.remove_assoc k l in
   (k, v) :: l
+
+let opt_assoc k l =
+  try Some (List.assoc k l) with Not_found -> None

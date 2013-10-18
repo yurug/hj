@@ -42,6 +42,9 @@ val assignment_rule : t -> assignment_kind -> CORE_property.rule Lwt.t
     of [e]. *)
 val all_checkpoints : t -> checkpoint list Lwt.t
 
+(** [context_of_checkpoint e c] computes the context of [c] in [e]. *)
+val context_of_checkpoint : questions -> checkpoint -> CORE_context.t Lwt.t
+
 open CORE_description_CST
 
 type patch = position * position * string

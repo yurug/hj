@@ -287,7 +287,7 @@ and change_from_user_description x cr =
                         cst
                       } in
                       CORE_source.set_content source (C.raw cr);
-                      change x (fun data_now -> return data)
+                      change x (fun data_now -> return (Some data))
                    else return ())
                   >> return (`OK [])
                 ) else return (`OK [])
@@ -315,6 +315,9 @@ let all_checkpoints e =
     in
     return (aux c.questions)
   )
+
+let context_of_checkpoint qs cp =
+  return CORE_context.Empty
 
 let assignment_rule e k =
   observe e (fun c -> return (
