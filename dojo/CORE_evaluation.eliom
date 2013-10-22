@@ -24,7 +24,7 @@ type submission = string deriving (Json)
 type evaluation_state =
   | Unevaluated
   | Evaluated      of CORE_context.score
-  | BeingEvaluated of job
+  | BeingEvaluated of job * CORE_diagnostic.command
 deriving (Json)
 
 type description = {
@@ -47,13 +47,22 @@ let new_evaluation_state_of_checkpoint c s d =
   return (Some { d with jobs = update_assoc c s d.jobs })
 
 let create_job checkpoint context submission change_later =
+  let job =   ExecutableJob 0
+  in
   Lwt.async (fun () ->
-    Lwt_unix.sleep 3.
-    >> change_later (
-      new_evaluation_state_of_checkpoint checkpoint (Evaluated [])
-    )
+    let rec aux k =
+      Lwt_unix.sleep 3.
+      >>
+        if k = 0 then
+          change_later (new_evaluation_state_of_checkpoint checkpoint (Evaluated []))
+        else (
+          change_later (new_evaluation_state_of_checkpoint checkpoint (BeingEvaluated (job, CORE_diagnostic.PushLine (string_of_int k))))
+          >> aux (k - 1)
+        )
+    in
+    aux 3
   );
-  ExecutableJob 0
+  return job
 
 let cancel_job_if_present d cp =
   return ()
@@ -70,8 +79,8 @@ let evaluate change_later exercise answer cps data =
           CORE_exercise.context_of_checkpoint exercise checkpoint
         in
         CORE_answer.mark_handled_submission answer checkpoint s
-        >> let job = create_job checkpoint c s change_later in
-        return (checkpoint, BeingEvaluated job)
+        >> lwt job = create_job checkpoint c s change_later in
+        return (checkpoint, BeingEvaluated (job, CORE_diagnostic.Reset))
   in
   Lwt_list.map_p evaluate cps >>= function
     | [] -> return None
