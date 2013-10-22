@@ -10,10 +10,14 @@ open CORE_identifier
 open CORE_error_messages
 open COMMON_pervasives
 
+type submission_state =
+  | NoSubmission
+  | NewSubmission of CORE_context.submission
+  | HandledSubmission of CORE_context.submission
+deriving (Json)
+
 type description = {
-  current_questions : CORE_exercise.questions;
-  submissions : (CORE_exercise.checkpoint * CORE_context.submission_state) list;
-  evaluations : (CORE_exercise.checkpoint * CORE_context.evaluation_state) list;
+  submissions : (CORE_exercise.checkpoint * submission_state) list;
 } deriving (Json)
 
 let answer_to_dependency_kind = "answer_to"
@@ -24,85 +28,7 @@ include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react deps new_a old =
-    Ocsigen_messages.errlog "Reacting";
-
-    (** Consider the user version of the answer as the new version. *)
-
-    let a = match new_a with None -> old | Some a -> a in
-
-    lwt changed_exo, new_questions =
-      match dependency deps answer_to_dependency_kind [] with
-        | None -> return (None, None)
-        | Some exo_id ->
-          CORE_exercise.make exo_id >>= function
-            | `OK exo ->
-              (** The answer is only interested in changes
-                  of the [questions]. *)
-              lwt exo_questions =
-                CORE_exercise.(observe exo (fun a -> return (questions a)))
-              in
-              if exo_questions = a.current_questions then
-                return (None, None)
-              else
-                return (Some exo, Some exo_questions)
-            | `KO e -> (* FIXME: Handle this inconsistency error.  *)
-              warn e;
-              assert false
-    in
-
-    (** There are several kinds of events to react to:
-
-        - the exercise had been modified, so the evaluation
-          context may have been updated and the evaluation
-          must redone on all the submissions ;
-
-        - some part of the submissions had been modified, so this
-          part must be evaluated again. *)
-
-    lwt checkpoints_to_be_rechecked =
-      match changed_exo with
-        | Some exo ->
-          Ocsigen_messages.errlog "Exo changed";
-          (** The exercise is updated. All its checkpoints are
-              potentially impacted. *)
-          CORE_exercise.all_checkpoints exo
-
-        | None ->
-          (** At least one of the submission is updated. *)
-          Ocsigen_messages.errlog "Check for submission changed";
-          return List.(fst (split (filter (fun (c, s) ->
-            CORE_context.is_new_submission s
-          ) a.submissions)))
-    in
-    let questions =
-      match new_questions with
-        | None -> a.current_questions
-        | Some questions -> questions
-    in
-
-    (** Re-evaluate checkpoints. *)
-
-    let evaluate a cp =
-      lwt context = CORE_exercise.context_of_checkpoint questions cp in
-      let change_evaluation_state_of cp estate =
-        assert false
-      in
-      lwt evaluation =
-        CORE_context.evaluate
-          (opt_assoc cp a.submissions)
-          (opt_assoc cp a.evaluations)
-          context
-          (change_evaluation_state_of cp) (* FIXME *)
-      in
-      return { a with evaluations = update_assoc cp evaluation a.evaluations }
-    in
-    lwt a = Lwt_list.fold_left_s evaluate a checkpoints_to_be_rechecked in
-    return (match new_questions with
-      | None when new_a = None && checkpoints_to_be_rechecked = [] -> None
-      | None -> Some a
-      | Some qs -> Some { a with current_questions = qs }
-    )
+  let react = passive
 
 end)
 
@@ -128,9 +54,6 @@ let assign_answer exo answer author =
 
 let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
   let exo_id = CORE_exercise.identifier exo in
-  lwt current_questions =
-    CORE_exercise.(observe exo (fun a -> return (questions a)))
-  in
 
   (** Determine what are the current answers of the
       given authors list. *)
@@ -173,7 +96,7 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
 
   let initialize () =
     let rec aux salt () =
-      let data = { submissions = []; evaluations = []; current_questions } in
+      let data = { submissions = [] } in
       let dependencies =
         of_list [(answer_to_dependency_kind, [
           ([],
@@ -213,10 +136,26 @@ let submit_file answer checkpoint tmp_filename original_filename =
     lwt content = COMMON_unix.cat tmp_filename lraise in
     let sfname = Filename.basename original_filename in
     let source = CORE_source.make sfname content in
-    let sstate = CORE_context.new_submission sfname in
+    let sstate = NewSubmission (CORE_context.new_submission sfname) in
     update_source answer checkpoint source;
     >> change ~immediate:true answer (fun a ->
       let submissions = update_assoc checkpoint sstate a.submissions in
-      return (Some { a with submissions })
+      return (Some { submissions })
     )
   )
+
+let submission_of_checkpoint answer cp =
+  observe answer (fun a -> return (opt_assoc cp a.submissions))
+
+let checkpoints_of_new_submissions answer =
+  observe answer (fun a ->
+    return (fst (List.(split (filter (function
+      | (_, NewSubmission _) -> true
+      | _ -> false
+    ) a.submissions))))
+  )
+
+let mark_handled_submission answer cp s =
+  change answer (fun a -> return (Some {
+    submissions = update_assoc cp (HandledSubmission s) a.submissions
+  }))

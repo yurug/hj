@@ -258,7 +258,7 @@ and changed x questions cst =
 (** Take an exercise [x] and a user description [cr] and produce a
     change on [x] to be up-to-date with respect to [cr].
 
-    In meantime, [cr] may contain outdated information about the
+    In the meantime, [cr] may contain outdated information about the
     questions in which case we have to produce patches to apply to the
     user description [cr].
 
@@ -317,6 +317,7 @@ let all_checkpoints e =
   )
 
 let context_of_checkpoint qs cp =
+  (* FIXME *)
   return CORE_context.Empty
 
 let assignment_rule e k =

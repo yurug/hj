@@ -13,23 +13,6 @@ open COMMON_pervasives
 (*  Type definitions  *)
 (* ****************** *)
 
-(** The reaction of an entity is triggered each time at least one of
-    its dependencies has changed and each time a new content is
-    suggested for it.  A reaction produces a change that is scheduled
-    for application. *)
-type 'a reaction = dependencies -> 'a option -> 'a change
-
-(** A change is a process that transforms the current content of the
-    entity into a new one. *)
-and 'a change = 'a -> 'a option Lwt.t
-
-(** The state of an entity can be up-to-date or modified. In that
-    later case, the modified dependencies and the scheduled changes
-    are attached to the entity. *)
-type 'a state =
-  | UpToDate
-  | Modified of dependencies * 'a change Queue.t
-
 {shared{
 
 (** A timestamp represents a version number for an entity. *)
@@ -47,6 +30,25 @@ type 'a event =
 
 }}
 
+(** The reaction of an entity is triggered each time at least one of
+    its dependencies has changed and each time a new content is
+    suggested for it.  A reaction produces a change that is scheduled
+    for application. *)
+type 'a reaction =
+    ('a change -> unit Lwt.t)
+    -> dependencies -> 'a option -> 'a change
+
+(** A change is a process that transforms the current content of the
+    entity into a new one. *)
+and 'a change = 'a -> 'a option Lwt.t
+
+(** The state of an entity can be up-to-date or modified. In that
+    later case, the modified dependencies and the scheduled changes
+    are attached to the entity. *)
+and 'a state =
+  | UpToDate
+  | Modified of dependencies * 'a change Queue.t
+
 (** Here is the internal representation of the entity:
 
     - the [description] field stores the in-memory
@@ -62,7 +64,7 @@ type 'a event =
     device from the entity on the server to the client-side
     code.
 *)
-type 'a entity = {
+and 'a entity = {
   mutable description : 'a meta;
   mutable state       : 'a state;
   mutable sources     : CORE_source.map;
@@ -75,7 +77,7 @@ type 'a entity = {
 }
 
 (** Shortcut for the type of entities. *)
-type 'a t = 'a entity
+and 'a t = 'a entity
 
 (** Some data structures contain entities with heterogeneous
     content types. In that case, this type is hidden behind
@@ -219,7 +221,7 @@ end
 
 (** [passive] is the reaction that does nothing but accepting
     any change to the content of the entity. *)
-let passive _ x' x =
+let passive _ _ x' x =
   match x' with
     | None -> return None
     | Some x' -> return (Some x')
@@ -312,7 +314,7 @@ module Make (I : U) : S with type data = I.data = struct
 
   (** [apply deps e c] does the effective change [c] of the
       content of [e]. *)
-  let apply dependencies e c =
+  let rec apply dependencies e c =
     (** First, we extract the current content. *)
     let content0 = content e.description in
 
@@ -324,7 +326,7 @@ module Make (I : U) : S with type data = I.data = struct
         two reactions cannot run concurrently on the same entity. So,
         during the execution of a reaction the current content of the
         entity cannot change. *)
-    e.reaction dependencies content' content0 >>= function
+    e.reaction (change e) dependencies content' content0 >>= function
       | None ->
         (** The reaction is void. *)
         return ()
@@ -340,7 +342,7 @@ module Make (I : U) : S with type data = I.data = struct
         )
 
   (** [update e] is the process that applies scheduled changes. *)
-  let rec update e =
+  and update e =
     let d = Random.bits () in
     Ocsigen_messages.errlog (Printf.sprintf "Update %d entity %s\n"
                                d
@@ -369,10 +371,10 @@ module Make (I : U) : S with type data = I.data = struct
 
   (** As long as a change is being applied, we have to
       push other required changes into a queue. *)
-  let now_only_accumulate_changes e =
+  and now_only_accumulate_changes e =
     e.state <- Modified (empty_dependencies, Queue.create ())
 
-  let change ?(immediate = false) e c =
+  and change ?(immediate = false) e c =
     (** Shake the reverse dependencies for them to wait for
         a change of [e]. *)
     Ocsigen_messages.errlog (Printf.sprintf "Change entity %s\n"
@@ -380,9 +382,10 @@ module Make (I : U) : S with type data = I.data = struct
 
     propagate_change (identifier e);
 
-    Ocsigen_messages.errlog (Printf.sprintf "Proceeding with change on entity %s\n"
-                               (string_of_identifier (identifier e)));
-
+    Ocsigen_messages.errlog (
+      Printf.sprintf "Proceeding with change on entity %s\n"
+        (string_of_identifier (identifier e))
+    );
 
     match e.state with
       | UpToDate ->
@@ -547,7 +550,7 @@ module Tests = struct
 
     type data = t deriving (Json)
 
-    let react deps new_content old_content =
+    let react self deps new_content old_content =
       let (count_log, count) =
         match new_content with
           | None ->

@@ -6,6 +6,7 @@ open Lwt
 open Eliom_content.Html5.D
 open Html5_types
 
+open CORE_entity
 open CORE_identifier
 
 (** [register_page_maker detect retrieve] publishes a way to
@@ -38,3 +39,10 @@ val offer_creation :
      Eliom_service.service) ->
   ('a -> ([> Html5_types.div ] as 'h) Eliom_content.Html5.D.elt Lwt.t) ->
   CORE_identifier.identifier -> 'h Eliom_content.Html5.D.elt Lwt.t
+
+
+val reactive_div :
+  'a CORE_entity.t
+  -> (unit -> 'a Lwt.t)
+  -> ('a -> [ body_content ] elt list Lwt.t) client_value
+  -> [ body_content ] elt Lwt.t

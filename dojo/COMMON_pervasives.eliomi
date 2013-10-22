@@ -79,6 +79,12 @@ val proj_1_3 : 'a * 'b * 'c -> 'a
 val proj_2_3 : 'a * 'b * 'c -> 'b
 val proj_3_3 : 'a * 'b * 'c -> 'c
 
+val update_assoc : 'a -> 'b -> ('a * 'b) list -> ('a * 'b) list
+
+val map_assoc : 'a -> ('b -> 'b) -> ('a * 'b) list -> ('a * 'b) list
+
+val opt_assoc : 'a -> ('a * 'b) list -> 'b option
+
 }}
 
 module ExtFilename : sig
@@ -174,6 +180,3 @@ module MRef : sig
   val write : 'a t -> 'a -> unit Lwt.t
 end
 
-val update_assoc : 'a -> 'b -> ('a * 'b) list -> ('a * 'b) list
-
-val opt_assoc : 'a -> ('a * 'b) list -> 'b option

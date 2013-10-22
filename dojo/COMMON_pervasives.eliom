@@ -125,6 +125,18 @@ let proj_1_3 (x, _, _) = x
 let proj_2_3 (_, x, _) = x
 let proj_3_3 (_, _, x) = x
 
+let update_assoc k v l =
+  let l = List.remove_assoc k l in
+  (k, v) :: l
+
+let opt_assoc k l =
+  try Some (List.assoc k l) with Not_found -> None
+
+let map_assoc k f l =
+  match opt_assoc k l with
+    | Some x -> update_assoc k (f x) l
+    | None -> l
+
 }}
 
 module ExtFilename = struct
@@ -229,9 +241,3 @@ module MRef = struct
   let write x v = with_lock x.mutex (fun () -> return (x.content <- v))
 end
 
-let update_assoc k v l =
-  let l = List.remove_assoc k l in
-  (k, v) :: l
-
-let opt_assoc k l =
-  try Some (List.assoc k l) with Not_found -> None

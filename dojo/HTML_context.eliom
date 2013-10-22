@@ -47,27 +47,45 @@ let submit_file =
         | _ -> (* FIXME *) return ()
     )
 
-    {client{
-      let display_checkpoint exo_id ctx name =
-        let exo_id_s = CORE_identifier.string_of_identifier exo_id in
-        let prefix s = "▹ " ^ (I18N.String.answer_expected s) in
-        let msg = match get_answer_form ctx with
-          | Some (`Filename fname) -> prefix (I18N.String.in_a_file_named fname)
-          | None -> ""
-        in
-        let submit_form = match get_answer_form ctx with
-          | Some (`Filename fname) ->
-            [ post_form ~xhr:false ~service:%submit_file (fun (id, (cp, f)) -> [
-              file_input ~name:f ();
-              string_input ~input_type:`Hidden ~name:id ~value:exo_id_s ();
-              string_input ~input_type:`Hidden ~name:cp ~value:name ();
-              string_input ~input_type:`Submit ~value:"OK" ()
-              ]) ()
-            ]
-          | None -> []
-        in
-        return [div (
-          p [pcdata msg]
-          :: submit_form
-        )]
+{client{
+
+let display_checkpoint exo_id ctx name =
+  let exo_id_s = CORE_identifier.string_of_identifier exo_id in
+  let prefix s = "▹ " ^ (I18N.String.answer_expected s) in
+  let msg = match get_answer_form ctx with
+    | Some (`Filename fname) -> prefix (I18N.String.in_a_file_named fname)
+    | None -> ""
+  in
+  let submit_form = match get_answer_form ctx with
+    | Some (`Filename fname) ->
+      [ post_form ~xhr:false ~service:%submit_file (fun (id, (cp, f)) -> [
+        file_input ~name:f ();
+        string_input ~input_type:`Hidden ~name:id ~value:exo_id_s ();
+        string_input ~input_type:`Hidden ~name:cp ~value:name ();
+        string_input ~input_type:`Submit ~value:"OK" ()
+        ]) ()
+      ]
+    | None -> []
+  in
+  return [div (
+    p [pcdata msg]
+    :: submit_form
+  )]
+
+}}
+
+let display_score checkpoint (evaluation : CORE_evaluation.t) =
+  let get () = CORE_evaluation.observe evaluation (fun d -> return d) in
+  lwt d =
+    HTML_entity.reactive_div evaluation get {{
+      fun d ->
+        CORE_evaluation.(
+          match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
+            | Some Unevaluated -> return [pcdata "Pas évalué"]
+            | Some (BeingEvaluated _) -> return [pcdata "En cours..."]
+            | Some (Evaluated score) -> return [pcdata "Fini"]
+            | None -> return [pcdata "?"]
+        )
     }}
+  in
+  return [d]

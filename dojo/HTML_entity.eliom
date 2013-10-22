@@ -71,3 +71,22 @@ let offer_creation emake creation_service page id =
       return (creation_page lid sid creation_service)
     | `KO e ->
       return (error_page (CORE_error_messages.string_of_error e))
+
+let reactive_div e get display =
+  let elt = Eliom_content.Html5.Id.create_global_elt (div [pcdata "Here"]) in
+  lwt initial = get () in
+  let update = server_function Json.t<unit> (fun () ->
+    get () >> return ()
+  )
+  in let e_channel = CORE_entity.channel e in
+  ignore {unit{
+    let process data =
+      lwt cs = %display data in
+      Lwt.return (Eliom_content.Html5.Manip.replaceAllChild %elt cs)
+    in
+    CORE_client_reaction.react_on_background %e_channel (function
+      | CORE_entity.HasChanged data -> process data
+      | CORE_entity.MayChange -> %update ());
+    Lwt.async (fun () -> process %initial)
+  }};
+ return elt

@@ -1,6 +1,10 @@
 (* -*- tuareg -*- *)
 
+{shared{
+
 type filename = string deriving (Json)
+
+}}
 
 type t = {
   filename : filename;

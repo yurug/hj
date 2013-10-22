@@ -44,8 +44,9 @@ type some_t = SomeEntity : 'a t -> some_t
 
 (** An entity may react to a change...*)
 type 'a reaction =
-    dependencies  (** ... of its dependencies *)
-    -> 'a option  (** ... of its content *)
+    ('a change -> unit Lwt.t)
+    -> dependencies  (** ... of its dependencies *)
+    -> 'a option     (** ... of its content *)
     -> 'a change
 
 (** A [change] is a tranformation of the entity's content.
@@ -96,8 +97,7 @@ module type S = sig
       memory does not imply that its content is up to date. We prefer a
       lazy approach: only [read] and [change] will trigger the
       computation of the actual content as a reaction to the current
-      state of the system.
-  *)
+      state of the system. *)
   val make:
     ?init:(data * dependencies * CORE_property.set * CORE_source.filename list)
     -> ?reaction:data reaction
@@ -133,14 +133,12 @@ module type S = sig
       refers to [e]. These entities are updated asynchronously.
 
       The code describing the change is atomic with respect
-      to the state of the entity.
-  *)
+      to the state of the entity. *)
   val change : ?immediate:bool -> t -> data change -> unit Lwt.t
 
   (** [observe e o] evaluates [o] with the up-to-date content of [e].
       As long as [o] is not finished, the requested changes to [e] are
-      suspended.
-  *)
+      suspended. *)
   val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
 
   (** [refer_to x] creates a reference to [t]. *)
