@@ -70,6 +70,9 @@ val lwt_list_join : 'a Lwt.t list -> 'a list Lwt.t
 (** [lwt_if c pt pe] lifts [if then else] to Lwt. *)
 val lwt_if : bool Lwt.t -> 'a Lwt.t -> 'a Lwt.t -> 'a Lwt.t
 
+(** [lwt_repeat k f] repeats [f], [k] times. *)
+val lwt_repeat : int -> (int -> unit Lwt.t) -> unit Lwt.t
+
 (** [continue_while_is v ps] executes the sequence of [ps] while [v]
     is produced by each process. Returns the first result that does
     not produce [v] or [v] if there is no such result. *)
@@ -84,6 +87,10 @@ val update_assoc : 'a -> 'b -> ('a * 'b) list -> ('a * 'b) list
 val map_assoc : 'a -> ('b -> 'b) -> ('a * 'b) list -> ('a * 'b) list
 
 val opt_assoc : 'a -> ('a * 'b) list -> 'b option
+
+val cons_if : bool -> 'a -> 'a list -> 'a list
+
+val range : int -> int -> int list
 
 }}
 

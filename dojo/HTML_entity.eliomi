@@ -42,7 +42,7 @@ val offer_creation :
 
 
 val reactive_div :
-  'a CORE_entity.t
+  'e CORE_entity.t
   -> (unit -> 'a Lwt.t)
   -> ('a -> [ body_content ] elt list Lwt.t) client_value
   -> [ body_content ] elt Lwt.t

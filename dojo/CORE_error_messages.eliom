@@ -25,6 +25,8 @@ let string_of_error : [< CORE_errors.all ] -> string = function
     I18N.String.you_reach_the_maximal_number_of_login_attempts
   | `BadLoginPasswordPair ->
     I18N.String.bad_login_password_pair
+  | `NoSuchSandbox ->
+    I18N.String.no_such_sandbox
   | `SyntaxError (start, stop, msg) ->
     string_of_position start ^ ", "
     ^ string_of_position stop ^ ": " ^ msg

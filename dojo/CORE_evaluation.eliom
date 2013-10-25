@@ -16,7 +16,7 @@ open COMMON_pervasives
 {shared{
 
 type job =
-  | ExecutableJob of CORE_machine.command_job
+  | ExecutableJob of CORE_sandbox.job
 deriving (Json)
 
 type submission = string deriving (Json)
@@ -47,22 +47,25 @@ let new_evaluation_state_of_checkpoint c s d =
   return (Some { d with jobs = update_assoc c s d.jobs })
 
 let create_job checkpoint context submission change_later =
-  let job =   ExecutableJob 0
-  in
-  Lwt.async (fun () ->
-    let rec aux k =
-      Lwt_unix.sleep 3.
-      >>
-        if k = 0 then
-          change_later (new_evaluation_state_of_checkpoint checkpoint (Evaluated []))
-        else (
-          change_later (new_evaluation_state_of_checkpoint checkpoint (BeingEvaluated (job, CORE_diagnostic.PushLine (string_of_int k))))
-          >> aux (k - 1)
-        )
-    in
-    aux 3
-  );
-  return job
+  let observer _ = return () in
+  CORE_sandbox.exec [] "echo" observer >>= function
+    | `OK (job, _) ->
+      let job = ExecutableJob job in
+      Lwt.async (fun () ->
+        let rec aux k =
+          Lwt_unix.sleep 3.
+          >>
+          if k = 0 then
+            change_later (new_evaluation_state_of_checkpoint checkpoint (Evaluated []))
+          else (
+            change_later (new_evaluation_state_of_checkpoint checkpoint (BeingEvaluated (job, CORE_diagnostic.PushLine (string_of_int k))))
+            >> aux (k - 1)
+          )
+        in
+        aux 3
+      );
+      return job
+    | `KO e -> (* FIXME *) warn e; assert false
 
 let cancel_job_if_present d cp =
   return ()

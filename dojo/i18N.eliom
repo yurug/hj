@@ -113,6 +113,12 @@ module Fr : I18N_sig.Text = struct
 
   let no = "non"
 
+  let logins = "Logins"
+
+  let addresses = "Adresses"
+
+  let sandboxes = "Bacs à sable alloués"
+
   let identifier = "identifier"
 
   let new_submission = "Nouvelle soumission :"
@@ -229,6 +235,9 @@ module Fr : I18N_sig.Text = struct
 
   let in_a_file_named what =
     Printf.sprintf "dans un fichier nommé `%s'" what
+
+  let no_such_sandbox =
+    "Désolé, nous n'avons pas de quoi exécuter votre programme."
 
 end
 

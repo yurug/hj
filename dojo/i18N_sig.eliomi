@@ -58,6 +58,9 @@ sig
   val identifier : string
   val yes : string
   val no : string
+  val logins : string
+  val addresses : string
+  val sandboxes : string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string
@@ -88,6 +91,7 @@ sig
   val no_title: string
   val answer_expected : string -> string
   val in_a_file_named : string -> string
+  val no_such_sandbox : string
 end
 
 }}

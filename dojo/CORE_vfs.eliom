@@ -113,10 +113,13 @@ let init_root () =
       | (Unix.WEXITED 0) as x -> lreturn x
       | _ -> git_init
     )
-    >>> create_dir_if_absent true tests_path
-    >>> create_dir_if_absent true users_path
-    >>> create_dir_if_absent true exercises_path
-    >>> create_dir_if_absent true system_path
+    >>> (
+      let rec create_all_paths = function
+        | [] -> lreturn ()
+        | p :: ps -> create_dir_if_absent true p >>> create_all_paths ps
+      in
+      create_all_paths std_paths
+    )
     >>> lreturn ()
   )
 

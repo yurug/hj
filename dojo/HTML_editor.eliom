@@ -218,7 +218,7 @@ let create
         let nb = ref 0 in fun _ ->
           incr nb;
           let nb_now = !nb in
-          (Lwt_js.sleep 0.5 >>
+          ignore (Lwt_js.sleep 0.5 >> (
             if !nb = nb_now then
               let content = Js.to_string (editor##getValue ()) in
               let process () = (%local_process %echo content >>= function
@@ -232,7 +232,7 @@ let create
                 | None -> process ()
                 | Some c when c <> content -> process ()
                 | _ -> return ()
-            else return ());
+            else return ()));
          Js._false
       )
       in

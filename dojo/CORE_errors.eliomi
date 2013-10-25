@@ -13,6 +13,7 @@ type all = [
 | `SyntaxError           of Lexing.position * Lexing.position * string
 | `MaximalNumberOfLoginAttemptsReached
 | `BadLoginPasswordPair
+| `NoSuchSandbox
 ]
 
 }}

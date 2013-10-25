@@ -1,65 +1,134 @@
 (* -*- tuareg -*- *)
 
 {shared{
-open Eliom_content
-open Html5
-open Html5.D
-open Html5_types
 
-open COMMON_pervasives
+  open Lwt
 
-type onclick_cb = (Dom_html.mouseEvent Js.t -> unit) client_value
+  open Eliom_content
+  open Html5
+  open Html5.D
+  open Html5_types
 
-let button labels onclick =
-  let id = Id.new_elt_id ~global:true () in
-  let onclick = {{
-    let state = ref 0 in
-    let next () =
-      if !state = List.length %labels - 1 then state := 0 else incr state
+  open COMMON_pervasives
+
+  type onclick_cb = (Dom_html.mouseEvent Js.t -> unit) client_value
+
+  let generic_button classes labels onclick =
+    let id = Id.new_elt_id ~global:true () in
+    let onclick = {{
+      let state = ref 0 in
+      let next () =
+        if !state = List.length %labels - 1 then state := 0 else incr state
+      in
+      let label () = List.nth %labels !state in
+      fun e ->
+        let open Eliom_content.Html5 in
+        next ();
+        Manip.Named.replaceAllChild %id [label ()];
+        %onclick e
+    }}
     in
-    let label () = List.nth %labels !state in
-    fun e ->
-      let open Eliom_content.Html5 in
-      next ();
-      Manip.Named.replaceAllChild %id [D.pcdata (label ())];
-      %onclick e
-   }}
-  in
-  let label = List.nth labels 0 in
-   Id.create_named_elt ~id
-     (span ~a:[a_onclick onclick; a_class ["button"]] [pcdata label])
+    let label = List.nth labels 0 in
+    Id.create_named_elt ~id (
+      span ~a:[a_onclick onclick; a_class classes] [label]
+    )
 
-type show_state =
-  | Hidden of string
-  | Shown
+  let button ls = generic_button ["button"] (List.map (fun l -> pcdata l) ls)
+  let icon = generic_button ["icon"]
+
+  type show_state =
+    | Hidden of string
+    | Shown
 
 }}
 
+type editable_list = {
+  fields    : string list;
+  index_end : unit -> int Lwt.t;
+  display   : int -> string list Lwt.t;
+  remove    : (int -> unit Lwt.t) option;
+  replace   : (int -> string list -> string option Lwt.t) option;
+}
+
+let list_editor label list =
+    (** A table to convert HTML5 identifier into list indices. *)
+  let indices = Hashtbl.create 13 in
+  let remove_item i =
+    match list.remove with
+      | None ->
+        {{ fun _ -> () }}
+      | Some remove ->
+        let code = server_function Json.t<unit> (fun () -> remove i) in
+        {{ fun _ -> Lwt.async %code }}
+  in
+  let replace_item i new_values =
+    assert false
+  in
+  let new_item new_values =
+    assert false
+  in
+  let tools_of i =
+    let remove_action = icon [pcdata "-"] (remove_item i) in
+    td [ remove_action ]
+  in
+  lwt e = list.index_end () in
+  let new_entry = tr (
+    List.map (fun _ -> td [pcdata ""]) list.fields
+    @ [tools_of e]
+  )
+  in
+  lwt rows = Lwt_list.map_s (fun i ->
+    lwt fields = list.display i in
+    let field f =
+      (* FIXME: A workaround to the following bug of Ocsigen:
+         https://github.com/ocsigen/tyxml/commit/1a05bd9e7f96720b3a57289054ab9c4a5fd9926a#commitcomment-4425462
+      *)
+      let id = Id.new_elt_id () in
+      let elt = Id.create_named_elt ~id (span [pcdata f]) in
+      ignore {unit{
+        let e = To_dom.of_span %elt in
+        e##setAttribute (Js.string "contentEditable", Js.string "true")
+      }};
+      td [elt]
+    in
+    let cells = List.map field fields @ [tools_of i] in
+    return (tr cells)
+  ) (range 0 e)
+  in
+  let thead = thead [ tr (
+    List.map (fun f -> th [pcdata f]) list.fields
+    @ [th [pcdata ""]]
+  ) ]
+  in
+  let table = tablex ~thead [tbody (rows @ [new_entry])] in
+  return (div [table])
+
+
 {client{
-let toggle s e =
-  match !s with
-    | Shown ->
-      s := Hidden (Html5.Manip.Css.display e);
-      Manip.SetCss.display e "none"
-    | Hidden d ->
-      Manip.SetCss.display e d;
-      s := Shown
+  let toggle s e =
+    match !s with
+      | Shown ->
+        s := Hidden (Html5.Manip.Css.display e);
+        Manip.SetCss.display e "none"
+      | Hidden d ->
+        Manip.SetCss.display e d;
+        s := Shown
 }}
 
 {shared{
 
-let show_or_hide ?(start_shown=true) (e : [ body_content_fun ] elt) =
-  let e = Id.create_global_elt e in
-  let see : [ body_content_fun ] elt =
-    let labels = [I18N.cap I18N.String.hide; I18N.cap I18N.String.see] in
-    let labels = if start_shown then labels else List.rev labels in
-    button labels {Dom_html.mouseEvent Js.t -> unit{
+  let show_or_hide ?(start_shown=true) (e : [ body_content_fun ] elt) =
+    let e = Id.create_global_elt e in
+    let see : [ body_content_fun ] elt =
+      let labels = [I18N.cap I18N.String.hide; I18N.cap I18N.String.see] in
+      let labels = if start_shown then labels else List.rev labels in
+      button labels {Dom_html.mouseEvent Js.t -> unit{
         let s = ref Shown in
         if not %start_shown then toggle s %e;
         fun (_ : Dom_html.mouseEvent Js.t) -> toggle s %e
       }}
-  in
-     (see, e)
+    in
+    (see, e)
 
 }}
 

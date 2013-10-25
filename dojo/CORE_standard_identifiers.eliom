@@ -14,8 +14,10 @@ let tests_path = from_strings [ "tests" ]
 let users_path = from_strings [ "users" ]
 let system_path = from_strings [ "system" ]
 let exercises_path = from_strings [ "exercises" ]
+let machinists_path = from_strings [ "machinists" ]
 
-let std_paths = [ tests_path; users_path; system_path ]
+let std_paths =
+  [ tests_path; users_path; system_path; machinists_path; exercises_path ]
 
 let fresh =
   let r = ref 0 in

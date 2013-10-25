@@ -23,6 +23,16 @@ val show_or_hide:
 
 }}
 
+type editable_list = {
+  fields    : string list;
+  index_end : unit -> int Lwt.t;
+  display   : int -> string list Lwt.t;
+  remove    : (int -> unit Lwt.t) option;
+  replace   : (int -> string list -> string option Lwt.t) option;
+}
+
+val list_editor : string -> editable_list -> [> div ] elt Lwt.t
+
 val nonempty_field : (string -> string option) client_value
 
 val field :

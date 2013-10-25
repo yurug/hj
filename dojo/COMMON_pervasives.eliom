@@ -137,6 +137,23 @@ let map_assoc k f l =
     | Some x -> update_assoc k (f x) l
     | None -> l
 
+let cons_if cond x xs =
+  if cond then x :: xs else xs
+
+let lwt_repeat k f =
+  let rec aux i = if i = 0 then return () else f (k - i) >> aux (pred i) in
+  aux k
+
+let lwt_nat_stream () =
+  let state = ref 0 in
+  Lwt_stream.from (fun () -> incr state; return (Some !state))
+
+let range start stop =
+  let rec aux k =
+    if k >= stop then [] else k :: aux (k + 1)
+  in
+  aux start
+
 }}
 
 module ExtFilename = struct
