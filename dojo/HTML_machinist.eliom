@@ -19,10 +19,10 @@ let selector_of_machine_kind k =
   return [div []]
 }}
 
-let edit_list label fields e get set =
+let get_editor label fields e get set =
   let rd f = lwt l = get () in f l in
   let wr f = rd (fun l -> set (f l)) in
-  let get_editor = server_function Json.t<unit> (fun () ->
+  server_function Json.t<unit> (fun () ->
     List.(list_editor label {
       fields;
       index_end = (fun () -> rd (fun l -> return (length l)));
@@ -30,9 +30,12 @@ let edit_list label fields e get set =
       remove    = Some (fun i _ -> wr (list_remove i));
       replace   = Some (fun i vs -> wr (fun l -> list_replace i vs l))
     }))
-  in
+
+let edit_list label fields e get set =
+  let get_editor = get_editor label fields e get set in
   {CORE_machinist.data -> [> Html5_types.div ] elt list Lwt.t{fun _ ->
-    %get_editor () >>= fun e -> return [e]
+    lwt e = %get_editor () in
+    return [e]
   }}
 
 let logins = ref [ ["bla"] ]

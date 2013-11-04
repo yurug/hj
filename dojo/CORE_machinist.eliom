@@ -4,6 +4,8 @@
     be used to perform sandboxing. These machines can be implemented
     using virtual machines, linux containers, or physical machines.
 
+    A machinist provides only one kind of machine.
+
     Whatever the concrete implementation of the machine is, they
     appear as a pair [(hostname, port, login)] that is enough for us
     to execute remote SSH commands. *)

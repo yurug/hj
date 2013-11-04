@@ -54,13 +54,17 @@ let create_job checkpoint context submission change_later =
       Lwt.async (fun () ->
         let rec aux k =
           Lwt_unix.sleep 3.
-          >>
-          if k = 0 then
-            change_later (new_evaluation_state_of_checkpoint checkpoint (Evaluated []))
-          else (
-            change_later (new_evaluation_state_of_checkpoint checkpoint (BeingEvaluated (job, CORE_diagnostic.PushLine (string_of_int k))))
-            >> aux (k - 1)
-          )
+          >> if k = 0 then
+              change_later (
+                new_evaluation_state_of_checkpoint checkpoint (Evaluated [])
+              )
+            else (
+              change_later (
+                new_evaluation_state_of_checkpoint checkpoint (
+                  BeingEvaluated (job,
+                                  CORE_diagnostic.PushLine (string_of_int k)))
+              ) >> aux (k - 1)
+            )
         in
         aux 3
       );
@@ -68,6 +72,7 @@ let create_job checkpoint context submission change_later =
     | `KO e -> (* FIXME *) warn e; assert false
 
 let cancel_job_if_present d cp =
+  (* FIXME *)
   return ()
 
 let evaluate change_later exercise answer cps data =
@@ -105,7 +110,6 @@ include CORE_entity.Make (struct
   type data = description deriving (Json)
 
   let react change_later deps new_data data =
-    Ocsigen_messages.errlog ("Evaluation is reacting!");
 
     match CORE_inmemory_entity.to_list deps with
 
