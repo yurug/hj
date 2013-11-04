@@ -154,7 +154,79 @@ let range start stop =
   in
   aux start
 
+let list_remove i l =
+  let rec aux k = function
+    | [] -> []
+    | x :: xs -> if k = i then xs else x :: aux (k + 1) xs
+  in
+  aux 0 l
+
+let list_replace i v l =
+  let rec aux k = function
+    | [] -> [v]
+    | x :: xs -> if k = i then v :: xs else x :: aux (k + 1) xs
+  in
+  aux 0 l
+
+let list_cut n l =
+  let rec aux k = function
+    | [] -> []
+    | x :: xs when k > 0 -> aux (pred k) xs
+    | xs -> xs
+  in
+  aux n l
+
+let list_tl_cut n l =
+  List.rev (list_cut n (List.rev l))
+
 }}
+
+let natural_indices () =
+  let indices = Hashtbl.create 13 in
+  let invariant () =
+    let max = Hashtbl.fold (fun _ v v' -> max v v') indices (-1) in
+    let a = Array.create (max + 1) false in
+    let marked_exactly_once = ref true and marks = ref (-1) in
+    let mark_exactly_once i =
+      if a.(i) then marked_exactly_once := false else (
+        incr marks; a.(i) <- true
+      )
+    in
+    Hashtbl.iter (fun _ i -> mark_exactly_once i) indices;
+    if not (!marked_exactly_once && !marks = max) then (
+      let string_of_marks a =
+        let s = ref "" in
+        Array.iteri (fun i b -> if b then s := !s ^ " " ^ string_of_int i) a;
+        !s
+      in
+      Ocsigen_messages.errlog (
+        Printf.sprintf "Broken invariant: %d <> %d or [%s] is not complete."
+          !marks max (string_of_marks a)
+      );
+      assert false
+    )
+  in
+  let on_indices f x = invariant (); let y = f x in invariant (); y in
+  let indices_remove = on_indices (fun elt ->
+    try
+      let idx = Hashtbl.find indices elt in
+      Hashtbl.remove indices elt;
+      Hashtbl.iter (fun elt idx' ->
+        if idx' > idx then Hashtbl.replace indices elt (idx' - 1)
+      ) indices
+    with Not_found -> (* Should never happen. *) assert false
+  ) in
+  let indices_insert elt = on_indices (fun idx ->
+    Hashtbl.iter (fun elt idx' ->
+      if idx' >= idx then Hashtbl.replace indices elt (idx' + 1)
+    ) indices;
+    Hashtbl.add indices elt idx
+  ) in
+  let indices_fresh_for id = on_indices (fun idx ->
+    Hashtbl.add indices id idx;
+    id
+  ) in
+  (indices_remove, indices_insert, Hashtbl.find indices, indices_fresh_for)
 
 module ExtFilename = struct
 
@@ -257,4 +329,3 @@ module MRef = struct
   let read x f = with_lock x.mutex (fun () -> f x.content)
   let write x v = with_lock x.mutex (fun () -> return (x.content <- v))
 end
-

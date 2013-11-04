@@ -92,7 +92,25 @@ val cons_if : bool -> 'a -> 'a list -> 'a list
 
 val range : int -> int -> int list
 
+val list_remove : int -> 'a list -> 'a list
+
+val list_replace : int -> 'a -> 'a list -> 'a list
+
+val list_cut : int -> 'a list -> 'a list
+
+val list_tl_cut : int -> 'a list -> 'a list
+
 }}
+
+(** [natural_indices ()] returns a map from a set of values to
+    natural numbers such that the image of the map is exactly the
+    range [0..n] where [n] is the total number of identifiers in the
+    map. *)
+val natural_indices : unit ->
+    ('a -> unit)         (** [remove x] *)
+  * ('a -> int -> unit)  (** [insert_at x idx] *)
+  * ('a -> int)          (** [find x] *)
+  * ('a -> int -> 'a)    (** [set x idx] *)
 
 module ExtFilename : sig
 

@@ -9,6 +9,7 @@ open Html5
 open HTML_widget
 }}
 
+open COMMON_pervasives
 open CORE_machinist
 open HTTP_services
 open CORE_identifier
@@ -23,9 +24,25 @@ let edit_list label fields e get set =
     list_editor label {
       fields;
       index_end = (fun () -> lwt l = get () in return (List.length l));
-      display   = (fun k -> lwt l = get () in return (List.nth l k));
-      remove    = Some (fun i -> Ocsigen_messages.errlog (Printf.sprintf "Removing %d\n" i); return ());
-      replace   = None;
+      display   = (fun k -> lwt l = get () in return (
+        try
+          List.nth l k
+        with _ ->
+          [""]
+      ));
+
+      remove    = Some (fun i _ ->
+        Ocsigen_messages.errlog (Printf.sprintf "Removing %d\n" i);
+        lwt l = get () in
+        set (list_remove i l)
+      );
+
+      replace   = Some (fun i vs ->
+        Ocsigen_messages.errlog (Printf.sprintf "Replacing %d [%s]\n" i
+                                   (String.concat ", " vs));
+        lwt l = get () in
+        set (list_replace i vs l)
+      )
     }
   )
   in
@@ -33,8 +50,9 @@ let edit_list label fields e get set =
     %get_editor () >>= fun e -> return [e]
   }}
 
-let get_logins mc = return [ ["bla"] ]
-let set_logins mc = return ()
+let logins = ref [ ["bla"] ]
+let get_logins () = return (!logins)
+let set_logins l = return (logins := l)
 let get_addresses mc = return [ ["here"] ]
 let set_addresses mc = return ()
 let get_sandboxes mc = return [ ["foo"] ]
