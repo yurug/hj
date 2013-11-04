@@ -20,31 +20,16 @@ let selector_of_machine_kind k =
 }}
 
 let edit_list label fields e get set =
+  let rd f = lwt l = get () in f l in
+  let wr f = rd (fun l -> set (f l)) in
   let get_editor = server_function Json.t<unit> (fun () ->
-    list_editor label {
+    List.(list_editor label {
       fields;
-      index_end = (fun () -> lwt l = get () in return (List.length l));
-      display   = (fun k -> lwt l = get () in return (
-        try
-          List.nth l k
-        with _ ->
-          [""]
-      ));
-
-      remove    = Some (fun i _ ->
-        Ocsigen_messages.errlog (Printf.sprintf "Removing %d\n" i);
-        lwt l = get () in
-        set (list_remove i l)
-      );
-
-      replace   = Some (fun i vs ->
-        Ocsigen_messages.errlog (Printf.sprintf "Replacing %d [%s]\n" i
-                                   (String.concat ", " vs));
-        lwt l = get () in
-        set (list_replace i vs l)
-      )
-    }
-  )
+      index_end = (fun () -> rd (fun l -> return (length l)));
+      display   = (fun k -> rd (fun l -> return (try nth l k with _ -> [""])));
+      remove    = Some (fun i _ -> wr (list_remove i));
+      replace   = Some (fun i vs -> wr (fun l -> list_replace i vs l))
+    }))
   in
   {CORE_machinist.data -> [> Html5_types.div ] elt list Lwt.t{fun _ ->
     %get_editor () >>= fun e -> return [e]
