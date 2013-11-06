@@ -3,6 +3,7 @@
 (** Entities HTML pages indexed by entities identifiers. *)
 
 open Lwt
+open Eliom_content.Html5
 open Eliom_content.Html5.D
 open Html5_types
 open Eliom_service
@@ -73,7 +74,7 @@ let offer_creation emake creation_service page id =
       return (error_page (CORE_error_messages.string_of_error e))
 
 let reactive_div e get display =
-  let elt = Eliom_content.Html5.Id.create_global_elt (div [pcdata "Here"]) in
+  let elt = Id.create_global_elt (div [pcdata "Loading..."]) in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
     get () >> return ()
