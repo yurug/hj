@@ -101,3 +101,14 @@ let split c delim =
 
 let now lraise =
   (read (!% "date") >-> fun s _ -> Lwt_stream.next s) lraise
+
+let ssh ?timeout username private_key addr port cmd observer =
+  let os = "-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null'" in
+  handle_unix_error (fun () ->
+    let p = exec ?timeout (!% (
+      Printf.sprintf
+        "ssh %s@%s %s -p %d -i %s '(%s)'"
+        username addr os port private_key cmd))
+    in
+    observer p >> return (fun () -> p#terminate)
+  ) (fun () -> ())

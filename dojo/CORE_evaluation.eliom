@@ -47,28 +47,22 @@ let new_evaluation_state_of_checkpoint c s d =
   return (Some { d with jobs = update_assoc c s d.jobs })
 
 let create_job checkpoint context submission change_later =
-  let observer _ = return () in
-  CORE_sandbox.exec [] "echo" observer >>= function
+  Ocsigen_messages.errlog "Creating job for checkpoint!";
+  let message job msg =
+    change_later (
+      new_evaluation_state_of_checkpoint checkpoint (
+        BeingEvaluated (job, CORE_diagnostic.PushLine msg)
+      )
+    )
+  in
+  let observer = CORE_sandbox.(function
+    | WriteStdout (job, l) -> message (ExecutableJob job) l
+    | WriteStderr (job, l) -> message (ExecutableJob job) l
+    | _ -> return ()
+  ) in
+  CORE_sandbox.exec [] "echo message" observer >>= function
     | `OK (job, _) ->
-      let job = ExecutableJob job in
-      Lwt.async (fun () ->
-        let rec aux k =
-          Lwt_unix.sleep 3.
-          >> if k = 0 then
-              change_later (
-                new_evaluation_state_of_checkpoint checkpoint (Evaluated [])
-              )
-            else (
-              change_later (
-                new_evaluation_state_of_checkpoint checkpoint (
-                  BeingEvaluated (job,
-                                  CORE_diagnostic.PushLine (string_of_int k)))
-              ) >> aux (k - 1)
-            )
-        in
-        aux 3
-      );
-      return job
+      return (ExecutableJob job)
     | `KO e -> (* FIXME *) warn e; assert false
 
 let cancel_job_if_present d cp =

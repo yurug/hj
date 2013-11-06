@@ -100,6 +100,8 @@ val list_cut : int -> 'a list -> 'a list
 
 val list_tl_cut : int -> 'a list -> 'a list
 
+val list_index_of : 'a -> 'a list -> int
+
 }}
 
 (** [natural_indices ()] returns a map from a set of values to

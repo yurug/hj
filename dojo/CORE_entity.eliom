@@ -69,6 +69,7 @@ and 'a entity = {
   mutable state       : 'a state;
   mutable sources     : CORE_source.map;
   (*   *) reaction    : 'a reaction;
+  mutable subscribec  : 'a Lwt_condition.t;
   (*   *) channel     : 'a event CORE_client_reaction.c;
   (*   *) push        : 'a event -> unit;
   (*   *) commit_lock : Lwt_mutex.t;
@@ -210,6 +211,8 @@ module type S = sig
 
   val newer_than : t -> some_t -> bool
 
+  val subscribe : t -> data Lwt_condition.t
+
 end
 
 (** The client must provide the following information
@@ -261,6 +264,7 @@ module Make (I : U) : S with type data = I.data = struct
     let e = {
       description; reaction; state = UpToDate;
       channel; push;
+      subscribec = Lwt_condition.create ();
       commit_lock; commit_cond;
       mode = `Observe 0;
       sources = CORE_source.map_of_list sources;
@@ -337,8 +341,12 @@ module Make (I : U) : S with type data = I.data = struct
             work. *)
         wait_to_be_observer_free e (fun () ->
           e.description <- update_content e.description content;
-          e.push (HasChanged (CORE_inmemory_entity.content e.description));
-          OTD.save e.description (CORE_source.list_of_map e.sources)
+          let nc = CORE_inmemory_entity.content e.description in
+          OTD.save e.description (CORE_source.list_of_map e.sources);
+          >> return (
+            e.push (HasChanged nc);
+            Lwt_condition.broadcast e.subscribec nc
+          )
         )
 
   (** [update e] is the process that applies scheduled changes. *)
@@ -532,6 +540,9 @@ module Make (I : U) : S with type data = I.data = struct
 
   let newer_than e (SomeEntity other) =
       (timestamp e > timestamp other)
+
+  let subscribe e =
+    e.subscribec
 
 end
 

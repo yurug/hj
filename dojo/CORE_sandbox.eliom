@@ -10,8 +10,26 @@
 *)
 
 open Lwt
+
 open COMMON_pervasives
 open CORE_error_messages
+open CORE_identifier
+
+let jobs = Hashtbl.create 13
+
+let new_job () =
+  let rec push () =
+    (* FIXME: Probabilistic assumption: are we sure that we
+       will never try to cancel a running job using an old
+       reference that has the same id? *)
+    let idx = Random.bits () in
+    if Hashtbl.mem jobs idx then push () else idx
+  in
+  let idx = push () in
+  Hashtbl.add jobs idx (fun () -> ());
+  idx
+
+let push_canceler = Hashtbl.replace jobs
 
 {shared{
 
@@ -19,26 +37,34 @@ type job = int deriving (Json)
 
 }}
 
+let job_canceler job =
+  try
+    Hashtbl.find jobs job
+  with
+    | Not_found ->
+      (** This means that this job is already over. *)
+      fun () -> ()
+
 type observable =
   | WaitingForSandbox of int
-  | WriteStdout       of string
-  | WriteStderr       of string
+  | WriteStdout       of job * string
+  | WriteStderr       of job * string
   | FileModification  of string * (unit -> string Lwt.t)
-  | Exited            of int
-
-type sandbox_id = int
+  | Exited            of Unix.process_status
 
 let release id =
   (* FIXME *)
   return ()
 
+type sandbox = CORE_machinist.sandbox_interface
+
 type persistence =
   | Ephemeral
   | RequirePersistence
-  | Persistent of sandbox_id
+  | Reuse of sandbox
 
 type limitation =
-  | TimeOut of int
+  | TimeOut of float
 
 type requirement =
   | SucceedingCommand of string
@@ -49,24 +75,73 @@ type requirement =
     [requirements]. If this allocation is impossible, raise
     [NoSuchSandbox]. *)
 exception NoSuchSandbox
-let find_sandbox requirements =
+let find_sandbox requirements waiter =
   (** Iterate over all the machinists, looking for one that
       provides sandboxes that fullfill the [requirements]. *)
   lwt machinists = CORE_machinist.all () in
-  List.iter (fun m ->
+  let compliant_machinist m =
+    let check_requirement = function
+      | SucceedingCommand cmd ->
+        CORE_machinist.capable_of m cmd
+      | Is who ->
+        return (string_of_identifier (CORE_machinist.identifier m) = who)
+      | Lockable ->
+        CORE_machinist.lockable m
+    in
+    Lwt_list.for_all_s check_requirement requirements
+  in
+  let lock_required = List.exists (fun r -> r = Lockable) requirements in
+  try_lwt
+    lwt mc = Lwt_list.find_s compliant_machinist machinists in
     Ocsigen_messages.errlog (
-      Printf.sprintf "Try %s"
-        (CORE_identifier.string_of_identifier (CORE_machinist.identifier m))))
-    machinists;
-  raise NoSuchSandbox
+      Printf.sprintf "Ask machinist %s"
+        (string_of_identifier (CORE_machinist.identifier mc))
+    );
+    CORE_machinist.provide_sandbox_interface mc lock_required waiter
+  with Not_found ->
+    raise NoSuchSandbox
 
-(** [copy files sandbox] imports the files in the sandbox. *)
+(** [copy files sandbox] imports the files into the sandbox. *)
 let copy files sandbox =
   return ()
 
-(** [sandbox_exec limitations command observer] *)
-let sandboxing limitations command observer =
-  return 0
+let on_line oc w =
+  let rec loop () =
+    Lwt_io.read_line_opt oc >>= function
+      | None -> loop ()
+      | Some l -> w l
+  in
+  loop ()
+
+(** [sandboxing sb limitations command observer] *)
+let sandboxing s limitations command (observer : _ -> unit Lwt.t) =
+  let job = new_job () in
+  let timeout =
+    List.fold_left (fun _ (TimeOut t) -> Some t) None limitations
+  in
+  Ocsigen_messages.errlog "Sandboxing command!";
+  let observer = function
+    | CORE_machinist.ObserveProcess p ->
+      let rec watch () : unit Lwt.t =
+        match p#state with
+          | Lwt_process.Running ->
+            (** Runtime observations. *)
+            choose [
+              (p#status >> return ());
+              on_line p#stdout (fun l -> observer (WriteStdout (job, l)));
+              on_line p#stderr (fun l -> observer (WriteStderr (job, l)));
+            ] >> watch ()
+          | Lwt_process.Exited s ->
+            observer (Exited s)
+      in
+      watch ()
+    | CORE_machinist.ObserveMessage msg ->
+      observer (WriteStderr (job, msg))
+      >> observer (Exited (Unix.WEXITED (-1)))
+  in
+  lwt canceler = s.CORE_machinist.execute ?timeout command observer in
+  push_canceler job canceler;
+  return job
 
 (** [exec ?persistent ?limitations files command observer] first
     copies [files] from the server to the sandbox, then executes
@@ -78,29 +153,36 @@ let exec
 
   try
 
+    Ocsigen_messages.errlog "Sandbox execution !";
+
     let requirements =
       cons_if (persistence = RequirePersistence) Lockable requirements
     in
 
     (** Determine the sandbox to play with. *)
-    lwt sandbox_id =
+    lwt sandbox =
       match persistence with
         | Ephemeral | RequirePersistence ->
-          find_sandbox requirements
-        | Persistent id ->
-          return id
+          let waiter = fun rank -> observer (WaitingForSandbox rank) in
+          find_sandbox requirements waiter
+        | Reuse i ->
+          return i
     in
+    Ocsigen_messages.errlog "Found a sandbox!";
     let persistence = match persistence with
-      | RequirePersistence -> Persistent sandbox_id
+      | RequirePersistence -> Reuse sandbox
       | p -> p
     in
 
     (** Process command. *)
-    copy files sandbox_id
-    >> sandboxing limitations command observer
+    copy files sandbox
+    >> sandboxing sandbox limitations command observer
     >>= fun job -> return (`OK (job, persistence))
 
   with NoSuchSandbox ->
     let e = `NoSuchSandbox in
     warn e;
     return (`KO e)
+
+let cancel job =
+  job_canceler job ()

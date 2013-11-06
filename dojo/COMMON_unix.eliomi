@@ -36,3 +36,16 @@ val split :
 
 (** [now ()] returns a string representation of the current time. *)
 val now : ('a, 'b) raiser -> string Lwt.t
+
+(** [ssh ?timeout username key addr port cmd observer] runs a process
+    which executes a remote command through a secured connection.
+    This function returns a function to cancel this command at any moment.
+*)
+val ssh :
+  ?timeout:float
+  -> string -> string
+  -> string -> int
+  -> string
+  -> (Lwt_process.process_full -> unit Lwt.t)
+  -> ('a, 'b) raiser
+  -> (unit -> unit) Lwt.t

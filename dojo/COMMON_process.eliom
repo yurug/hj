@@ -1,6 +1,6 @@
 (* -*- tuareg -*- *)
 
-(** Extension to Lwt_process. *)
+(** Abstraction on top of Lwt_process. *)
 
 open Str
 open Lwt
@@ -49,3 +49,6 @@ let success ?(lraise=small_jump) c =
     let s = string_of_process_status s in
     (lraise @* (`SystemError s))
     @| (fun () -> return_false)
+
+let exec ?timeout c =
+  strace (open_process_full ?timeout) c

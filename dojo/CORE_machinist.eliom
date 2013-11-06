@@ -16,11 +16,13 @@ open Lwt_process
 open CORE_entity
 open CORE_identifier
 open CORE_error_messages
+open COMMON_pervasives
 
 {shared{
 (* FIXME: This should not be necessary. Define proper accessors
    to public data only. This is not critical though because
-   CORE_machinist is an administrator entity. *)
+   CORE_machinist is an administrator-only entity. *)
+open COMMON_waiting_list
 
 type address = (string * int) deriving (Json)
 
@@ -31,9 +33,14 @@ type machine_kind =
   | Unknown
 deriving (Json)
 
+type login_information = {
+  username : string;
+  ssh_key  : CORE_source.filename;
+} deriving (Json)
+
 type description = {
-  available_logins    : string list;
-  available_addresses : address list;
+  available_logins    : login_information list;
+  available_addresses : (address * login_information waiting_list) list;
   machine_kind        : machine_kind;
 } deriving (Json)
 
@@ -48,16 +55,104 @@ include CORE_entity.Make (struct
   let react = passive
 end)
 
+type execution_observer =
+  | ObserveProcess of process_full
+  | ObserveMessage of string
+
 type execute =
     ?timeout:float
-    -> command
-    -> (process_full -> unit Lwt.t)
-    -> unit Lwt.t
+    -> string
+    -> (execution_observer -> unit Lwt.t)
+    -> (unit -> unit) Lwt.t
+
+(* FIXME: Move that somewhere else. *)
+let default_timeout = 1000.
+
+let execute_using_ssh login_information addr =
+  fun ?(timeout = default_timeout) cmd observer ->
+    ltry (fun lraise ->
+      COMMON_unix.ssh
+        ~timeout
+        login_information.username login_information.ssh_key
+        (fst addr) (snd addr)
+        cmd
+        (fun p -> observer (ObserveProcess p))
+        lraise
+    ) >>= function
+      | `OK canceler ->
+        return canceler
+      | `KO e ->
+        (* FIXME *)
+        observer (ObserveMessage "ssh error")
+        >> return (fun () -> ())
 
 type sandbox_interface = {
   execute : execute;
   release : unit -> unit Lwt.t
 }
+
+let build_sandbox_interface login_information address release =
+  let execute = execute_using_ssh login_information address in
+  { execute; release }
+
+let choose_waiting_list mc exclusive =
+  (* FIXME: Handle exclusive = true. *)
+  let smallest_waiting_list (_, wl1) (_, wl2) = COMMON_waiting_list.(
+    Pervasives.compare (size wl1) (size wl2)
+  )
+  in
+  observe mc (fun data ->
+    return (fst List.(hd (sort smallest_waiting_list data.available_addresses)))
+  )
+
+let wait_for_sandbox mc addr waiting_rank =
+  let get_wl data =
+    List.assoc addr data.available_addresses
+  and set_wl data wl =
+    { data with
+      available_addresses = update_assoc addr wl data.available_addresses
+    }
+  in
+  lwt ticket =
+    (* FIXME: The following piece of code shows an expressiveness
+       efficiency of the CORE_entity API. *)
+    let tr = ref None in
+    change ~immediate:true mc (fun data ->
+      let wl = get_wl data in
+      let (wl, t) = take_ticket wl in
+      tr := Some t;
+      return (Some (set_wl data wl))
+    ) >> (match !tr with
+      | None -> (* FIXME *) assert false
+      | Some t -> return t
+    )
+  in
+
+  (** We react to every change of mc, looking for an update
+      of the waiting list of [addr]. *)
+  let rec wait last_wl =
+    lwt data = Lwt_condition.wait (subscribe mc) in
+    let wl = get_wl data in
+    if (last_wl = Some wl) then
+      (** No interesting change for us. *)
+      wait last_wl
+    else match ticket_turn wl ticket with
+      | Waiting rank ->
+        (** We still have to wait. Publish how long... *)
+        waiting_rank rank >> wait (Some wl)
+
+      | Active r ->
+        (** This is our turn. Build an interface out of this resource. *)
+        let release () =
+          change ~immediate:true mc (fun data ->
+            let wl = COMMON_waiting_list.release (get_wl data) r in
+            return (Some (set_wl data wl))
+          )
+        in
+        return (build_sandbox_interface (resource_value r) addr release)
+  in
+  wait None
+
 
 (** [provide_sandbox_interface mc exclusive waiting_rank] returns a
     sandbox interface. If [exclusive = true] then the underlying
@@ -66,13 +161,25 @@ type sandbox_interface = {
     in which case it uses [waiting_rank] to advertise the number of
     sandboxes to wait for. *)
 let provide_sandbox_interface mc exclusive waiting_rank =
-  assert false
+
+  (** Choose a waiting list for this request. It is characterized
+      by the machine address. *)
+  lwt addr = choose_waiting_list mc exclusive in
+
+  (** Wait. *)
+  wait_for_sandbox mc addr waiting_rank
 
 (** [capable_of mc cmd] returns [true] if [cmd] is executed
     with success by the machine of [mc]. *)
 let capable_of mc cmd =
   (* FIXME *)
-  true
+  return true
+
+(** [lockable mc] returns [true] if [mc] is able to provide
+    exclusive access to sandboxes. *)
+let lockable mc =
+  (* FIXME *)
+  return true
 
 let kind mc =
   return ()
@@ -121,5 +228,9 @@ let create_service ok_page ko_page =
 let all () =
   lwt ids = CORE_standard_identifiers.(all_identifiers_at machinists_path) in
   Lwt_list.fold_left_s (fun ls id ->
-    make id >>= function `OK e -> return (e :: ls) | _ -> return ls
+    make id >>= function `OK e -> return (e :: ls)
+      | _ ->
+        Ocsigen_messages.errlog (Printf.sprintf "%s loading failed"
+                                   (string_of_identifier id));
+        return ls
   ) [] ids

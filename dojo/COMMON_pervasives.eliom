@@ -154,6 +154,14 @@ let range start stop =
   in
   aux start
 
+let list_index_of k =
+  let rec find i = function
+    | [] -> raise Not_found
+    | x :: xs when x = k -> i
+    | _ :: xs -> find (succ i) xs
+  in
+  find 0
+
 let list_remove i l =
   let rec aux k = function
     | [] -> []

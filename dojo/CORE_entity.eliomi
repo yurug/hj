@@ -158,7 +158,7 @@ module type S = sig
 
   (** [source s] returns a triple made of
       - [s]
-      - a server-side accessor of entity [x] for the source [s].
+      - a server-side accessor to the source [s] for entity [x].
       - a server RPC to retrieve the content of the source [s]. *)
   val source : CORE_source.filename ->
     (CORE_source.filename
@@ -170,6 +170,7 @@ module type S = sig
 
   val newer_than : t -> some_t -> bool
 
+  val subscribe : t -> data Lwt_condition.t
 end
 
 (** The following module interface has to be implemented to instantiate

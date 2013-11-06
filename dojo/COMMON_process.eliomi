@@ -24,6 +24,8 @@ val pread_lines :
 
 val blind_exec: command -> Unix.process_status Lwt.t
 
+val exec: ?timeout:float -> command -> Lwt_process.process_full
+
 val success :
   ?lraise:([> `SystemError of string ] -> 'e Lwt.t)
   -> command
