@@ -40,7 +40,6 @@ val offer_creation :
   ('a -> ([> Html5_types.div ] as 'h) Eliom_content.Html5.D.elt Lwt.t) ->
   CORE_identifier.identifier -> 'h Eliom_content.Html5.D.elt Lwt.t
 
-
 val reactive_div :
   'e CORE_entity.t
   -> (unit -> 'a Lwt.t)

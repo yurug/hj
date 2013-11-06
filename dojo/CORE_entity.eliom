@@ -206,6 +206,8 @@ module type S = sig
      * (t -> CORE_source.t Lwt.t)
      * (CORE_identifier.t, string) server_function)
 
+  val sources : t -> CORE_source.t list
+
   val push_dependency
     : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
 
@@ -537,6 +539,9 @@ module Make (I : U) : S with type data = I.data = struct
     OTD.save e.description []
     (* FIXME: Do not ignore errors. *)
     >> return ()
+
+  let sources e =
+    CORE_source.list_of_map e.sources
 
   let newer_than e (SomeEntity other) =
       (timestamp e > timestamp other)
