@@ -86,8 +86,13 @@ let reactive_div e get display =
       Lwt.return (Eliom_content.Html5.Manip.replaceAllChild %elt cs)
     in
     CORE_client_reaction.react_on_background %e_channel (function
-      | CORE_entity.HasChanged data -> process data
-      | CORE_entity.MayChange -> %update ());
+      | CORE_entity.HasChanged data ->
+        (** Update the entity view. *)
+        process data
+      | CORE_entity.MayChange ->
+        (** Force the change as we are observing the entity. *)
+        %update ()
+    );
     Lwt.async (fun () -> process %initial)
   }};
  return elt

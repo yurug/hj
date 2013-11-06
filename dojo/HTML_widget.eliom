@@ -194,6 +194,18 @@ let list_editor label list =
   let table = (tablex ~thead [Id.create_named_elt ~id:tableid (tbody rows)]) in
   return (div [table])
 
+let get_list_editor label fields get set =
+  let rd f = lwt l = get () in f l in
+  let wr f = rd (fun l -> set (f l)) in
+  let empty = List.map (fun _ -> "") fields in
+  server_function Json.t<unit> (fun () ->
+    List.(list_editor label {
+      fields;
+      index_end = (fun () -> rd (fun l -> return (length l)));
+      display   = (fun k -> rd (fun l -> return (try nth l k with _ -> empty)));
+      remove    = Some (fun i _ -> wr (list_remove i));
+      replace   = Some (fun i vs -> wr (fun l -> list_replace i vs l))
+    }))
 
 {client{
   let toggle s e =

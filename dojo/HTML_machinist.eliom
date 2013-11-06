@@ -45,7 +45,8 @@ let machinist_page mc =
     addresses_div;
   ]
   in
-  return (div divs)
+  lwt source_div = HTML_source.entity_sources_div (module CORE_machinist) mc in
+  return (div (divs @ [source_div]))
 
 let machinist_page =
   HTML_entity.offer_creation CORE_machinist.make create_service machinist_page
