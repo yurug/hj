@@ -188,7 +188,7 @@ let list_editor label list =
   lwt rows = Lwt_list.map_s (row_of_idx tableid) (range 0 (e + 1)) in
   let thead = thead [ tr (
     List.map (fun f -> th [pcdata f]) list.fields
-    @ [th [pcdata ""]]
+    @ [th [pcdata "Action"]]
   ) ]
   in
   let table = (tablex ~thead [Id.create_named_elt ~id:tableid (tbody rows)]) in

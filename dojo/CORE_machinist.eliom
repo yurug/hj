@@ -184,14 +184,39 @@ let lockable mc =
 let kind mc =
   return ()
 
-let logins mc =
-  return []
+let get_logins mc =
+  lwt l = observe mc (fun d -> return d.available_logins) in
+  return (List.map (fun i -> [i.username; i.ssh_key]) l)
 
-let addresses mc =
-  return []
+let set_logins mc l =
+  let l =
+    List.map (function
+      | [username; ssh_key] -> { username; ssh_key }
+      | _ -> (* FIXME: handle user error *) assert false
+    ) l
+  in
+  change mc (fun d -> return (Some { d with available_logins = l }))
 
-let sandboxes mc =
-  return []
+let get_addresses mc =
+  lwt l = observe mc (fun d -> return d.available_addresses) in
+  return (List.map (fun (a, _) -> [fst a; string_of_int (snd a)]) l)
+
+let set_addresses mc l =
+  let l = List.map (function
+    | [hostname; port] -> (hostname, int_of_string port)
+    | _ -> (* FIXME: handle user error *) assert false
+  ) l
+  in
+  (* FIXME: For the moment, we lost all the running jobs...
+     So, the current implementation only makes sense if the
+     machinist is not already busy.
+     We must be a bit more careful by allowing untouched
+     addresses to keep their jobs. *)
+  change mc (fun d ->
+    let resource = d.available_logins in
+    let l = List.map (fun a -> (a, COMMON_waiting_list.empty resource)) l in
+    return (Some { d with available_addresses = l })
+  )
 
 let make_default id =
   let default = {
