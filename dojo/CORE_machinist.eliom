@@ -117,3 +117,9 @@ let create_service ok_page ko_page =
       with InvalidLabel _ ->
        return (ko_page (string_of_error (`InvalidLabel (String.concat "/" id))))
     )
+
+let all () =
+  lwt ids = CORE_standard_identifiers.(all_identifiers_at machinists_path) in
+  Lwt_list.fold_left_s (fun ls id ->
+    make id >>= function `OK e -> return (e :: ls) | _ -> return ls
+  ) [] ids

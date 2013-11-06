@@ -11,6 +11,7 @@
 
 open Lwt
 open COMMON_pervasives
+open CORE_error_messages
 
 {shared{
 
@@ -51,6 +52,12 @@ exception NoSuchSandbox
 let find_sandbox requirements =
   (** Iterate over all the machinists, looking for one that
       provides sandboxes that fullfill the [requirements]. *)
+  lwt machinists = CORE_machinist.all () in
+  List.iter (fun m ->
+    Ocsigen_messages.errlog (
+      Printf.sprintf "Try %s"
+        (CORE_identifier.string_of_identifier (CORE_machinist.identifier m))))
+    machinists;
   raise NoSuchSandbox
 
 (** [copy files sandbox] imports the files in the sandbox. *)
@@ -94,4 +101,6 @@ let exec
     >>= fun job -> return (`OK (job, persistence))
 
   with NoSuchSandbox ->
-    return (`KO `NoSuchSandbox)
+    let e = `NoSuchSandbox in
+    warn e;
+    return (`KO e)

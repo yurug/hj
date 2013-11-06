@@ -10,6 +10,9 @@ val mkdir : string -> ('a, 'b) raiser -> unit Lwt.t
 (** [rmdir rdir ~content:f]. *)
 val rmdir : string -> ?content:bool -> ('a, 'b) raiser -> unit Lwt.t
 
+(** [ls dir]. *)
+val ls : string -> ('a, 'b) raiser -> string list Lwt.t
+
 (** [cp src dest]. *)
 val cp : string -> string -> ('a, 'b) raiser -> unit Lwt.t
 

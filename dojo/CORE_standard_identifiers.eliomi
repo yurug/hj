@@ -14,8 +14,12 @@ val exercises_path : path
 
 val system_path : path
 
+val machinists_path : path
+
 val std_paths : path list
 
 val fresh : path -> string -> identifier
 
 val assigner : identifier
+
+val all_identifiers_at : path -> identifier list Lwt.t

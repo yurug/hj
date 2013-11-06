@@ -24,6 +24,21 @@ let mkdir ps =
     Lwt_unix.mkdir ps 0o700
   ) ()
 
+let ls ps =
+  handle_unix_error Lwt_unix.(fun () ->
+    lwt dh = opendir ps in
+    let rec all ls =
+      try_lwt
+        lwt file = readdir dh in
+        all (Filename.concat ps file :: ls)
+      with End_of_file -> return ls
+    in
+    lwt y = all [] in
+    closedir dh >>
+    return y
+  ) []
+
+
 let rmdir ps ?(content=false) lraise =
   let cmd = Printf.sprintf (if content then "rm -fr %s" else "rm -r %s") ps in
   success ~lraise (!% cmd)

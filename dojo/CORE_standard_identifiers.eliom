@@ -2,13 +2,20 @@
 
 (** Standard identifiers. *)
 
+open Lwt
 open CORE_identifier
+open COMMON_pervasives
+
+let ressource_path = path_of_string CORE_config.ressource_root
 
 let root relative p =
-  if relative then
-    concat (path_of_string CORE_config.ressource_root) p
-  else
-    p
+  if relative then concat ressource_path p else p
+
+let relativize p =
+  suffix ressource_path p
+
+let relativize_identifier p =
+  identifier_of_path (relativize (path_of_identifier p))
 
 let tests_path = from_strings [ "tests" ]
 let users_path = from_strings [ "users" ]
@@ -29,3 +36,14 @@ let assigner =
   identifier_of_path (
     concat system_path (CORE_identifier.make [ label "assigner" ])
   )
+
+let all_identifiers_at path =
+  ltry (fun lraise ->
+    lwt files = COMMON_unix.ls (string_of_path (root true path)) lraise in
+    return List.(
+      let ids = map identifier_of_string (filter Sys.is_directory files) in
+      map relativize_identifier ids
+    )
+  ) >>= function
+    | `OK ls -> return ls
+    | `KO _ -> (* FIXME: handle this correctly. *) return []
