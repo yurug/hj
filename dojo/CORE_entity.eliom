@@ -514,17 +514,24 @@ module Make (I : U) : S with type data = I.data = struct
     >> return ()
 
   let source id =
+    let create_on_read x =
+      let s = CORE_source.empty id in
+      x.sources <- CORE_source.Map.add id s x.sources;
+      return s
+    in
     let get x =
       try_lwt
         return (CORE_source.Map.find id x.sources)
-      with Not_found -> assert false
+      with Not_found -> create_on_read x
     in
     let retrieve = server_function Json.t<CORE_identifier.t> (fun id ->
       make id >>= function
         | `OK e ->
           lwt s = get e in
           return (CORE_source.content s)
-        | _ -> assert false
+        | _ ->
+          (* FIXME: Handle user error. *)
+          assert false
     )
     in
     (id, get, retrieve)
