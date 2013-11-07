@@ -28,8 +28,22 @@ let entity_sources_div
     in
     Lwt_list.iter_s commit ss
   in
+  let download = {int -> unit{
+    fun i ->
+      Firebug.console##log ("Download")
+  }}
+  in
+  let upload = {int -> unit{
+    fun i ->
+      Firebug.console##log ("Upload")
+  }}
+  in
   let get_editor =
     get_list_editor "Sources" ["Filenames"] get_sources (Some set_sources)
+      (fun i -> [
+        icon [pcdata "↑"] {{ fun _ -> %upload %i }};
+        icon [pcdata "↓"] {{ fun _ -> %download %i }}
+      ])
   in
   reactive_div e get_sources
     {CORE_source.filename list list -> [> Html5_types.div ] elt list Lwt.t{

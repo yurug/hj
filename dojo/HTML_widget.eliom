@@ -53,7 +53,7 @@ type editable_list = {
   replace   : (int -> string list -> unit Lwt.t) option;
 }
 
-let list_editor label list =
+let list_editor label list (extra_actions : int -> _) =
 
   (** A table to convert HTML5 identifier into list indices. *)
 
@@ -158,13 +158,13 @@ let list_editor label list =
         return None
     )
 
-  and tools_of table elt =
-    let remove_action  = icon [pcdata "x"] (remove_item table elt) in
-    let replace_action = icon [pcdata "✓"] (replace_item table elt) in
-    td [ remove_action; replace_action ]
+  and tools_of table id idx =
+    let remove_action  = icon [pcdata "x"] (remove_item table id) in
+    let replace_action = icon [pcdata "✓"] (replace_item table id) in
+    td ([ remove_action; replace_action ] @ extra_actions idx)
 
-  and cells_of_tr fields table id =
-    List.map field fields @ [tools_of table id]
+  and cells_of_tr fields table id idx =
+    List.map field fields @ [tools_of table id idx]
 
   and field f =
     (* FIXME: A workaround to the following bug of Ocsigen:
@@ -181,7 +181,7 @@ let list_editor label list =
   and row_of_idx table i =
     lwt fields = list.display i in
     let id = indices_fresh_for (Id.new_elt_id ()) i in
-    let cells = cells_of_tr fields table id in
+    let cells = cells_of_tr fields table id i in
     return (Id.create_named_elt ~id (tr cells))
   in
   let tableid = Id.new_elt_id () in
@@ -195,7 +195,7 @@ let list_editor label list =
   let table = (tablex ~thead [Id.create_named_elt ~id:tableid (tbody rows)]) in
   return (div [table])
 
-let get_list_editor label fields get set =
+let get_list_editor label fields get set extra_actions =
   let rd f = lwt l = get () in f l in
   let empty = List.map (fun _ -> "") fields in
   let remove, replace =
@@ -215,7 +215,7 @@ let get_list_editor label fields get set =
       display   = (fun k -> rd (fun l -> return (try nth l k with _ -> empty)));
       remove;
       replace
-    }))
+    }) extra_actions)
 
 {client{
   let toggle s e =

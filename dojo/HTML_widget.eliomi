@@ -14,6 +14,9 @@ type onclick_cb = (mouseEvent Js.t -> unit) client_value
     [onclick_cb] when it is clicked. *)
 val button: string list -> onclick_cb -> [> span ] elt
 
+(** [icon onclick_cb].  *)
+val icon : [ span_content ] elt list -> onclick_cb -> [> span ] elt
+
 (** [show_or_hide ?start_shown e] returns an element with a button to
     toggle its visibility. By default, [start_shown] is [true]. *)
 val show_or_hide:
@@ -31,12 +34,16 @@ type editable_list = {
   replace   : (int -> string list -> unit Lwt.t) option;
 }
 
-val list_editor : string -> editable_list -> [> div ] elt Lwt.t
+val list_editor
+  : string -> editable_list
+  -> (int -> [ td_content_fun ] elt list)
+  -> [> div ] elt Lwt.t
 
 val get_list_editor :
   string -> string list
   -> (unit -> string list list Lwt.t)
   -> (string list list -> unit Lwt.t) option
+  -> (int -> [ td_content_fun ] elt list)
   -> (unit, [> div ] elt) server_function
 
 val nonempty_field : (string -> string option) client_value

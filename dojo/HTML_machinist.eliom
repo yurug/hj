@@ -20,7 +20,9 @@ let selector_of_machine_kind k =
 }}
 
 let edit_list label fields get set =
-  let get_editor = get_list_editor label fields get set in
+  let get_editor = get_list_editor label fields get set
+    (fun i -> [])
+  in
   {CORE_machinist.data -> [> Html5_types.div ] elt list Lwt.t{fun _ ->
     lwt e = %get_editor () in
     return [e]
