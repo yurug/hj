@@ -25,8 +25,9 @@ let entity_sources_div
         lwt s = get e in
         update_source e id s
       in
-      let set_sources =
-        Lwt_list.iter_s (function [ id ] -> commit id | _ -> assert false)
+      let set_sources ss =
+        Lwt_list.iter_s (function [ id ] -> commit id | _ -> assert false) ss
+        >> change ~immediate:true e (fun _ -> return None)
       in
       let download = {int -> unit{
         fun i ->
@@ -37,12 +38,14 @@ let entity_sources_div
         (* FIXME: I8N. *)
         get_list_editor "Sources" ["Filenames"] get_sources (Some set_sources)
           (fun i ->
-            let import suggested_filename = try
-                return (CORE_source.filename (List.nth (sources e) i))
+            let import suggested_filename =
+              try
+                let filename = CORE_source.filename (List.nth (sources e) i) in
+                return (filename, fun () -> commit filename)
               with _ ->
                 (** This source does not exist yet. *)
                 let f = Filename.concat (vfs_directory e) suggested_filename in
-                commit suggested_filename >> return f
+                return (f, fun () -> commit suggested_filename)
             in
             let upload_form = fileuploader import in
             [

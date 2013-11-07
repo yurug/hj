@@ -510,8 +510,12 @@ module Make (I : U) : S with type data = I.data = struct
     | `KO (`AlreadyExists _) -> assert false
 
   let update_source e id s =
+    (* FIXME: Optimize that. *)
     e.sources <- CORE_source.Map.add id s e.sources;
-    OTD.save e.description (CORE_source.list_of_map e.sources)
+    let sources = CORE_source.list_of_map e.sources in
+    let fsources = List.map CORE_source.filename sources in
+    e.description <- update_sources e.description fsources;
+    OTD.save e.description sources
     (* FIXME: Do not ignore errors. *)
     >> return ()
 

@@ -325,9 +325,9 @@ let fileuploader import =
                file.Ocsigen_extensions.raw_original_filename
                file.Ocsigen_extensions.original_basename);
         (* FIXME: Handle error. *)
-        lwt dest = import file.original_basename in
+        lwt dest, commit = import file.original_basename in
         ltry COMMON_unix.(cp file.tmp_filename dest)
-        >> return ()
+        >> commit ()
       )
   in
   post_form ~a:[a_class ["inlined"]]

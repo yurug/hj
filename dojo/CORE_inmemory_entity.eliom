@@ -67,3 +67,5 @@ let update_content e c = now { e with content = c }
 let update_properties e s = now { e with properties = s }
 
 let update_dependencies e d = now { e with dependencies = d }
+
+let update_sources e sources = now { e with sources }

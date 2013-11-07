@@ -60,4 +60,4 @@ val field :
   -> string -> [> Html5_types.div ] Eliom_content.Html5.D.elt
 
 val fileuploader :
-  (string -> string Lwt.t) -> [ td_content ] elt
+  (string -> (string * (unit -> unit Lwt.t)) Lwt.t) -> [ td_content ] elt
