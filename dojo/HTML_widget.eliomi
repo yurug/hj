@@ -12,10 +12,10 @@ type onclick_cb = (mouseEvent Js.t -> unit) client_value
 
 (** [button label onclick_cb] returns a button that executes
     [onclick_cb] when it is clicked. *)
-val button: string list -> onclick_cb -> [> span ] elt
+val button: string list -> onclick_cb -> [> div ] elt
 
 (** [icon onclick_cb].  *)
-val icon : [ span_content ] elt list -> onclick_cb -> [> span ] elt
+val icon : [ flow5 ] elt list -> onclick_cb -> [> div ] elt
 
 (** [show_or_hide ?start_shown e] returns an element with a button to
     toggle its visibility. By default, [start_shown] is [true]. *)
@@ -58,3 +58,6 @@ val field :
   | `Month | `Number | `Password | `Radio | `Range | `Reset | `Search
   | `Submit | `Tel | `Text | `Time | `Url | `Week ]
   -> string -> [> Html5_types.div ] Eliom_content.Html5.D.elt
+
+val fileuploader :
+  (string -> string Lwt.t) -> [ td_content ] elt

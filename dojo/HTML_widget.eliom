@@ -30,7 +30,7 @@
     in
     let label = List.nth labels 0 in
     Id.create_named_elt ~id (
-      span ~a:[a_onclick onclick; a_class classes] [label]
+      div ~a:[a_onclick onclick; a_class ("inlined" :: classes) ] [label]
     )
 
   let button ls = generic_button ["button"] (List.map (fun l -> pcdata l) ls)
@@ -307,3 +307,31 @@ let field
     label ~a:[a_for name] [ pcdata text ];
     (input :> [ div_content ] elt)
   ] @ message)
+
+open Ocsigen_extensions
+
+(* FIXME: Implement this using the HTML5 file API.
+   For the moment, js_of_ocaml seems not to provide
+   enough on that aspect...
+*)
+let fileuploader import =
+  let file_upload_service =
+    Eliom_registration.Action.register_post_coservice'
+      ~post_params:(Eliom_parameter.(file "file"))
+      (fun () file ->
+          Ocsigen_messages.errlog
+            (Printf.sprintf "Received a file:\n %s\n%s\n%s"
+               file.Ocsigen_extensions.tmp_filename
+               file.Ocsigen_extensions.raw_original_filename
+               file.Ocsigen_extensions.original_basename);
+        (* FIXME: Handle error. *)
+        lwt dest = import file.original_basename in
+        ltry COMMON_unix.(cp file.tmp_filename dest)
+        >> return ()
+      )
+  in
+  post_form ~a:[a_class ["inlined"]]
+    ~xhr:true ~service:file_upload_service (fun f -> [
+      file_input ~name:f ();
+      string_input ~input_type:`Submit ~value:"OK" ()
+    ]) ()
