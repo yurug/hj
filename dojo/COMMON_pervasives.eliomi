@@ -73,6 +73,9 @@ val lwt_if : bool Lwt.t -> 'a Lwt.t -> 'a Lwt.t -> 'a Lwt.t
 (** [lwt_repeat k f] repeats [f], [k] times. *)
 val lwt_repeat : int -> (int -> unit Lwt.t) -> unit Lwt.t
 
+(* FIXME *)
+val lwt_list_iteri_s : (int -> 'a -> unit Lwt.t) -> 'a list -> unit Lwt.t
+
 (** [continue_while_is v ps] executes the sequence of [ps] while [v]
     is produced by each process. Returns the first result that does
     not produce [v] or [v] if there is no such result. *)

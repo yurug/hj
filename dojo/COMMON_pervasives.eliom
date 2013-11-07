@@ -12,6 +12,10 @@ let ( !* ) f x = f [x]
 
 type 'a only = Only of 'a
 
+let lwt_list_iteri_s f l =
+  let c = ref 0 in
+  Lwt_list.iter_s (fun x -> f !c x >> (incr c; return ())) l
+
 let lwt_list_join cs =
   List.fold_right (fun c xs ->
       lwt xs = xs in
