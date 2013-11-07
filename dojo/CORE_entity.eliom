@@ -208,6 +208,8 @@ module type S = sig
 
   val sources : t -> CORE_source.t list
 
+  val vfs_directory : t -> string
+
   val push_dependency
     : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
 
@@ -549,6 +551,11 @@ module Make (I : U) : S with type data = I.data = struct
 
   let sources e =
     CORE_source.list_of_map e.sources
+
+  let vfs_directory e =
+    CORE_standard_identifiers.(
+      string_of_path (root true (path_of_identifier (identifier e)))
+    )
 
   let newer_than e (SomeEntity other) =
       (timestamp e > timestamp other)

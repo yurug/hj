@@ -170,6 +170,8 @@ module type S = sig
 
   val sources : t -> CORE_source.t list
 
+  val vfs_directory : t -> string
+
   val push_dependency
     : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
 
