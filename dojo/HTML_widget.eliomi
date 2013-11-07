@@ -36,7 +36,7 @@ val list_editor : string -> editable_list -> [> div ] elt Lwt.t
 val get_list_editor :
   string -> string list
   -> (unit -> string list list Lwt.t)
-  -> (string list list -> unit Lwt.t)
+  -> (string list list -> unit Lwt.t) option
   -> (unit, [> div ] elt) server_function
 
 val nonempty_field : (string -> string option) client_value

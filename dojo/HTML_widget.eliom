@@ -171,10 +171,11 @@ let list_editor label list =
        https://github.com/ocsigen/tyxml/commit
        /1a05bd9e7f96720b3a57289054ab9c4a5fd9926a#commitcomment-4425462 *)
     let elt = span [pcdata f] in
-    ignore {unit{
-      let e = To_dom.of_span %elt in
-      e##setAttribute (Js.string "contenteditable", Js.string "true")
-    }};
+    if list.replace <> None then
+      ignore {unit{
+        let e = To_dom.of_span %elt in
+        e##setAttribute (Js.string "contenteditable", Js.string "true")
+      }};
     td [elt]
 
   and row_of_idx table i =
@@ -196,15 +197,24 @@ let list_editor label list =
 
 let get_list_editor label fields get set =
   let rd f = lwt l = get () in f l in
-  let wr f = rd (fun l -> set (f l)) in
   let empty = List.map (fun _ -> "") fields in
+  let remove, replace =
+    match set with
+      | Some set ->
+        let wr f = rd (fun l -> set (f l)) in
+        let remove = Some (fun i _ -> wr (list_remove i)) in
+        let replace = Some (fun i vs -> wr (fun l -> list_replace i vs l)) in
+        (remove, replace)
+      | None ->
+        (None, None)
+  in
   server_function Json.t<unit> (fun () ->
     List.(list_editor label {
       fields;
       index_end = (fun () -> rd (fun l -> return (length l)));
       display   = (fun k -> rd (fun l -> return (try nth l k with _ -> empty)));
-      remove    = Some (fun i _ -> wr (list_remove i));
-      replace   = Some (fun i vs -> wr (fun l -> list_replace i vs l))
+      remove;
+      replace
     }))
 
 {client{
