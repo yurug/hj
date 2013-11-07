@@ -159,7 +159,10 @@ module type S = sig
   (** [source s] returns a triple made of
       - [s]
       - a server-side accessor to the source [s] for entity [x].
-      - a server RPC to retrieve the content of the source [s]. *)
+      - a server RPC to retrieve the content of the source [s].
+      If the source does not already exist, it is created with an
+      empty content.
+  *)
   val source : CORE_source.filename ->
     (CORE_source.filename
      * (t -> CORE_source.t Lwt.t)

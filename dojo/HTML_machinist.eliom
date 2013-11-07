@@ -32,12 +32,12 @@ let machinist_page mc =
   let logins_div =
     edit_list I18N.String.logins ["username"; "ssh key"]
       (fun () -> get_logins mc)
-      (set_logins mc)
+      (Some (set_logins mc))
   in
   let addresses_div =
     edit_list I18N.String.addresses ["address"; "port"]
       (fun () -> get_addresses mc)
-      (set_addresses mc)
+      (Some (set_addresses mc))
   in
   lwt divs = Lwt_list.map_s (react_to_mc get) [
     (selector_of_machine_kind (kind mc));
