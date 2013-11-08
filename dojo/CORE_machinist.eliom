@@ -101,8 +101,10 @@ let choose_waiting_list mc exclusive =
     Pervasives.compare (size wl1) (size wl2)
   )
   in
-  observe mc (fun data ->
-    return (fst List.(hd (sort smallest_waiting_list data.available_addresses)))
+  observe mc List.(fun data ->
+    match data.available_addresses with
+      | [] -> return None
+      | l -> return (Some (fst (hd (sort smallest_waiting_list l))))
   )
 
 let wait_for_sandbox mc addr waiting_rank =
@@ -131,15 +133,25 @@ let wait_for_sandbox mc addr waiting_rank =
   (** We react to every change of mc, looking for an update
       of the waiting list of [addr]. *)
   let rec wait last_wl =
-    lwt data = Lwt_condition.wait (subscribe mc) in
-    let wl = get_wl data in
-    if (last_wl = Some wl) then
-      (** No interesting change for us. *)
-      wait last_wl
-    else match ticket_turn wl ticket with
+    (* FIXME: Define a reasonable timeout. *)
+    lwt_condition_wait_timeout 5 (subscribe mc) >>= function
+      | None ->
+        (** We abandon. Throwing away our ticket. *)
+        change ~immediate:true mc (fun data ->
+          return (Some (set_wl data (delete_ticket (get_wl data) ticket)))
+        ) >> raise_lwt Not_found
+      | Some data ->
+        let wl = get_wl data in
+        if (last_wl = wl) then
+          (** No interesting change for us. *)
+          wait last_wl
+        else
+          process wl
+  and process wl =
+    match ticket_turn wl ticket with
       | Waiting rank ->
         (** We still have to wait. Publish how long... *)
-        waiting_rank rank >> wait (Some wl)
+        waiting_rank rank >> wait wl
 
       | Active r ->
         (** This is our turn. Build an interface out of this resource. *)
@@ -151,7 +163,8 @@ let wait_for_sandbox mc addr waiting_rank =
         in
         return (build_sandbox_interface (resource_value r) addr release)
   in
-  wait None
+  lwt data = observe mc (fun data -> return data) in
+  process (get_wl data)
 
 
 (** [provide_sandbox_interface mc exclusive waiting_rank] returns a
@@ -164,10 +177,12 @@ let provide_sandbox_interface mc exclusive waiting_rank =
 
   (** Choose a waiting list for this request. It is characterized
       by the machine address. *)
-  lwt addr = choose_waiting_list mc exclusive in
-
-  (** Wait. *)
-  wait_for_sandbox mc addr waiting_rank
+  choose_waiting_list mc exclusive >>= function
+    | None ->
+      raise_lwt Not_found
+    | Some addr ->
+      (** Wait. *)
+      wait_for_sandbox mc addr waiting_rank
 
 (** [capable_of mc cmd] returns [true] if [cmd] is executed
     with success by the machine of [mc]. *)
@@ -189,6 +204,8 @@ let get_logins mc =
   return (List.map (fun i -> [i.username; i.ssh_key]) l)
 
 let set_logins mc l =
+  (* FIXME: each time a login is added, we must extend
+     the waiting list of each address... *)
   let l =
     List.map (function
       | [username; ssh_key] -> { username; ssh_key }
@@ -254,8 +271,5 @@ let all () =
   lwt ids = CORE_standard_identifiers.(all_identifiers_at machinists_path) in
   Lwt_list.fold_left_s (fun ls id ->
     make id >>= function `OK e -> return (e :: ls)
-      | _ ->
-        Ocsigen_messages.errlog (Printf.sprintf "%s loading failed"
-                                   (string_of_identifier id));
-        return ls
+      | _ -> return ls
   ) [] ids

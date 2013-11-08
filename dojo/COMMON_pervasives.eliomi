@@ -107,6 +107,8 @@ val list_index_of : 'a -> 'a list -> int
 
 }}
 
+val lwt_condition_wait_timeout : int -> 'a Lwt_condition.t -> 'a option Lwt.t
+
 (** [natural_indices ()] returns a map from a set of values to
     natural numbers such that the image of the map is exactly the
     range [0..n] where [n] is the total number of identifiers in the
@@ -127,7 +129,7 @@ end
 
 (** Please remember that exceptions are Achilles'heel of ML. Indeed,
     there is no support in the language to statically track down
-    where an exception can come from. Thus, exceptions are better
+    from where an exception is coming. Thus, exceptions are better
     used locally with clear barriers they cannot (or at least
     should not) escape.
 

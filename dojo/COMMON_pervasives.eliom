@@ -193,6 +193,18 @@ let list_tl_cut n l =
 
 }}
 
+let lwt_condition_wait_timeout timeout c =
+  let timeout_waiter, timeout_wakener = task () in
+  let t = Lwt_timeout.create timeout (fun () -> wakeup timeout_wakener None) in
+  Lwt_timeout.start t;
+  lwt result =
+    pick [ (try_lwt timeout_waiter with _ -> return None) ;
+           (Lwt_condition.wait c >>= (fun x -> return (Some x)))
+         ]
+  in
+  Lwt_timeout.stop t;
+  return result
+
 let natural_indices () =
   let indices = Hashtbl.create 13 in
   let invariant () =

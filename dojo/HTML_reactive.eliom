@@ -35,6 +35,7 @@ type ('a, 'b) c = 'a EltProduct.prod * 'b CORE_client_reaction.c
       Lwt.async (fun () ->
         try_lwt
           forever (fun continue ->
+            (* FIXME: Is it the right freq? *)
             Lwt_js.sleep 1.
             >> update_elts (P1 (Only elt)) (fun () ->
               lwt y = behavior (fun () -> Lwt.fail StopBackground) in
