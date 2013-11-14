@@ -151,10 +151,20 @@ let initial_source_filenames = [
   raw_user_description_filename
 ]
 
+let rec enumeration f = function
+  | C.All -> All
+  | C.Insert xs -> Insert (List.map f xs)
+  | C.Remove xs -> Remove (List.map f xs)
+  | C.Union xs -> Union (List.map (enumeration f) xs)
+
 let rec questions_from_cst raw e cst =
   let rec component = function
-    | C.Import  _ ->
-      assert false (* FIXME: TODO. *)
+    | C.Import (tys, id, xs) ->
+      return (
+        Import (enumeration typ tys,
+                CORE_identifier.identifier_of_string id.C.node,
+                enumeration (fun x -> x) xs)
+      )
 
     | C.Include _ ->
       (** Includes should have been processed at this point. *)

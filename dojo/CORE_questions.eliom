@@ -22,8 +22,8 @@ open CORE_identifier
 
 type 'a enumerate =
   | All
-  | Include of 'a list
-  | Exclude of 'a list
+  | Insert of 'a list
+  | Remove of 'a list
   | Union of 'a enumerate list
 deriving (Json)
 
@@ -65,8 +65,8 @@ let timestamp_of_sub cs rkey =
   in
   aux cs
 
+(** Evaluate [cs] and extract the resulting *)
 let context_of_checkpoint cs cp =
-  (* FIXME *)
   return CORE_context.Empty
 
 let all_checkpoints cs =
