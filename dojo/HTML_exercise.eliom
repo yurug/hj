@@ -134,26 +134,16 @@ let exercise_div exo answer evaluation =
   let display_exercise =
     {CORE_exercise.data -> [Html5_types.flow5] elt list Lwt.t{
       let rec display_exercise ctx data =
-        let rec display_questions ctx = function
-          | CORE_exercise.Compose (_, qs) ->
-            lwt ds = Lwt_list.map_s (display_questions ctx) qs in
-            return (List.flatten ds)
-          | CORE_exercise.Statement (s, q) ->
-            lwt d = display_questions ctx q in
-            return (p [pcdata s] :: d)
-          | CORE_exercise.ContextRule (r, qs) ->
-            display_questions (CORE_context.(push r ctx)) qs
-          | CORE_exercise.Checkpoint (s, qs) ->
-            lwt c = HTML_context.display_checkpoint %e_id ctx s in
-            lwt s = %display_score s in
-            lwt d = display_questions ctx qs in
-            return (c @ s @ d)
-          | CORE_exercise.Sub (x, _) ->
-            %data_of x >>= function
+(*        let display_questions ctx = function
+          | CORE_questions.Sub (x, _) ->
+            begin %data_of x >>= function
               | `OK ex -> display_exercise ctx ex
               | `KO _ -> return [p [pcdata "error"]]
+            end
+          | _ -> return [p [pcdata "TODO"]]
         in
-        lwt d = display_questions ctx (CORE_exercise.questions data) in
+        lwt d = display_questions ctx (CORE_exercise.questions data) in *)
+        let d = [p [pcdata "TODO"]] in
         return (h1 [pcdata (CORE_exercise.title data)] :: d)
       in
       display_exercise CORE_context.empty

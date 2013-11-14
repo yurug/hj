@@ -22,6 +22,7 @@ type label deriving (Json)
     Raise {!InvalidLabel} if [s] contains {!Filename.dir_sep}. *)
 val label : string -> label
 val label_to_string : label -> string
+val fresh_label : string -> label
 exception InvalidLabel of string
 
 (** A path is a sequence of label from the root to a node. *)

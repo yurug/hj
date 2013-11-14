@@ -18,6 +18,12 @@ let label s =
 
 let label_to_string s = s
 
+(* FIXME: To be correct, we must store all the labels
+   FIXME: crossed until now. *)
+let fresh_label =
+  let r = ref 0 in
+  fun prefix -> incr r; prefix ^ string_of_int !r
+
 type path = label list deriving (Json)
 
 let rec normalize = function

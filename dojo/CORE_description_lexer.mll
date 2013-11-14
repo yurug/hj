@@ -34,46 +34,53 @@ rule main = parse
 | blank+                                { main lexbuf }
 | eof                                   { EOF }
 
-(** Operators. *)
-| "or else"                             { ORELSE }
-| "then"                                { THEN   }
-| "check"                               { CHECK  }
-| "answer"                              { ANSWER  }
-| "in"                                  { IN  }
-| "file"                                { FILE }
+(** Keywords. *)
+| "from"                                { FROM }
+| "exercise"                            { EXERCISE }
 
 (** Punctuations. *)
 | "("                                   { LPAREN }
 | ")"                                   { RPAREN }
-| "["                                   { LBRACKET }
-| "]"                                   { RBRACKET }
+| "{"                                   { LBRACE }
+| "}"                                   { RBRACE }
 | "?"                                   { QMARK }
+| ","                                   { COMMA }
+| ":"                                   { COLON }
+| ";"                                   { SEMICOLON }
 
+(** Operators. *)
+| "-"                                   { MINUS }
+| "+"                                   { PLUS }
+| "*"                                   { STAR }
+| "="                                   { EQUAL }
+| "->"                                  { RARROW }
 
 (** Literal. *)
-| "{"                                   {
+| "["                                   {
   let p = lexbuf.Lexing.lex_curr_p in
   let token = raw (Buffer.create 13) 0 lexbuf in
   lexbuf.lex_start_p <- p;
   token
 }
-| identifier as id                      { ID id }
+| '#' (identifier as id)                  { ID id }
+
+| label as id                           { NAME id }
 
 | _ {
   error lexbuf I18N.String.lexing_unexpected_character
 }
 
 and raw chunk level = parse
-  | "}" {
+  | "]" {
     if level = 0 then
       RAW (Buffer.contents chunk)
     else (
-      Buffer.add_char chunk '}';
+      Buffer.add_char chunk ']';
       raw chunk (level - 1) lexbuf
     )
   }
-  | "{" {
-    Buffer.add_char chunk '{';
+  | "]" {
+    Buffer.add_char chunk '[';
     raw chunk (level + 1) lexbuf
   }
   | eof {

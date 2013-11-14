@@ -3,37 +3,33 @@
 %{
   open CORE_description_CST
 
-  let merge c q1 q2 =
-    match q1, q2 with
-      | Compose (c1, qs1), Compose (c2, qs2) when c1 = c2 && c = c1 ->
-        Compose (c1, qs1 @ qs2)
-      | Compose (c1, qs), q when c1 = c ->
-        Compose (c1, qs @ [ q ])
-      | q, Compose (c2, qs) when c2 = c ->
-        Compose (c2, q :: qs)
-      | q1, q2 ->
-        Compose (c, [q1; q2])
+  let rec app f = function
+    | [] ->
+      f
+    | x :: xs ->
+      app (locate (start_of f) (stop_of x) (App (f, x))) xs
 
 %}
 
 %start<CORE_description_CST.exercise> description
 
 (** Literals. *)
-%token<string> ID
-%token<string> RAW
+%token<string> ID NAME RAW
 
 (** Punctation. *)
-%token EOF LPAREN RPAREN LBRACKET RBRACKET QMARK
+%token EOF LPAREN RPAREN LBRACE RBRACE QMARK COMMA COLON SEMICOLON
 
 (** Operators *)
-%token THEN ORELSE CHECK ANSWER IN FILE
+%token MINUS PLUS STAR EQUAL RARROW
+
+(** Keywords *)
+%token EXERCISE FROM
 
 (** Priorities *)
-%right RAW
-%right IN
-%right ORELSE
-%right THEN
-%nonassoc ID
+%right COMMA
+%right RARROW
+%left pvar
+%nonassoc LPAREN
 
 %%
 
@@ -41,7 +37,7 @@ description: e=exercise EOF {
   e
 }
 
-exercise: title=located(RAW) questions=questions {
+exercise: title=located(RAW) LBRACE questions=question* RBRACE {
   { title; questions }
 }
 | error {
@@ -52,43 +48,130 @@ exercise: title=located(RAW) questions=questions {
   ))
 }
 
-questions: q1=questions THEN q2=questions {
-  merge Seq q1 q2
-}
-| q1=questions ORELSE q2=questions {
-  merge Par q1 q2
-}
-| LPAREN q=questions RPAREN {
-  q
-}
-| statement=located(RAW) qs=oquestions {
-  Statement (statement, qs)
-}
-| CHECK i=identifier qs=oquestions {
-  Checkpoint (i, qs)
-}
-| LBRACKET i=identifier d=located(exercise)? RBRACKET {
+question: EXERCISE i=identifier d=located(exercise)
+{
   Sub (i, d)
 }
-| LBRACKET i=identifier _d=QMARK RBRACKET {
+| EXERCISE i=identifier _d=QMARK
+{
   Include (i,
            from_lexing_position $startpos(_d),
            from_lexing_position $endpos(_d))
 }
-| cr=context_rule IN qs=questions {
-  ContextRule (cr, qs)
-}
-
-%inline oquestions: /* empty */
+| f=label LPAREN x=label RPAREN xs=located(term0)+ SEMICOLON
 {
-  Compose (Seq, [])
+  let v = lexing_locate $startpos(f) $endpos(f) (Variable f) in
+  Binding (Some x, None, app v xs)
 }
-| q=questions {
-  q
+| t=located(term) SEMICOLON
+{
+  Binding (None, None, t)
+}
+| i=label ty=type_ascription? EQUAL t=located(term) SEMICOLON
+{
+  Binding (Some i, ty, t)
+}
+| tys=enumeration(ty) FROM i=identifier names=enumeration(label)? SEMICOLON
+{
+  let names = match names with None -> All | Some n -> n in
+  Import (tys, i, names)
 }
 
-context_rule: ANSWER IN FILE fname=RAW {
-  Answer (fname)
+term0: n=label %prec pvar
+{
+  Variable n
+}
+| r=RAW
+{
+  Lit (LString r)
+}
+| LPAREN t=structured_term RPAREN
+{
+  t
+}
+| LBRACE ts=separated_nonempty_list(SEMICOLON, located(term)) RBRACE
+{
+  let t = match ts with
+    | [] -> assert false
+    | [t] -> t
+    | ts -> lexing_locate $startpos(ts) $endpos(ts) (Seq ts)
+  in
+  Lam (CORE_identifier.label "_", Some (TApp (TVariable "unit", [])),
+       t)
+}
+| LPAREN error RPAREN
+{
+  raise (
+    CORE_description_CST.ParseError (
+      $startpos,
+      $endpos,
+      I18N.String.parse_error) (* FIXME: Be more informative. *)
+  )
+}
+
+structured_term: a=located(term) b=located(term0)
+{
+  App (a, b)
+}
+
+term: t=structured_term
+{
+  t
+}
+| t=term0
+{
+  t
+}
+
+label: n=NAME
+{
+  CORE_identifier.label n
+}
+
+ty: n=NAME
+{
+  TApp (TVariable n, [])
+}
+| t1=ty RARROW t2=ty
+{
+  TApp (TVariable "->", [t1; t2])
+}
+| LPAREN t=ty RPAREN
+{
+  t
+}
+
+enumeration(X): PLUS s=sequence(X)
+{
+  Insert s
+}
+| MINUS s=sequence(X)
+{
+  Remove s
+}
+| e1=enumeration(X) COMMA e2=enumeration(X)
+{
+  match e2 with
+    | Union es -> Union (e1 :: es)
+    | e2 -> Union [e1; e2]
+}
+| LPAREN e=enumeration(X) RPAREN
+{
+  e
+}
+| STAR
+{
+  All
+}
+
+type_ascription: COLON ty=ty
+{
+  ty
+}
+
+sequence(X): LBRACE xs=separated_nonempty_list(COMMA, X) RBRACE
+{
+  xs
 }
 
 %inline identifier: id=located(ID) {
@@ -96,5 +179,5 @@ context_rule: ANSWER IN FILE fname=RAW {
 }
 
 %inline located(X): x=X {
-  locate $startpos $endpos x
+  lexing_locate $startpos $endpos x
 }

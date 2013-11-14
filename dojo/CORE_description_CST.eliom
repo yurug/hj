@@ -17,31 +17,62 @@ type 'a located = {
 }
 deriving (Json)
 
-let locate pstart pstop node = {
+let start_of x = x.start
+
+let stop_of x = x.stop
+
+let lexing_locate pstart pstop node = {
   node;
   start = from_lexing_position pstart;
   stop = from_lexing_position pstop;
 }
 
-type exercise = {
-  title : string located;
-  questions : questions;
+let locate start stop node = {
+  start; stop; node
 }
 
-and questions =
-  | Compose     of composer * questions list
-  | Statement   of string located * questions
-  | ContextRule of context_rule * questions
-  | Checkpoint  of string located * questions
-  | Include     of identifier * position * position
-  | Sub         of identifier * exercise located option
+type 'a enumerate =
+  | All
+  | Insert of 'a list
+  | Remove of 'a list
+  | Union of 'a enumerate list
+deriving (Json)
 
-and composer = Seq | Par
+type exercise = {
+  title : string located;
+  questions : t;
+}
+
+and component =
+  | Include     of identifier * position * position
+  | Sub         of identifier * exercise located
+  | Binding     of CORE_identifier.label option * ty option * term located
+  | Import      of ty enumerate * identifier * CORE_identifier.label enumerate
+
+and t = component list
+
+and term =
+  | Lit of literal
+  | Variable of variable
+  | Lam of variable * ty option * term located
+  | App of term located * term located
+  | IApp of term located * term located list
+  (* Syntactic sugars. *)
+  | Seq of term located list
+
+and literal =
+  | LInt    of int
+  | LFloat  of float
+  | LString of string
+
+and ty =
+  | TApp of type_variable * ty list
+
+and variable = CORE_identifier.label
+
+and type_variable = TVariable of string
 
 and identifier = string located
-
-and context_rule =
-  | Answer of string
 
 deriving (Json)
 
@@ -59,28 +90,39 @@ let rec equivalent_exercises e1 e2 =
   e1.title.node = e2.title.node &&
   equivalent_questions e1.questions e2.questions
 
-and equivalent_questions q1 q2 =
+and equivalent_questions qs1 qs2 =
+  List.length qs1 = List.length qs2 &&
+  List.for_all2 equivalent_components qs1 qs2
+
+and equivalent_components q1 q2 =
   match q1, q2 with
-    | Compose (c1, qs1), Compose (c2, qs2) when c1 = c2 ->
-      (try List.for_all2 equivalent_questions qs1 qs2 with _ -> false)
-    | Statement (s1, q1), Statement (s2, q2) ->
-      s1.node = s2.node && equivalent_questions q1 q2
-    | ContextRule (r1, q1), ContextRule (r2, q2) ->
-      equivalent_context_rule r1 r2 && equivalent_questions q1 q2
-    | Checkpoint (c1, q1), Checkpoint (c2, q2) ->
-      c1.node = c2.node && equivalent_questions q1 q2
     | Include (s1, _, _), Include (s2, _, _) ->
       s1.node = s2.node
-    | Sub (s1, None), Sub (s2, None) ->
-      s1.node = s2.node
-    | Sub (s1, Some e1), Sub (s2, Some e2) ->
+    | Sub (s1, e1), Sub (s2, e2) ->
       s1.node = s2.node && equivalent_exercises e1.node e2.node
+    | Import (tys1, xs1, e1), Import (tys2, xs2, e2) ->
+      tys1 = tys2 && xs1 = xs2 && e1 = e2
+    | Binding (x1, ty1, t1), Binding (x2, ty2, t2) ->
+      x1 = x2 && ty1 = ty2 && equivalent_terms t1.node t2.node
     | _, _ -> false
 
-and equivalent_context_rule r1 r2 =
-  match r1, r2 with
-    | Answer fname1, Answer fname2 ->
-      fname1 = fname2
+and equivalent_terms t1 t2 =
+  match t1, t2 with
+    | Lit l1, Lit l2 ->
+      l1 = l2
+    | Variable x1, Variable x2 ->
+      x1 = x2
+    | Lam (x1, ty1, t1), Lam (x2, ty2, t2) ->
+      x1 = x2 && ty1 = ty2 && equivalent_terms' t1 t2
+    | App (a1, b1), App (a2, b2) ->
+      equivalent_terms' a1 a2 && equivalent_terms' b1 b2
+    | IApp (t1, ts1), IApp (t2, ts2) ->
+      equivalent_terms t1.node t2.node
+      && List.for_all2 equivalent_terms' ts1 ts2
+    | _, _ ->
+      false
+
+and equivalent_terms' t1 t2 = equivalent_terms t1.node t2.node
 
 let dummy_position = { line = -1; character = -1 }
 
@@ -88,7 +130,7 @@ let dummy_loc x = { node = x; start = dummy_position; stop = dummy_position }
 
 let blank = {
   title = dummy_loc I18N.String.no_title;
-  questions = Compose (Seq, [])
+  questions = []
 }
 
 (** precondition: Assume that [s] contains a least [l] lines. *)

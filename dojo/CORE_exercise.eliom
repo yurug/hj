@@ -8,6 +8,7 @@ open Eliom_parameter
 open CORE_entity
 open CORE_standard_identifiers
 open CORE_error_messages
+open CORE_questions
 open COMMON_pervasives
 
 {shared{
@@ -20,15 +21,9 @@ type composer = Par | Seq deriving (Json)
 
 type checkpoint = string deriving (Json)
 
-type questions =
-  | Compose           of composer * questions list
-  | Statement         of string * questions
-  | ContextRule       of CORE_context.rule * questions
-  | Checkpoint        of checkpoint * questions
-  | Sub               of CORE_identifier.t * CORE_entity.timestamp
- deriving (Json)
-
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
+
+type questions = CORE_questions.t deriving (Json)
 
 type description = {
   assignment_rules : (assignment_kind * CORE_property.rule list) list;
@@ -38,17 +33,6 @@ type description = {
 } deriving (Json)
 
 }}
-
-let timestamp_of_sub questions rkey =
-  let rec aux = function
-    | Compose (_, qs) -> List.flatten (List.map aux qs)
-    | Statement (_, qs) -> aux qs
-    | ContextRule (_, qs) -> aux qs
-    | Sub (r, ts) when r = rkey -> [ ts ]
-    | Sub _ -> []
-    | Checkpoint _ -> []
-  in
-  aux questions
 
 {client{
 type data = description
@@ -91,10 +75,7 @@ let sub_id_from_user_string s =
   identifier_of_path (concat exercises_path ps)
 
 let include_subs cst =
-  let rec aux = function
-    | C.Compose (_, qs) ->
-      lwt nqs = Lwt_list.map_s aux qs in
-      return (List.flatten nqs)
+  let aux = function
 
     | C.Include (id, start, stop) ->
       let id = sub_id_from_user_string id.C.node in
@@ -109,31 +90,20 @@ let include_subs cst =
 
     | _ -> return []
   in
-  aux cst.C.questions
+  lwt lps = Lwt_list.map_s aux cst.C.questions in
+  return (List.flatten lps)
 
 let collect_on_subs cst f =
   let rec aux = function
-    | C.Compose (_, qs) ->
-      lwt nqs = Lwt_list.map_s aux qs in
-      return (List.flatten nqs)
-
-    | C.Include _ ->
-      return []
-
-    | C.Statement (_, q) ->
-       aux q
-
-    | C.ContextRule (_, q) ->
-      aux q
-
-    | C.Checkpoint _ ->
-      return []
-
     | C.Sub (id, def) ->
       let id = sub_id_from_user_string id.C.node in
       f id def
+
+    | _ ->
+      return []
   in
-  aux cst.C.questions
+  lwt xs = Lwt_list.map_s aux cst.C.questions in
+  return (List.flatten xs)
 
 let new_inline_subs raw e cst =
   Ocsigen_messages.errlog ("Searching for new inline definitions");
@@ -144,21 +114,14 @@ let new_inline_subs raw e cst =
         push_dependency e "subs" [] (SomeEntity e')
         >> return []
       | `KO e ->
-        match def with
-          | None ->
-            with_local_error e
-          | Some def ->
-            return [(id, C.with_sub_raw raw def)]
+        return [(id, C.with_sub_raw raw def)]
   )
 
 let outdated_subs e cst =
   Ocsigen_messages.errlog ("Searching for outdated definitions");
   collect_on_subs cst (fun id def ->
-    !!> begin fun () -> match def with
-      | Some def ->
-
-        make id >>>= fun e' ->
-
+    !!> begin fun () ->
+      make id >>>= fun e' ->
         (** There already is an exercise [e'] named [id]. *)
         lwt cst = observe e' (fun d -> return d.cst) in
 
@@ -182,9 +145,6 @@ let outdated_subs e cst =
                 )
             )
          else return (`OK [])
-
-      | None -> return (`OK [])
-
    end with_local_error)
 
 let initial_source_filenames = [
@@ -192,61 +152,67 @@ let initial_source_filenames = [
 ]
 
 let rec questions_from_cst raw e cst =
-  let composer_from_cst = function
-    | C.Par -> Par
-    | C.Seq -> Seq
-  in
-  let rec aux = function
-    | C.Compose (c, qs) ->
-      lwt qs = Lwt_list.map_s aux qs in
-      return (Compose (composer_from_cst c, qs))
+  let rec component = function
+    | C.Import  _ ->
+      assert false (* FIXME: TODO. *)
 
     | C.Include _ ->
       (** Includes should have been processed at this point. *)
       assert false
 
-    | C.ContextRule (r, qs) ->
-      lwt qs = aux qs in
-      return (ContextRule (context_rule r, qs))
-
-    | C.Checkpoint (id, qs) ->
-      let id = string_of_path (
-        concat
-          (path_of_identifier (identifier e))
-          (path_of_string id.C.node)
-      )
-      in
-      lwt qs = aux qs in
-      return (Checkpoint (id, qs))
-
-    | C.Statement (s, qs) ->
-      lwt qs = aux qs in
-      return (Statement (s.C.node, qs))
+    | C.Binding (l, ty, t) ->
+      return (Binding (l, typ' ty, term t.C.node))
 
     | C.Sub (id, def) ->
       let id = sub_id_from_user_string id.C.node in
       make id >>= function
-        | `OK e' -> (match def with
-            | None -> return []
-            | Some def ->
-              lwt cst = observe e' (fun d -> return d.cst) in
-              Ocsigen_messages.errlog "Consider pushing.";
-              if cst <> def.C.node then
-              (** At this point, the inline definition is necessarily new. *)
-                !!> (fun () ->
-                  Ocsigen_messages.errlog "Pushing new inline def.";
-                (* FIXME *)
-                  change_from_user_description e' (C.with_sub_raw raw def)
-                ) with_local_error
-              else return []
-        ) >>= fun _ -> return (Sub (id, timestamp e'))
+        | `OK e' ->
+          (lwt cst = observe e' (fun d -> return d.cst) in
+           Ocsigen_messages.errlog "Consider pushing.";
+           if cst <> def.C.node then
+                (** At this point, the inline definition is necessarily new. *)
+             !!> (fun () ->
+               Ocsigen_messages.errlog "Pushing new inline def.";
+               (* FIXME *)
+               change_from_user_description e' (C.with_sub_raw raw def)
+             ) with_local_error
+           else return []
+          ) >>= fun _ -> return (Sub (id, timestamp e'))
         | `KO e -> with_local_error e
-  in
-  aux cst.C.questions
 
-and context_rule = function
-  | C.Answer f ->
-    CORE_context.answer f
+  and typ' = function
+    | None -> None
+    | Some ty -> Some (typ ty)
+
+  and typ = function
+    | C.TApp (C.TVariable v, tys) ->
+      TApp (TVariable v, List.map typ tys)
+
+  and term' t = term t.C.node
+
+  and term = function
+    | C.Lit l -> Lit (literal l)
+    | C.Variable v -> Variable v
+    | C.App (a, b) -> App (term' a, term' b)
+    | C.Lam (x, ty, t) -> Lam (x, typ' ty, term' t)
+    | C.Seq [] -> assert false
+    | C.Seq [x] -> term' x
+    | C.Seq (x :: xs) -> make_let x (Some unit_ty) (fun _ -> term (C.Seq xs))
+    | _ -> (* FIXME *) assert false
+
+  and literal = function
+    | C.LString s -> LString s
+    | C.LInt x    -> LInt x
+    | C.LFloat f  -> LFloat f
+
+  and unit_ty = TApp (TVariable "unit", [])
+
+  and make_let t1 ty t2 =
+    let b = CORE_identifier.fresh_label "_" in
+    App (Lam (b, ty, t2 b), term' t1)
+
+  in
+  Lwt_list.map_s component cst.C.questions
 
 (** Compare an entity with the user description CST to decide if
     the user description is different from the entity. *)
@@ -256,7 +222,7 @@ and changed x questions cst =
   return (o1 || o2)
 
 (** Take an exercise [x] and a user description [cr] and produce a
-    change on [x] to be up-to-date with respect to [cr].
+    required change on [x] to be up-to-date with respect to [cr].
 
     In the meantime, [cr] may contain outdated information about the
     questions in which case we have to produce patches to apply to the
@@ -305,20 +271,7 @@ and change_from_user_description x cr =
     return (`KO e)
 
 let all_checkpoints e =
-  observe e (fun c ->
-    let rec aux = function
-      | Compose (_, qs) -> List.flatten (List.map aux qs)
-      | Sub _ -> []
-      | Statement (_, qs) -> aux qs
-      | ContextRule (_, qs) -> aux qs
-      | Checkpoint (c, qs) -> c :: aux qs
-    in
-    return (aux c.questions)
-  )
-
-let context_of_checkpoint qs cp =
-  (* FIXME *)
-  return CORE_context.Empty
+  observe e (fun c -> CORE_questions.all_checkpoints c.questions)
 
 let assignment_rule e k =
   observe e (fun c -> return (
@@ -332,9 +285,13 @@ let exercise_id username =
     concat exercises_path (CORE_identifier.make [label username])
   )
 
+let context_of_checkpoint _ _ =
+  (* FIXME *)
+  return (CORE_context.empty)
+
 let make_blank id =
   let assignment_rules = [] in
-  let questions = Compose (Seq, []) in
+  let questions = [] in
   let init = (
     { title = I18N.String.no_title;
       assignment_rules;
