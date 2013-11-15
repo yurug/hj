@@ -17,9 +17,7 @@ module C = CORE_description_CST
 
 open CORE_identifier
 
-type composer = Par | Seq deriving (Json)
-
-type checkpoint = string deriving (Json)
+type checkpoint = CORE_questions.checkpoint deriving (Json)
 
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
 
@@ -29,8 +27,11 @@ type description = {
   assignment_rules : (assignment_kind * CORE_property.rule list) list;
   title            : string;
   questions        : questions;
+  questions_value  : (questions * CORE_questions.questions_value) option;
   cst              : C.exercise;
 } deriving (Json)
+
+type patch = C.position * C.position * string
 
 }}
 
@@ -38,7 +39,12 @@ type description = {
 type data = description
 }}
 
-type patch = C.position * C.position * string
+let eval_questions this c =
+  Ocsigen_messages.errlog "Evaluate questions.";
+  lwt v = CORE_questions.eval this c.questions in
+  return (Some {
+    c with questions_value = Some (c.questions, v)
+  })
 
 exception Error of [ `UndefinedEntity of CORE_identifier.t
                    | `AlreadyExists   of CORE_identifier.path
@@ -49,7 +55,24 @@ include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react = passive
+  let react this change_later deps new_data data =
+    (** We reset the questions_value as a reaction to every
+        change of one dependency or a change of the questions
+        field. *)
+    let data, must_reset_value =
+      match new_data with
+      | None ->
+        (data, true) (* It means that one of the dependency changed. *)
+      | Some ({ questions_value = Some (qv, _); questions } as data) ->
+        (data, qv <> questions)
+      | Some ({ questions_value = None } as data) ->
+        (data, true)
+    in
+    if must_reset_value then (
+      change_later (eval_questions this);
+      return (Some { data with questions_value = None })
+    )
+    else return (Some data)
 
 end)
 
@@ -57,6 +80,11 @@ end)
 let title d = d.title
 
 let questions d = d.questions
+
+let current_value d =
+  match d.questions_value with
+    | None -> None
+    | Some (_, v) -> Some v
 }}
 
 let (raw_user_description_filename,
@@ -158,6 +186,11 @@ let rec enumeration f = function
   | C.Union xs -> Union (List.map (enumeration f) xs)
 
 let rec questions_from_cst raw e cst =
+  let wrap f t =
+    let y = f t in
+    { source = t; term = y }
+  in
+
   let rec component = function
     | C.Import (tys, id, xs) ->
       return (
@@ -171,6 +204,10 @@ let rec questions_from_cst raw e cst =
       assert false
 
     | C.Binding (l, ty, t) ->
+      let l = match l with
+        | None -> None
+        | Some l -> Some (Local l)
+      in
       return (Binding (l, typ' ty, term t.C.node))
 
     | C.Sub (id, def) ->
@@ -200,15 +237,16 @@ let rec questions_from_cst raw e cst =
 
   and term' t = term t.C.node
 
-  and term = function
+  and term t = wrap (function
     | C.Lit l -> Lit (literal l)
-    | C.Variable v -> Variable v
+    | C.Variable v -> Variable (Local v) (* FIXME: Generalize to external identifiers. *)
     | C.App (a, b) -> App (term' a, term' b)
     | C.Lam (x, ty, t) -> Lam (x, typ' ty, term' t)
     | C.Seq [] -> assert false
-    | C.Seq [x] -> term' x
+    | C.Seq [x] -> (term' x).term
     | C.Seq (x :: xs) -> make_let x (Some unit_ty) (fun _ -> term (C.Seq xs))
     | _ -> (* FIXME *) assert false
+  ) t
 
   and literal = function
     | C.LString s -> LString s
@@ -219,7 +257,8 @@ let rec questions_from_cst raw e cst =
 
   and make_let t1 ty t2 =
     let b = CORE_identifier.fresh_label "_" in
-    App (Lam (b, ty, t2 b), term' t1)
+    let t2 = t2 b in
+    App ({ term = Lam (b, ty, t2); source = t2.source }, term' t1)
 
   in
   Lwt_list.map_s component cst.C.questions
@@ -260,6 +299,7 @@ and change_from_user_description x cr =
                         title = cst.C.title.C.node;
                         assignment_rules = [];
                         questions;
+                        questions_value = None;
                         cst
                       } in
                       CORE_source.set_content source (C.raw cr);
@@ -280,8 +320,7 @@ and change_from_user_description x cr =
   with Error e ->
     return (`KO e)
 
-let all_checkpoints e =
-  observe e (fun c -> CORE_questions.all_checkpoints c.questions)
+let eval e = change e (eval_questions (identifier e))
 
 let assignment_rule e k =
   observe e (fun c -> return (
@@ -295,9 +334,25 @@ let exercise_id username =
     concat exercises_path (CORE_identifier.make [label username])
   )
 
-let context_of_checkpoint _ _ =
-  (* FIXME *)
-  return (CORE_context.empty)
+let rec eval_if_needed e =
+  observe e (fun d -> return d.questions_value) >>= function
+    | None -> eval e >> eval_if_needed e
+    | Some (_, v) -> return v
+
+let _ =
+  CORE_questions.set_import_exercise (fun id ->
+    make id >>= function
+      | `OK e -> observe e (fun d -> return d.questions)
+      | _ -> assert false (* FIXME *)
+  )
+
+let context_of_checkpoint e c =
+  lwt v = eval_if_needed e in
+  return (CORE_questions.context_of_checkpoint v c)
+
+let all_checkpoints e =
+  lwt v = eval_if_needed e in
+  return (CORE_questions.all_checkpoints v)
 
 let make_blank id =
   let assignment_rules = [] in
@@ -306,6 +361,7 @@ let make_blank id =
     { title = I18N.String.no_title;
       assignment_rules;
       questions;
+      questions_value = None;
       cst = C.blank
     },
     CORE_inmemory_entity.empty_dependencies,

@@ -44,7 +44,8 @@ type some_t = SomeEntity : 'a t -> some_t
 
 (** An entity may react to a change...*)
 type 'a reaction =
-    ('a change -> unit Lwt.t)
+    CORE_identifier.t
+    -> ('a change -> unit)
     -> dependencies  (** ... of its dependencies *)
     -> 'a option     (** ... of its content *)
     -> 'a change

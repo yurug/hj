@@ -26,7 +26,11 @@ let blank   = [' ' '\009' '\012']
 
 let label = [ 'a' - 'z' 'A' - 'Z' '0' - '9' '-' ]+
 
+let digit = [ '0' - '9' ]
+
 let identifier = label ('/' label)*
+
+let number = digit+
 
 rule main = parse
 (** Layout. *)
@@ -56,6 +60,10 @@ rule main = parse
 | "->"                                  { RARROW }
 
 (** Literal. *)
+| number as x {
+  INT (int_of_string x)
+}
+
 | "["                                   {
   let p = lexbuf.Lexing.lex_curr_p in
   let token = raw (Buffer.create 13) 0 lexbuf in

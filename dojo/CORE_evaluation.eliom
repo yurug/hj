@@ -49,11 +49,11 @@ let new_evaluation_state_of_checkpoint c s d =
 let create_job checkpoint context submission change_later =
   Ocsigen_messages.errlog "Creating job for checkpoint!";
   let message job msg =
-    change_later (
+    return (change_later (
       new_evaluation_state_of_checkpoint checkpoint (
         BeingEvaluated (job, CORE_diagnostic.PushLine msg)
       )
-    )
+    ))
   in
   let observer = CORE_sandbox.(function
     | WriteStdout (job, l) -> message (ExecutableJob job) l
@@ -103,13 +103,13 @@ include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react change_later deps new_data data =
+  let react this change_later deps new_data data =
 
     match CORE_inmemory_entity.to_list deps with
 
       | [] ->
         (** Only the state of the evaluation changed. We do not react. *)
-        passive change_later deps new_data data
+        passive this change_later deps new_data data
 
       | _ ->
         (** One of the dependencies changed:
@@ -163,7 +163,7 @@ let evaluation_dependencies exercise answer =
 let activate exo answer evaluation =
   (* FIXME: define a rec_change in CORE_entity? *)
   change ~immediate:true evaluation (
-    evaluate_all (change evaluation) exo answer
+    evaluate_all (fun c -> Lwt.async (fun () -> change evaluation c)) exo answer
   )
 
 let create id exo answer =

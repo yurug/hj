@@ -94,7 +94,9 @@ let editor_div (e : CORE_exercise.t) =
   lwt (editor_div, editor_id, editor_process) =
     HTML_editor.create (CORE_source.content init) client_change server_change
   in
-
+  (* FIXME: Optimize the following channel. For the moment, the entire
+     description of the exercise is sent to the clients each time the
+     exercise is modified.  This is HUGE! *)
   let e_channel = CORE_entity.channel e in
   ignore {unit{ CORE_client_reaction.react_on_background %e_channel (fun data ->
     lwt content = CORE_exercise.raw_user_description %id in
@@ -122,35 +124,33 @@ let editor_div (e : CORE_exercise.t) =
 
 let exercise_div exo answer evaluation =
   let e_id = identifier exo in
-  let data_of = server_function Json.t<CORE_identifier.t> (fun x ->
-    CORE_exercise.make x >>= function
-      | `OK ex -> observe ex (fun d -> return (`OK d))
-      | `KO _ -> return (`KO ())
-  ) in
   let display_score = server_function Json.t<checkpoint> (fun s ->
     HTML_context.display_score s evaluation
   )
   in
   let display_exercise =
-    {CORE_exercise.data -> [Html5_types.flow5] elt list Lwt.t{
-      let rec display_exercise ctx data =
-(*        let display_questions ctx = function
-          | CORE_questions.Sub (x, _) ->
-            begin %data_of x >>= function
-              | `OK ex -> display_exercise ctx ex
-              | `KO _ -> return [p [pcdata "error"]]
-            end
-          | _ -> return [p [pcdata "TODO"]]
-        in
-        lwt d = display_questions ctx (CORE_exercise.questions data) in *)
-        let d = [p [pcdata "TODO"]] in
-        return (h1 [pcdata (CORE_exercise.title data)] :: d)
-      in
-      display_exercise CORE_context.empty
+    (* FIXME: For the moment, we redisplay the entire exercise
+       FIXME: description each time it is updated. We should
+       FIXME: check if this is reasonable or if we should
+       FIXME: have finer notion of changes... *)
+    {data -> [Html5_types.flow5] elt list Lwt.t{
+      fun data ->
+      match CORE_exercise.current_value data with
+        | None -> return [p [pcdata "Displaying exercise..."]]
+        | Some qs ->
+          let display = function
+            | CORE_questions.Statement s ->
+              p [pcdata s]
+            | CORE_questions.CheckpointContext (c, _) ->
+              p [pcdata "Checkpoint"]
+          in
+          let d = List.map display qs in
+          return (h1 [pcdata (CORE_exercise.title data)] :: d)
     }}
   in
   let get () = observe exo (fun d -> return d) in
-  HTML_entity.reactive_div exo get display_exercise
+  CORE_exercise.eval exo
+  >> HTML_entity.reactive_div exo get display_exercise
 
 type role =
   | Student   of CORE_user.t * CORE_user.t list

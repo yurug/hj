@@ -15,6 +15,8 @@
 
 (** Literals. *)
 %token<string> ID NAME RAW
+%token<int> INT
+%token<float> FLOAT
 
 (** Punctation. *)
 %token EOF LPAREN RPAREN LBRACE RBRACE QMARK COMMA COLON SEMICOLON
@@ -84,6 +86,14 @@ term0: n=label %prec pvar
 | r=RAW
 {
   Lit (LString r)
+}
+| x=INT
+{
+  Lit (LInt x)
+}
+| f=FLOAT
+{
+  Lit (LFloat f)
 }
 | LPAREN t=structured_term RPAREN
 {

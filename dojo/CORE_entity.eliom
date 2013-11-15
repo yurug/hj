@@ -35,8 +35,11 @@ type 'a event =
     suggested for it.  A reaction produces a change that is scheduled
     for application. *)
 type 'a reaction =
-    ('a change -> unit Lwt.t)
-    -> dependencies -> 'a option -> 'a change
+    CORE_identifier.t
+    -> ('a change -> unit)
+    -> dependencies  (** ... of its dependencies *)
+    -> 'a option     (** ... of its content *)
+    -> 'a change
 
 (** A change is a process that transforms the current content of the
     entity into a new one. *)
@@ -228,7 +231,7 @@ end
 
 (** [passive] is the reaction that does nothing but accepting
     any change to the content of the entity. *)
-let passive _ _ x' x =
+let passive _ _ _ x' x =
   match x' with
     | None -> return None
     | Some x' -> return (Some x')
@@ -311,12 +314,14 @@ module Make (I : U) : S with type data = I.data = struct
           | None -> wakeup id reaction
 
   let wait_to_be_observer_free e commit =
+    Ocsigen_messages.errlog "Wait to be observer free...";
     Lwt_mutex.with_lock e.commit_lock (fun () -> return (
       (** Set the commit mode, no observers are allowed to run. *)
       e.mode <- `Commit;
       (** Nobody is watching! Do your stuff! *)
       commit ();
       (** Done! *)
+      Ocsigen_messages.errlog "Committing change!";
       e.mode <- `Observe 0
     ))
 
@@ -329,12 +334,18 @@ module Make (I : U) : S with type data = I.data = struct
     (** Second, we compute the changed content. *)
     lwt content' = c content0 in
 
+    let later_changes = ref [] in
+    let change_later c =
+      later_changes := (fun () -> change e c) :: !later_changes
+    in
+
     (** Third, the entity must react to this new version of the
         content.  Notice that we globally maintain the invariant that
         two reactions cannot run concurrently on the same entity. So,
         during the execution of a reaction the current content of the
         entity cannot change. *)
-    e.reaction (change e) dependencies content' content0 >>= function
+    e.reaction (identifier e) change_later dependencies content' content0
+    >>= function
       | None ->
         (** The reaction is void. *)
         return ()
@@ -347,9 +358,15 @@ module Make (I : U) : S with type data = I.data = struct
           e.description <- update_content e.description content;
           let nc = CORE_inmemory_entity.content e.description in
           OTD.save e.description (CORE_source.list_of_map e.sources);
-          >> return (
+          >> (
+            Ocsigen_messages.errlog "Broadcasting the new state.";
             e.push (HasChanged nc);
-            Lwt_condition.broadcast e.subscribec nc
+            Lwt_condition.broadcast e.subscribec nc;
+            let rec later_is_now = function
+              | [] -> return ()
+              | f :: fs -> f () >> later_is_now fs
+            in
+            later_is_now !later_changes
           )
         )
 
@@ -584,7 +601,7 @@ module Tests = struct
 
     type data = t deriving (Json)
 
-    let react self deps new_content old_content =
+    let react _ _ deps new_content old_content =
       let (count_log, count) =
         match new_content with
           | None ->

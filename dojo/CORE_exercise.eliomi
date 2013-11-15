@@ -3,13 +3,13 @@
 (** Exercise entities. *)
 
 {shared{
-type composer = Par | Seq deriving (Json)
 
-type checkpoint = string deriving (Json)
+type checkpoint = CORE_questions.checkpoint deriving (Json)
 
 type questions = CORE_questions.t deriving (Json)
 
 type description
+
 }}
 
 include CORE_entity.S with type data = description
@@ -26,6 +26,10 @@ val title : description -> string
 
 (** [questions e] returns the questions of [e]. *)
 val questions : description -> questions
+
+(** [current_value e] returns the current evaluation of the exercise
+    description as a list of questions. *)
+val current_value : description -> CORE_questions.questions_value option
 }}
 
 (** [assignment_rule e k] returns the assignment rule of the
@@ -39,17 +43,21 @@ val all_checkpoints : t -> checkpoint list Lwt.t
 (** [context_of_checkpoint e c] computes the context of [c] in [e]. *)
 val context_of_checkpoint : t -> checkpoint -> CORE_context.t Lwt.t
 
+(** [eval e] forces the evaluation of [e]. *)
+val eval : t -> unit Lwt.t
+
 val raw_user_description_source : t -> CORE_source.t Lwt.t
 
 type patch =
     CORE_description_CST.position * CORE_description_CST.position * string
 
-val make_blank : CORE_identifier.t -> [ `OK of t
-    | `KO of [>
-      | `UndefinedEntity of CORE_identifier.t
-      | `AlreadyExists   of CORE_identifier.path
-      | `SystemError     of string
-    ]] Lwt.t
+val make_blank
+: CORE_identifier.t -> [ `OK of t
+                       | `KO of [>
+                                | `UndefinedEntity of CORE_identifier.t
+                                | `AlreadyExists   of CORE_identifier.path
+                                | `SystemError     of string
+                                ]] Lwt.t
 
 val change_from_user_description
   : t -> CORE_description_CST.exercise CORE_description_CST.with_raw -> [
@@ -63,9 +71,9 @@ val change_from_user_description
     | `SystemError     of string
   ]] Lwt.t
 
-{client{
-val raw_user_description : CORE_identifier.t -> string Lwt.t
-}}
+  {client{
+         val raw_user_description : CORE_identifier.t -> string Lwt.t
+  }}
 
 val create_service :
   (t ->
