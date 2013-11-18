@@ -239,6 +239,22 @@ module Fr : I18N_sig.Text = struct
   let no_such_sandbox =
     "Désolé, nous n'avons pas de quoi exécuter votre programme."
 
+  let type_error p msg =
+    p ^ ": Erreur de typage.\n  " ^ msg
+
+  let need_annotation p =
+    p ^ ": Type trop difficile à deviner."
+
+  let unbound_variable p v =
+    p ^ ": Variable indéfinie `" ^ v ^ "'."
+
+  let illtyped_application p =
+    p ^ ": Application de fonction mal typée."
+
+  let runtime_error =
+    "Erreur à l'exécution."
+
+
 end
 
 module String = (val

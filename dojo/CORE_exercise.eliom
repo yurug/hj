@@ -31,7 +31,7 @@ type description = {
   cst              : C.exercise;
 } deriving (Json)
 
-type patch = C.position * C.position * string
+type patch = CORE_errors.position * CORE_errors.position * string
 
 }}
 
@@ -187,7 +187,7 @@ let rec enumeration f = function
 
 let rec questions_from_cst raw e cst =
   let wrap f t =
-    let y = f t in
+    let y = f t.C.node in
     { source = t; term = y }
   in
 
@@ -208,7 +208,7 @@ let rec questions_from_cst raw e cst =
         | None -> None
         | Some l -> Some (Local l)
       in
-      return (Binding (l, typ' ty, term t.C.node))
+      return (Binding (l, typ' ty, term t))
 
     | C.Sub (id, def) ->
       let id = sub_id_from_user_string id.C.node in
@@ -235,16 +235,15 @@ let rec questions_from_cst raw e cst =
     | C.TApp (C.TVariable v, tys) ->
       TApp (TVariable v, List.map typ tys)
 
-  and term' t = term t.C.node
-
-  and term t = wrap (function
+  and term (t : C.term') = wrap (function
     | C.Lit l -> Lit (literal l)
     | C.Variable v -> Variable (Local v) (* FIXME: Generalize to external identifiers. *)
-    | C.App (a, b) -> App (term' a, term' b)
-    | C.Lam (x, ty, t) -> Lam (x, typ' ty, term' t)
+    | C.App (a, b) -> App (term a, term b)
+    | C.Lam (x, ty, t) -> Lam (x, typ' ty, term t)
     | C.Seq [] -> assert false
-    | C.Seq [x] -> (term' x).term
-    | C.Seq (x :: xs) -> make_let x (Some unit_ty) (fun _ -> term (C.Seq xs))
+    | C.Seq [x] -> (term x).term
+    | C.Seq (x :: xs) ->
+      make_let x (Some unit_ty) (fun _ -> term (C.locate_as t (C.Seq xs)))
     | _ -> (* FIXME *) assert false
   ) t
 
@@ -258,7 +257,7 @@ let rec questions_from_cst raw e cst =
   and make_let t1 ty t2 =
     let b = CORE_identifier.fresh_label "_" in
     let t2 = t2 b in
-    App ({ term = Lam (b, ty, t2); source = t2.source }, term' t1)
+    App ({ term = Lam (b, ty, t2); source = t2.source }, term t1)
 
   in
   Lwt_list.map_s component cst.C.questions
@@ -347,12 +346,14 @@ let _ =
   )
 
 let context_of_checkpoint e c =
-  lwt v = eval_if_needed e in
-  return (CORE_questions.context_of_checkpoint v c)
+  eval_if_needed e >>= function
+    | `OK v -> return (CORE_questions.context_of_checkpoint v c)
+    | `KO _ -> return CORE_context.empty
 
 let all_checkpoints e =
-  lwt v = eval_if_needed e in
-  return (CORE_questions.all_checkpoints v)
+  eval_if_needed e >>= function
+    | `OK v -> return (CORE_questions.all_checkpoints v)
+    | `KO _ -> return []
 
 let make_blank id =
   let assignment_rules = [] in

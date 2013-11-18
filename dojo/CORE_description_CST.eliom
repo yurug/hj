@@ -3,12 +3,7 @@
 (** Concrete syntax trees. *)
 {shared{
 
-type position = { line : int; character : int } deriving (Json)
-
-let from_lexing_position p =
-  { line      = p.Lexing.pos_lnum;
-    character = p.Lexing.pos_cnum - p.Lexing.pos_bol;
-  }
+open CORE_errors
 
 type 'a located = {
   node     : 'a;
@@ -29,6 +24,12 @@ let lexing_locate pstart pstop node = {
 
 let locate start stop node = {
   start; stop; node
+}
+
+let locate_as x node = {
+  start = x.start;
+  stop = x.stop;
+  node
 }
 
 type 'a enumerate =
@@ -60,6 +61,8 @@ and term =
   (* Syntactic sugars. *)
   | Seq of term located list
 
+and term' = term located
+
 and literal =
   | LInt    of int
   | LFloat  of float
@@ -76,7 +79,7 @@ and identifier = string located
 
 deriving (Json)
 
-exception ParseError of Lexing.position * Lexing.position * string
+exception ParseError of position * position * string
 
 type 'a with_raw = string * 'a deriving (Json)
 

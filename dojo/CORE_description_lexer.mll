@@ -1,12 +1,15 @@
 (** Lexers for description languages. *)
 
 {
+  open CORE_errors
   open CORE_description_CST
   open CORE_description_parser
   open Lexing
 
   let error lexbuf e =
-    raise (ParseError (lexbuf.lex_start_p, lexbuf.lex_curr_p, e))
+    raise (ParseError (from_lexing_position lexbuf.lex_start_p,
+                       from_lexing_position lexbuf.lex_curr_p,
+                       e))
 
  (** This function increments the line number in the buffer [lexbuf]
      and calls [f] on it. *)

@@ -92,6 +92,11 @@ sig
   val answer_expected : string -> string
   val in_a_file_named : string -> string
   val no_such_sandbox : string
+  val type_error : string -> string -> string
+  val need_annotation : string -> string
+  val unbound_variable : string -> string -> string
+  val illtyped_application: string -> string
+  val runtime_error : string
 end
 
 }}

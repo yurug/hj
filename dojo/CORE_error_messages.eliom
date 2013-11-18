@@ -5,10 +5,10 @@
 {shared{
 
 open CORE_identifier
-open Lexing
+open CORE_errors
 
 let string_of_position p =
-  Printf.sprintf "line %d, characters %d" p.pos_lnum p.pos_cnum
+  Printf.sprintf "line %d, characters %d" p.line p.character
 
 let string_of_error : [< CORE_errors.all ] -> string = function
   | `SystemError e ->
@@ -30,6 +30,16 @@ let string_of_error : [< CORE_errors.all ] -> string = function
   | `SyntaxError (start, stop, msg) ->
     string_of_position start ^ ", "
     ^ string_of_position stop ^ ": " ^ msg
+  | `TypeError (p, msg) ->
+    I18N.String.type_error (string_of_position p) msg
+  | `NeedAnnotation p ->
+    I18N.String.need_annotation (string_of_position p)
+  | `UnboundVariable (p, v) ->
+    I18N.String.unbound_variable (string_of_position p) v
+  | `BadApplication p ->
+    I18N.String.illtyped_application (string_of_position p)
+  | `EvalError ->
+    I18N.String.runtime_error
   | `AssertFailure s ->
     s
 

@@ -8,7 +8,7 @@
   val exercise_of_string :
     string ->
     [> `KO of
-        [> `SyntaxError of Lexing.position * Lexing.position * string
+        [> `SyntaxError of CORE_errors.position * CORE_errors.position * string
         | `SystemError of string ]
     | `OK of exercise with_raw
     ]

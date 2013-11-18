@@ -2,6 +2,7 @@
 
 (** A widget for user edition with immediate feedback. *)
 {shared{
+open CORE_errors
 open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
@@ -12,7 +13,7 @@ module C = CORE_description_CST
 type user_request =
   | Confirm of string * (unit, user_request list) server_function
   | Message of string
-  | Patch   of C.position * C.position * string
+  | Patch   of CORE_errors.position * CORE_errors.position * string
 
 type 'a local_process = (
   (string -> unit) -> string -> 'a option Lwt.t

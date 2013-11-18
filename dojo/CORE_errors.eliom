@@ -5,9 +5,18 @@
 
 type position = { line : int; character : int } deriving (Json)
 
-val from_lexing_position : Lexing.position -> position
+let from_lexing_position p =
+  { line      = p.Lexing.pos_lnum;
+    character = p.Lexing.pos_cnum - p.Lexing.pos_bol;
+  }
 
-val to_lexing_position : position -> Lexing.position
+let to_lexing_position p = Lexing.(
+  { dummy_pos with
+    pos_lnum = p.line;
+    pos_cnum = 0;
+    pos_bol = p.character
+  }
+)
 
 type all = [
 | `AlreadyExists         of CORE_identifier.path

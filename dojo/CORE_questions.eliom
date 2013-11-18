@@ -50,7 +50,7 @@ and term =
   | IApp of term' * term' list
 
 and term' = {
-  source : CORE_description_CST.term;
+  source : CORE_description_CST.term';
   term   : term
 }
 
@@ -80,8 +80,10 @@ let timestamp_of_sub cs rkey =
 
 {shared{
 
-type questions_value =
-    atomic_value list
+type questions_value = [
+  | `OK of atomic_value list
+  | `KO of [ CORE_errors.all ]
+]
 
 and atomic_value =
   | CheckpointContext of checkpoint * CORE_context.t
@@ -89,6 +91,18 @@ and atomic_value =
 deriving (Json)
 
 }}
+
+type internal_errors = [
+| `TypeError of CORE_description_CST.term' * ty * ty
+| `NeedAnnotation of CORE_description_CST.term'
+| `UnboundVariable of CORE_description_CST.term' * name
+| `BadApplication of CORE_description_CST.term'
+| `EvalError
+] deriving (Json)
+
+exception Error of internal_errors
+
+let eraise e = raise (Error e)
 
 (** Extract the context of some checkpoint in a value. *)
 let context_of_checkpoint cv cp =
@@ -250,11 +264,6 @@ module TypeCheck = struct
 
   let lookup_primitive = Hashtbl.find primitives
 
-  exception TypeError of CORE_description_CST.term * ty * ty
-  exception NeedAnnotation of CORE_description_CST.term
-  exception UnboundVariable of CORE_description_CST.term * name
-  exception BadApplication of CORE_description_CST.term
-
   let rec check_term e t = function
     | None -> infer_term e t.source t.term
     | Some ty ->
@@ -263,7 +272,7 @@ module TypeCheck = struct
           check_term (bind (Local x) ity e) t (Some oty)
         | _, _ ->
           let ity = infer_term e t.source t.term in
-          if ty <> ity then raise (TypeError (t.source, ty, ity));
+          if ty <> ity then eraise (`TypeError (t.source, ty, ity));
           ity
 
   and infer_term e source = function
@@ -281,20 +290,20 @@ module TypeCheck = struct
   and variable e source = function
     | (External _ ) as x ->
       begin try lookup x e with Not_found ->
-        raise (UnboundVariable (source, x))
+        eraise (`UnboundVariable (source, x))
       end
     | (Local l) as x ->
       try lookup_primitive l with Not_found ->
         try lookup x e with Not_found ->
-          raise (UnboundVariable (source, x))
+          eraise (`UnboundVariable (source, x))
 
   and app e source a b =
     match destruct_arrow (infer_term e a.source a.term) with
-      | None -> raise (BadApplication source)
+      | None -> eraise (`BadApplication source)
       | Some (ity, oty) -> ignore (check_term e b (Some ity)); oty
 
   and lambda e source x t = function
-    | None -> raise (NeedAnnotation source)
+    | None -> eraise (`NeedAnnotation source)
     | Some ty -> infer_term (bind (Local x) ty e) t.source t.term
 
   let component e = function
@@ -313,8 +322,6 @@ module TypeCheck = struct
 end
 
 module Eval = struct
-
-  exception EvalError
 
   type value =
     | VContext of CORE_context.t
@@ -344,7 +351,7 @@ module Eval = struct
 
     primitive "statement" (function
       | (VString s) -> return (VStatement s)
-      | _ -> raise EvalError
+      | _ -> eraise `EvalError
     )
 
   and variable (e : environment) = function
@@ -354,12 +361,12 @@ module Eval = struct
       with Not_found ->
         try_lwt
           return (List.assoc (Local x) e)
-        with Not_found -> raise EvalError
+        with Not_found -> eraise `EvalError
       end
     | x ->
         try_lwt
           return (List.assoc x e)
-        with Not_found -> raise EvalError
+        with Not_found -> eraise `EvalError
 
   and literal = function
     | LInt x -> VInt x
@@ -373,7 +380,7 @@ module Eval = struct
     match f with
       | VClosure (e, x, t) -> term ((Local x, v) :: e) t
       | VPrimitive p -> p v
-      | _ -> raise EvalError (* FIXME: Handle error. *)
+      | _ -> eraise `EvalError (* FIXME: Handle error. *)
 
   and term e = function
     | Lit l -> return (literal l)
@@ -411,13 +418,28 @@ module Eval = struct
 
 end
 
+(* FIXME: I18N and so on... *)
+let convert_to_string_error
+: internal_errors -> CORE_errors.all
+= CORE_description_CST.(
+  function
+  | `TypeError (t, xty, ity) ->
+    `TypeError (start_of t, "Incompatible types.")
+  | `NeedAnnotation t ->
+    `NeedAnnotation (start_of t)
+  | `UnboundVariable (t, n) ->
+    `UnboundVariable (start_of t, string_of_name n)
+  | `BadApplication t ->
+    `BadApplication (start_of t)
+  | `EvalError ->
+    `EvalError
+)
+
 (** A well-typed exercise description evaluates into a value. *)
 let eval this p : questions_value Lwt.t =
   try_lwt
     lwt tenv = TypeCheck.program this p in
-    Eval.program this tenv p
-  with e ->
-    return [
-      Statement (Printf.sprintf "Internal error in exercise evaluation (%s)"
-                   (Printexc.to_string e))
-    ]
+    lwt v = Eval.program this tenv p in
+    return (`OK v)
+  with Error e ->
+    return (`KO (convert_to_string_error e))

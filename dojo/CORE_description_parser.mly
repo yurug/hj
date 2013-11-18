@@ -2,6 +2,7 @@
 
 %{
   open CORE_description_CST
+  open CORE_errors
 
   let rec app f = function
     | [] ->
@@ -44,8 +45,8 @@ exercise: title=located(RAW) LBRACE questions=question* RBRACE {
 }
 | error {
   raise (CORE_description_CST.ParseError (
-    $startpos,
-    $endpos,
+    from_lexing_position $startpos,
+    from_lexing_position $endpos,
     I18N.String.parse_error
   ))
 }
@@ -113,8 +114,8 @@ term0: n=label %prec pvar
 {
   raise (
     CORE_description_CST.ParseError (
-      $startpos,
-      $endpos,
+      from_lexing_position $startpos,
+      from_lexing_position $endpos,
       I18N.String.parse_error) (* FIXME: Be more informative. *)
   )
 }

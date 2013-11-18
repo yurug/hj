@@ -49,7 +49,7 @@ val eval : t -> unit Lwt.t
 val raw_user_description_source : t -> CORE_source.t Lwt.t
 
 type patch =
-    CORE_description_CST.position * CORE_description_CST.position * string
+    CORE_errors.position * CORE_errors.position * string
 
 val make_blank
 : CORE_identifier.t -> [ `OK of t

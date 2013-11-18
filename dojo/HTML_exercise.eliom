@@ -5,6 +5,7 @@ open Lwt
 open Eliom_content
 open Html5.D
 open Html5
+open CORE_error_messages
 }}
 
 open HTTP_services
@@ -118,7 +119,6 @@ let editor_div (e : CORE_exercise.t) =
     | CORE_entity.HasChanged _ ->
       Firebug.console##log ("Has changed!");
       return (HTML_editor.refresh %editor_id content)
-
   )}};
   return editor_div
 
@@ -135,16 +135,26 @@ let exercise_div exo answer evaluation =
        FIXME: have finer notion of changes... *)
     {data -> [Html5_types.flow5] elt list Lwt.t{
       fun data ->
-      match CORE_exercise.current_value data with
+        match CORE_exercise.current_value data with
         | None -> return [p [pcdata "Displaying exercise..."]]
-        | Some qs ->
-          let display = function
-            | CORE_questions.Statement s ->
-              p [pcdata s]
-            | CORE_questions.CheckpointContext (c, _) ->
-              p [pcdata "Checkpoint"]
+        | Some v ->
+          let d = match v with
+            | `KO e ->
+              (* FIXME: For the moment, the error is display
+                 in the exercise div. It may be more handy
+                 to display it in the editor message bar.
+                 (Yet, what if there is no editor because
+                 the user is a student?) *)
+              [p [pcdata (string_of_error e)]]
+            | `OK v ->
+              let display_atomic = function
+                | CORE_questions.Statement s ->
+                  p [pcdata s]
+                | CORE_questions.CheckpointContext (c, _) ->
+                  p [pcdata "Checkpoint"]
+              in
+              List.map display_atomic v
           in
-          let d = List.map display qs in
           return (h1 [pcdata (CORE_exercise.title data)] :: d)
     }}
   in
