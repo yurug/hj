@@ -128,6 +128,11 @@ let exercise_div exo answer evaluation =
     HTML_context.display_score s evaluation
   )
   in
+  let display_context = server_function Json.t<checkpoint * CORE_context.t>
+    (fun (cp, context) ->
+      HTML_context.display_context cp context evaluation
+    )
+  in
   let display_exercise =
     (* FIXME: For the moment, we redisplay the entire exercise
        FIXME: description each time it is updated. We should
@@ -138,22 +143,23 @@ let exercise_div exo answer evaluation =
         match CORE_exercise.current_value data with
         | None -> return [p [pcdata "Displaying exercise..."]]
         | Some v ->
-          let d = match v with
+          lwt d = match v with
             | `KO e ->
               (* FIXME: For the moment, the error is display
                  in the exercise div. It may be more handy
                  to display it in the editor message bar.
                  (Yet, what if there is no editor because
                  the user is a student?) *)
-              [p [pcdata (string_of_error e)]]
+              return [p [pcdata (string_of_error e)]]
             | `OK v ->
               let display_atomic = function
                 | CORE_questions.Statement s ->
-                  p [pcdata s]
-                | CORE_questions.CheckpointContext (c, _) ->
-                  p [pcdata "Checkpoint"]
+                  return [p [pcdata s]]
+                | CORE_questions.CheckpointContext (cp, context) ->
+                  %display_context (cp, context)
               in
-              List.map display_atomic v
+              lwt all = Lwt_list.map_s display_atomic v in
+              return (List.flatten all)
           in
           return (h1 [pcdata (CORE_exercise.title data)] :: d)
     }}

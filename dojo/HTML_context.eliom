@@ -103,3 +103,6 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
     }}
   in
   return [d; diagnostic]
+
+let display_context checkpoint context evaluation =
+  return [p [pcdata "Context"]]

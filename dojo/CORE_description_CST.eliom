@@ -64,6 +64,7 @@ and term =
 and term' = term located
 
 and literal =
+  | LUnit
   | LInt    of int
   | LFloat  of float
   | LString of string

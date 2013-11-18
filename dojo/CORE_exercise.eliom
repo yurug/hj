@@ -251,6 +251,7 @@ let rec questions_from_cst raw e cst =
     | C.LString s -> LString s
     | C.LInt x    -> LInt x
     | C.LFloat f  -> LFloat f
+    | C.LUnit     -> LUnit
 
   and unit_ty = TApp (TVariable "unit", [])
 

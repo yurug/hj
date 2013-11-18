@@ -55,6 +55,7 @@ and term' = {
 }
 
 and literal =
+  | LUnit
   | LInt    of int
   | LFloat  of float
   | LString of string
@@ -67,6 +68,27 @@ and type_variable = TVariable of string
 deriving (Json)
 
 type checkpoint = string deriving (Json)
+
+let string_of_ty ty =
+  let rec aux context (TApp (TVariable tcon, args)) =
+    match tcon, args with
+      | tcon, [] ->
+        tcon
+      | "->", [ity; oty] ->
+        may_paren context tcon (
+          aux `LeftOfArrow ity ^ " -> "
+          ^ aux `RightOfArrow oty
+        )
+      | tcon, args ->
+        tcon ^ paren (String.concat ", " (List.map (aux `AsArgument) args))
+  and may_paren context tcon s =
+    if (match context, tcon with
+      | `LeftOfArrow, "->" -> true
+      | _, _ -> false
+    ) then paren s else s
+  and paren s = "(" ^ s ^ ")"
+  in
+  aux `AsArgument ty
 
 }}
 
@@ -286,6 +308,7 @@ module TypeCheck = struct
     | LInt _ -> int
     | LString _ -> string
     | LFloat _ -> float
+    | LUnit -> unit
 
   and variable e source = function
     | (External _ ) as x ->
@@ -304,7 +327,7 @@ module TypeCheck = struct
 
   and lambda e source x t = function
     | None -> eraise (`NeedAnnotation source)
-    | Some ty -> infer_term (bind (Local x) ty e) t.source t.term
+    | Some ty -> ty --> (infer_term (bind (Local x) ty e) t.source t.term)
 
   let component e = function
     | Sub _ | Import _ ->
@@ -372,6 +395,7 @@ module Eval = struct
     | LInt x -> VInt x
     | LString s -> VString s
     | LFloat f -> VFloat f
+    | LUnit -> VUnit
 
   and closure env x t =
     return (VClosure (env, x, t.term))
@@ -424,7 +448,11 @@ let convert_to_string_error
 = CORE_description_CST.(
   function
   | `TypeError (t, xty, ity) ->
-    `TypeError (start_of t, "Incompatible types.")
+    `TypeError (start_of t,
+                Printf.sprintf "\nExpected type: %s\nActual type:%s"
+                  (string_of_ty xty)
+                  (string_of_ty ity)
+    )
   | `NeedAnnotation t ->
     `NeedAnnotation (start_of t)
   | `UnboundVariable (t, n) ->

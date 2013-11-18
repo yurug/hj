@@ -96,6 +96,10 @@ term0: n=label %prec pvar
 {
   Lit (LFloat f)
 }
+| LPAREN RPAREN
+{
+  Lit LUnit
+}
 | LPAREN t=structured_term RPAREN
 {
   t
