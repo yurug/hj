@@ -140,6 +140,7 @@ let wait_for_sandbox mc addr waiting_rank =
         change ~immediate:true mc (fun data ->
           return (Some (set_wl data (delete_ticket (get_wl data) ticket)))
         ) >> raise_lwt Not_found
+
       | Some data ->
         let wl = get_wl data in
         if (last_wl = wl) then
@@ -147,8 +148,16 @@ let wait_for_sandbox mc addr waiting_rank =
           wait last_wl
         else
           process wl
+
   and process wl =
     match ticket_turn wl ticket with
+      | Expired ->
+        (** This ticket is expired. *)
+        change ~immediate:true mc (fun data ->
+          return (Some (set_wl data (delete_ticket (get_wl data) ticket)))
+        ) >> raise_lwt Not_found
+        (* FIXME: How is that possible? *)
+
       | Waiting rank ->
         (** We still have to wait. Publish how long... *)
         waiting_rank rank >> wait wl

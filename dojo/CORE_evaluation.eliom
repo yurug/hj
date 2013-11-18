@@ -47,7 +47,6 @@ let new_evaluation_state_of_checkpoint c s d =
   return (Some { d with jobs = update_assoc c s d.jobs })
 
 let create_job checkpoint context submission change_later =
-  Ocsigen_messages.errlog "Creating job for checkpoint!";
   let message job msg =
     return (change_later (
       new_evaluation_state_of_checkpoint checkpoint (
@@ -60,10 +59,27 @@ let create_job checkpoint context submission change_later =
     | WriteStderr (job, l) -> message (ExecutableJob job) l
     | _ -> return ()
   ) in
-  CORE_sandbox.exec [] "echo message" observer >>= function
-    | `OK (job, _) ->
-      return (ExecutableJob job)
-    | `KO e -> (* FIXME *) warn e; assert false
+  CORE_context.(
+    match get_command context with
+      | None ->
+        return None (* FIXME: is it sound? *)
+      | Some cmd ->
+        let timeout =
+          match get_timeout context with
+            | None -> 120. (* FIXME: Make it a parameter. *)
+            | Some t -> float_of_int t
+        in
+        (CORE_sandbox.exec
+           ~limitations:[CORE_sandbox.TimeOut timeout]
+           []
+           cmd
+           observer
+        ) >>= function
+          | `OK (job, _) ->
+            return (Some (ExecutableJob job))
+          | `KO e ->
+     (* FIXME *) warn e; return None
+  )
 
 let cancel_job_if_present d cp =
   (* FIXME *)
@@ -76,13 +92,21 @@ let evaluate change_later exercise answer cps data =
     >>= function
       | None | Some NoSubmission ->
         return (checkpoint, Unevaluated)
-      | Some (HandledSubmission s | NewSubmission s) ->
+      | Some ((HandledSubmission s | NewSubmission s) as ns) ->
         lwt c =
           CORE_exercise.context_of_checkpoint exercise checkpoint
         in
-        CORE_answer.mark_handled_submission answer checkpoint s
-        >> lwt job = create_job checkpoint c s change_later in
-        return (checkpoint, BeingEvaluated (job, CORE_diagnostic.Reset))
+        (match ns with
+          | NoSubmission -> assert false
+          | HandledSubmission _ ->
+            return ()
+          | NewSubmission s ->
+            CORE_answer.mark_handled_submission answer checkpoint s
+        ) >> create_job checkpoint c s change_later >>= function
+          | Some job ->
+            return (checkpoint, BeingEvaluated (job, CORE_diagnostic.Reset))
+          | None ->
+            return (checkpoint, Evaluated [])
   in
   Lwt_list.map_p evaluate cps >>= function
     | [] -> return None
@@ -132,8 +156,10 @@ include CORE_entity.Make (struct
           lwt result = evaluate change_later exercise answer cps data in
           return (`OK result)
         ) >>= function
-          | `OK e -> return e
-          | `KO e -> warn e; return None (* FIXME *)
+          | `OK e ->
+            return e
+          | `KO e ->
+            warn e; return None (* FIXME *)
 
 end)
 

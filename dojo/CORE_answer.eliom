@@ -131,12 +131,11 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
   Lwt_list.iter_s (assign_answer exo a) authors
   >> return (`OK a)
 
-let submit_file answer checkpoint tmp_filename original_filename =
+let submit_file answer checkpoint tmp_filename filename =
   ltry (fun lraise ->
     lwt content = COMMON_unix.cat tmp_filename lraise in
-    let sfname = Filename.basename original_filename in
-    let source = CORE_source.make sfname content in
-    let sstate = NewSubmission (CORE_context.new_submission sfname) in
+    let source = CORE_source.make filename content in
+    let sstate = NewSubmission (CORE_context.new_submission filename) in
     update_source answer checkpoint source;
     >> change ~immediate:true answer (fun a ->
       let submissions = update_assoc checkpoint sstate a.submissions in

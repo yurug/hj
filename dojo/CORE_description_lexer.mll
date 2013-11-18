@@ -27,7 +27,7 @@ let blank   = [' ' '\009' '\012']
 
 (** Identifier. *)
 
-let label = [ 'a' - 'z' 'A' - 'Z' '0' - '9' '-' ]+
+let label = [ 'a' - 'z' 'A' - 'Z' '0' - '9' '-' '_' ]+
 
 let digit = [ '0' - '9' ]
 

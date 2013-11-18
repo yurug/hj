@@ -99,10 +99,15 @@ let find_sandbox requirements waiter =
 
 (** [copy files sandbox] imports the files into the sandbox. *)
 let copy files sandbox =
+  (* FIXME *)
   return ()
 
 let on_line oc w = Lwt.async (fun () ->
-  Lwt_stream.iter_s w (Lwt_io.read_lines oc)
+  try_lwt
+    Lwt_stream.iter_s w (Lwt_io.read_lines oc)
+  with _ ->
+    (** We stop the process when the stream is not alive anymore. *)
+    return ()
 )
 
 (** [sandboxing sb limitations command observer] *)

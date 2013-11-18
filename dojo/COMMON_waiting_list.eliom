@@ -91,6 +91,7 @@ exception InvalidUseOfResource
 type 'a ticket_status =
   | Active  of 'a resource
   | Waiting of int
+  | Expired
 
 (** [t] must be a ticket of [wl] that has never quit. *)
 let ticket_turn wl t =
@@ -101,8 +102,7 @@ let ticket_turn wl t =
     else
       Waiting (capacity wl - idx + 1)
   with Not_found ->
-    (** By precondition. *)
-    assert false
+    Expired
 
 let release q r =
   match !(fst r) with

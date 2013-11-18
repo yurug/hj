@@ -15,65 +15,6 @@ open CORE_error_messages
 open COMMON_pervasives
 }}
 
-let submit_file =
-  Eliom_registration.Action.register_post_coservice'
-    ~post_params:(Eliom_parameter.(
-      string "id" ** (string "checkpoint" ** file "submission"))
-    )
-    (fun () (id, (name, file)) ->
-      let exo_id = CORE_identifier.identifier_of_string id in
-
-      Ocsigen_messages.errlog
-        (Printf.sprintf "Received a file:\n %s\n%s\n%s"
-           file.tmp_filename
-           file.raw_original_filename
-           file.original_basename);
-
-      (CORE_user.authenticate "root" "foo" >>= function
-        | `OK u -> (
-          CORE_exercise.make exo_id >>>= fun exo ->
-          answer_of_exercise_from_authors exo [u] >>= function
-            | `OK a ->
-              submit_file a name file.tmp_filename file.original_basename
-
-            | `KO e ->
-              warn e;
-              return (`OK ())
-        )
-        | `KO e ->
-          warn e;
-          return (`OK ()))
-      >>= function
-        | _ -> (* FIXME *) return ()
-    )
-
-{client{
-
-let display_checkpoint exo_id ctx name =
-  let exo_id_s = CORE_identifier.string_of_identifier exo_id in
-  let prefix s = "▹ " ^ (I18N.String.answer_expected s) in
-  let msg = match get_answer_form ctx with
-    | Some (`Filename fname) -> prefix (I18N.String.in_a_file_named fname)
-    | None -> ""
-  in
-  let submit_form = match get_answer_form ctx with
-    | Some (`Filename fname) ->
-      [ post_form ~xhr:false ~service:%submit_file (fun (id, (cp, f)) -> [
-        file_input ~name:f ();
-        string_input ~input_type:`Hidden ~name:id ~value:exo_id_s ();
-        string_input ~input_type:`Hidden ~name:cp ~value:name ();
-        string_input ~input_type:`Submit ~value:"OK" ()
-        ]) ()
-      ]
-    | None -> []
-  in
-  return [div (
-    p [pcdata msg]
-    :: submit_form
-  )]
-
-}}
-
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let get () = CORE_evaluation.observe evaluation (fun d -> return d) in
   let diagnostic = Id.create_global_elt (div []) in
@@ -102,7 +43,42 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
         )
     }}
   in
-  return [d; diagnostic]
+  return (div [d; diagnostic])
 
-let display_context checkpoint context evaluation =
-  return [p [pcdata "Context"]]
+let submit_file exo_id cp tmp_filename filename =
+  CORE_user.authenticate "root" "foo" >>= function
+    | `OK u -> (
+      CORE_exercise.make exo_id >>>= fun exo ->
+      answer_of_exercise_from_authors exo [u] >>= function
+        | `OK a ->
+          submit_file a cp tmp_filename filename
+        | `KO e ->
+          warn e;
+          return (`OK ())
+    )
+    | `KO e ->
+      warn e;
+      return (`OK ())
+
+let display_user_input exo_id checkpoint context =
+  match CORE_context.get_answer_form context with
+    | None -> return (p [pcdata "..."])
+    | Some filename ->
+      let tmp_filename = Filename.temp_file "hj" "" in
+      let commit () =
+        (* FIXME: handle error. *)
+        submit_file exo_id checkpoint tmp_filename filename
+        >> return ()
+      in
+      return (HTML_widget.fileuploader (fun user_filename ->
+        (* FIXME: Check user_filename = filename. *)
+        return (tmp_filename, commit)
+      ))
+
+let display_context exo_id checkpoint context evaluation =
+  lwt user_input = display_user_input exo_id checkpoint context in
+  lwt score = display_score checkpoint evaluation in
+  return [
+    user_input;
+    score
+  ]

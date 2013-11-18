@@ -282,7 +282,10 @@ module TypeCheck = struct
 
   let _ =
     primitive "statement" (string --> statement);
-    primitive "checkpoint" ((unit --> unit) --> context)
+    primitive "checkpoint" ((unit --> unit) --> context);
+    primitive "answer_in_file" (string --> unit);
+    primitive "mark_using" (string --> unit);
+    primitive "timeout" (int --> unit)
 
   let lookup_primitive = Hashtbl.find primitives
 
@@ -346,6 +349,8 @@ end
 
 module Eval = struct
 
+  type state = CORE_context.t
+
   type value =
     | VContext of CORE_context.t
     | VStatement of string
@@ -354,11 +359,9 @@ module Eval = struct
     | VString of string
     | VUnit
     | VClosure of environment * label * term
-    | VPrimitive of (value -> value Lwt.t)
+    | VPrimitive of (state -> value -> (state * value) Lwt.t)
 
   and environment = (name * value) list
-
-  let state = ref CORE_context.empty
 
   let primitives = Hashtbl.create 13
 
@@ -367,28 +370,55 @@ module Eval = struct
 
   let rec make_primitive () =
 
-    primitive "checkpoint" (fun block ->
-      apply block VUnit
-      >> return (VContext !state)
+    let stateful name f =
+      primitive name (fun state x ->
+        lwt y = f x in
+        return (CORE_context.(push y state), VUnit)
+      )
+    in
+    let functional name f =
+      primitive name (fun s x ->
+        lwt y = f x in
+        return (s, y)
+      )
+    in
+    primitive "checkpoint" (fun state block ->
+      apply block state VUnit
+      >>= fun (s, _) -> return (s, VContext s)
     );
 
-    primitive "statement" (function
+    functional "statement" (function
       | (VString s) -> return (VStatement s)
+      | _ -> eraise `EvalError
+    );
+
+    stateful "answer_in_file" (function
+      | VString s -> return (CORE_context.answer s)
+      | _ -> eraise `EvalError
+      );
+
+    stateful "mark_using" (function
+      | VString s -> return (CORE_context.command s)
+      | _ -> eraise `EvalError
+    );
+
+    stateful "timeout" (function
+      | VInt s -> return (CORE_context.timeout s)
       | _ -> eraise `EvalError
     )
 
-  and variable (e : environment) = function
+  and variable s (e : environment) = function
     | Local x ->
       begin try_lwt
-        return (VPrimitive (Hashtbl.find primitives x))
+        return (s, VPrimitive (Hashtbl.find primitives x))
       with Not_found ->
         try_lwt
-          return (List.assoc (Local x) e)
+          return (s, List.assoc (Local x) e)
         with Not_found -> eraise `EvalError
       end
     | x ->
         try_lwt
-          return (List.assoc x e)
+          return (s, List.assoc x e)
         with Not_found -> eraise `EvalError
 
   and literal = function
@@ -397,23 +427,26 @@ module Eval = struct
     | LFloat f -> VFloat f
     | LUnit -> VUnit
 
-  and closure env x t =
-    return (VClosure (env, x, t.term))
+  and closure s env x t =
+    return (s, VClosure (env, x, t.term))
 
-  and apply f v =
+  and apply f s v : (state * value) Lwt.t =
     match f with
-      | VClosure (e, x, t) -> term ((Local x, v) :: e) t
-      | VPrimitive p -> p v
+      | VClosure (e, x, t) -> term s ((Local x, v) :: e) t
+      | VPrimitive p -> p s v
       | _ -> eraise `EvalError (* FIXME: Handle error. *)
 
-  and term e = function
-    | Lit l -> return (literal l)
-    | Variable x -> variable e x
-    | Lam (x, _, t) -> closure e x t
-    | App (a, b) -> lwt a = term' e a and b = term' e b in apply a b
+  and term s e = function
+    | Lit l -> return (s, literal l)
+    | Variable x -> variable s e x
+    | Lam (x, _, t) -> closure s e x t
+    | App (a, b) ->
+      lwt s, a = term' s e a in
+      lwt s, b = term' s e b in
+      apply a s b
     | IApp _ -> assert false
 
-  and term' e t = term e t.term
+  and term' s e t = term s e t.term
 
   let _ = make_primitive ()
 
@@ -425,14 +458,14 @@ module Eval = struct
 
   let program this tenv p =
     lwt p = do_imports this ~typeof:(fun n -> TypeCheck.lookup n tenv) p in
-    let rec component e = function
+    let rec component (s, e) = function
       | Sub _ | Import _ -> assert false
       | Binding (None, _, t) ->
-        term' e t >> return e
+        term' s e t >>= fun (s, _) -> return (s, e)
       | Binding (Some x, _, t) ->
-        term' e t >>= fun v -> return ((x, v) :: e)
+        term' s e t >>= fun (s, v) -> return (s, (x, v) :: e)
     in
-    lwt e = Lwt_list.fold_left_s component [] p in
+    lwt _, e = Lwt_list.fold_left_s component (CORE_context.empty, []) p in
     return (filter_map (fun x -> function
       | VStatement s -> Some (Statement s)
       | VContext c -> Some (CheckpointContext (name_to_local_string x, c))

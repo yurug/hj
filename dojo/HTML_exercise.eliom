@@ -124,13 +124,9 @@ let editor_div (e : CORE_exercise.t) =
 
 let exercise_div exo answer evaluation =
   let e_id = identifier exo in
-  let display_score = server_function Json.t<checkpoint> (fun s ->
-    HTML_context.display_score s evaluation
-  )
-  in
   let display_context = server_function Json.t<checkpoint * CORE_context.t>
     (fun (cp, context) ->
-      HTML_context.display_context cp context evaluation
+      HTML_context.display_context e_id cp context evaluation
     )
   in
   let display_exercise =

@@ -59,20 +59,21 @@ include CORE_entity.Make (struct
     (** We reset the questions_value as a reaction to every
         change of one dependency or a change of the questions
         field. *)
-    let data, must_reset_value =
+    let new_data, data, must_reset_value =
       match new_data with
       | None ->
-        (data, true) (* It means that one of the dependency changed. *)
+        (None, data, false)
       | Some ({ questions_value = Some (qv, _); questions } as data) ->
-        (data, qv <> questions)
+        (Some data, data, qv <> questions)
       | Some ({ questions_value = None } as data) ->
-        (data, true)
+        (Some data, data, true)
     in
     if must_reset_value then (
       change_later (eval_questions this);
       return (Some { data with questions_value = None })
     )
-    else return (Some data)
+    else
+      return new_data
 
 end)
 
