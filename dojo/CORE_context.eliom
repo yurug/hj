@@ -59,3 +59,31 @@ let get_timeout = get (function TimeOut t -> Some t | _ -> None)
 type submission = string deriving (Json)
 
 let new_submission s = s
+
+let null_score = []
+
+let new_score s ss =
+  (* FIXME: Merge scores of the same criteria. *)
+  s @ ss
+
+let make_seed () =
+  Random.bits ()
+
+let substitute_seed seed cmd = Str.(
+  global_replace (regexp "%seed%") (string_of_int seed) cmd
+)
+
+let marker_io_interpretation seed line = Str.(
+  if string_match
+    (regexp "SCORE \\([0-9]+\\) \\([^,]\\) \\([0-9]+\\)/\\([0-9+]\\)")
+    line 0
+  then
+    let seed' = int_of_string (matched_group 1 line) in
+    if seed <> seed' then
+      None
+    else Some [(matched_group 2 line,
+                (int_of_string (matched_group 3 line),
+                 int_of_string (matched_group 4 line)))]
+  else
+    None
+)

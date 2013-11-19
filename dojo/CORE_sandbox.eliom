@@ -121,8 +121,12 @@ let sandboxing release_flag s limitations command (observer : _ -> unit Lwt.t) =
       on_line p#stdout (fun l -> observer (WriteStdout (job, l)));
       on_line p#stderr (fun l -> observer (WriteStderr (job, l)));
       lwt status = p#status in
+      Ocsigen_messages.errlog "Exec finished";
       (if release_flag then s.CORE_machinist.release () else return ())
-      >> observer (Exited status)
+      >> (
+        Ocsigen_messages.errlog "Notify observer";
+        observer (Exited status)
+      )
 
     | CORE_machinist.ObserveMessage msg ->
       observer (WriteStderr (job, msg))

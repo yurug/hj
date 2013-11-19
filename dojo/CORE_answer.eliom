@@ -13,7 +13,7 @@ open COMMON_pervasives
 type submission_state =
   | NoSubmission
   | NewSubmission of CORE_context.submission
-  | HandledSubmission of CORE_context.submission
+  | HandledSubmission of CORE_context.submission * CORE_context.t
 deriving (Json)
 
 type description = {
@@ -28,7 +28,14 @@ include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react = passive
+  let react this change_later deps new_data data =
+    match new_data with
+      | None -> return None
+      | Some d ->
+        if d = data then return None else (
+          Ocsigen_messages.errlog "Answer reacts!";
+          return (Some d)
+        )
 
 end)
 
@@ -154,7 +161,7 @@ let checkpoints_of_new_submissions answer =
     ) a.submissions))))
   )
 
-let mark_handled_submission answer cp s =
+let mark_handled_submission answer cp s c =
   change answer (fun a -> return (Some {
-    submissions = update_assoc cp (HandledSubmission s) a.submissions
+    submissions = update_assoc cp (HandledSubmission (s, c)) a.submissions
   }))

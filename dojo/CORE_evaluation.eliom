@@ -23,8 +23,8 @@ type submission = string deriving (Json)
 
 type evaluation_state =
   | Unevaluated
-  | Evaluated      of CORE_context.score
-  | BeingEvaluated of job * CORE_diagnostic.command
+  | Evaluated of CORE_context.score * CORE_diagnostic.command * CORE_context.t
+  | BeingEvaluated of job * CORE_diagnostic.command * CORE_context.t
 deriving (Json)
 
 type description = {
@@ -44,19 +44,74 @@ let evaluation_of_answer_dependency_kind = "evaluation_of_answer"
 let evaluation_of_exercise_dependency_kind = "evaluation_of_exercise"
 
 let new_evaluation_state_of_checkpoint c s d =
+  let s =
+    match COMMON_pervasives.opt_assoc c d.jobs with
+      | None -> s
+      | Some s' ->
+        match s', s with
+          (* FIXME: Some of these cases do not make sense. *)
+          | BeingEvaluated (_, cmd, c), BeingEvaluated (job, cmd', c')
+            when c = c' ->
+            BeingEvaluated (job, CORE_diagnostic.merge cmd cmd', c)
+
+          | Evaluated (s, cmd, c), BeingEvaluated (_, cmd', c')
+            when c = c' ->
+            Evaluated (s, CORE_diagnostic.merge cmd cmd', c)
+
+          | BeingEvaluated (job, cmd, c), Evaluated (s, cmd', c')
+            when c = c' ->
+            Evaluated (s, CORE_diagnostic.merge cmd cmd', c)
+
+          | Evaluated (s, cmd, c), Evaluated (_, cmd', c')
+            when c = c' ->
+            Evaluated (s, CORE_diagnostic.merge cmd cmd', c)
+
+          | _, Unevaluated ->
+            s'
+
+          | Unevaluated, _ ->
+            s
+
+          | _, s ->
+            s
+  in
+  let ss = match s with
+    | BeingEvaluated _ -> "en cours"
+    | Evaluated _ -> "done"
+    | _ -> "not done"
+  in
+  Ocsigen_messages.errlog (Printf.sprintf "New eval state of cp (%s)" ss);
   return (Some { d with jobs = update_assoc c s d.jobs })
 
 let create_job checkpoint context submission change_later =
+  let score = ref CORE_context.null_score in
+  let seed = CORE_context.make_seed () in
+  let change_state s =
+    return (change_later (new_evaluation_state_of_checkpoint checkpoint s))
+  in
   let message job msg =
-    return (change_later (
-      new_evaluation_state_of_checkpoint checkpoint (
-        BeingEvaluated (job, CORE_diagnostic.PushLine msg)
-      )
-    ))
+    change_state (BeingEvaluated (job, CORE_diagnostic.PushLine msg, context))
+  in
+  let mark () =
+    change_state (Evaluated (!score, CORE_diagnostic.Empty, context))
+  in
+  let process_stdio job line =
+    match CORE_context.marker_io_interpretation seed line with
+      | Some s ->
+        score := CORE_context.new_score s !score;
+        message job "Score!" (* FIXME *)
+      | None ->
+        message job line
   in
   let observer = CORE_sandbox.(function
-    | WriteStdout (job, l) -> message (ExecutableJob job) l
-    | WriteStderr (job, l) -> message (ExecutableJob job) l
+    | WriteStdout (job, l) ->
+      process_stdio (ExecutableJob job) l
+    | WriteStderr (job, l) ->
+      (* FIXME: Put that in the private log for teachers. *)
+      return ()
+    | Exited _ ->
+      Ocsigen_messages.errlog "Mark";
+      mark ()
     | _ -> return ()
   ) in
   CORE_context.(
@@ -69,6 +124,7 @@ let create_job checkpoint context submission change_later =
             | None -> 120. (* FIXME: Make it a parameter. *)
             | Some t -> float_of_int t
         in
+        let cmd = CORE_context.substitute_seed seed cmd in
         (CORE_sandbox.exec
            ~limitations:[CORE_sandbox.TimeOut timeout]
            []
@@ -81,43 +137,65 @@ let create_job checkpoint context submission change_later =
      (* FIXME *) warn e; return None
   )
 
-let cancel_job_if_present d cp =
+let cancel_job_if_present job =
   (* FIXME *)
   return ()
 
 let evaluate change_later exercise answer cps data =
-  let evaluate checkpoint =
-    cancel_job_if_present data checkpoint
-    >> CORE_answer.submission_of_checkpoint answer checkpoint
-    >>= function
+  let evaluate checkpoint current_state =
+    (** *)
+    let run_submission_evaluation c s =
+      (CORE_answer.mark_handled_submission answer checkpoint s c
+       >> create_job checkpoint c s change_later >>= function
+         | Some job ->
+           return (BeingEvaluated (job, CORE_diagnostic.Empty, c))
+         | None ->
+           (* FIXME: transmit error. *)
+           return (Evaluated ([], CORE_diagnostic.Empty, c)))
+    in
+
+    CORE_answer.submission_of_checkpoint answer checkpoint >>= function
       | None | Some NoSubmission ->
-        return (checkpoint, Unevaluated)
-      | Some ((HandledSubmission s | NewSubmission s) as ns) ->
-        lwt c =
-          CORE_exercise.context_of_checkpoint exercise checkpoint
+        (** The student has not submitted an answer yet. *)
+        return Unevaluated
+
+      | Some (HandledSubmission (s, c')) ->
+        (**
+            The student's submission has already been processed or
+            is in the process of being processed.
+
+            We have two different subcases here depending on the
+            evaluation context.
+        *)
+        lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
+        let job, c' = match current_state with
+          | Some (Evaluated (_, _, c')) -> (None, Some c')
+          | Some (BeingEvaluated (job, _, c')) -> (Some job, Some c')
+          | _ -> (None, None)
         in
-        (match ns with
-          | NoSubmission -> assert false
-          | HandledSubmission _ ->
-            return ()
-          | NewSubmission s ->
-            CORE_answer.mark_handled_submission answer checkpoint s
-        ) >> create_job checkpoint c s change_later >>= function
-          | Some job ->
-            return (checkpoint, BeingEvaluated (job, CORE_diagnostic.Reset))
-          | None ->
-            return (checkpoint, Evaluated [])
+        if Some c = c' then
+          match current_state with
+            | None -> assert false
+            | Some e -> return e
+        else (
+          (** We have already have a score but with a different
+              context. It must be recomputed. *)
+          cancel_job_if_present job
+          >> run_submission_evaluation c s
+        )
+
+      | Some (NewSubmission s) ->
+        lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
+        run_submission_evaluation c s
+
   in
-  Lwt_list.map_p evaluate cps >>= function
-    | [] -> return None
-    | new_jobs ->
-      let jobs =
-        List.fold_left
-          (fun jobs (k, v) -> update_assoc k v jobs)
-          data.jobs
-          new_jobs
-      in
-      return (Some { data with jobs })
+  lwt jobs = Lwt_list.fold_left_s (fun jobs cp ->
+    let e = try Some (List.assoc cp data.jobs) with Not_found -> None in
+    lwt e = evaluate cp e in
+    return ((cp, e) :: jobs)
+  ) [] cps
+  in
+  return (Some { data with jobs })
 
 let evaluate_all change_later exercise answer data =
   lwt all_cps = CORE_exercise.all_checkpoints exercise in
@@ -135,10 +213,10 @@ include CORE_entity.Make (struct
         (** Only the state of the evaluation changed. We do not react. *)
         passive this change_later deps new_data data
 
-      | _ ->
+      | ldeps ->
         (** One of the dependencies changed:
 
-            - If the exercise has changed, we must recheck everything.
+            - If the exercise has changed, we may have to recheck everything.
             - If the answer has changed,
               we only recheck the modified submissions. *)
         (

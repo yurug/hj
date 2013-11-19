@@ -40,7 +40,6 @@ type data = description
 }}
 
 let eval_questions this c =
-  Ocsigen_messages.errlog "Evaluate questions.";
   lwt v = CORE_questions.eval this c.questions in
   return (Some {
     c with questions_value = Some (c.questions, v)
@@ -72,8 +71,9 @@ include CORE_entity.Make (struct
       change_later (eval_questions this);
       return (Some { data with questions_value = None })
     )
-    else
+    else (
       return new_data
+    )
 
 end)
 

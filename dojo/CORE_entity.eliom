@@ -315,15 +315,19 @@ module Make (I : U) : S with type data = I.data = struct
 
   let wait_to_be_observer_free e commit =
     Ocsigen_messages.errlog "Wait to be observer free...";
-    Lwt_mutex.with_lock e.commit_lock (fun () -> return (
+    Lwt_mutex.with_lock e.commit_lock (fun () ->
       (** Set the commit mode, no observers are allowed to run. *)
       e.mode <- `Commit;
       (** Nobody is watching! Do your stuff! *)
-      commit ();
-      (** Done! *)
-      Ocsigen_messages.errlog "Committing change!";
-      e.mode <- `Observe 0
-    ))
+      commit ()
+      >> return (
+        (** Done! *)
+        Ocsigen_messages.errlog (
+          "Committing change for " ^ string_of_identifier (identifier e)
+        );
+        e.mode <- `Observe 0
+      )
+    )
 
   (** [apply deps e c] does the effective change [c] of the
       content of [e]. *)
@@ -336,7 +340,7 @@ module Make (I : U) : S with type data = I.data = struct
 
     let later_changes = ref [] in
     let change_later c =
-      later_changes := (fun () -> change e c) :: !later_changes
+      later_changes := (fun () -> change ~immediate:true e c) :: !later_changes
     in
 
     (** Third, the entity must react to this new version of the
@@ -359,16 +363,19 @@ module Make (I : U) : S with type data = I.data = struct
           let nc = CORE_inmemory_entity.content e.description in
           OTD.save e.description (CORE_source.list_of_map e.sources);
           >> (
-            Ocsigen_messages.errlog "Broadcasting the new state.";
+            Ocsigen_messages.errlog (
+              "Broadcasting new state of " ^ string_of_identifier (identifier e)
+            );
             e.push (HasChanged nc);
             Lwt_condition.broadcast e.subscribec nc;
-            let rec later_is_now = function
-              | [] -> return ()
-              | f :: fs -> f () >> later_is_now fs
-            in
-            later_is_now !later_changes
+            return ()
           )
         )
+        >> let rec later_is_now = function
+          | [] -> return ()
+          | f :: fs -> f () >> later_is_now fs
+           in
+           later_is_now (List.rev !later_changes)
 
   (** [update e] is the process that applies scheduled changes. *)
   and update e =

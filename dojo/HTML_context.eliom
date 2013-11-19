@@ -20,11 +20,14 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let diagnostic = Id.create_global_elt (div []) in
   lwt d =
     HTML_entity.reactive_div evaluation get {{
-      let interpret_diagnostic_command = CORE_diagnostic.(function
-        | Reset ->
+      let rec interpret_diagnostic_command = CORE_diagnostic.(function
+        | Empty ->
           Eliom_content.Html5.Manip.replaceAllChild %diagnostic []
         | PushLine s ->
           Eliom_content.Html5.Manip.appendChild %diagnostic (p [pcdata s])
+        | Seq (c1, c2) ->
+          interpret_diagnostic_command c1;
+          interpret_diagnostic_command c2
       )
       in
       fun d ->
@@ -32,10 +35,11 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
           match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
             | Some Unevaluated ->
               return [pcdata "Pas évalué"]
-            | Some (BeingEvaluated (_, dcmd)) ->
+            | Some (BeingEvaluated (_, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
               return [pcdata "En cours..."]
-            | Some (Evaluated score) ->
+            | Some (Evaluated (score, dcmd, _)) ->
+              interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
               return [pcdata "Fini"]
             | None ->
