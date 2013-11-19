@@ -106,7 +106,6 @@ let editor_div (e : CORE_exercise.t) =
        FIXME: of the editor. *)
     | CORE_entity.MayChange ->
       (** Oh, a question definition must have changed. *)
-      Firebug.console##log ("May have changed!");
       begin match CORE_description_format.exercise_of_string content with
         | `OK cst ->
           lwt rqs = %server_change cst in
@@ -117,10 +116,11 @@ let editor_div (e : CORE_exercise.t) =
       end
 
     | CORE_entity.HasChanged _ ->
-      Firebug.console##log ("Has changed!");
       return (HTML_editor.refresh %editor_id content)
   )}};
-  return editor_div
+
+  lwt source_div = HTML_source.entity_sources_div (module CORE_exercise) e in
+  return (div [editor_div; source_div])
 
 let exercise_div exo answer evaluation =
   let e_id = identifier exo in
