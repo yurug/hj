@@ -156,12 +156,7 @@ let exercise_div exo answer evaluation =
               let display_atomic = function
                 | CORE_questions.Statement s ->
                   Firebug.console##log (s);
-(*                  return [p [pcdata s]]*)
-                  begin try_lwt
-                    return [CORE_statement.html_of_string s]
-                  with _ ->
-                    return [p [pcdata "SYNTAX ERROR"]]
-                  end
+                  return [p [pcdata s]]
                 | CORE_questions.CheckpointContext (cp, context) ->
                   %display_context (cp, context)
               in
