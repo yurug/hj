@@ -142,10 +142,10 @@ let exercise_div exo answer evaluation =
           lwt d = match v with
             | `KO e ->
               (* FIXME: For the moment, the error is display
-                 in the exercise div. It may be more handy
-                 to display it in the editor message bar.
-                 (Yet, what if there is no editor because
-                 the user is a student?) *)
+                 FIXME: in the exercise div. It may be more handy
+                 FIXME: to display it in the editor message bar.
+                 FIXME: (Yet, what if there is no editor because
+                 FIXME: the user is a student?) *)
               return [p [pcdata (string_of_error e)]]
             | `OK v ->
               let display_atomic = function

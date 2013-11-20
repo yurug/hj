@@ -66,12 +66,6 @@ let new_evaluation_state_of_checkpoint c s d =
             when c = c' ->
             Evaluated (s, CORE_diagnostic.merge cmd cmd', c)
 
-          | _, Unevaluated ->
-            s'
-
-          | Unevaluated, _ ->
-            s
-
           | _, s ->
             s
   in
@@ -95,7 +89,11 @@ let create_job checkpoint context submission change_later =
   let mark () =
     change_state (Evaluated (!score, CORE_diagnostic.Empty, context))
   in
-  let process_stdio job line =
+  let init () =
+    change_state Unevaluated
+  in
+  init ()
+  >> let process_stdio job line =
     match CORE_context.marker_io_interpretation seed line with
       | Some s ->
         score := CORE_context.new_score s !score;
@@ -143,14 +141,14 @@ let cancel_job_if_present job =
 
 let evaluate change_later exercise answer cps data =
   let evaluate checkpoint current_state =
-    (** *)
     let run_submission_evaluation c s =
       (CORE_answer.mark_handled_submission answer checkpoint s c
        >> create_job checkpoint c s change_later >>= function
          | Some job ->
            return (BeingEvaluated (job, CORE_diagnostic.Empty, c))
          | None ->
-           (* FIXME: transmit error. *)
+           (* FIXME: transmission error. *)
+           Ocsigen_messages.errlog "Transmission error";
            return (Evaluated ([], CORE_diagnostic.Empty, c)))
     in
 
@@ -160,6 +158,7 @@ let evaluate change_later exercise answer cps data =
         return Unevaluated
 
       | Some (HandledSubmission (s, c')) ->
+        Ocsigen_messages.errlog "Handled submission.";
         (**
             The student's submission has already been processed or
             is in the process of being processed.
@@ -173,18 +172,21 @@ let evaluate change_later exercise answer cps data =
           | Some (BeingEvaluated (job, _, c')) -> (Some job, Some c')
           | _ -> (None, None)
         in
-        if Some c = c' then
+        if Some c = c' then (
+        Ocsigen_messages.errlog "Do nothing.";
           match current_state with
             | None -> assert false
             | Some e -> return e
-        else (
+        ) else (
           (** We have already have a score but with a different
               context. It must be recomputed. *)
+        Ocsigen_messages.errlog "Reevaluate.";
           cancel_job_if_present job
           >> run_submission_evaluation c s
         )
 
       | Some (NewSubmission s) ->
+        Ocsigen_messages.errlog "New submission.";
         lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
         run_submission_evaluation c s
 
@@ -288,3 +290,15 @@ let evaluation_of_exercise_from_authors exo answer =
     | `OK e -> return (`OK e)
     | `KO (`UndefinedEntity _) -> create id exo answer
     | `KO e -> return (`KO e)
+
+let flush_diagnostic_commands_of_checkpoint evaluation checkpoint =
+  change evaluation (fun d ->
+    return (Some { d with jobs =
+        COMMON_pervasives.map_assoc checkpoint (function
+          | Evaluated (s, dcmd, c) ->
+            Evaluated (s, CORE_diagnostic.Empty, c)
+          | BeingEvaluated (j, dcmd, c) ->
+            BeingEvaluated (j, CORE_diagnostic.Empty, c)
+          | x -> x
+        ) d.jobs })
+  )

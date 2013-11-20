@@ -16,13 +16,17 @@ open COMMON_pervasives
 }}
 
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
-  let get () = CORE_evaluation.observe evaluation (fun d -> return d) in
+  let get () = CORE_evaluation.(
+    lwt d = observe evaluation (fun d -> return d) in
+    flush_diagnostic_commands_of_checkpoint evaluation checkpoint
+    >> return d)
+  in
   let diagnostic = Id.create_global_elt (div []) in
   lwt d =
     HTML_entity.reactive_div evaluation get {{
       let rec interpret_diagnostic_command = CORE_diagnostic.(function
         | Empty ->
-          Eliom_content.Html5.Manip.replaceAllChild %diagnostic []
+          ()
         | PushLine s ->
           Eliom_content.Html5.Manip.appendChild %diagnostic (p [pcdata s])
         | Seq (c1, c2) ->
