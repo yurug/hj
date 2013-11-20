@@ -9,6 +9,8 @@ val from_lexing_position : Lexing.position -> position
 
 val to_lexing_position : position -> Lexing.position
 
+exception ParseError of position * position * string
+
 type all = [
 | `AlreadyExists         of CORE_identifier.path
 | `DirectoryDoesNotExist of CORE_identifier.path

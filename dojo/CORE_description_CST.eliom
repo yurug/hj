@@ -54,12 +54,20 @@ and t = component list
 
 and term =
   | Lit of literal
+  | Template of template
   | Variable of variable
   | Lam of variable * ty option * term located
   | App of term located * term located
   | IApp of term located * term located list
   (* Syntactic sugars. *)
   | Seq of term located list
+
+and template = template_atom list
+
+and template_atom =
+  | Raw  of string
+  | Code of term located
+  | RawCode of string (** Should not occur in final AST. *)
 
 and term' = term located
 
@@ -79,8 +87,6 @@ and type_variable = TVariable of string
 and identifier = string located
 
 deriving (Json)
-
-exception ParseError of position * position * string
 
 type 'a with_raw = string * 'a deriving (Json)
 

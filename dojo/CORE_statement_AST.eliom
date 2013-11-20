@@ -15,10 +15,12 @@
 
 *)
 
-type t =
-  | Structure of section_level * body * t list
+{shared{
 
-and section_level =
+type t =
+  | Structure of structure_level * body * t list
+
+and structure_level =
   | Title
   | Section
   | Subsection
@@ -27,14 +29,17 @@ and section_level =
   | List
   | Item
 
-and body = style * atom list
+and body = atom list
 
 and atom =
   | Raw of string
   | Image of string
   | InlineLaTeX of string
   | InlineHTML of string
+  | Style of style * atom
 
 and style = style_modifier list
 
 and style_modifier = Italic | Bold | Centered
+
+}}

@@ -238,6 +238,7 @@ let rec questions_from_cst raw e cst =
 
   and term (t : C.term') = wrap (function
     | C.Lit l -> Lit (literal l)
+    | C.Template t -> Template (template t)
     | C.Variable v -> Variable (Local v) (* FIXME: Generalize to external identifiers. *)
     | C.App (a, b) -> App (term a, term b)
     | C.Lam (x, ty, t) -> Lam (x, typ' ty, term t)
@@ -247,6 +248,13 @@ let rec questions_from_cst raw e cst =
       make_let x (Some unit_ty) (fun _ -> term (C.locate_as t (C.Seq xs)))
     | _ -> (* FIXME *) assert false
   ) t
+
+  and template t = List.map template_atom t
+
+  and template_atom = function
+    | C.Raw s -> Raw s
+    | C.Code t -> Code (term t).term
+    | C.RawCode _ -> assert false (* by nested parsing fixpoint. *)
 
   and literal = function
     | C.LString s -> LString s

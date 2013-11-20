@@ -13,9 +13,11 @@
 %}
 
 %start<CORE_description_CST.exercise> description
+%start<CORE_description_CST.term CORE_description_CST.located> topterm
 
 (** Literals. *)
-%token<string> ID NAME RAW
+%token<string> ID NAME
+%token<CORE_description_CST.template_atom list> RAW
 %token<int> INT
 %token<float> FLOAT
 
@@ -36,15 +38,28 @@
 
 %%
 
+topterm: t=located(term) EOF {
+  t
+}
+
 description: e=exercise EOF {
   e
 }
 
-exercise: title=located(RAW) LBRACE questions=question* RBRACE {
-  { title; questions }
+exercise: tpl=located(RAW) LBRACE questions=question* RBRACE {
+  match tpl.node with
+    | [ Raw title ] ->
+      { title = { node = title; start = tpl.start; stop = tpl.stop };
+        questions }
+    | _ ->
+      raise (CORE_errors.ParseError (
+        from_lexing_position $startpos,
+        from_lexing_position $endpos,
+        I18N.String.parse_error
+      ))
 }
 | error {
-  raise (CORE_description_CST.ParseError (
+  raise (CORE_errors.ParseError (
     from_lexing_position $startpos,
     from_lexing_position $endpos,
     I18N.String.parse_error
@@ -86,8 +101,13 @@ term0: n=label %prec pvar
 }
 | r=RAW
 {
-  Lit (LString r)
+  Template r
 }
+(* FIXME: implement string literal too. *)
+(* | r=RAW *)
+(* { *)
+(*   Lit (LString r) *)
+(* } *)
 | x=INT
 {
   Lit (LInt x)
@@ -117,7 +137,7 @@ term0: n=label %prec pvar
 | LPAREN error RPAREN
 {
   raise (
-    CORE_description_CST.ParseError (
+    CORE_errors.ParseError (
       from_lexing_position $startpos,
       from_lexing_position $endpos,
       I18N.String.parse_error) (* FIXME: Be more informative. *)

@@ -41,12 +41,20 @@ endif
 ## General
 
 .PHONY: prepare all byte opt
+
 all: prepare byte opt
 
-prepare: CORE_description_parser.eliom CORE_description_parser.eliomi CORE_description_lexer.eliom
+GENERATED :=												\
+  CORE_description_parser.eliom CORE_description_parser.eliomi CORE_description_lexer.eliom		\
+  CORE_statement_parser.eliom CORE_statement_parser.eliomi CORE_statement_lexer.eliom
+
+prepare: $(GENERATED)
 
 CORE_description_parser.eliom : CORE_description_CST.eliom
 
+CORE_statement_parser.eliom : CORE_statement_AST.eliom
+
+# FIXME: Do that in a cleaner way. (Factorize!)
 CORE_description_parser.eliom CORE_description_parser.eliomi: CORE_description_parser.mly
 	$(MENHIR) --explain CORE_description_parser.mly
 	echo '{shared{' | tee CORE_description_parser.eliom > CORE_description_parser.eliomi
@@ -62,6 +70,23 @@ CORE_description_lexer.eliom: CORE_description_lexer.mll
 	cat CORE_description_lexer.ml | sed s/';;'/''/ >> CORE_description_lexer.eliom
 	rm CORE_description_lexer.ml
 	echo '}}' >> CORE_description_lexer.eliom
+
+CORE_statement_parser.eliom CORE_statement_parser.eliomi: CORE_statement_parser.mly
+	$(MENHIR) --explain CORE_statement_parser.mly
+	echo '{shared{' | tee CORE_statement_parser.eliom > CORE_statement_parser.eliomi
+	cat CORE_statement_parser.mli >> CORE_statement_parser.eliomi
+	cat CORE_statement_parser.ml >> CORE_statement_parser.eliom
+	rm CORE_statement_parser.ml
+	rm CORE_statement_parser.mli
+	echo '}}' | tee -a CORE_statement_parser.eliom >> CORE_statement_parser.eliomi
+
+CORE_statement_lexer.eliom: CORE_statement_lexer.mll
+	$(OCAMLLEX) CORE_statement_lexer.mll
+	echo '{shared{' > CORE_statement_lexer.eliom
+	cat CORE_statement_lexer.ml | sed s/';;'/''/ >> CORE_statement_lexer.eliom
+	rm CORE_statement_lexer.ml
+	echo '}}' >> CORE_statement_lexer.eliom
+
 
 byte opt:: $(TEST_PREFIX)$(ELIOMSTATICDIR)/${PROJECT_NAME}.js
 byte opt:: $(TEST_PREFIX)$(ETCDIR)/$(PROJECT_NAME).conf
@@ -259,7 +284,7 @@ clean:
 	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
 	-rm -f *.type_mli
 	-rm -f ${PROJECT_NAME}.js
-	-rm -rf ${ELIOM_CLIENT_DIR} ${ELIOM_SERVER_DIR}
+	-rm -rf ${ELIOM_CLIENT_DIR} ${ELIOM_SERVER_DIR} $(GENERATED)
 
 distclean: clean
 	-rm -rf $(TEST_PREFIX) $(DEPSDIR) .depend

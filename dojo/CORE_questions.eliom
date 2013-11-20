@@ -44,10 +44,17 @@ and t = component list
 
 and term =
   | Lit of literal
+  | Template of template
   | Variable of name
   | Lam of label * ty option * term'
   | App of term' * term'
   | IApp of term' * term' list
+
+and template = template_atom list
+
+and template_atom =
+  | Raw of string
+  | Code of term
 
 and term' = {
   source : CORE_description_CST.term';
@@ -354,12 +361,17 @@ module Eval = struct
   type value =
     | VContext of CORE_context.t
     | VStatement of string
+    | VTemplate of template_atom_value list
     | VInt of int
     | VFloat of float
     | VString of string
     | VUnit
     | VClosure of environment * label * term
     | VPrimitive of (state -> value -> (state * value) Lwt.t)
+
+  and template_atom_value =
+    | ARaw of string
+    | AValue of value
 
   and environment = (name * value) list
 
@@ -436,8 +448,24 @@ module Eval = struct
       | VPrimitive p -> p s v
       | _ -> eraise `EvalError (* FIXME: Handle error. *)
 
+  and template s e = function
+    | [] ->
+      return (s, [])
+    | a :: t ->
+      lwt (s, av) = template_atom s e a in
+      lwt (s, tv) = template s e t in
+      return (s, av :: tv)
+
+  and template_atom s e = function
+    | Raw sl ->
+      return (s, ARaw sl)
+    | Code t ->
+      lwt (s, v) = term s e t in
+      return (s, AValue v)
+
   and term s e = function
     | Lit l -> return (s, literal l)
+    | Template t -> lwt s, tv = template s e t in return (s, VTemplate tv)
     | Variable x -> variable s e x
     | Lam (x, _, t) -> closure s e x t
     | App (a, b) ->
@@ -457,11 +485,16 @@ module Eval = struct
       Str.(global_replace (regexp "/") "_" sid) ^ "_" ^ label_to_string l
 
   let program this tenv p =
+    let fresh =
+      let c = ref 0 in fun () ->
+        incr c;
+        Local (CORE_identifier.label ("_" ^ string_of_int !c))
+    in
     lwt p = do_imports this ~typeof:(fun n -> TypeCheck.lookup n tenv) p in
     let rec component (s, e) = function
       | Sub _ | Import _ -> assert false
       | Binding (None, _, t) ->
-        term' s e t >>= fun (s, _) -> return (s, e)
+        term' s e t >>= fun (s, v) -> return (s, (fresh (), v) :: e)
       | Binding (Some x, _, t) ->
         term' s e t >>= fun (s, v) -> return (s, (x, v) :: e)
     in

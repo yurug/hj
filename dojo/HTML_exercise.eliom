@@ -83,11 +83,15 @@ let editor_div (e : CORE_exercise.t) =
     (server_function Json.t<exercise with_raw> (fun cst ->
       change_from_user_description e cst >>= function
         | `OK new_ods ->
-          lwt rqs = Lwt_list.map_s push_online_definition new_ods in
-          return (List.flatten rqs)
+          return []
+          (* FIXME: Patch application is currently broken. *)
+(*          lwt rqs = Lwt_list.map_s push_online_definition new_ods in
+          return (List.flatten rqs) *)
         | `KO (`NeedPatch p) ->
+          (* FIXME: Patch application is currently broken.
           lwt r = patch_request p in
-          return [r]
+          return [r] *)
+          return []
         | `KO (#CORE_errors.all as e) ->
           return [HTML_editor.message (CORE_error_messages.string_of_error e)]
      ))
@@ -148,9 +152,16 @@ let exercise_div exo answer evaluation =
                  FIXME: the user is a student?) *)
               return [p [pcdata (string_of_error e)]]
             | `OK v ->
+              Firebug.console##log ("Display exercise!");
               let display_atomic = function
                 | CORE_questions.Statement s ->
-                  return [p [pcdata s]]
+                  Firebug.console##log (s);
+(*                  return [p [pcdata s]]*)
+                  begin try_lwt
+                    return [CORE_statement.html_of_string s]
+                  with _ ->
+                    return [p [pcdata "SYNTAX ERROR"]]
+                  end
                 | CORE_questions.CheckpointContext (cp, context) ->
                   %display_context (cp, context)
               in

@@ -18,6 +18,8 @@ let to_lexing_position p = Lexing.(
   }
 )
 
+exception ParseError of position * position * string
+
 type all = [
 | `AlreadyExists         of CORE_identifier.path
 | `DirectoryDoesNotExist of CORE_identifier.path

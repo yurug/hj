@@ -69,7 +69,7 @@ rule main = parse
 
 | "["                                   {
   let p = lexbuf.Lexing.lex_curr_p in
-  let token = raw (Buffer.create 13) 0 lexbuf in
+  let token = raw (Buffer.create 13) [] 0 lexbuf in
   lexbuf.lex_start_p <- p;
   token
 }
@@ -81,27 +81,46 @@ rule main = parse
   error lexbuf I18N.String.lexing_unexpected_character
 }
 
-and raw chunk level = parse
+and raw chunk template level = parse
   | "]" {
     if level = 0 then
-      RAW (Buffer.contents chunk)
+      RAW (List.rev (Raw (Buffer.contents chunk) :: template))
     else (
-      Buffer.add_char chunk ']';
-      raw chunk (level - 1) lexbuf
+      let template =
+        if level = 1 then
+          let atom = RawCode (Buffer.contents chunk) in (
+            Buffer.clear chunk;
+            atom :: template
+          ) else (
+            Buffer.add_char chunk ']';
+            template
+          )
+      in
+      raw chunk template (level - 1) lexbuf
     )
   }
-  | "]" {
-    Buffer.add_char chunk '[';
-    raw chunk (level + 1) lexbuf
+  | "[" {
+    let template =
+      if level = 0 then
+        let atom = Raw (Buffer.contents chunk) in (
+          Buffer.clear chunk;
+          atom :: template
+        )
+      else (
+        Buffer.add_char chunk '[';
+        template
+      )
+    in
+    raw chunk template (level + 1) lexbuf
   }
   | eof {
     error lexbuf I18N.String.lexing_eof_in_raw
   }
   | newline as c {
     Buffer.add_string chunk c;
-    next_line_and (raw chunk level) lexbuf
+    next_line_and (raw chunk template level) lexbuf
   }
   | _ as c {
     Buffer.add_char chunk c;
-    raw chunk level lexbuf
+    raw chunk template level lexbuf
   }
