@@ -45,14 +45,12 @@ endif
 all: prepare byte opt
 
 GENERATED :=												\
-  CORE_description_parser.eliom CORE_description_parser.eliomi CORE_description_lexer.eliom		\
-  CORE_statement_parser.eliom CORE_statement_parser.eliomi CORE_statement_lexer.eliom
+  CORE_description_parser.eliom CORE_description_parser.eliomi CORE_description_lexer.eliom
 
 prepare: $(GENERATED)
 
 CORE_description_parser.eliom : CORE_description_CST.eliom
 
-CORE_statement_parser.eliom : CORE_statement_AST.eliom
 
 # FIXME: Do that in a cleaner way. (Factorize!)
 CORE_description_parser.eliom CORE_description_parser.eliomi: CORE_description_parser.mly
@@ -70,23 +68,6 @@ CORE_description_lexer.eliom: CORE_description_lexer.mll
 	cat CORE_description_lexer.ml | sed s/';;'/''/ >> CORE_description_lexer.eliom
 	rm CORE_description_lexer.ml
 	echo '}}' >> CORE_description_lexer.eliom
-
-CORE_statement_parser.eliom CORE_statement_parser.eliomi: CORE_statement_parser.mly
-	$(MENHIR) --explain CORE_statement_parser.mly
-	echo '{shared{' | tee CORE_statement_parser.eliom > CORE_statement_parser.eliomi
-	cat CORE_statement_parser.mli >> CORE_statement_parser.eliomi
-	cat CORE_statement_parser.ml >> CORE_statement_parser.eliom
-	rm CORE_statement_parser.ml
-	rm CORE_statement_parser.mli
-	echo '}}' | tee -a CORE_statement_parser.eliom >> CORE_statement_parser.eliomi
-
-CORE_statement_lexer.eliom: CORE_statement_lexer.mll
-	$(OCAMLLEX) CORE_statement_lexer.mll
-	echo '{shared{' > CORE_statement_lexer.eliom
-	cat CORE_statement_lexer.ml | sed s/';;'/''/ >> CORE_statement_lexer.eliom
-	rm CORE_statement_lexer.ml
-	echo '}}' >> CORE_statement_lexer.eliom
-
 
 byte opt:: $(TEST_PREFIX)$(ELIOMSTATICDIR)/${PROJECT_NAME}.js
 byte opt:: $(TEST_PREFIX)$(ETCDIR)/$(PROJECT_NAME).conf
