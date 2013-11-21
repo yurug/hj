@@ -215,9 +215,6 @@ let do_imports (this : identifier) ?typeof p =
               in
               let rn = filter_by_name n in
               let rt = filter_by_type n in
-              Ocsigen_messages.errlog (Printf.sprintf "Filter %s => (%B, %B)"
-                                         (string_of_name n)
-                                         rn rt);
               rn && rt
       in
       lwt source = do_import_exercise e in
