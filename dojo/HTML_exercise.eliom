@@ -158,6 +158,7 @@ let exercise_div exo answer evaluation =
                   let d = div [] in
                   let d = To_dom.of_element d in
                   d##innerHTML <- Js.string s;
+                  d##id <- Js.string "exercise_view";
                   return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
                 | CORE_questions.CheckpointContext (cp, context) ->
                   %display_context (cp, context)
@@ -168,9 +169,14 @@ let exercise_div exo answer evaluation =
           return (h1 [pcdata (CORE_exercise.title data)] :: d)
     }}
   in
+  let display_math = {{ fun () ->
+    Js.Unsafe.eval_string
+      "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub, \"exercise_view\"]);";
+   }}
+  in
   let get () = observe exo (fun d -> return d) in
   CORE_exercise.eval exo
-  >> HTML_entity.reactive_div exo get display_exercise
+  >> HTML_entity.reactive_div exo (Some display_math) get display_exercise
 
 type role =
   | Student   of CORE_user.t * CORE_user.t list

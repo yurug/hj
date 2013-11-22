@@ -73,7 +73,7 @@ let offer_creation emake creation_service page id =
     | `KO e ->
       return (error_page (CORE_error_messages.string_of_error e))
 
-let reactive_div e get display =
+let reactive_div e after_display get display  =
   let elt = Id.create_global_elt (div [pcdata "Loading..."]) in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
@@ -83,7 +83,12 @@ let reactive_div e get display =
   ignore {unit{
     let process data =
       lwt cs = %display data in
-      Lwt.return (Eliom_content.Html5.Manip.replaceAllChild %elt cs)
+      Eliom_content.Html5.Manip.replaceAllChild %elt cs;
+      Lwt.return (
+        match %after_display with
+          | Some f -> f ()
+          | None -> ()
+      )
     in
     CORE_client_reaction.react_on_background %e_channel (function
       | CORE_entity.HasChanged data ->

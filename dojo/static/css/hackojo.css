@@ -402,3 +402,11 @@ span.editor_message_button:hover, span.editor_message_button:focus {
     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     box-shadow: 0 0 1px rgba(1, 1, 1, .75);
 }
+
+span.italic {
+    font-style: italic;
+}
+
+span.bold {
+    font-weight: bold;
+}

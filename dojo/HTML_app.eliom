@@ -57,19 +57,15 @@ let bar () =
     ]
   )
 
-let editor_script = [
+let include_javascript url =
   script
-    ~a:[a_src (CORE_config.ace_editor_src ());
-        a_mime_type "text/javascript";
-        a_charset "utf-8"
-       ]
-    (pcdata "");
-  script
-    ~a:[a_src (CORE_config.ace_alias_src ());
-        a_mime_type "text/javascript";
-        a_charset "utf-8"
-       ]
+    ~a:[a_src url; a_mime_type "text/javascript"; a_charset "utf-8" ]
     (pcdata "")
+
+let editor_script = [
+  include_javascript (CORE_config.ace_editor_src ());
+  include_javascript (CORE_config.ace_alias_src ());
+  include_javascript (CORE_config.mathjax_src ())
 ]
 
 let hackojo_page body_contents =

@@ -11,6 +11,12 @@ let absolute_data_dir () =
 let ressource_root =
   Filename.concat (absolute_data_dir ()) "root"
 
+(** Mathjax location. *)
+let mathjax_src () =
+  Eliom_content_core.Xml.uri_of_string
+    "https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/\
+     MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+
 (** Ace editor location. *)
 let ace_editor_src () =
   Eliom_content_core.Xml.uri_of_string "/ace-builds/src-noconflict/ace.js"

@@ -30,7 +30,7 @@ let edit_list label fields get set =
   }}
 
 let machinist_page mc =
-  let react_to_mc = HTML_entity.reactive_div mc in
+  let react_to_mc = HTML_entity.reactive_div mc None in
   let get () = observe mc (fun d -> return d) in
   let logins_div =
     edit_list I18N.String.logins ["username"; "ssh key"]

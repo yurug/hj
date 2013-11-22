@@ -289,7 +289,7 @@ module TypeCheck = struct
     (fun c -> primitive c (ttemplate statement --> statement))
     [
       "paragraph"; "statement"; "bold"; "italic"; "list"; "enumerate";
-      "item"
+      "item"; "latex"; "ilatex"
     ]
 
   let statement_constructors_2 = List.iter
@@ -472,12 +472,15 @@ module Eval = struct
       | VString s -> s
       | _ -> eraise `EvalError
     in
+    let enclose start stop s =
+      Printf.sprintf "%s%s%s" start s stop
+    in
     let html_of_string b c s =
       let c = match c with
         | None -> ""
-        | Some c -> " style='" ^ c ^ "'"
+        | Some c -> " class='" ^ c ^ "'"
       in
-      Printf.sprintf "<%s%s>%s</%s>" b c s b
+      enclose ("<" ^ b ^ c ^ ">") ("</" ^ b ^ ">") s
     in
     let html_constructor (s, b, c) =
       functional s (fun v -> return (
@@ -507,6 +510,16 @@ module Eval = struct
     List.iter html_constructor2 [
       "section", "h1", None, "section", None;
       "subsection", "h2", None, "section", None;
+    ];
+
+    let marker (s, start, stop) =
+      functional s (fun v ->
+        let s = as_string v in
+        return (VStatement (enclose start stop s)))
+    in
+    List.iter marker [
+      "ilatex", "\\(", "\\)";
+      "latex", "\\[", "\\]";
     ];
 
     stateful "answer_in_file" (function

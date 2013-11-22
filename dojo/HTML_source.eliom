@@ -53,7 +53,7 @@ let entity_sources_div
               upload_form
             ])
       in
-      reactive_div e get_sources
+      reactive_div e None get_sources
         {CORE_source.filename list list -> [> Html5_types.div ] elt list Lwt.t{
           fun _ ->
             lwt e = %get_editor () in

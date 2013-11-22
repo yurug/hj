@@ -10,6 +10,10 @@ val ressource_root : string
     variable [AUTOTEST] is set. *)
 val autotest_enabled : unit -> bool
 
+(** [mathjax_src ()] returns the way to import [mathjax]
+    in the project. *)
+val mathjax_src : unit -> Eliom_content_core.Xml.uri
+
 (** [ace_editor_src ()] returns the way to import the [ace editor]
     in the project. *)
 val ace_editor_src : unit -> Eliom_content_core.Xml.uri

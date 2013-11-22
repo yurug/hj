@@ -23,7 +23,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
   in
   let diagnostic = Id.create_global_elt (div []) in
   lwt d =
-    HTML_entity.reactive_div evaluation get {{
+    HTML_entity.reactive_div evaluation None get {{
       let rec interpret_diagnostic_command = CORE_diagnostic.(function
         | Empty ->
           ()
