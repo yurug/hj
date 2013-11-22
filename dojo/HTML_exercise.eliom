@@ -155,8 +155,10 @@ let exercise_div exo answer evaluation =
               Firebug.console##log ("Display exercise!");
               let display_atomic = function
                 | CORE_questions.Statement s ->
-                  Firebug.console##log (s);
-                  return [p [pcdata s]]
+                  let d = div [] in
+                  let d = To_dom.of_element d in
+                  d##innerHTML <- Js.string s;
+                  return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
                 | CORE_questions.CheckpointContext (cp, context) ->
                   %display_context (cp, context)
               in

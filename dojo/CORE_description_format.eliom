@@ -53,7 +53,7 @@ let exercise_of_string s =
     and template t = List.map template_atom t
     and template_atom = function
       | RawCode p -> begin match term_of_string p with
-          | `OK t -> Code (snd t)
+          | `OK t -> Code (term' (snd t))
           | `KO e -> raise (Error e)
       end
       | a -> a

@@ -273,6 +273,7 @@ module TypeCheck = struct
   let context     = constant "context"
   let checkpoint  = constant "checkpoint"
   let ( --> ) a b = TApp (constructor "->", [ a; b ])
+  let ttemplate x = TApp (constructor "template", [ x ])
 
   exception ShouldBeFunctional of CORE_description_CST.term
 
@@ -284,14 +285,38 @@ module TypeCheck = struct
 
   let primitive n ty = Hashtbl.add primitives (label n) ty
 
+  let statement_constructors = List.iter
+    (fun c -> primitive c (ttemplate statement --> statement))
+    [
+      "paragraph"; "statement"; "bold"; "italic"; "list"; "enumerate";
+      "item"
+    ]
+
+  let statement_constructors_2 = List.iter
+    (fun c -> primitive c (
+      ttemplate statement --> (ttemplate statement --> statement))
+    )
+    [
+      "section"; "subsection"
+    ]
+
   let _ =
-    primitive "statement" (string --> statement);
     primitive "checkpoint" ((unit --> unit) --> context);
     primitive "answer_in_file" (string --> unit);
     primitive "mark_using" (string --> unit);
     primitive "timeout" (int --> unit)
 
   let lookup_primitive = Hashtbl.find primitives
+
+  let rec compatible ty ty' =
+    match ty, ty' with
+      | TApp (TVariable "statement", []), TApp (TVariable "string", [])
+      | TApp (TVariable "string", []), TApp (TVariable "statement", []) ->
+        true
+      | TApp (TVariable "template", [x]), TApp (TVariable "template", [y]) ->
+        compatible x y
+      | ty, ty' ->
+        ty = ty'
 
   let rec check_term e t = function
     | None -> infer_term e t.source t.term
@@ -301,15 +326,41 @@ module TypeCheck = struct
           check_term (bind (Local x) ity e) t (Some oty)
         | _, _ ->
           let ity = infer_term e t.source t.term in
-          if ty <> ity then eraise (`TypeError (t.source, ty, ity));
+          if not (compatible ty ity) then
+            eraise (`TypeError (t.source, ty, ity));
           ity
 
   and infer_term e source = function
     | Lit l -> literal l
     | Variable x -> variable e source x
+    | Template t -> begin match template e source t with
+        | None -> ttemplate string
+        | Some ty -> ty
+    end
     | Lam (x, xty, t) -> lambda e source x t xty
     | App (a, b) -> app e source a b
     | _ -> assert false (* FIXME *)
+
+  and template e source = function
+    | [] -> None
+    | [Code t] -> Some (ttemplate (infer_term e source t))
+    | Raw _ :: ts -> template e source ts
+    | Code t :: ts ->
+      let ty = infer_term e source t in
+      let rec flatten_ty = function
+        | TApp (TVariable "template", [ ty ]) -> flatten_ty ty
+        | ty -> ty
+      in
+      let ty = flatten_ty ty in
+      match template e source ts with
+        | Some (TApp (TVariable "template", [ ty' ])) ->
+          if (compatible ty ty') then
+            Some (ttemplate ty)
+          else
+            eraise (`TypeError (source, ttemplate ty, ttemplate ty'))
+        | None -> Some (ttemplate ty)
+        | Some ty' ->
+          eraise (`TypeError (source, ttemplate ty, ty'))
 
   and literal = function
     | LInt _ -> int
@@ -353,24 +404,44 @@ end
 
 module Eval = struct
 
+  open Eliom_content
+  open Html5.D
+  open Html5
+
   type state = CORE_context.t
 
   type value =
     | VContext of CORE_context.t
-    | VStatement of string
-    | VTemplate of template_atom_value list
+    | VTemplate of value list
     | VInt of int
     | VFloat of float
     | VString of string
+    | VStatement of string
     | VUnit
     | VClosure of environment * label * term
     | VPrimitive of (state -> value -> (state * value) Lwt.t)
 
-  and template_atom_value =
-    | ARaw of string
-    | AValue of value
-
   and environment = (name * value) list
+
+  let rec eval_template join make t =
+    join (List.map (eval_template_atom_value join make) t)
+
+  and eval_template_atom_value join make = function
+    | VTemplate t -> eval_template join make t
+    | v -> make v
+
+  let string_of_string_template =
+    eval_template
+      (String.concat "")
+      (function VString s -> s | _ -> eraise `EvalError)
+
+  let string_of_statement_template =
+    eval_template
+      (String.concat "")
+      (function
+        | VStatement s -> s
+        | VString s -> s
+        | _ -> eraise `EvalError)
 
   let primitives = Hashtbl.create 13
 
@@ -396,10 +467,47 @@ module Eval = struct
       >>= fun (s, _) -> return (s, VContext s)
     );
 
-    functional "statement" (function
-      | (VString s) -> return (VStatement s)
+    let as_string = function
+      | VTemplate t -> string_of_statement_template t
+      | VString s -> s
       | _ -> eraise `EvalError
-    );
+    in
+    let html_of_string b c s =
+      let c = match c with
+        | None -> ""
+        | Some c -> " style='" ^ c ^ "'"
+      in
+      Printf.sprintf "<%s%s>%s</%s>" b c s b
+    in
+    let html_constructor (s, b, c) =
+      functional s (fun v -> return (
+        VStatement (html_of_string b c (as_string v))
+      ))
+    in
+    let html_constructor2 (s, b1, c1, b2, c2) =
+      functional s (fun v ->
+        let s1 = as_string v in
+        return (VPrimitive (fun s v ->
+          let s2 = as_string v in
+          return (s, VStatement (html_of_string b2 c2 (
+            html_of_string b1 c1 s1 ^ s2
+          ))
+        ))
+        ))
+    in
+    List.iter html_constructor [
+      "statement", "div", None;
+      "paragraph", "p", None;
+      "bold", "span", Some "bold";
+      "italic", "span", Some "italic";
+      "list", "ul", None;
+      "enumerate", "ol", None;
+      "item", "li", None
+    ];
+    List.iter html_constructor2 [
+      "section", "h1", None, "section", None;
+      "subsection", "h2", None, "section", None;
+    ];
 
     stateful "answer_in_file" (function
       | VString s -> return (CORE_context.answer s)
@@ -455,10 +563,10 @@ module Eval = struct
 
   and template_atom s e = function
     | Raw sl ->
-      return (s, ARaw sl)
+      return (s, VString sl)
     | Code t ->
       lwt (s, v) = term s e t in
-      return (s, AValue v)
+      return (s, v)
 
   and term s e = function
     | Lit l -> return (s, literal l)
