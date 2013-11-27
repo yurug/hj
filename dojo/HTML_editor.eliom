@@ -7,9 +7,6 @@ open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
 
-(* FIXME: Relax this dependency. *)
-module C = CORE_description_CST
-
 type user_request =
   | Confirm of string * (unit, user_request list) server_function
   | Message of string
@@ -35,6 +32,7 @@ let patch start stop what =
 
   open Js
   open Js.Unsafe
+  open CORE_errors
 
   class type boolean = object end
 
@@ -102,13 +100,8 @@ let patch start stop what =
       with Not_found -> None
 
     let range_from_lexing_position start stop =
-      (* FIXME: relax this dependency by creating a general purpose
-         text location module. *)
-      let open C in
-        jsnew new_range (start.line - 1,
-                         start.character - 1,
-                         stop.line - 1,
-                         stop.character)
+      jsnew new_range (start.line - 1, start.character - 1,
+                       stop.line - 1, stop.character)
 
   end
 
