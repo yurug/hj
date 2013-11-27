@@ -297,6 +297,14 @@ table.results {
     border-color:black;
 }
 
+table {
+    border-style:solid;
+    border-color:black;
+    border-collapse:collapse;
+    border-width:1px;
+    padding: 0.2em;
+}
+
 thead {
     font-weight:bold;
     background-color:silver;
@@ -305,9 +313,8 @@ thead {
 }
 
 td {
-    padding: 0.5em;
-    border-width:1px;
-    border-style:solid;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
 }
 
 span.button {
@@ -354,8 +361,9 @@ span.report {
 }
 
 .editor_box {
-   width: 51em;
-   height: 42em;
+   padding-left: 3em;
+   width: 60em;
+   height: 25em;
    position: relative;
    margin-top: 1em;
    margin-left: auto;
@@ -364,8 +372,8 @@ span.report {
 
 .editor {
    position: relative;
-   width: 50em;
-   height: 40em;
+   width: 60em;
+   height: 23em;
  }
 
 .editor_message {
@@ -373,7 +381,7 @@ span.report {
    margin-top: 0.2em;
    font-style: italic;
    background-color: #EEEEEE;
-   width: 51em;
+   width: 61em;
    height: 1.7em;
    padding-left: 1em;
    padding-top: 5px;
@@ -406,6 +414,10 @@ span.editor_message_button:hover, span.editor_message_button:focus {
     box-shadow: 0 0 1px rgba(1, 1, 1, .75);
 }
 
+div.icon {
+    padding: 0.1em;
+}
+
 span.italic {
     font-style: italic;
 }
@@ -416,20 +428,27 @@ span.bold {
 
 /* The following is a CSS hack to customize input file style. */
 .fileContainer {
-    overflow: hidden;
     position: relative;
 }
 
 .fileContainer [type=file] {
-    cursor: inherit;
-    display: block;
-    font-size: 999px;
+    position:absolute;
+    left:0;
+    top:0;
+    width: 1em;
+    height:1em;
+    cursor: pointer;
     filter: alpha(opacity=0);
-    min-height: 100%;
-    min-width: 100%;
     opacity: 0;
-    position: absolute;
-    right: 0;
-    text-align: right;
-    top: 0;
+}
+
+div.exercise_editor {
+    width: 60em;
+    margin: 0;
+    padding: 0;
+}
+
+div.exercise_sources {
+    font-size: 0.9em;
+    float: right;
 }

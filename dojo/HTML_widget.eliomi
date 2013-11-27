@@ -35,12 +35,15 @@ type editable_list = {
 }
 
 val list_editor
-  : string -> editable_list
+  :
+  ?no_header:bool
+  -> string -> editable_list
   -> (int -> [ td_content_fun ] elt list)
   -> [> div ] elt Lwt.t
 
 val get_list_editor :
-  string -> string list
+  ?no_header:bool
+  -> string -> string list
   -> (unit -> string list list Lwt.t)
   -> (string list list -> unit Lwt.t) option
   -> (int -> [ td_content_fun ] elt list)

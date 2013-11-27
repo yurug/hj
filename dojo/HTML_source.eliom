@@ -31,12 +31,13 @@ let entity_sources_div
       in
       let download = {int -> unit{
         fun i ->
+          (* FIXME: to be implemented. *)
           Firebug.console##log ("Download")
       }}
       in
       let get_editor =
         (* FIXME: I8N. *)
-        get_list_editor "Sources" ["Filenames"] get_sources (Some set_sources)
+        get_list_editor ~no_header:true "Sources" ["Filenames"] get_sources (Some set_sources)
           (fun i ->
             let import suggested_filename =
               try

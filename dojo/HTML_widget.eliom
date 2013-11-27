@@ -53,7 +53,7 @@ type editable_list = {
   replace   : (int -> string list -> unit Lwt.t) option;
 }
 
-let list_editor label list (extra_actions : int -> _) =
+let list_editor ?(no_header=false) label list (extra_actions : int -> _) =
 
   (** A table to convert HTML5 identifier into list indices. *)
 
@@ -187,15 +187,19 @@ let list_editor label list (extra_actions : int -> _) =
   let tableid = Id.new_elt_id () in
   lwt e = list.index_end () in
   lwt rows = Lwt_list.map_s (row_of_idx tableid) (range 0 (e + 1)) in
-  let thead = thead [ tr (
-    List.map (fun f -> th [pcdata f]) list.fields
-    @ [th [pcdata "Action"]]
-  ) ]
+  let table =
+    if no_header then
+      tablex [Id.create_named_elt ~id:tableid (tbody rows)]
+    else
+      let thead = thead [ tr (
+        List.map (fun f -> th [pcdata f]) list.fields
+        @ [th [pcdata "Action"]] ) ]
+      in
+      tablex ~thead [Id.create_named_elt ~id:tableid (tbody rows)]
   in
-  let table = (tablex ~thead [Id.create_named_elt ~id:tableid (tbody rows)]) in
   return (div [table])
 
-let get_list_editor label fields get set extra_actions =
+let get_list_editor ?(no_header=false) label fields get set extra_actions =
   let rd f = lwt l = get () in f l in
   let empty = List.map (fun _ -> "") fields in
   let remove, replace =
@@ -209,7 +213,7 @@ let get_list_editor label fields get set extra_actions =
         (None, None)
   in
   server_function Json.t<unit> (fun () ->
-    List.(list_editor label {
+    List.(list_editor ~no_header label {
       fields;
       index_end = (fun () -> rd (fun l -> return (length l)));
       display   = (fun k -> rd (fun l -> return (try nth l k with _ -> empty)));

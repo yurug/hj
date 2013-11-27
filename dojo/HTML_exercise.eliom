@@ -123,8 +123,12 @@ let editor_div (e : CORE_exercise.t) =
     | CORE_entity.HasChanged _ ->
       return (HTML_editor.refresh %editor_id content)
   )}};
-  lwt source_div = HTML_source.entity_sources_div (module CORE_exercise) e in
-  return (div [editor_div; source_div])
+  lwt sources_div =
+    lwt d = HTML_source.entity_sources_div (module CORE_exercise) e in
+    return (div ~a:[a_class ["exercise_sources"]] [ d ])
+  in
+  let editor_div = div ~a:[a_class ["exercise_editor"]] [editor_div] in
+  return (div [sources_div; editor_div])
 
 let exercise_div exo answer evaluation =
   let e_id = identifier exo in
