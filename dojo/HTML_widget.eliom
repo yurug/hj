@@ -330,8 +330,17 @@ let fileuploader import =
         >> commit ()
       )
   in
-  post_form ~a:[a_class ["inlined"]]
+  let form_id = Id.new_elt_id () in
+  let onchange = {{ fun _ ->
+    let f = Id.get_element %form_id in
+    let f = To_dom.of_form f in
+    f##submit ()
+  }} in
+  Id.create_named_elt form_id (post_form ~a:[a_class ["inlined"]]
     ~xhr:true ~service:file_upload_service (fun f -> [
-      file_input ~name:f ();
-      string_input ~input_type:`Submit ~value:"OK" ()
+      label ~a:[a_class ["fileContainer"; "inlined"]] [
+        file_input ~a:[a_onchange onchange; a_class ["inlined"]] ~name:f ();
+        pcdata "↑"
+      ];
     ]) ()
+  )

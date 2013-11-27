@@ -71,6 +71,7 @@ let patch start stop what =
       method getValue : js_string t meth
       method setValue : js_string t -> js_string t meth
       method setReadOnly : boolean t -> unit meth
+      method setTheme : js_string t -> unit meth
     end
 
     let make id : editor Js.t =
@@ -123,12 +124,15 @@ let create
       pcdata s
     ]
   }} in
+
   let push_job = {(unit -> unit Lwt.t) -> unit{
     let jobs, push = Lwt_stream.create () in
     Lwt.async (fun () -> Lwt_stream.iter_s (fun job -> job ()) jobs);
     fun job -> push (Some job)
   }} in
+
   let questions_box = div ~a:[a_class ["editor_questions_box"]] [] in
+
   let process_request = {user_request -> unit Lwt.t{
     let now () = (jsnew Js.date_now ())##valueOf () in
     let hello, bye, lookup =
@@ -233,7 +237,8 @@ let create
       let session = editor##getSession () in
       session##on (Js.string "change", hi);
       session##setUseSoftTabs (true_object);
-      ignore (editor##setValue (Js.string %init))
+      ignore (editor##setValue (Js.string %init)
+    )
   }}
   in
   let editor = div ~a:[a_class ["editor_box"]] [

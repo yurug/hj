@@ -103,7 +103,8 @@ let editor_div (e : CORE_exercise.t) =
      description of the exercise is sent to the clients each time the
      exercise is modified.  This is HUGE! *)
   let e_channel = CORE_entity.channel e in
-  ignore {unit{ CORE_client_reaction.react_on_background %e_channel (fun data ->
+  ignore {unit{
+    CORE_client_reaction.react_on_background %e_channel (fun data ->
     lwt content = CORE_exercise.raw_user_description %id in
     match data with
     (* FIXME: In the future, we will try to "merge" the current state
@@ -122,7 +123,6 @@ let editor_div (e : CORE_exercise.t) =
     | CORE_entity.HasChanged _ ->
       return (HTML_editor.refresh %editor_id content)
   )}};
-
   lwt source_div = HTML_source.entity_sources_div (module CORE_exercise) e in
   return (div [editor_div; source_div])
 
@@ -152,7 +152,6 @@ let exercise_div exo answer evaluation =
                  FIXME: the user is a student?) *)
               return [p [pcdata (string_of_error e)]]
             | `OK v ->
-              Firebug.console##log ("Display exercise!");
               let display_atomic = function
                 | CORE_questions.Statement s ->
                   let d = div [] in
