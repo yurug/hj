@@ -28,14 +28,12 @@ include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react this change_later deps new_data data =
-    match new_data with
-      | None -> return None
-      | Some d ->
-        if d = data then return None else (
-          Ocsigen_messages.errlog "Answer reacts!";
-          return (Some d)
-        )
+  type change =
+    | SubmitSubmission of CORE_exercise.checkpoint * CORE_context.submission
+    | MarkSubmissionAsHandled of CORE_exercise.checkpoint
+
+  let react this deps cs =
+    assert false
 
 end)
 
