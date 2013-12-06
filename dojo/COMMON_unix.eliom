@@ -76,6 +76,15 @@ let echo c f =
     )
   ) ()
 
+let append c f =
+  handle_unix_error (fun () ->
+    with_file
+      ~flags:[Unix.O_APPEND; Unix.O_WRONLY ]
+      ~mode:output f (fun oc ->
+      write oc c
+    )
+  ) ()
+
 let cat f =
   handle_unix_error (fun () ->
     let b = Buffer.create 13 in

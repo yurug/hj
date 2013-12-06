@@ -69,3 +69,19 @@ let update_properties e s = now { e with properties = s }
 let update_dependencies e d = now { e with dependencies = d }
 
 let update_sources e sources = now { e with sources }
+
+type 'a change =
+  | UpdateDependencies of dependencies
+  | UpdateSources      of CORE_source.filename list
+  | UpdateProperties   of CORE_property.set
+  | UpdateContent      of 'a
+  | UpdateSequence     of 'a change * 'a change
+  | NoUpdate
+
+let rec update e = function
+  | UpdateDependencies d -> update_dependencies e d
+  | UpdateSources s -> update_sources e s
+  | UpdateProperties s -> update_properties e s
+  | UpdateContent c -> update_content e c
+  | UpdateSequence (c1, c2) -> update e c1; update e c2
+  | NoUpdate -> e

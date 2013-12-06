@@ -195,12 +195,15 @@ let read v = ltry (fun lraise ->
       git_show v.number (string_of_path v.path) lraise
 )
 
-let save who = on_path (fun p ps fname where c -> ltry (
-  !>> echo c ps
+let onfile f who = on_path (fun p ps fname where c -> ltry (
+  !>> f c ps
   >>> git_add where [fname]
   >>> git_commit who where [fname] (I18N.String.saving ps)
   >>> lreturn ()
 ))
+
+let save   = onfile echo
+let append = onfile append
 
 let owner = on_path (fun _ where _ _ -> ltry (
   git_toplevel where

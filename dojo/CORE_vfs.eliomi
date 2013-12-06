@@ -69,6 +69,18 @@ val save : string -> ?relative:bool -> path -> string
          ]
      ] Lwt.t
 
+(** [append who path content] appends the string [content] in the end
+    of the file located at [path]. If there is no file at [path], it
+    is created. *)
+val append : string -> ?relative:bool -> path -> string
+  -> [ `OK of unit
+     | `KO of
+         (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
+         [> `SystemError of string
+         ]
+     ] Lwt.t
+
 (** a [version] is timestamp file. *)
 type version
 

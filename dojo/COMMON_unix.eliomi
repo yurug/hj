@@ -25,6 +25,9 @@ val grep :
 (** [echo content fname] saves the [content] in [fname]. *)
 val echo : string -> string -> ('a, 'b) raiser -> unit Lwt.t
 
+(** [append content fname] appends the [content] at the end of [fname]. *)
+val append : string -> string -> ('a, 'b) raiser -> unit Lwt.t
+
 (** [cat fname] returns the content of [fname] (if it fits in a string). *)
 val cat : string -> ('a, 'b) raiser -> string Lwt.t
 

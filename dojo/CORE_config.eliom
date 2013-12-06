@@ -30,6 +30,8 @@ let autotest_enabled () =
 
 let number_of_login_attempts_per_second = 2
 
+let size_of_entity_log_history = 128
+
 {shared{
 
 (** We only support french for the moment. *)

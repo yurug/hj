@@ -10,11 +10,11 @@ open CORE_error_messages
 open COMMON_pervasives
 
 type description = {
-    login           : string;
-    password_digest : string;
-    last_connection : string;
-    firstname       : string;
-    surname         : string;
+  login           : string;
+  password_digest : string;
+  last_connection : string;
+  firstname       : string;
+  surname         : string;
 } deriving (Json)
 
 include CORE_entity.Make (struct

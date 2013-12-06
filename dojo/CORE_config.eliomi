@@ -26,6 +26,9 @@ val ace_alias_src : unit -> Eliom_content_core.Xml.uri
 (** [number_of_login_attempts_per_second] *)
 val number_of_login_attempts_per_second : int
 
+(** [size_of_entity_log_history] *)
+val size_of_entity_log_history : int
+
 {shared{
 
 (** Supported human languages in the user interface. *)

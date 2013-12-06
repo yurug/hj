@@ -117,6 +117,7 @@ type questions_value = [
 and atomic_value =
   | CheckpointContext of checkpoint * CORE_context.t
   | Statement of string
+  | Source of string * string
 deriving (Json)
 
 }}
@@ -302,8 +303,9 @@ module TypeCheck = struct
 
   let _ =
     primitive "checkpoint" ((unit --> unit) --> context);
-    primitive "answer_in_file" (string --> unit);
-    primitive "mark_using" (string --> unit);
+    primitive "answer_in_file" (ttemplate string --> unit);
+    primitive "mark_using" (ttemplate string --> unit);
+    primitive "source" (ttemplate string --> (ttemplate string --> unit));
     primitive "timeout" (int --> unit)
 
   let lookup_primitive = Hashtbl.find primitives
@@ -420,6 +422,7 @@ module Eval = struct
     | VUnit
     | VClosure of environment * label * term
     | VPrimitive of (state -> value -> (state * value) Lwt.t)
+    | VSource of string * string
 
   and environment = (name * value) list
 
@@ -450,17 +453,21 @@ module Eval = struct
 
   let rec make_primitive () =
 
-    let stateful name f =
-      primitive name (fun state x ->
+    let state_effect f =
+      fun state x ->
         lwt y = f x in
         return (CORE_context.(push y state), VUnit)
-      )
     in
-    let functional name f =
-      primitive name (fun s x ->
+    let stateful name f =
+      primitive name (state_effect f)
+    in
+    let qfunction f =
+      fun s x ->
         lwt y = f x in
         return (s, y)
-      )
+    in
+    let functional name f =
+      primitive name (qfunction f)
     in
     primitive "checkpoint" (fun state block ->
       apply block state VUnit
@@ -522,20 +529,28 @@ module Eval = struct
       "latex", "\\[", "\\]";
     ];
 
-    stateful "answer_in_file" (function
-      | VString s -> return (CORE_context.answer s)
-      | _ -> eraise `EvalError
-      );
+    stateful "answer_in_file" (fun v ->
+      let s = as_string v in
+      return (CORE_context.answer s)
+    );
 
-    stateful "mark_using" (function
-      | VString s -> return (CORE_context.command s)
-      | _ -> eraise `EvalError
+    stateful "mark_using" (fun v ->
+      let s = as_string v in
+      return (CORE_context.command s)
     );
 
     stateful "timeout" (function
       | VInt s -> return (CORE_context.timeout s)
       | _ -> eraise `EvalError
-    )
+    );
+
+    functional "source" (fun v ->
+      let fname = as_string v in
+      return (VPrimitive (qfunction (fun v ->
+        let content = as_string v in
+        return (VSource (fname, content)
+        ))))
+    );
 
   and variable s (e : environment) = function
     | Local x ->
@@ -620,6 +635,7 @@ module Eval = struct
     return (filter_map (fun x -> function
       | VStatement s -> Some (Statement s)
       | VContext c -> Some (CheckpointContext (name_to_local_string x, c))
+      | VSource (s, c) -> Some (Source (s, c))
       | _ -> None
       ) (List.rev e)
     )

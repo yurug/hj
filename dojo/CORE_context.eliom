@@ -50,6 +50,16 @@ let get what c =
   in
   aux None c
 
+let all what c =
+  let rec aux last = function
+  | Empty -> last
+  | Compose (w, qs) ->
+    match what w with
+      | None -> aux last qs
+      | Some y -> aux (y :: last) qs
+  in
+  aux [] c
+
 let get_answer_form = get (function Answer fname -> Some fname | _ -> None)
 let get_command = get (function Command c -> Some c | _ -> None)
 let get_timeout = get (function TimeOut t -> Some t | _ -> None)

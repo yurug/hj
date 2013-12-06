@@ -19,38 +19,31 @@ open COMMON_pervasives
 type timestamp = float deriving (Json)
 
 (** Two kinds of events are possibly happening to an entity. *)
-type 'a event =
+type event =
     (** A dependency of the entity has been updated, so at
         some point, the entity will be asked to update itself
         if necessary. *)
   | MayChange
 
-   (** The entity has been updated with a new content of type ['a]. *)
-  | HasChanged of 'a
+   (** The entity has been updated. *)
+  | HasChanged
 
 }}
 
-(** The reaction of an entity is triggered each time at least one of
-    its dependencies has changed and each time a new content is
-    suggested for it.  A reaction produces a change that is scheduled
-    for application. *)
-type 'a reaction =
-    CORE_identifier.t
-    -> ('a change -> unit)
-    -> dependencies  (** ... of its dependencies *)
-    -> 'a option     (** ... of its content *)
-    -> 'a change
-
-(** A change is a process that transforms the current content of the
-    entity into a new one. *)
-and 'a change = 'a -> 'a option Lwt.t
+(** An entity ... *)
+type ('a, 'c) reaction =
+    CORE_identifier.t      (** [x] may react to ... *)
+    -> dependencies        (** a change of one of its dependencies ... *)
+    -> 'c list             (** or to external requests to change ... *)
+    -> ('c -> unit)        (** by scheduling an asynchronous change.*)
+    -> 'a change           (** or applying an immediate internal change. *)
 
 (** The state of an entity can be up-to-date or modified. In that
     later case, the modified dependencies and the scheduled changes
     are attached to the entity. *)
-and 'a state =
+and 'c state =
   | UpToDate
-  | Modified of dependencies * 'a change Queue.t
+  | Modified of dependencies * 'c Queue.t
 
 (** Here is the internal representation of the entity:
 
@@ -67,26 +60,25 @@ and 'a state =
     device from the entity on the server to the client-side
     code.
 *)
-and 'a entity = {
+and ('a, 'c) entity = {
   mutable description : 'a meta;
-  mutable state       : 'a state;
-  mutable sources     : CORE_source.map;
-  (*   *) reaction    : 'a reaction;
-  mutable subscribec  : 'a Lwt_condition.t;
-  (*   *) channel     : 'a event CORE_client_reaction.c;
-  (*   *) push        : 'a event -> unit;
+  mutable state       : 'c state;
+  (*   *) reaction    : ('a, 'c) reaction;
+  (*   *) channel     : event CORE_client_reaction.c;
+  (*   *) push        : event -> unit;
   (*   *) commit_lock : Lwt_mutex.t;
   (*   *) commit_cond : unit Lwt_condition.t;
   mutable mode        : [ `Commit | `Observe of int ];
+  (*   *) log         : ('c * timestamp) Queue.t;
 }
 
 (** Shortcut for the type of entities. *)
-and 'a t = 'a entity
+and ('a, 'c) t = ('a, 'c) entity
 
 (** Some data structures contain entities with heterogeneous
     content types. In that case, this type is hidden behind
     an existential quantification. *)
-type some_t = SomeEntity : 'a t -> some_t
+type some_t = SomeEntity : ('a, 'c) t -> some_t
 
 (** Accessor to the dependencies. *)
 let dependencies e = CORE_inmemory_entity.dependencies e.description
@@ -108,7 +100,10 @@ let timestamp e = CORE_inmemory_entity.timestamp e.description
     and its reverse dependencies. *)
 module EntitySet = Hashtbl.Make (struct
   type t = some_t
-  let hash (SomeEntity x) = Hashtbl.hash (identifier x)
+
+  let hash (SomeEntity x) =
+    Hashtbl.hash (identifier x)
+
   let equal (SomeEntity x) (SomeEntity y) =
     CORE_identifier.compare (identifier x) (identifier y) = 0
 end)
@@ -142,12 +137,8 @@ let register_dependency e (id, rel) =
 let propagate_change id =
   (** We traverse the reverse dependencies of [e] and trigger a
       reaction to the change of [id] by marking them as being
-      modified... *)
+      modified. *)
   let wake_up (SomeEntity e) (l, xs) =
-    Ocsigen_messages.errlog (
-      "Wake up " ^ string_of_identifier (identifier e) ^ " because of "
-      ^ (string_of_identifier id));
-
     e.push MayChange;
     let (dependencies, queue) =
       match e.state with
@@ -156,8 +147,7 @@ let propagate_change id =
         | Modified (dependencies, queue) ->
           (dependencies, queue)
     in
-    (** and by pushing a change that does nothing. *)
-    if Queue.is_empty queue then Queue.push (fun c -> return None) queue;
+
     (** We also notify [e] that [id] has one of its dependencies that
         has changed. *)
     e.state <- Modified (push dependencies (id, (l, xs)), queue)
@@ -175,11 +165,12 @@ let channel e = e.channel
 (** The base interface of an entity module. *)
 module type S = sig
   type data
-  type t = data entity
-  type reference deriving (Json)
+  type change
+  type t = (data, change) entity
+
   val make:
     ?init:(data * dependencies * CORE_property.set * CORE_source.filename list)
-    -> ?reaction:(data reaction)
+    -> ?reaction:(data, change) reaction
     -> CORE_identifier.t ->
     [ `OK of t
     | `KO of [>
@@ -188,62 +179,42 @@ module type S = sig
       | `SystemError     of string
     ]] Lwt.t
 
+  val change : ?immediate:bool -> t -> change -> unit Lwt.t
+  val observe : t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
   val identifier : t -> CORE_identifier.t
-  val properties : t -> CORE_property.set
-  val timestamp : t -> timestamp
-  val dependencies : t -> CORE_inmemory_entity.dependencies
-  val change  : ?immediate:bool -> t -> data change -> unit Lwt.t
-  val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
-  val refer_to : t -> reference
-  val deref : reference ->
-    [ `OK of t
-    | `KO of [>
-      | `UndefinedEntity of CORE_identifier.t
-      | `SystemError     of string
-    ]] Lwt.t
-
-  val update_source : t -> CORE_source.filename -> CORE_source.t -> unit Lwt.t
-
-  val source : CORE_source.filename ->
-    (CORE_source.filename
-     * (t -> CORE_source.t Lwt.t)
-     * (CORE_identifier.t, string) server_function)
-
-  val sources : t -> CORE_source.t list
-
-  val vfs_directory : t -> string
-
-  val push_dependency
-    : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
-
-  val newer_than : t -> some_t -> bool
-
-  val subscribe : t -> data Lwt_condition.t
-
 end
 
 (** The client must provide the following information
     about his specific entity. *)
 module type U = sig
   type data deriving (Json)
-  val react : data reaction
+  type change
+  val react : (data, change) reaction
+  val string_of_change : change -> string
 end
 
-(** [passive] is the reaction that does nothing but accepting
-    any change to the content of the entity. *)
-let passive _ _ _ x' x =
-  match x' with
-    | None -> return None
-    | Some x' -> return (Some x')
+module MakePassive (I : sig
+  type data deriving (Json)
+  val string_of_replacement : data -> data -> string
+end) : U = struct
+  type data = data deriving (Json)
+  type change = data CORE_inmemory_entity.change
+
+  let react _ _ cs _ =
+    CORE_inmemory_entity.UpdateSequence cs
+
+  let string_of_change =
+    CORE_inmemory_entity.string_of_change string_of_replacement
+end
 
 (** The implementation of the operations over entities. *)
 module Make (I : U) : S with type data = I.data = struct
 
   type data = I.data
 
-  type t = data entity
+  type change = I.change
 
-  type reference = CORE_identifier.identifier deriving (Json)
+  type t = (data, change) entity
 
   (** The following module implements on-the-disk replication
       of entity descriptors. *)
@@ -253,8 +224,8 @@ module Make (I : U) : S with type data = I.data = struct
   (*  Pool  *)
   (* ****** *)
 
-  (** There must be at most one instance of an entity.
-      We use a pool to look for alive entities. *)
+  (** There must be at most one instance of an entity.  We use a pool
+      to maintain the set of alive entities. *)
   let (loaded, load) =
     let pool = IdHashtbl.create 13 in
     (IdHashtbl.get pool, IdHashtbl.add pool)
@@ -262,19 +233,18 @@ module Make (I : U) : S with type data = I.data = struct
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
   let wakeup id reaction =
-    OTD.load id >>>= fun (description, sources) ->
-        (** Notice that the following sequence of operations are
-            is atomic w.r.t. the concurrency model. *)
+    OTD.load id >>>= fun description ->
+    (** Notice that the following sequence of operations are
+        atomic w.r.t. the concurrency model. *)
     let channel, push = CORE_client_reaction.channel () in
     let commit_lock = Lwt_mutex.create () in
     let commit_cond = Lwt_condition.create () in
     let e = {
       description; reaction; state = UpToDate;
       channel; push;
-      subscribec = Lwt_condition.create ();
       commit_lock; commit_cond;
       mode = `Observe 0;
-      sources = CORE_source.map_of_list sources;
+      log = Queue.create ()
     } in
     load id e;
     List.iter (register_dependency e) (dependency_image (dependencies e));
@@ -287,9 +257,7 @@ module Make (I : U) : S with type data = I.data = struct
     if OTD.exists id then
       return (`KO (`AlreadyExists (path_of_identifier id)))
     else
-      let sources = List.map CORE_source.empty fnames in
-      let data = CORE_inmemory_entity.make id deps properties fnames init in
-      OTD.save data sources
+      OTD.save (CORE_inmemory_entity.make id deps properties fnames init)
 
   (* ************************** *)
   (*  Operations over entities  *)
@@ -314,96 +282,77 @@ module Make (I : U) : S with type data = I.data = struct
           | None -> wakeup id reaction
 
   let wait_to_be_observer_free e commit =
-    Ocsigen_messages.errlog "Wait to be observer free...";
     Lwt_mutex.with_lock e.commit_lock (fun () ->
       (** Set the commit mode, no observers are allowed to run. *)
       e.mode <- `Commit;
       (** Nobody is watching! Do your stuff! *)
       commit ()
-      >> return (
-        (** Done! *)
-        Ocsigen_messages.errlog (
-          "Committing change for " ^ string_of_identifier (identifier e)
-        );
-        e.mode <- `Observe 0
-      )
+      >> return (e.mode <- `Observe 0)
     )
 
-  (** [apply deps e c] does the effective change [c] of the
+  (** [apply deps e c] does the effective changes [cs] of the
       content of [e]. *)
-  let rec apply dependencies e c =
-    (** First, we extract the current content. *)
-    let content0 = content e.description in
+  let rec apply dependencies e cs =
 
-    (** Second, we compute the changed content. *)
-    lwt content' = c content0 in
-
-    let later_changes = ref [] in
-    let change_later c =
-      later_changes := (fun () -> change ~immediate:true e c) :: !later_changes
-    in
-
-    (** Third, the entity must react to this new version of the
-        content.  Notice that we globally maintain the invariant that
-        two reactions cannot run concurrently on the same entity. So,
+    (** Notice that we globally maintain the invariant that two
+        reactions cannot run concurrently on the same entity. So,
         during the execution of a reaction the current content of the
-        entity cannot change. *)
-    e.reaction (identifier e) change_later dependencies content' content0
-    >>= function
-      | None ->
-        (** The reaction is void. *)
+        entity cannot change.
+
+        Furthermore, even if the actual modification of the entity
+        state is done when no observer is watching, the reaction
+        itself can be computed concurrently to observations: as soon
+        as nothing is observable from the point of view of these
+        observations, this is fine. *)
+
+    e.reaction (identifier e) dependencies cs >>= function
+      | NoUpdate ->
         return ()
-      | Some content ->
-        (** The reaction produced a new [content]. *)
-        (** Fourth, we commit the new content.
-            This requires to wait for all observers to have finished their
-            work. *)
+
+      | llc ->
         wait_to_be_observer_free e (fun () ->
-          e.description <- update_content e.description content;
-          let nc = CORE_inmemory_entity.content e.description in
-          OTD.save e.description (CORE_source.list_of_map e.sources);
-          >> (
-            Ocsigen_messages.errlog (
-              "Broadcasting new state of " ^ string_of_identifier (identifier e)
-            );
-            e.push (HasChanged nc);
-            Lwt_condition.broadcast e.subscribec nc;
-            return ()
-          )
+          let old = e.description in
+          e.description <- CORE_inmemory_entity.update e.description llc;
+          OTD.save e.description
+          >>= function
+            | `KO error -> warn error; return (e.description <- old)
+            | `OK _ -> savelog e cs >>> return (e.push HasChanged)
         )
-        >> let rec later_is_now = function
-          | [] -> return ()
-          | f :: fs -> f () >> later_is_now fs
-           in
-           later_is_now (List.rev !later_changes)
+
+  and savelog e cs =
+    let ts = CORE_inmemory_entity.timestamp e.description in
+    List.iter (fun c -> Queue.push (c, ts) e.log) cs;
+    let extra = Queue.length e.log - CORE_config.size_of_entity_log_history in
+    let b = Buffer.create in
+    if extra > 0 then
+      for i = 0 to extra - 1 do
+        try
+          let (c, ts) = Queue.take e.log in
+          Buffer.add_string b (
+            Printf.sprintf "%f: %s\n" ts (string_of_change c)
+          )
+        with Queue.Empty -> assert false
+      done;
+    OTD.log e.identifier (Buffer.contents b)
+
+  and log k e =
+    let rec take accu = function
+      | 0 -> accu
+      | k -> try take (pred k) (Queue.peek e.log) with Queue.Empty -> accu
+    in
+    take k []
 
   (** [update e] is the process that applies scheduled changes. *)
   and update e =
-    let d = Random.bits () in
-    Ocsigen_messages.errlog (Printf.sprintf "Update %d entity %s\n"
-                               d
-                               (string_of_identifier (identifier e)));
-
-    begin match e.state with
+    match e.state with
       | UpToDate ->
         return ()
 
       | Modified (dependencies, queue) ->
-        let rec flush () =
-          try_lwt
-            let c = Queue.take queue in
-            apply dependencies e c
-            >> flush ()
-          with Queue.Empty ->
-            return (e.state <- UpToDate)
-        in
-        flush ()
-    end >>
-    (Ocsigen_messages.errlog (Printf.sprintf "Update %d entity %s finished\n"
-                               d
-                               (string_of_identifier (identifier e)));
-    return ())
-
+        let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
+        Queue.clear queue;
+        apply dependencies e (List.rev cs)
+        >> return (e.state <- UpToDate)
 
   (** As long as a change is being applied, we have to
       push other required changes into a queue. *)
@@ -413,21 +362,13 @@ module Make (I : U) : S with type data = I.data = struct
   and change ?(immediate = false) e c =
     (** Shake the reverse dependencies for them to wait for
         a change of [e]. *)
-    Ocsigen_messages.errlog (Printf.sprintf "Change entity %s\n"
-                               (string_of_identifier (identifier e)));
-
     propagate_change (identifier e);
-
-    Ocsigen_messages.errlog (
-      Printf.sprintf "Proceeding with change on entity %s\n"
-        (string_of_identifier (identifier e))
-    );
 
     match e.state with
       | UpToDate ->
         (** Good, the change is applied immediately. *)
         now_only_accumulate_changes e;
-        apply empty_dependencies e c
+        apply empty_dependencies e [c]
         >> update e
 
       | Modified (dependencies, queue) ->
@@ -435,161 +376,97 @@ module Make (I : U) : S with type data = I.data = struct
         Queue.push c queue;
         if immediate then update e else return ()
 
-  let observe (type a) (e : t) (o : data -> a Lwt.t) : a Lwt.t =
+  let observe (type a) (e : t) (o : data meta -> a Lwt.t) : a Lwt.t =
     (** We want the content to be as much fresh as possible. *)
-    update e >> (
-      (let master = ref false in
-       (if Lwt_mutex.is_locked e.commit_lock then
-          match e.mode with
-            | `Commit ->
-              (** A commit is being applied, wait for it to finish. *)
-              Lwt_condition.wait ~mutex:e.commit_lock e.commit_cond
+    let rec try_to_observe () =
+      update e >> (
+        (let master = ref false in
+         (if Lwt_mutex.is_locked e.commit_lock then
+             match e.mode with
+               | `Commit ->
+                 (** A commit is being applied, wait for it to finish. *)
+                 Lwt_condition.wait ~mutex:e.commit_lock e.commit_cond
+                 (** and try to observe again. *)
+                 >> try_to_observe ()
 
-            | `Observe x -> return (
-              (** An observer already took the mutex. *)
-              assert (x > 1);
-              (** Let us register our presence to him. *)
-              e.mode <- `Observe (x + 1)
-            )
-        else (
-         (** Neither a change nor an observer is working on that entity. *)
-         assert (e.mode = `Observe 0);
-
-         (** Entity, you are now observed. *)
-         e.mode <- `Observe 1;
-
-         (** This observer is called the "master" observer. *)
-         master := true;
-
-         (** The master observer owns the lock and it will release it
-             only when no more observation is required. This model
-             clearly gives priority to observations over changes,
-             which is a good property for user-reactivity.  Yet, we
-             will have to be careful not to totally starve changes
-             processes...
-
-             If I am correct, the fact that an observation first
-             calls [update] for changes to be applied prevents an
-             unbound creation of observers that could blocked the
-             effective application of changes.
-         *)
-         Lwt_mutex.lock e.commit_lock
-       )) >> (
-         (** At this point, the lock is taken and the mode is to observe. *)
-         assert (Lwt_mutex.is_locked e.commit_lock);
-         assert (match e.mode with `Observe _ -> true | _ -> false);
-
-         (** A good place for the observation to take place. *)
-         lwt ret = o (content e.description) in
-
-         (** We are done with this observation. Let us release
-             some time for other processes... *)
-         (if !master then
-
-             (** The master waits for other observers to finish. *)
-             let rec wait_for_other_observers () =
-               match e.mode with
-                 | `Observe 1 -> return (
-                   e.mode <- `Observe 0;
-                   Lwt_mutex.unlock e.commit_lock
-                 )
-                 | `Observe x when x > 1 ->
-                   Lwt_condition.wait e.commit_cond
-                   >> wait_for_other_observers ()
-                 | `Observe x -> assert false
-                 | `Commit -> assert false
-             in
-             wait_for_other_observers ()
-
+               | `Observe x -> return (
+                 (** An observer already took the mutex. *)
+                 assert (x > 1);
+                 (** Let us register our presence to him. *)
+                 e.mode <- `Observe (x + 1)
+               )
           else (
+            (** Neither a change nor an observer is working on that entity. *)
+            assert (e.mode = `Observe 0);
 
-           (** For others, it simply means to quit the master. *)
-           match e.mode with
-             | `Observe x when x > 1 -> return (
-               e.mode <- `Observe (x - 1);
-               Lwt_condition.signal e.commit_cond ()
-             )
-             | `Observe _ -> assert false
-             | `Commit -> assert false
+            (** Entity, you are now observed: you cannot change while I am
+                watching you! *)
+            e.mode <- `Observe 1;
+
+            (** This observer is called the "master" observer. *)
+            master := true;
+
+            (** The master observer owns the lock and it will release it
+                only when no more observation is required. This model
+                clearly gives priority to observations over changes,
+                which is a good property for user-reactivity.  Yet, we
+                will have to be careful not to totally starve changes
+                processes...
+
+                If I am correct, the fact that an observation first
+                calls [update] for changes to be applied prevents an
+                unbound creation of observers that could blocked the
+                effective application of changes.
+            *)
+            Lwt_mutex.lock e.commit_lock
+          ))
+         >> (
+           (** At this point, the lock is taken and the mode is to observe. *)
+           assert (Lwt_mutex.is_locked e.commit_lock);
+           assert (match e.mode with `Observe _ -> true | _ -> false);
+
+           (** A good place for the observation to take place. *)
+           lwt ret = o e.description in
+
+           (** We are done with this observation. Let us release
+               some time for other processes... *)
+           (if !master then
+
+               (** The master waits for other observers to finish their
+                   observations. *)
+               let rec wait_for_other_observers () =
+                 match e.mode with
+                   | `Observe 1 -> return (
+                     e.mode <- `Observe 0;
+                     Lwt_mutex.unlock e.commit_lock
+                   )
+                   | `Observe x when x > 1 ->
+                     Lwt_condition.wait e.commit_cond
+                     >> wait_for_other_observers ()
+                   | `Observe x -> assert false
+                   | `Commit -> assert false
+               in
+               wait_for_other_observers ()
+
+            else (
+
+              (** For others, it simply means to quit the master. *)
+              match e.mode with
+                | `Observe x when x > 1 -> return (
+                  e.mode <- `Observe (x - 1);
+                  Lwt_condition.signal e.commit_cond ()
+                )
+                | `Observe _ -> assert false
+                | `Commit -> assert false
+            )
+           ) >> return ret
          )
-         ) >> return ret
         )
       )
-    )
+    in
+    try_to_observe ()
 
   let identifier = identifier
-
-  let properties = properties
-
-  let dependencies = dependencies
-
-  let refer_to = identifier
-
-  let timestamp = timestamp
-
-  let deref id = make id >>= function
-    | `OK e -> return (`OK e)
-    | `KO (`SystemError e) -> return (`KO (`SystemError e))
-    | `KO (`UndefinedEntity e) -> return (`KO (`UndefinedEntity e))
-    | `KO (`AlreadyExists _) -> assert false
-
-  let update_source e id s =
-    (* FIXME: Optimize that. *)
-    e.sources <- CORE_source.Map.add id s e.sources;
-    let sources = CORE_source.list_of_map e.sources in
-    let fsources = List.map CORE_source.filename sources in
-    e.description <- update_sources e.description fsources;
-    OTD.save e.description sources
-    (* FIXME: Do not ignore errors. *)
-    >> return ()
-
-  let source id =
-    let create_on_read x =
-      let s = CORE_source.empty id in
-      x.sources <- CORE_source.Map.add id s x.sources;
-      return s
-    in
-    let get x =
-      try_lwt
-        return (CORE_source.Map.find id x.sources)
-      with Not_found -> create_on_read x
-    in
-    let retrieve = server_function Json.t<CORE_identifier.t> (fun id ->
-      make id >>= function
-        | `OK e ->
-          lwt s = get e in
-          return (CORE_source.content s)
-        | _ ->
-          (* FIXME: Handle user error. *)
-          assert false
-    )
-    in
-    (id, get, retrieve)
-
-  let push_dependency e kind xs y =
-    let y_id = match y with SomeEntity e -> identifier e in
-    let xs_id = List.map (function SomeEntity e -> identifier e) xs in
-    register_dependency e (y_id, (kind, xs_id));
-    e.description <- update_dependencies e.description (
-      push (dependencies e) (y_id, (kind, xs_id))
-    );
-    OTD.save e.description []
-    (* FIXME: Do not ignore errors. *)
-    >> return ()
-
-  let sources e =
-    CORE_source.list_of_map e.sources
-
-  let vfs_directory e =
-    CORE_standard_identifiers.(
-      string_of_path (root true (path_of_identifier (identifier e)))
-    )
-
-  let newer_than e (SomeEntity other) =
-      (timestamp e > timestamp other)
-
-  let subscribe e =
-    e.subscribec
 
 end
 

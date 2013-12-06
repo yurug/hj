@@ -4,56 +4,54 @@
 
 (** Almost everything in the system is a reactive entity.
 
-    A reactive entity of type ['a t] is characterized as follows:
+    A reactive entity of type [('a, 'c) t] is characterized as follows:
 
    - An   entity  is   uniquely  identified   by  a   value   of  type
-   {!CORE_identifier.t}.
+    {!CORE_identifier.t}.
 
-   - An entity owns a {i content}  of type ['a]. Other entities may {i
-   try} to update this content.  In that case, the concerned entity is
-   asked to {i react} to this attempt.
+    - An entity has a {i state} of type ['a
+    CORE_inmemory_entity.meta]. Other entities may {i try} to update
+    this state using high-level changes of type ['c].  In that case,
+    the concerned entity is asked to {i react} to this attempt. It
+    validates or invalidates this update by turning it into low-level
+    changes and may also trigger more changes.
 
-   - An  entity   is  connected   to  a  set   of  entities,   its  {i
-   dependencies}.  Each time one  of its dependencies is modified, the
-   entity is asked  to {i react}. This reaction  may provoke an update
-   that will be propagated to every  entity that depends on it. And so
-   on, and  so forth. Of course,  as the graph of  dependencies is not
-   necessarily acyclic, this process  can diverge.  For the moment, it
-   is the  responsability of the programmer to  avoid non termination.
-   In the future,  we will integrate a mechanism  to detect "too long"
-   propagation of changes.
+    - An  entity   is  connected   to  a  set   of  entities,   its  {i
+    dependencies}.  Each time one  of its dependencies is modified, the
+    entity is asked  to {i react}. This reaction  may provoke an update
+    that will be propagated to every  entity that depends on it. And so
+    on, and  so forth. Of course,  as the graph of  dependencies is not
+    necessarily acyclic, this process  can diverge.  For the moment, it
+    is the  responsability of the programmer to  avoid non termination.
 
-   - The state of every entity is replicated in a version file system
-   by means of serialization to files. (See {!CORE_onthedisk_entity}
-   for details.) The file system is managed using the VCS named
-   Git. As a consequence the history of every entity is recorded.
+    - The state of every entity is replicated in a versioned file system
+    by means of serialization to files. (See {!CORE_onthedisk_entity}
+    for details.) The file system is managed using the VCS named
+    Git. As a consequence the history of every entity is recorded.
 
-   The following  module implements  the reactive model  for entities.
-   It provides general functions to  interact with entities as well as
-   a functor  to instantiate  a specific instance  of this  concept by
-   fixing a specific type for content and a specific dynamic behavior.
+    The following module implements the reactive model for entities.
+    It provides general functions to interact with entities as well as
+    a functor to instantiate a specific instance of this concept by
+    fixing a specific type for content, a specific type for high-level
+    changes and a specific dynamic behavior.
 
 *)
 
+(** The following module defines entities' state whose content has
+    type ['a] and low-level ['a change] on this state. *)
 open CORE_inmemory_entity
 
-(** The type of entity with content type ['a]. *)
-type 'a entity
-type 'a t = 'a entity
-type some_t = SomeEntity : 'a t -> some_t
+(** The type of entity with content of type ['a] and high-level
+    changes of type ['c]. *)
+type ('a, 'c) entity
+type ('a, 'c) t = ('a, 'c) entity
 
-(** An entity may react to a change...*)
-type 'a reaction =
-    CORE_identifier.t
-    -> ('a change -> unit)
-    -> dependencies  (** ... of its dependencies *)
-    -> 'a option     (** ... of its content *)
-    -> 'a change
-
-(** A [change] is a tranformation of the entity's content.
-    If the change returns [None], it is equivalent to the
-    identity. *)
-and 'a change = 'a -> 'a option Lwt.t
+(** An entity ... *)
+type ('a, 'c) reaction =
+    CORE_identifier.t      (** [x] may react to ... *)
+    -> dependencies        (** a change of one of its dependencies ... *)
+    -> 'c list             (** or to external requests to change ... *)
+    -> 'a change           (** or requesting an immediate internal change. *)
 
 {shared{
 
@@ -61,28 +59,46 @@ and 'a change = 'a -> 'a option Lwt.t
 type timestamp deriving (Json)
 
 (** Two kinds of events are possibly happening to an entity. *)
-type 'a event =
-    (** A dependency of the entity has been updated, so at
-        some point, the entity will be asked to update itself
-        if necessary. *)
+type event =
+
+  (** A dependency of the entity has been updated, so at some point,
+      the entity will be asked to update itself *if necessary*. A
+      client may be interested in triggering this update. In that
+      case, it simply has to use an observer process on that
+      entity. This observation will force the update to happen
+      immediately.
+
+      In other words, we make a distinction between on the one hand
+      "potential observers", that are interested in being notified
+      when an event happens and "active observers", that are
+      interested in forcing events to happen to have an up-to-date
+      observation of the entity.
+  *)
   | MayChange
 
-   (** The entity has been updated with a new content of type ['a]. *)
-  | HasChanged of 'a
+  (** The entity has been updated. *)
+  | HasChanged
 
 }}
 
 (** On the client side, we can react to every change. *)
-val channel: 'a t -> 'a event CORE_client_reaction.c
+val channel: ('a, 'c) t -> event CORE_client_reaction.c
 
 (** The following module signature specifies the general operations
-    over entities. *)
+    over entities of content type [data] and high-level changes of
+    type [change]. *)
 module type S = sig
 
-  (** The operations are indexed by the type of the content. *)
+  (** The type of the content. *)
   type data
-  type t = data entity
-  type reference deriving (Json)
+
+  (** The type of high-level changes that are available to external
+      entities. *)
+  type change
+
+  (** The specific instance of the entity concept for this type of
+      data and this type of external change. *)
+  type t = (data, change) entity
 
   (** [make ?init reaction id] returns a representation of the entity
       [id] in memory whose behavior is defined by [reaction].
@@ -95,13 +111,14 @@ module type S = sig
       [`AlreadyExists id] is returned.
 
       Notice that having requested for a representation of an entity in
-      memory does not imply that its content is up to date. We prefer a
+      memory does not imply that its content is up-to-date. We prefer a
       lazy approach: only [read] and [change] will trigger the
       computation of the actual content as a reaction to the current
-      state of the system. *)
+      state of the system.
+  *)
   val make:
     ?init:(data * dependencies * CORE_property.set * CORE_source.filename list)
-    -> ?reaction:data reaction
+    -> ?reaction:(data, change) reaction
     -> CORE_identifier.t ->
     [ `OK of t
     | `KO of [>
@@ -110,75 +127,32 @@ module type S = sig
       | `SystemError     of string
     ]] Lwt.t
 
-  (** [identifier e] returns the identifier of [e]. *)
-  val identifier : t -> CORE_identifier.t
+  (** [change e c] externally asks to a change [c] to happen
+      asynchronously. At some point, this request will trigger the
+      reaction of the entity, which is not atomic.
 
-  (** [properties e] returns the properties of [e]. *)
-  val properties : t -> CORE_property.set
+      The reaction also propagates the change to every entity that
+      refers to [e]. These entities will react asynchronously.
 
-  (** [timestamp e] returns the timestamp of [e]. *)
-  val timestamp : t -> timestamp
-
-  (** [dependencies e] returns the dependencies of [e]. *)
-  val dependencies : t -> CORE_inmemory_entity.dependencies
-
-  (** [change e c] asks for the replacement of [e]'s content by [c
-      e].  This attempt triggers the reaction of the entity, which is
-      not atomic. This operation may block if a reaction is already
-      running.
-
-      During this reaction, other attempts  to update the content of [e]
-      are suspended.
-
-      The  reaction also  propagates  the change  to  every entity  that
-      refers to [e]. These entities are updated asynchronously.
-
-      The code describing the change is atomic with respect
-      to the state of the entity. *)
-  val change : ?immediate:bool -> t -> data change -> unit Lwt.t
+      If [immediate] is set, the reaction without further delay.
+      Otherwise, we are lazy: the change is not applied unless a
+      process actively observes the state of entity. *)
+  val change : ?immediate:bool -> t -> change -> unit Lwt.t
 
   (** [observe e o] evaluates [o] with the up-to-date content of [e].
       As long as [o] is not finished, the requested changes to [e] are
       suspended. *)
-  val observe : t -> (data -> 'a Lwt.t) -> 'a Lwt.t
+  val observe : t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
 
-  (** [refer_to x] creates a reference to [t]. *)
-  val refer_to : t -> reference
+  (** [log k e] returns (at most) the [k] last changes previously
+      applied to [e] with their timestamp. The most recent comes
+      first. *)
+  val log : int -> t -> (timestamp * change) list
 
-  (** [deref x] follows the reference [x]. *)
-  val deref : reference ->
-    [ `OK of t
-    | `KO of [>
-      | `UndefinedEntity of CORE_identifier.t
-      | `SystemError     of string
-    ]] Lwt.t
+  (** [identifier e] returns the identifier of [e]. This information
+      will never change during the life of [e]. *)
+  val identifier : t -> CORE_identifier.t
 
-  (** [update_source e fname s] notifies [e] that source [fname] is
-      now [s]. *)
-  val update_source : t -> CORE_source.filename -> CORE_source.t -> unit Lwt.t
-
-  (** [source s] returns a triple made of
-      - [s]
-      - a server-side accessor to the source [s] for entity [x].
-      - a server RPC to retrieve the content of the source [s].
-      If the source does not already exist, it is created with an
-      empty content.
-  *)
-  val source : CORE_source.filename ->
-    (CORE_source.filename
-     * (t -> CORE_source.t Lwt.t)
-     * (CORE_identifier.t, string) server_function)
-
-  val sources : t -> CORE_source.t list
-
-  val vfs_directory : t -> string
-
-  val push_dependency
-    : t -> dependency_kind -> some_t list -> some_t -> unit Lwt.t
-
-  val newer_than : t -> some_t -> bool
-
-  val subscribe : t -> data Lwt_condition.t
 end
 
 (** The following module interface has to be implemented to instantiate
@@ -188,16 +162,36 @@ module type U = sig
   (** The content type. It must be deriving Json. *)
   type data deriving (Json)
 
-  (** The reactive behavior of the entity. *)
-  val react : data reaction
+  (** Type high-level change type. *)
+  type change
+
+  (** The reactive behavior of the entity. One may assume that
+      the state of the entity will not change during the
+      execution of [react]. *)
+  val react : (data, change) reaction
+
+  (** For the logging facilities, we expect a [change] to
+      be showable in a (one line long) string. *)
+  val string_of_change : change -> string
 
 end
 
-(** [passive] is a reaction that does nothing. *)
-val passive : 'a reaction
-
 (** Instantiate a set of operations over a specific type of entity. *)
-module Make (I : U) : S with type data = I.data
+module Make (I : U)
+: S with type data = I.data and type change = I.change
+
+(** Data-only entity. *)
+module type D = sig
+  type data deriving (Json)
+  val string_of_replacement : data -> data -> string
+end
+
+(** Instantiate a set of operations over a specific type of entity
+    that only consists of data. *)
+module MakePassive (I : D)
+: U
+  with type data = I.data
+  and type change = I.data CORE_inmemory_entity.change
 
 (** Unit testing. *)
 module Tests : sig
