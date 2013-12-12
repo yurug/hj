@@ -474,8 +474,9 @@ module Eval = struct
       primitive name (qfunction f)
     in
     primitive "checkpoint" (fun state block ->
+      (** Block with a local state. *)
       apply block state VUnit
-      >>= fun (s, _) -> return (s, VContext s)
+      >>= fun (s, _) -> return (state, VContext s)
     );
 
     (* FIXME: Factorize this out! *)
@@ -628,7 +629,8 @@ module Eval = struct
 
   and apply f s v : (state * value) Lwt.t =
     match f with
-      | VClosure (e, x, t) -> term s ((Local x, v) :: e) t
+      | VClosure (e, x, t) ->
+        term s ((Local x, v) :: e) t
       | VPrimitive p -> p s v
       | _ -> eraise `EvalError (* FIXME: Handle error. *)
 

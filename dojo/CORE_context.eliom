@@ -141,30 +141,30 @@ let null_score = []
 (* FIXME: Factorize the following two kinds of answers? *)
 let check_expected_values xs = function
   | SubmittedValues vs ->
-    if List.length vs <> List.length xs then
-      null_score
-    else
-      let score =
+    let score =
+      if List.length vs <> List.length xs then
+        (0, List.length xs)
+      else
         List.fold_left2 (fun (m, o) v x ->
           if v = x then (succ m, succ o) else (m, succ o)
         ) (0, 0) xs vs
-      in
-      [("Score", score)]
+    in
+    [("Score", score)]
   | _ ->
     null_score
 
 let check_expected_choices xs = function
   | SubmittedChoices cs ->
-    if List.length cs <> List.length xs then
-      null_score
-    else
-      let score =
+    let score =
+      if List.length cs <> List.length xs then
+        (0, 0)
+      else
         if List.(for_all (fun x -> mem x xs) cs) then
           (1, 1)
         else
           (0, 1)
-      in
-      [("Score", score)]
+    in
+    [("Score", score)]
   | _ ->
     null_score
 

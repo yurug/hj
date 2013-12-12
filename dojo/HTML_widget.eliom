@@ -235,6 +235,7 @@ let get_list_editor
 
 let get_choices_editor choices add del =
   let choice_item idx c =
+    let idx = succ idx in
     let change_choice =
       let choice = ref false in
       fun _ ->

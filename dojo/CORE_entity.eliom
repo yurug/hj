@@ -319,9 +319,9 @@ and type change = I.change
     let change_later c =
       return (laters := (fun () -> change ~immediate:true e c) :: !laters)
     in
-    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes)"
+(*    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes)"
                                (string_of_identifier (identifier e))
-                               (List.length cs + List.length (to_list dependencies)));
+                               (List.length cs + List.length (to_list dependencies)));*)
     e.reaction state dependencies cs change_later >>= function
       | NoUpdate ->
         return ()
@@ -371,8 +371,8 @@ and type change = I.change
           Queue.clear queue;
           apply dependencies e (List.rev cs)
           >> return (
-            Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
-                                       (string_of_identifier (identifier e)));
+(*            Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
+                                       (string_of_identifier (identifier e)));*)
             e.state <- UpToDate
           )
 (*        )*)
@@ -406,8 +406,8 @@ and type change = I.change
     let master = ref false in
     (if fresh then update e else return ()) >>
       let rec aux () =
-        Ocsigen_messages.errlog (Printf.sprintf "%s trying to be observed (%d)"
-                                   (string_of_identifier (identifier e)) r);
+(*        Ocsigen_messages.errlog (Printf.sprintf "%s trying to be observed (%d)"
+                                   (string_of_identifier (identifier e)) r); *)
 
         let incr_observers () =
           match e.mode with
@@ -421,15 +421,15 @@ and type change = I.change
           match e.mode with
             | `Commit ->
                 (** A commit is being applied, wait for it to finish. *)
-              Ocsigen_messages.errlog (Printf.sprintf "%s: Observer waits commit"
-                                         (string_of_identifier (identifier e)));
+(*              Ocsigen_messages.errlog (Printf.sprintf "%s: Observer waits commit"
+                                         (string_of_identifier (identifier e)));*)
               Lwt_condition.wait e.commit_cond
                 (** and try to observe again. *)
               >> aux ()
 
             | `Observe x -> return (
-              Ocsigen_messages.errlog (Printf.sprintf "%s: is observed"
-                                         (string_of_identifier (identifier e)));
+(*              Ocsigen_messages.errlog (Printf.sprintf "%s: is observed"
+                                         (string_of_identifier (identifier e)));*)
 
                 (** An observer already took the mutex. *)
                 (** Let us register our presence to him. *)
