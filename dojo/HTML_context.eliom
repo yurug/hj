@@ -18,7 +18,7 @@ open COMMON_pervasives
 
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let get () = CORE_evaluation.(
-    lwt d = observe evaluation (fun d -> return (content d)) in
+    lwt d = observe ~fresh:true evaluation (fun d -> return (content d)) in
     flush_diagnostic_commands_of_checkpoint evaluation checkpoint
     >> return d)
   in
@@ -46,7 +46,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
             | Some (Evaluated (score, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
-              return [pcdata "Fini"]
+              return [pcdata (string_of_score score)]
             | None ->
               return [pcdata "?"]
         )

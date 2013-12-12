@@ -93,6 +93,7 @@ let create_job checkpoint context submission change_later =
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s =
+    Ocsigen_messages.errlog "Change state";
     change_later (NewEvaluationState (checkpoint, s))
   in
   let message job msg =
@@ -162,15 +163,14 @@ let evaluate change_later exercise answer cps data =
   let evaluate checkpoint current_state =
     let run_submission_evaluation c s =
       (CORE_answer.mark_handled_submission answer checkpoint c
-         >> return (BeingEvaluated (ExecutableJob 0,  CORE_diagnostic.Empty, c)))
-       (* >> create_job checkpoint c s change_later >>= function
+       >> create_job checkpoint c s change_later >>= function
          | Some job ->
            Ocsigen_messages.errlog "Job created.";
            return (BeingEvaluated (job, CORE_diagnostic.Empty, c))
          | None ->
            (* FIXME: transmission error. *)
            Ocsigen_messages.errlog "Transmission error";
-           return (Evaluated ([], CORE_diagnostic.Empty, c)))*)
+           return (Evaluated ([], CORE_diagnostic.Empty, c)))
     in
 
     CORE_answer.submission_of_checkpoint answer checkpoint >>= function
@@ -186,43 +186,54 @@ let evaluate change_later exercise answer cps data =
             We have two different subcases here depending on the
             evaluation context.
         *)
-        lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
-        let job, c' = match current_state with
-          | Some (Evaluated (_, _, c')) -> (None, Some c')
-          | Some (BeingEvaluated (job, _, c')) -> (Some job, Some c')
-          | _ -> (None, None)
-        in
-        Ocsigen_messages.errlog (
-          match c' with
-            | None -> "no context"
-            | Some c' -> "context " ^ CORE_context.string_of_context c'
-        );
-        if Some c = c' then (
-          Ocsigen_messages.errlog "Same context, do nothing";
-            match current_state with
-            | None -> assert false
-            | Some e -> return e
-        ) else (
-          Ocsigen_messages.errlog "New context, reeval";
-          (** We have already have a score but with a different
-              context. It must be recomputed. *)
-            cancel_job_if_present job
-          >> run_submission_evaluation c s
-        )
+        begin
+          try_lwt
+            lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
+            lwt job, c' = match current_state with
+              | Some (Evaluated (_, _, c')) -> return (None, Some c')
+              | Some (BeingEvaluated (job, _, c')) -> return (Some job, Some c')
+              | _ -> raise_lwt Not_found
+            in
+            Ocsigen_messages.errlog (
+              match c' with
+                | None -> "no context"
+                | Some c' -> "context " ^ CORE_context.string_of_context c'
+            );
+            if Some c = c' then (
+              Ocsigen_messages.errlog "Same context, do nothing";
+              match current_state with
+                | None -> assert false
+                | Some e -> return e
+            ) else (
+              Ocsigen_messages.errlog "New context, reeval";
+            (** We have already have a score but with a different
+                context. It must be recomputed. *)
+              cancel_job_if_present job
+              >> run_submission_evaluation c s
+            )
+        end
 
       | Some (NewSubmission s) ->
         lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
         run_submission_evaluation c s
 
   in
-  lwt jobs = Lwt_list.fold_left_s (fun jobs cp ->
-    let e = try Some (List.assoc cp data.jobs) with Not_found -> None in
-    lwt e = evaluate cp e in
-    return ((cp, e) :: jobs)
-  ) [] cps
-  in
-  Ocsigen_messages.errlog ("Updating jobs of evaluation");
-  return (UpdateContent { data with jobs })
+  try_lwt
+    lwt jobs = Lwt_list.fold_left_s (fun jobs cp ->
+      let e = try Some (List.assoc cp data.jobs) with Not_found -> None in
+      lwt e = evaluate cp e in
+      return ((cp, e) :: jobs)
+    ) [] cps
+    in
+    Ocsigen_messages.errlog ("Updating jobs of evaluation");
+    return (UpdateContent { data with jobs })
+  with Not_found ->
+    (** We are in the case where a submission is marked as
+        handled by a reaction of this evaluation but it
+        has not finished reacting. We let it finish
+        that reaction. *)
+    return NoUpdate
+
 
 (* let evaluate_all change_later exercise answer data =
   lwt all_cps = CORE_exercise.all_checkpoints exercise in

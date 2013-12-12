@@ -315,7 +315,10 @@ and type change = I.change
         itself can be computed concurrently to observations: as soon
         as nothing is observable from the point of view of these
         observations, this is fine. *)
-    let change_later = change ~immediate:true e in
+    let laters = ref [] in
+    let change_later c =
+      return (laters := (fun () -> change ~immediate:true e c) :: !laters)
+    in
     Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes)"
                                (string_of_identifier (identifier e))
                                (List.length cs + List.length (to_list dependencies)));
@@ -324,14 +327,21 @@ and type change = I.change
         return ()
 
       | llc ->
-        wait_to_be_observer_free e (fun () ->
-          let old = e.description in
-          e.description <- CORE_inmemory_entity.update e.description llc;
-          OTD.save e.description
-          >>= function
-            | `KO error -> warn error; return (e.description <- old)
-            | `OK _ -> savelog e cs >> return (e.push HasChanged)
-        )
+        lwt ret =
+          wait_to_be_observer_free e (fun () ->
+            let old = e.description in
+            e.description <- CORE_inmemory_entity.update e.description llc;
+            OTD.save e.description
+            >>= function
+              | `KO error -> warn error; return (e.description <- old)
+              | `OK _ -> savelog e cs >> return (e.push HasChanged)
+          )
+        in
+        let rec aux = function
+          | [] -> return ret
+          | j :: js -> j () >> aux js
+        in
+        aux !laters
 
   and savelog e cs =
     let ts = CORE_inmemory_entity.timestamp e.description in
