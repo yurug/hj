@@ -48,7 +48,7 @@ let entity_sources_div
       in
       let get_editor =
         (* FIXME: I8N. *)
-        get_list_editor ~no_header:true "Sources" ["Filenames"] get_sources (Some set_sources)
+        get_list_editor ~no_header:true ["Filenames"] get_sources (Some set_sources)
           (fun i ->
             let import suggested_filename =
               try_lwt

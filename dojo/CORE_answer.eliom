@@ -227,6 +227,18 @@ let submit_file answer checkpoint tmp_filename filename =
                          [source])
   ))
 
+let submit_answer_values answer checkpoint values =
+  Ocsigen_messages.errlog (
+    Printf.sprintf "Values submitted! (%s)" (String.concat " " values)
+  );
+  ltry (fun lraise ->
+    change ~immediate:true answer (
+      NewSubmissionData (checkpoint,
+                         CORE_context.new_submitted_values values,
+                         [])
+    )
+  )
+
 let submission_of_checkpoint answer cp =
   observe answer (fun a -> return (opt_assoc cp (content a).submissions))
 

@@ -479,9 +479,12 @@ module Eval = struct
     let as_string_list = function
       | VTemplate t ->
         eval_template ( List.flatten ) (function
+          | VString "" -> []
           | VString s -> [s]
           | _ -> eraise `EvalError
         ) t
+      | VString "" ->
+        []
       | VString s ->
         [s]
       | _ -> eraise `EvalError

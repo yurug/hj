@@ -54,13 +54,30 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
   in
   return (div [d; diagnostic])
 
+(* FIXME: Factorize the following two functions. *)
+
 let submit_file exo_id cp tmp_filename filename =
   CORE_user.authenticate "root" "foo" >>= function
     | `OK u -> (
       CORE_exercise.make exo_id >>>= fun exo ->
       answer_of_exercise_from_authors exo [u] >>= function
         | `OK a ->
-          submit_file a cp tmp_filename filename
+          CORE_answer.submit_file a cp tmp_filename filename
+        | `KO e ->
+          warn e;
+          return (`OK ())
+    )
+    | `KO e ->
+      warn e;
+      return (`OK ())
+
+let submit_answer_values exo_id cp vs =
+  CORE_user.authenticate "root" "foo" >>= function
+    | `OK u -> (
+      CORE_exercise.make exo_id >>>= fun exo ->
+      answer_of_exercise_from_authors exo [u] >>= function
+        | `OK a ->
+          CORE_answer.submit_answer_values a cp vs
         | `KO e ->
           warn e;
           return (`OK ())
@@ -85,7 +102,37 @@ let display_user_input exo_id checkpoint context =
         return (tmp_filename, commit)
       ))
     | Some (`KeyValues vs) ->
-      return (div [pcdata "values"])
+      let answers = ref (List.map (fun v -> [v; ""]) vs) in
+      let get () = return !answers in
+      let set ss =
+        Ocsigen_messages.errlog "Set!";
+        return (answers := ss)
+      in
+      let fields = ["Key"; "Value"] in
+      let extra _ = [] in
+      let list_editor =
+        HTML_widget.get_list_editor
+          ~no_header:true
+          ~no_insertion:true
+          fields get (Some set) extra
+      in
+      let editor_div = Id.create_global_elt (div []) in
+      {unit Lwt.t{
+        lwt e = %list_editor () in
+        return (Manip.replaceAllChild %editor_div [e])
+      }};
+      let submit = server_function Json.t<unit> (fun () ->
+          submit_answer_values exo_id checkpoint (
+            List.map (function [_;x] -> x | _ -> assert false) !answers
+          )
+      )
+      in
+      let submit_button = HTML_widget.button ["OK"] {{
+        fun _ ->
+          Lwt.async (fun () -> %submit ())
+      }}
+      in
+      return (div [editor_div; submit_button])
 
 let display_context exo_id checkpoint context evaluation =
   lwt user_input = display_user_input exo_id checkpoint context in

@@ -53,7 +53,11 @@ type editable_list = {
   replace   : (int -> string list -> unit Lwt.t) option;
 }
 
-let list_editor ?(no_header=false) label list (extra_actions : int -> _) =
+let list_editor
+    ?(no_header    = false)
+    ?(no_action    = false)
+    ?(no_insertion = false)
+    list (extra_actions : int -> _) =
 
   (** A table to convert HTML5 identifier into list indices. *)
 
@@ -164,7 +168,7 @@ let list_editor ?(no_header=false) label list (extra_actions : int -> _) =
     td ([ remove_action; replace_action ] @ extra_actions idx)
 
   and cells_of_tr fields table id idx =
-    List.map field fields @ [tools_of table id idx]
+    List.map field fields @ (if no_action then [] else [tools_of table id idx])
 
   and field f =
     (* FIXME: A workaround to the following bug of Ocsigen:
@@ -186,7 +190,8 @@ let list_editor ?(no_header=false) label list (extra_actions : int -> _) =
   in
   let tableid = Id.new_elt_id () in
   lwt e = list.index_end () in
-  lwt rows = Lwt_list.map_s (row_of_idx tableid) (range 0 (e + 1)) in
+  let r = range 0 (if no_insertion then e else e + 1) in
+  lwt rows = Lwt_list.map_s (row_of_idx tableid) r in
   let table =
     if no_header then
       tablex [Id.create_named_elt ~id:tableid (tbody rows)]
@@ -199,7 +204,11 @@ let list_editor ?(no_header=false) label list (extra_actions : int -> _) =
   in
   return (div [table])
 
-let get_list_editor ?(no_header=false) label fields get set extra_actions =
+let get_list_editor
+    ?(no_header    = false)
+    ?(no_action    = false)
+    ?(no_insertion = false)
+    fields get set extra_actions =
   let rd f = lwt l = get () in f l in
   let empty = List.map (fun _ -> "") fields in
   let remove, replace =
@@ -221,7 +230,7 @@ let get_list_editor ?(no_header=false) label fields get set extra_actions =
     })
   in
   server_function Json.t<unit> (fun () ->
-    list_editor ~no_header label desc extra_actions
+    list_editor ~no_header ~no_action ~no_insertion desc extra_actions
   )
 
 {client{
