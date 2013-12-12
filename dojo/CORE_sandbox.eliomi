@@ -7,7 +7,9 @@
 
 {shared{
 
-type job deriving (Json)
+type job = int deriving (Json)
+
+val string_of_job : job -> string
 
 }}
 

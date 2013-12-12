@@ -35,6 +35,8 @@ let push_canceler = Hashtbl.replace jobs
 
 type job = int deriving (Json)
 
+let string_of_job = string_of_int
+
 }}
 
 let job_canceler job =

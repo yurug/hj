@@ -13,6 +13,7 @@
 open Lwt
 open Lwt_process
 
+open CORE_inmemory_entity
 open CORE_entity
 open CORE_identifier
 open CORE_error_messages
@@ -50,10 +51,10 @@ type description = {
 type data = description
 }}
 
-include CORE_entity.Make (struct
+include CORE_entity.Make (CORE_entity.Passive (struct
   type data = description deriving (Json)
-  let react = passive
-end)
+  let string_of_replacement _ = "Update."
+end))
 
 type execution_observer =
   | ObserveProcess of process_full
@@ -102,7 +103,7 @@ let choose_waiting_list mc exclusive =
   )
   in
   observe mc List.(fun data ->
-    match data.available_addresses with
+    match (content data).available_addresses with
       | [] -> return None
       | l -> return (Some (fst (hd (sort smallest_waiting_list l))))
   )
@@ -119,12 +120,13 @@ let wait_for_sandbox mc addr waiting_rank =
     (* FIXME: The following piece of code shows an expressiveness
        efficiency of the CORE_entity API. *)
     let tr = ref None in
-    change ~immediate:true mc (fun data ->
+    lwt data = observe mc (fun d -> return (content d)) in
+    change ~immediate:true mc (UpdateContent (
       let wl = get_wl data in
       let (wl, t) = take_ticket wl in
       tr := Some t;
-      return (Some (set_wl data wl))
-    ) >> (match !tr with
+      set_wl data wl
+    )) >> (match !tr with
       | None -> (* FIXME *) assert false
       | Some t -> return t
     )
@@ -133,28 +135,25 @@ let wait_for_sandbox mc addr waiting_rank =
   (** We react to every change of mc, looking for an update
       of the waiting list of [addr]. *)
   let rec wait last_wl =
-    (* FIXME: Define a reasonable timeout. *)
-    lwt_condition_wait_timeout 5 (subscribe mc) >>= function
-      | None ->
-        (** We abandon. Throwing away our ticket. *)
-        change ~immediate:true mc (fun data ->
-          return (Some (set_wl data (delete_ticket (get_wl data) ticket)))
-        ) >> raise_lwt Not_found
-
-      | Some data ->
-        let wl = get_wl data in
-        if (last_wl = wl) then
+    (* FIXME: Reimplement that by extending observation to a
+       notion of "observation for a change" (with a timeout). *)
+    Lwt_unix.sleep 1. >> observe mc (fun state ->
+      let data = content state in
+      let wl = get_wl data in
+      if (last_wl = wl) then
           (** No interesting change for us. *)
-          wait last_wl
-        else
-          process wl
+        wait last_wl
+      else
+        process wl
+    )
 
   and process wl =
     match ticket_turn wl ticket with
       | Expired ->
         (** This ticket is expired. *)
-        change ~immediate:true mc (fun data ->
-          return (Some (set_wl data (delete_ticket (get_wl data) ticket)))
+        lwt data = observe mc (fun s -> return (content s)) in
+        change ~immediate:true mc (
+          UpdateContent (set_wl data (delete_ticket (get_wl data) ticket))
         ) >> raise_lwt Not_found
         (* FIXME: How is that possible? *)
 
@@ -165,14 +164,15 @@ let wait_for_sandbox mc addr waiting_rank =
       | Active r ->
         (** This is our turn. Build an interface out of this resource. *)
         let release () =
-          change ~immediate:true mc (fun data ->
-            let wl = COMMON_waiting_list.release (get_wl data) r in
-            return (Some (set_wl data wl))
-          )
+        lwt data = observe mc (fun s -> return (content s)) in
+        change ~immediate:true mc (UpdateContent (
+          let wl = COMMON_waiting_list.release (get_wl data) r in
+          set_wl data wl
+        ))
         in
         return (build_sandbox_interface (resource_value r) addr release)
   in
-  lwt data = observe mc (fun data -> return data) in
+  lwt data = observe mc (fun data -> return (content data)) in
   process (get_wl data)
 
 
@@ -209,7 +209,7 @@ let kind mc =
   return ()
 
 let get_logins mc =
-  lwt l = observe mc (fun d -> return d.available_logins) in
+  lwt l = observe mc (fun d -> return (content d).available_logins) in
   return (List.map (fun i -> [i.username; i.ssh_key]) l)
 
 let set_logins mc l =
@@ -221,10 +221,11 @@ let set_logins mc l =
       | _ -> (* FIXME: handle user error *) assert false
     ) l
   in
-  change mc (fun d -> return (Some { d with available_logins = l }))
+  lwt d = observe mc (fun d -> return (content d)) in
+  change mc (UpdateContent { d with available_logins = l })
 
 let get_addresses mc =
-  lwt l = observe mc (fun d -> return d.available_addresses) in
+  lwt l = observe mc (fun d -> return (content d).available_addresses) in
   return (List.map (fun (a, _) -> [fst a; string_of_int (snd a)]) l)
 
 let set_addresses mc l =
@@ -238,11 +239,12 @@ let set_addresses mc l =
      machinist is not already busy.
      We must be a bit more careful by allowing untouched
      addresses to keep their jobs. *)
-  change mc (fun d ->
+  lwt d = observe mc (fun d -> return (content d)) in
+  change mc (UpdateContent (
     let resource = d.available_logins in
     let l = List.map (fun a -> (a, COMMON_waiting_list.empty resource)) l in
-    return (Some { d with available_addresses = l })
-  )
+    { d with available_addresses = l }
+  ))
 
 let make_default id =
   let default = {

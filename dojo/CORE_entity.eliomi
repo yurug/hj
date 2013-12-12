@@ -48,10 +48,11 @@ type ('a, 'c) t = ('a, 'c) entity
 
 (** An entity ... *)
 type ('a, 'c) reaction =
-    CORE_identifier.t      (** [x] may react to ... *)
-    -> dependencies        (** a change of one of its dependencies ... *)
-    -> 'c list             (** or to external requests to change ... *)
-    -> 'a change           (** or requesting an immediate internal change. *)
+    'a meta                  (** with ['a meta] state may react to *)
+    -> dependencies          (** a change of one of its dependencies ... *)
+    -> 'c list               (** or to external requests to change ... *)
+    -> ('c -> unit Lwt.t)    (** by scheduling a change or ... *)
+    -> 'a state_change Lwt.t (** by requesting an immediate internal change. *)
 
 {shared{
 
@@ -139,19 +140,23 @@ module type S = sig
       process actively observes the state of entity. *)
   val change : ?immediate:bool -> t -> change -> unit Lwt.t
 
-  (** [observe e o] evaluates [o] with the up-to-date content of [e].
+  (** [observe e o] evaluates [o] with the content of [e].
+
+      if [fresh = true] then pending changes are applied before
+      observation so that the content is as fresh as possible.
+
       As long as [o] is not finished, the requested changes to [e] are
       suspended. *)
-  val observe : t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
-
-  (** [log k e] returns (at most) the [k] last changes previously
-      applied to [e] with their timestamp. The most recent comes
-      first. *)
-  val log : int -> t -> (timestamp * change) list
+  val observe : ?fresh:bool -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
 
   (** [identifier e] returns the identifier of [e]. This information
       will never change during the life of [e]. *)
   val identifier : t -> CORE_identifier.t
+
+  (** [log k e] returns (at most) the [k] last changes previously
+      applied to [e] with their timestamp. The most recent comes
+      first. *)
+  val log : t -> int -> (change * timestamp) list
 
 end
 
@@ -183,15 +188,15 @@ module Make (I : U)
 (** Data-only entity. *)
 module type D = sig
   type data deriving (Json)
-  val string_of_replacement : data -> data -> string
+  val string_of_replacement : data -> string
 end
 
 (** Instantiate a set of operations over a specific type of entity
     that only consists of data. *)
-module MakePassive (I : D)
+module Passive (I : D)
 : U
   with type data = I.data
-  and type change = I.data CORE_inmemory_entity.change
+  and type change = I.data CORE_inmemory_entity.state_change
 
 (** Unit testing. *)
 module Tests : sig

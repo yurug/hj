@@ -10,6 +10,7 @@ open HTML_widget
 }}
 
 open COMMON_pervasives
+open CORE_inmemory_entity
 open CORE_machinist
 open CORE_error_messages
 open HTTP_services
@@ -31,7 +32,7 @@ let edit_list label fields get set =
 
 let machinist_page mc =
   let react_to_mc = HTML_entity.reactive_div mc None in
-  let get () = observe mc (fun d -> return d) in
+  let get () = observe mc (fun d -> return (content d)) in
   let logins_div =
     edit_list I18N.String.logins ["username"; "ssh key"]
       (fun () -> get_logins mc)

@@ -5,6 +5,9 @@
 open Lwt
 open Eliom_parameter
 
+open CORE_identifier
+open CORE_onthedisk_entity
+open CORE_inmemory_entity
 open CORE_entity
 open CORE_standard_identifiers
 open CORE_error_messages
@@ -18,6 +21,8 @@ module C = CORE_description_CST
 open CORE_identifier
 
 type checkpoint = CORE_questions.checkpoint deriving (Json)
+
+let string_of_checkpoint s = s
 
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
 
@@ -39,41 +44,95 @@ type patch = CORE_errors.position * CORE_errors.position * string
 type data = description
 }}
 
+let raw_user_description_filename = "description.txt"
+
 let eval_questions this c =
   lwt v = CORE_questions.eval this c.questions in
-  return (Some {
-    c with questions_value = Some (c.questions, v)
-  })
+  return { c with questions_value = Some (c.questions, v) }
 
 exception Error of [ `UndefinedEntity of CORE_identifier.t
                    | `AlreadyExists   of CORE_identifier.path
                    | `SystemError     of string
                    | `NeedPatch       of patch]
 
+type public_change =
+  | NewAnswer of
+      CORE_identifier.t list (** Authors *)
+    * CORE_identifier.t      (** Answer  *)
+  | EvalQuestions
+  | Update of string * questions
+  | UpdateSource of C.exercise C.with_raw
+
+let answer_of_dependency_kind = "answer_of"
+
 include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react this change_later deps new_data data =
-    (** We reset the questions_value as a reaction to every
-        change of one dependency or a change of the questions
-        field. *)
-    let new_data, data, must_reset_value =
-      match new_data with
-      | None ->
-        (None, data, false)
-      | Some ({ questions_value = Some (qv, _); questions } as data) ->
-        (Some data, data, qv <> questions)
-      | Some ({ questions_value = None } as data) ->
-        (Some data, data, true)
+  type change = public_change
+
+  let string_of_change = function
+    | NewAnswer (authors, answer) ->
+      Printf.sprintf "New answer %s from %s."
+        (string_of_identifier answer)
+        (String.concat ", " (List.map string_of_identifier authors))
+    | EvalQuestions -> "Evaluate questions."
+    | Update _ -> "Update the questions' AST."
+    | UpdateSource _ -> "Update the questions' CST."
+
+  let update_description_source state raw =
+    let source = CORE_source.make raw_user_description_filename raw in
+    save_source state source
+
+  let react state deps cs change_later =
+
+    let extras = ref [] in
+
+    let make_change (dependencies, content) = function
+      | NewAnswer (authors, answer) ->
+        (* FIXME: Is it correct ? *)
+        return (
+          push dependencies (answer, (answer_of_dependency_kind, authors)),
+          content
+        )
+
+      | EvalQuestions ->
+        lwt content = eval_questions (identifier state) content in
+        return (dependencies, content)
+
+      | Update (title, questions) ->
+        let must_reset_value =
+          match content.questions_value with
+            | Some (qv, _) when qv <> questions ->
+              true
+            | _ ->
+              false
+        in
+        Ocsigen_messages.errlog (Printf.sprintf "Must reset value: %B (isNone: %B)" must_reset_value (content.questions_value = None));
+        if (not must_reset_value)
+          && title = content.title
+          && questions = content.questions
+        then
+          return (dependencies, content)
+        else
+          let questions_value =
+            if must_reset_value then None else content.questions_value
+          in
+          return (dependencies, {
+            content with title; questions; questions_value
+          })
+
+      | UpdateSource (raw, cst) ->
+        let c = { content with cst } in
+        update_description_source (identifier state) raw
+        >>= function
+          | `OK () -> return (dependencies, c)
+          | `KO e -> warn e; return (dependencies, c) (* FIXME: handle error. *)
     in
-    if must_reset_value then (
-      change_later (eval_questions this);
-      return (Some { data with questions_value = None })
-    )
-    else (
-      return new_data
-    )
+    lwt d, c =
+      Lwt_list.fold_left_s make_change (dependencies state, content state) cs
+    in
+    return (UpdateSequence (UpdateContent c, UpdateDependencies d))
 
 end)
 
@@ -88,13 +147,31 @@ let current_value d =
     | Some (_, v) -> Some v
 }}
 
-let (raw_user_description_filename,
-     raw_user_description_source,
-     raw_user_description_retrieve)
-    = source "description.txt"
+let force_update id =
+  make id >>= function
+    | `OK e ->
+      observe e (fun c -> return c) >> return ()
+    | `KO e ->
+      warn e; return ()
+
+let raw_user_description_source id =
+  (** We force the update of [id] because some update of the source
+      might be dangling. *)
+(*  force_update id
+  >> *) CORE_onthedisk_entity.load_source id raw_user_description_filename
+
+let raw_user_description_retrieve =
+  server_function Json.t<CORE_identifier.t> (fun id ->
+    Ocsigen_messages.errlog "Retrieve exo description";
+    raw_user_description_source id >>= function
+      | `KO e -> warn e; return "(network error)" (* FIXME *)
+      | `OK s -> return (CORE_source.content s)
+  )
 
 {client{
-let raw_user_description id = %raw_user_description_retrieve id
+let raw_user_description id : string Lwt.t =
+  Firebug.console##log (Js.string "Get user description");
+  %raw_user_description_retrieve id
 }}
 
 let with_local_error e = raise (Error e)
@@ -103,14 +180,14 @@ let sub_id_from_user_string s =
   let ps = path_of_string s in
   identifier_of_path (concat exercises_path ps)
 
-let include_subs cst =
+(* let include_subs cst =
   let aux = function
 
     | C.Include (id, start, stop) ->
       let id = sub_id_from_user_string id.C.node in
       (make id >>= function
         | `OK e' ->
-          lwt source = raw_user_description_source e' in
+          lwt source = raw_user_description_source (identifier e') in
           let content = CORE_source.content source in
           let patch = (start, stop, content) in
           return ([patch])
@@ -121,6 +198,7 @@ let include_subs cst =
   in
   lwt lps = Lwt_list.map_s aux cst.C.questions in
   return (List.flatten lps)
+*)
 
 let collect_on_subs cst f =
   let rec aux = function
@@ -134,6 +212,7 @@ let collect_on_subs cst f =
   lwt xs = Lwt_list.map_s aux cst.C.questions in
   return (List.flatten xs)
 
+(*
 let new_inline_subs raw e cst =
   Ocsigen_messages.errlog ("Searching for new inline definitions");
   collect_on_subs cst (fun id def ->
@@ -175,6 +254,7 @@ let outdated_subs e cst =
             )
          else return (`OK [])
    end with_local_error)
+*)
 
 let initial_source_filenames = [
   raw_user_description_filename
@@ -193,6 +273,7 @@ let rec questions_from_cst raw e cst =
   in
 
   let rec component = function
+    | C.Sub _ -> assert false (* FIXME: to be implemented. *)
     | C.Import (tys, id, xs) ->
       return (
         Import (enumeration typ tys,
@@ -211,11 +292,11 @@ let rec questions_from_cst raw e cst =
       in
       return (Binding (l, typ' ty, term t))
 
-    | C.Sub (id, def) ->
+(*    | C.Sub (id, def) ->
       let id = sub_id_from_user_string id.C.node in
       make id >>= function
         | `OK e' ->
-          (lwt cst = observe e' (fun d -> return d.cst) in
+          (lwt cst = observe e' (fun d -> return (content d).cst) in
            Ocsigen_messages.errlog "Consider pushing.";
            if cst <> def.C.node then
                 (** At this point, the inline definition is necessarily new. *)
@@ -225,8 +306,10 @@ let rec questions_from_cst raw e cst =
                change_from_user_description e' (C.with_sub_raw raw def)
              ) with_local_error
            else return []
-          ) >>= fun _ -> return (Sub (id, timestamp e'))
-        | `KO e -> with_local_error e
+          ) >>= fun _ ->
+          lwt ts = observe e' (fun d -> return (CORE_inmemory_entity.timestamp d)) in
+          return (Sub (id, ts))
+        | `KO e -> with_local_error e *)
 
   and typ' = function
     | None -> None
@@ -275,8 +358,8 @@ let rec questions_from_cst raw e cst =
 (** Compare an entity with the user description CST to decide if
     the user description is different from the entity. *)
 and changed x questions cst =
-  lwt o1 = observe x (fun d -> return (d.questions <> questions)) in
-  lwt o2 = observe x (fun d -> return (d.title <> cst.C.title.C.node)) in
+  lwt o1 = observe x (fun d -> return ((content d).questions <> questions)) in
+  lwt o2 = observe x (fun d -> return ((content d).title <> cst.C.title.C.node)) in
   return (o1 || o2)
 
 (** Take an exercise [x] and a user description [cr] and produce a
@@ -290,7 +373,23 @@ and changed x questions cst =
     requests for the user to confirm their creation.
 *)
 and change_from_user_description x cr =
-  try_lwt
+  lwt source_changed =
+    raw_user_description_source (identifier x) >>= function
+    | `KO e -> warn e; return true (* FIXME *)
+    | `OK s -> return (CORE_source.content s <> C.raw cr)
+  in
+  if source_changed then (
+    change x (UpdateSource cr) >>
+      let cst = C.data cr in
+      lwt questions = questions_from_cst (C.raw cr) x cst in
+      lwt changed = changed x questions cst in
+      if changed then
+        change x (Update (cst.C.title.C.node, questions))
+      else
+        return ()
+  ) else return ()
+
+(*  try_lwt
     let cst = C.data cr in
     include_subs cst >>= function
       | [] ->
@@ -328,13 +427,14 @@ and change_from_user_description x cr =
         return (`KO (`NeedPatch p))
   with Error e ->
     return (`KO e)
+*)
 
-let eval e = change e (eval_questions (identifier e))
+let eval e = change e EvalQuestions
 
 let assignment_rule e k =
   observe e (fun c -> return (
     try
-      CORE_property.conjs (List.assoc k c.assignment_rules)
+      CORE_property.conjs (List.assoc k (content c).assignment_rules)
     with Not_found -> CORE_property.True
   ))
 
@@ -344,14 +444,14 @@ let exercise_id username =
   )
 
 let rec eval_if_needed e =
-  observe e (fun d -> return d.questions_value) >>= function
+  observe e (fun d -> return (content d).questions_value) >>= function
     | None -> eval e >> eval_if_needed e
     | Some (_, v) -> return v
 
 let _ =
   CORE_questions.set_import_exercise (fun id ->
     make id >>= function
-      | `OK e -> observe e (fun d -> return d.questions)
+      | `OK e -> observe e (fun d -> return (content d).questions)
       | _ -> assert false (* FIXME *)
   )
 

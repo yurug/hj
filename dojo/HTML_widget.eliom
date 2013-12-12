@@ -212,14 +212,17 @@ let get_list_editor ?(no_header=false) label fields get set extra_actions =
       | None ->
         (None, None)
   in
-  server_function Json.t<unit> (fun () ->
-    List.(list_editor ~no_header label {
+  let desc = List.({
       fields;
       index_end = (fun () -> rd (fun l -> return (length l)));
       display   = (fun k -> rd (fun l -> return (try nth l k with _ -> empty)));
       remove;
-      replace
-    }) extra_actions)
+      replace;
+    })
+  in
+  server_function Json.t<unit> (fun () ->
+    list_editor ~no_header label desc extra_actions
+  )
 
 {client{
   let toggle s e =

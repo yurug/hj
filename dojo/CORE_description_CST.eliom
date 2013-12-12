@@ -47,8 +47,10 @@ type exercise = {
 and component =
   | Include     of identifier * position * position
   | Sub         of identifier * exercise located
-  | Binding     of CORE_identifier.label option * ty option * term located
+  | Binding     of binding
   | Import      of ty enumerate * identifier * CORE_identifier.label enumerate
+
+and binding = CORE_identifier.label option * ty option * term located
 
 and t = component list
 

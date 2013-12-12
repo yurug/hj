@@ -79,7 +79,9 @@ let reactive_div e after_display get display  =
   let update = server_function Json.t<unit> (fun () ->
     get () >> return ()
   )
-  in let e_channel = CORE_entity.channel e in
+  in
+  let e_channel = CORE_entity.channel e in
+  let remote_get = server_function Json.t<unit> (fun () -> get ()) in
   ignore {unit{
     let process data =
       lwt cs = %display data in
@@ -91,9 +93,13 @@ let reactive_div e after_display get display  =
       )
     in
     CORE_client_reaction.react_on_background %e_channel (function
-      | CORE_entity.HasChanged data ->
+      | CORE_entity.HasChanged ->
+        Firebug.console##log (Js.string "Entity has changed");
         (** Update the entity view. *)
-        process data
+        (try_lwt
+           lwt data = %remote_get () in
+           process data
+         with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e))))
       | CORE_entity.MayChange ->
         (** Force the change as we are observing the entity. *)
         %update ()

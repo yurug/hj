@@ -17,7 +17,12 @@ open COMMON_pervasives
 
 type job =
   | ExecutableJob of CORE_sandbox.job
+  | ImmediateEvaluation
 deriving (Json)
+
+let string_of_job = function
+  | ExecutableJob job -> CORE_sandbox.string_of_job job
+  | ImmediateEvaluation -> "immediate"
 
 type submission = string deriving (Json)
 
@@ -26,6 +31,15 @@ type evaluation_state =
   | Evaluated of CORE_context.score * CORE_diagnostic.command * CORE_context.t
   | BeingEvaluated of job * CORE_diagnostic.command * CORE_context.t
 deriving (Json)
+
+let string_of_evaluation_state = function
+  | Unevaluated ->
+    "Not evaluated"
+  | Evaluated (score, _, _) ->
+    Printf.sprintf "Evaluated with score %s"
+      (CORE_context.string_of_score score)
+  | BeingEvaluated (job, _, _) ->
+    Printf.sprintf "Being evaluated by job %s" (string_of_job job)
 
 type description = {
   answer   : CORE_identifier.t;
@@ -38,6 +52,10 @@ type description = {
 {client{
 type data = description
 }}
+
+type public_change =
+  | FlushDiagnosticCommandsOfCheckpoint of CORE_exercise.checkpoint
+  | NewEvaluationState of CORE_exercise.checkpoint * evaluation_state
 
 let evaluation_of_answer_dependency_kind = "evaluation_of_answer"
 
@@ -69,19 +87,13 @@ let new_evaluation_state_of_checkpoint c s d =
           | _, s ->
             s
   in
-  let ss = match s with
-    | BeingEvaluated _ -> "en cours"
-    | Evaluated _ -> "done"
-    | _ -> "not done"
-  in
-  Ocsigen_messages.errlog (Printf.sprintf "New eval state of cp (%s)" ss);
-  return (Some { d with jobs = update_assoc c s d.jobs })
+  return { d with jobs = update_assoc c s d.jobs }
 
 let create_job checkpoint context submission change_later =
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s =
-    return (change_later (new_evaluation_state_of_checkpoint checkpoint s))
+    change_later (NewEvaluationState (checkpoint, s))
   in
   let message job msg =
     change_state (BeingEvaluated (job, CORE_diagnostic.PushLine msg, context))
@@ -108,7 +120,6 @@ let create_job checkpoint context submission change_later =
       (* FIXME: Put that in the private log for teachers. *)
       return ()
     | Exited _ ->
-      Ocsigen_messages.errlog "Mark";
       mark ()
     | _ -> return ()
   ) in
@@ -116,7 +127,11 @@ let create_job checkpoint context submission change_later =
     match get_command context with
       | None ->
         return None (* FIXME: is it sound? *)
-      | Some cmd ->
+      | Some (`ExpectedValues vs) ->
+        score := CORE_context.check_expected_values vs submission;
+        mark ()
+        >> return (Some ImmediateEvaluation)
+      | Some (`Command cmd) ->
         let timeout =
           match get_timeout context with
             | None -> 120. (* FIXME: Make it a parameter. *)
@@ -142,14 +157,16 @@ let cancel_job_if_present job =
 let evaluate change_later exercise answer cps data =
   let evaluate checkpoint current_state =
     let run_submission_evaluation c s =
-      (CORE_answer.mark_handled_submission answer checkpoint s c
-       >> create_job checkpoint c s change_later >>= function
+      (CORE_answer.mark_handled_submission answer checkpoint c
+         >> return (BeingEvaluated (ExecutableJob 0,  CORE_diagnostic.Empty, c)))
+       (* >> create_job checkpoint c s change_later >>= function
          | Some job ->
+           Ocsigen_messages.errlog "Job created.";
            return (BeingEvaluated (job, CORE_diagnostic.Empty, c))
          | None ->
            (* FIXME: transmission error. *)
            Ocsigen_messages.errlog "Transmission error";
-           return (Evaluated ([], CORE_diagnostic.Empty, c)))
+           return (Evaluated ([], CORE_diagnostic.Empty, c)))*)
     in
 
     CORE_answer.submission_of_checkpoint answer checkpoint >>= function
@@ -158,8 +175,7 @@ let evaluate change_later exercise answer cps data =
         return Unevaluated
 
       | Some (HandledSubmission (s, c')) ->
-        Ocsigen_messages.errlog "Handled submission.";
-        (**
+          (**
             The student's submission has already been processed or
             is in the process of being processed.
 
@@ -172,21 +188,25 @@ let evaluate change_later exercise answer cps data =
           | Some (BeingEvaluated (job, _, c')) -> (Some job, Some c')
           | _ -> (None, None)
         in
+        Ocsigen_messages.errlog (
+          match c' with
+            | None -> "no context"
+            | Some c' -> "context " ^ CORE_context.string_of_context c'
+        );
         if Some c = c' then (
-        Ocsigen_messages.errlog "Do nothing.";
-          match current_state with
+          Ocsigen_messages.errlog "Same context, do nothing";
+            match current_state with
             | None -> assert false
             | Some e -> return e
         ) else (
+          Ocsigen_messages.errlog "New context, reeval";
           (** We have already have a score but with a different
               context. It must be recomputed. *)
-        Ocsigen_messages.errlog "Reevaluate.";
-          cancel_job_if_present job
+            cancel_job_if_present job
           >> run_submission_evaluation c s
         )
 
       | Some (NewSubmission s) ->
-        Ocsigen_messages.errlog "New submission.";
         lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
         run_submission_evaluation c s
 
@@ -197,23 +217,51 @@ let evaluate change_later exercise answer cps data =
     return ((cp, e) :: jobs)
   ) [] cps
   in
-  return (Some { data with jobs })
+  Ocsigen_messages.errlog ("Updating jobs of evaluation");
+  return (UpdateContent { data with jobs })
 
-let evaluate_all change_later exercise answer data =
+(* let evaluate_all change_later exercise answer data =
   lwt all_cps = CORE_exercise.all_checkpoints exercise in
   evaluate change_later exercise answer all_cps data
+*)
 
 include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
-  let react this change_later deps new_data data =
+  type change = public_change
 
-    match CORE_inmemory_entity.to_list deps with
+  let string_of_change = function
+    | FlushDiagnosticCommandsOfCheckpoint c ->
+      Printf.sprintf "Resetting diagnostics of %s." c
+    | NewEvaluationState (c, s) ->
+      Printf.sprintf "New evaluation of %s: %s."
+        c
+        (string_of_evaluation_state s)
 
+  let react state deps cs (change_later : change -> unit Lwt.t) =
+
+    let flush_diagnostic_commands_of_checkpoint checkpoint content =
+      return { content with jobs =
+          COMMON_pervasives.map_assoc checkpoint (function
+            | Evaluated (s, dcmd, c) ->
+              Evaluated (s, CORE_diagnostic.Empty, c)
+            | BeingEvaluated (j, dcmd, c) ->
+              BeingEvaluated (j, CORE_diagnostic.Empty, c)
+            | x -> x
+          ) content.jobs }
+    in
+    let make_change content = function
+      | FlushDiagnosticCommandsOfCheckpoint c ->
+        flush_diagnostic_commands_of_checkpoint c content
+      | NewEvaluationState (c, s) ->
+        new_evaluation_state_of_checkpoint c s content
+    in
+    let changes_from_dependencies content =
+      match CORE_inmemory_entity.to_list deps with
       | [] ->
         (** Only the state of the evaluation changed. We do not react. *)
-        passive this change_later deps new_data data
+        return NoUpdate
 
       | ldeps ->
         (** One of the dependencies changed:
@@ -222,24 +270,25 @@ include CORE_entity.Make (struct
             - If the answer has changed,
               we only recheck the modified submissions. *)
         (
-          CORE_answer.make data.answer >>>= fun answer ->
-          CORE_exercise.make data.exercise >>>= fun exercise ->
+          CORE_answer.make content.answer >>>= fun answer ->
+          CORE_exercise.make content.exercise >>>= fun exercise ->
           lwt cps =
             match dependency deps evaluation_of_exercise_dependency_kind [] with
               | Some _ -> (** The exercise changed. *)
-                Ocsigen_messages.errlog "Exercise";
                 CORE_exercise.all_checkpoints exercise
               | None -> (** Only the answer changed. *)
-                Ocsigen_messages.errlog "Only answer";
                 CORE_answer.checkpoints_of_new_submissions answer
           in
-          lwt result = evaluate change_later exercise answer cps data in
-          return (`OK result)
+          lwt change = evaluate change_later exercise answer cps content in
+          return (`OK change)
         ) >>= function
           | `OK e ->
             return e
           | `KO e ->
-            warn e; return None (* FIXME *)
+            warn e; return NoUpdate
+    in
+    lwt content = Lwt_list.fold_left_s make_change (content state) cs in
+    changes_from_dependencies content
 
 end)
 
@@ -266,11 +315,11 @@ let evaluation_dependencies exercise answer =
     (evaluation_of_exercise_dependency_kind, [ ([], exercise) ])
   ]
 
-let activate exo answer evaluation =
+(* let activate exo answer evaluation =
   (* FIXME: define a rec_change in CORE_entity? *)
   change ~immediate:true evaluation (
     evaluate_all (fun c -> Lwt.async (fun () -> change evaluation c)) exo answer
-  )
+  ) *)
 
 let create id exo answer =
   let init = (
@@ -292,13 +341,4 @@ let evaluation_of_exercise_from_authors exo answer =
     | `KO e -> return (`KO e)
 
 let flush_diagnostic_commands_of_checkpoint evaluation checkpoint =
-  change evaluation (fun d ->
-    return (Some { d with jobs =
-        COMMON_pervasives.map_assoc checkpoint (function
-          | Evaluated (s, dcmd, c) ->
-            Evaluated (s, CORE_diagnostic.Empty, c)
-          | BeingEvaluated (j, dcmd, c) ->
-            BeingEvaluated (j, CORE_diagnostic.Empty, c)
-          | x -> x
-        ) d.jobs })
-  )
+  change evaluation (FlushDiagnosticCommandsOfCheckpoint checkpoint)

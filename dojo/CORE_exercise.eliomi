@@ -6,13 +6,26 @@
 
 type checkpoint = CORE_questions.checkpoint deriving (Json)
 
+val string_of_checkpoint : checkpoint -> string
+
 type questions = CORE_questions.t deriving (Json)
 
 type description
 
 }}
 
-include CORE_entity.S with type data = description
+val answer_of_dependency_kind : string
+
+type public_change =
+  | NewAnswer of
+      CORE_identifier.t list (** Authors *)
+    * CORE_identifier.t      (** Answer  *)
+  | EvalQuestions
+  | Update of string * questions
+  | UpdateSource of CORE_description_CST.exercise CORE_description_CST.with_raw
+
+include CORE_entity.S
+with type data = description and type change = public_change
 
 {client{
 type data = description
@@ -46,7 +59,14 @@ val context_of_checkpoint : t -> checkpoint -> CORE_context.t Lwt.t
 (** [eval e] forces the evaluation of [e]. *)
 val eval : t -> unit Lwt.t
 
-val raw_user_description_source : t -> CORE_source.t Lwt.t
+(** [eval_if_needed e] compute the evaluation of [e] if needed. *)
+val eval_if_needed : t -> CORE_questions.questions_value Lwt.t
+
+val raw_user_description_source
+: CORE_identifier.t -> [
+  `OK of CORE_source.t
+| `KO of [  `UndefinedEntity of CORE_identifier.t | `SystemError of string ]
+] Lwt.t
 
 type patch =
     CORE_errors.position * CORE_errors.position * string
@@ -60,20 +80,23 @@ val make_blank
                                 ]] Lwt.t
 
 val change_from_user_description
-  : t -> CORE_description_CST.exercise CORE_description_CST.with_raw -> [
+  : t -> CORE_description_CST.exercise CORE_description_CST.with_raw ->
+  unit Lwt.t
+
+(* FIXME: recover this old rich return type [
   | `OK of (CORE_identifier.t
-            * CORE_description_CST.exercise CORE_description_CST.with_raw
-  ) list
+            * CORE_description_CST.exercise CORE_description_CST.with_raw) list
   | `KO of [
     | `UndefinedEntity of CORE_identifier.t
     | `NeedPatch       of patch
     | `AlreadyExists   of CORE_identifier.path
     | `SystemError     of string
   ]] Lwt.t
+*)
 
-  {client{
-         val raw_user_description : CORE_identifier.t -> string Lwt.t
-  }}
+{client{
+val raw_user_description : CORE_identifier.t -> string Lwt.t
+}}
 
 val create_service :
   (t ->

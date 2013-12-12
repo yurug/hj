@@ -17,9 +17,9 @@ type reaction = unit
 
 {client{
   let react channel reaction =
-    let channel = Lwt_stream.clone channel in
+    let channel' = Lwt_stream.clone channel in
     Eliom_client.onload (fun () ->
-      Lwt.async (fun () -> Lwt_stream.iter_s reaction channel)
+      Lwt.async (fun () -> Lwt_stream.iter_s reaction channel')
     )
 
   let react_on_background = react

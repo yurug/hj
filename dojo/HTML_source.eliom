@@ -1,33 +1,44 @@
 (** -*- tuareg -*- *)
 
+{shared{
 open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
 open Html5_types
+}}
 
 open HTML_entity
 open HTML_widget
 open COMMON_pervasives
+open CORE_onthedisk_entity
+open CORE_inmemory_entity
+open CORE_error_messages
 
 (* FIXME: Missing features: Download, Preview, Versioning. *)
 let entity_sources_div
     (type d)
-    (module E : CORE_entity.S with type data = d)
+    (type c)
+    (module E : CORE_entity.S with type data = d and type change = c)
     (e : E.t) = E.(
       let get_sources () =
-        return (List.map (fun s -> [CORE_source.filename s]) (sources e))
+        lwt ss = observe e (fun d -> return (sources d)) in
+        return (List.map (fun s -> [s]) ss)
       in
       let commit id =
         (** If [s] does not already exist in [e], it will be
             created and assigned an empty file. *)
-        let (_, get, _) = source id in
-        (* FIXME: The following is quite inefficient... *)
-        lwt s = get e in
-        update_source e id s
+        lwt s = load_source (identifier e) id >>= function
+          | `OK s ->
+            return s
+          | `KO e -> warn e; return (CORE_source.make id "")
+        in
+        save_source (identifier e) s >>= function
+          | `OK () ->
+            return ()
+          | `KO e -> warn e; return () (* FIXME: handle error *)
       in
       let set_sources ss =
         Lwt_list.iter_s (function [ id ] -> commit id | _ -> assert false) ss
-        >> change ~immediate:true e (fun _ -> return None)
       in
       let download = {int -> unit{
         fun i ->
@@ -40,13 +51,12 @@ let entity_sources_div
         get_list_editor ~no_header:true "Sources" ["Filenames"] get_sources (Some set_sources)
           (fun i ->
             let import suggested_filename =
-              try
-                let filename = CORE_source.filename (List.nth (sources e) i) in
+              try_lwt
+                lwt sources = observe e (fun d -> return (sources d)) in
+                lwt filename = try return (List.nth sources i) with _ -> raise_lwt Not_found in
                 return (filename, fun () -> commit filename)
-              with _ ->
-                (** This source does not exist yet. *)
-                let f = Filename.concat (vfs_directory e) suggested_filename in
-                return (f, fun () -> commit suggested_filename)
+              with e ->
+                return (suggested_filename, fun () -> commit suggested_filename)
             in
             let upload_form = fileuploader import in
             [

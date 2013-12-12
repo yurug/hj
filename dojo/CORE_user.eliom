@@ -17,19 +17,19 @@ type description = {
   surname         : string;
 } deriving (Json)
 
-include CORE_entity.Make (struct
+include CORE_entity.Make (CORE_entity.Passive (struct
 
   type data = description deriving (Json)
 
-  let react = passive
+  let string_of_replacement _ = "Update"
 
-end)
+end))
 
-let password_digest e = observe e (fun u -> return u.password_digest)
-let login           e = observe e (fun u -> return u.login)
-let firstname       e = observe e (fun u -> return u.firstname)
-let surname         e = observe e (fun u -> return u.surname)
-let last_connection e = observe e (fun u -> return u.last_connection)
+let password_digest e = observe e (fun u -> return (content u).password_digest)
+let login           e = observe e (fun u -> return (content u).login)
+let firstname       e = observe e (fun u -> return (content u).firstname)
+let surname         e = observe e (fun u -> return (content u).surname)
+let last_connection e = observe e (fun u -> return (content u).last_connection)
 
 (** By convention, users are stored in the "users" folder. *)
 
@@ -102,8 +102,9 @@ let authenticate u password =
   if (expected_digest <> digest) then
     return (`KO `BadLoginPasswordPair)
   else (
+    lwt c = observe user (fun d -> return (content d)) in
     ltry COMMON_unix.now >>>= fun date ->
-    change user (fun c -> return (Some { c with last_connection = date }))
+    change user (UpdateContent { c with last_connection = date })
     >> return (`OK user)
   )
 

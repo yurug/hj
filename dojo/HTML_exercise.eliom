@@ -15,6 +15,7 @@ open HTML_scroll
 open CORE_evaluation
 open CORE_exercise
 open CORE_identifier
+open CORE_inmemory_entity
 open CORE_entity
 open CORE_error_messages
 open COMMON_pervasives
@@ -25,16 +26,21 @@ open CORE_client_reaction
 open CORE_description_CST
 }}
 
+exception LoadingError
+
 let editor_div (e : CORE_exercise.t) =
 
   let id = CORE_exercise.identifier e in
-  lwt init = raw_user_description_source e in
-
-  let patch_request (start, stop, what) =
-    return (HTML_editor.patch start stop what)
+  lwt init = raw_user_description_source id >>= function
+    | `OK s -> return s
+    | `KO e -> raise_lwt LoadingError
   in
 
-  let push_online_definition =
+(*  let patch_request (start, stop, what) =
+    return (HTML_editor.patch start stop what)
+  in
+*)
+(*  let push_online_definition =
     let ods = Hashtbl.create 13 in
     let create id =
       (CORE_exercise.make_blank id >>>= fun q ->
@@ -67,9 +73,9 @@ let editor_div (e : CORE_exercise.t) =
           (server_function Json.t<unit> (fun () -> create id))
       ]
   in
+*)
   let client_change =
     {{ fun echo (s : string) ->
-      Firebug.console##log ("Client change!");
       match CORE_description_format.exercise_of_string s with
         | `OK cst ->
           echo "";
@@ -81,7 +87,11 @@ let editor_div (e : CORE_exercise.t) =
   in
   let server_change =
     (server_function Json.t<exercise with_raw> (fun cst ->
-      change_from_user_description e cst >>= function
+      Ocsigen_messages.errlog "Change user description";
+      change_from_user_description e cst
+      >> observe ~fresh:true e (fun d -> return d)
+      >> return []
+(*
         | `OK new_ods ->
           return []
           (* FIXME: Patch application is currently broken. *)
@@ -94,6 +104,7 @@ let editor_div (e : CORE_exercise.t) =
           return []
         | `KO (#CORE_errors.all as e) ->
           return [HTML_editor.message (CORE_error_messages.string_of_error e)]
+*)
      ))
   in
   lwt (editor_div, editor_id, editor_process) =
@@ -102,7 +113,7 @@ let editor_div (e : CORE_exercise.t) =
   (* FIXME: Optimize the following channel. For the moment, the entire
      description of the exercise is sent to the clients each time the
      exercise is modified.  This is HUGE! *)
-  let e_channel = CORE_entity.channel e in
+(*  let e_channel = CORE_entity.channel e in
   ignore {unit{
     CORE_client_reaction.react_on_background %e_channel (fun data ->
     lwt content = CORE_exercise.raw_user_description %id in
@@ -110,6 +121,7 @@ let editor_div (e : CORE_exercise.t) =
     (* FIXME: In the future, we will try to "merge" the current state
        FIXME: of the editor. *)
     | CORE_entity.MayChange ->
+      Firebug.console##log (Js.string "May change");
       (** Oh, a question definition must have changed. *)
       begin match CORE_description_format.exercise_of_string content with
         | `OK cst ->
@@ -120,9 +132,10 @@ let editor_div (e : CORE_exercise.t) =
           return ()
       end
 
-    | CORE_entity.HasChanged _ ->
+    | CORE_entity.HasChanged ->
+      Firebug.console##log (Js.string "Has changed");
       return (HTML_editor.refresh %editor_id content)
-  )}};
+  )}}; *)
   lwt sources_div =
     lwt d = HTML_source.entity_sources_div (module CORE_exercise) e in
     return (div ~a:[a_class ["exercise_sources"]] [ d ])
@@ -130,8 +143,13 @@ let editor_div (e : CORE_exercise.t) =
   let editor_div = div ~a:[a_class ["exercise_editor"]] [editor_div] in
   return (div [sources_div; editor_div])
 
-let exercise_div exo answer evaluation =
-  let e_id = identifier exo in
+let editor_div e =
+  try_lwt
+    editor_div e
+  with LoadingError -> return (div [pcdata "Error when loading editor."])
+
+let exercise_div (exo : CORE_exercise.t) answer evaluation =
+  let e_id = CORE_exercise.identifier exo in
   let display_context = server_function Json.t<checkpoint * CORE_context.t>
     (fun (cp, context) ->
       HTML_context.display_context e_id cp context evaluation
@@ -165,7 +183,10 @@ let exercise_div exo answer evaluation =
                   return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
                 | CORE_questions.CheckpointContext (cp, context) ->
                   %display_context (cp, context)
+                | CORE_questions.Source _ ->
+                  return []
               in
+              Firebug.console##log (Js.string "Redisplay");
               lwt all = Lwt_list.map_s display_atomic v in
               return (List.flatten all)
           in
@@ -177,7 +198,10 @@ let exercise_div exo answer evaluation =
       "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub, \"exercise_view\"]);";
    }}
   in
-  let get () = observe exo (fun d -> return d) in
+  let get () =
+    CORE_exercise.eval_if_needed exo
+    >> observe exo (fun d -> return (content d))
+  in
   CORE_exercise.eval exo
   >> HTML_entity.reactive_div exo (Some display_math) get display_exercise
 

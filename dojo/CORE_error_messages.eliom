@@ -55,3 +55,8 @@ let warn e =
   Ocsigen_messages.errlog (
     Printf.sprintf "Warning: %s\n" (string_of_error e)
   )
+
+let bad_assumption e =
+  Ocsigen_messages.errlog (
+    Printf.sprintf "Bad assumption: %s\n" e
+  )

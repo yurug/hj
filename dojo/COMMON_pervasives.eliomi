@@ -67,6 +67,10 @@ val wait_for : 'a Lwt_mvar.t -> ('a -> 'b option) -> 'b Lwt.t
 (** [lwt_list_join cs] concatenates the result of all the processes [cs]. *)
 val lwt_list_join : 'a Lwt.t list -> 'a list Lwt.t
 
+val lwt_list_foldmap :
+  ('b -> 'a -> ('b * 'c) Lwt.t) -> 'b -> 'a list
+  -> ('b * 'c list) Lwt.t
+
 (** [lwt_if c pt pe] lifts [if then else] to Lwt. *)
 val lwt_if : bool Lwt.t -> 'a Lwt.t -> 'a Lwt.t -> 'a Lwt.t
 
@@ -94,6 +98,10 @@ val opt_assoc : 'a -> ('a * 'b) list -> 'b option
 val cons_if : bool -> 'a -> 'a list -> 'a list
 
 val range : int -> int -> int list
+
+val list_foldmap : ('b -> 'a -> 'b * 'c) -> 'b -> 'a list -> 'b * 'c list
+
+val list_take : int -> 'a list -> 'a list
 
 val list_remove : int -> 'a list -> 'a list
 

@@ -27,10 +27,11 @@ type description =
   | Text of Text.t
 deriving (Json)
 
-include CORE_entity.Make (struct
+include CORE_entity.Make (CORE_entity.Passive (struct
 
   type data = description deriving (Json)
 
-  let react = passive
+  let string_of_replacement _ =
+    "Replace the content of the document."
 
-end)
+end))

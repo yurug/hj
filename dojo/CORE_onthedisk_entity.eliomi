@@ -19,28 +19,43 @@
 
 *)
 
-module Make (D : sig type data deriving (Json) end) : sig
+module type S = sig
 
-  val save : D.data CORE_inmemory_entity.meta ->
+  type data
+
+  val save : data CORE_inmemory_entity.meta ->
     [ `OK of unit
     | `KO of [> `SystemError of string ]
     ] Lwt.t
 
   val load : CORE_identifier.t ->
-    [ `OK of D.data CORE_inmemory_entity.meta
+    [ `OK of data CORE_inmemory_entity.meta
     | `KO of [>
       `UndefinedEntity of CORE_identifier.t
     | `SystemError of string
     ]] Lwt.t
 
-  val log : CORE_identifier.t -> string ->
-    [ `OK of unit
-    | `KO of [> `SystemError of string ]
-    ] Lwt.t
-
-  val exists : CORE_identifier.t -> bool
-
 end
+
+module Make (D : sig type data deriving (Json) end)
+: S with type data = D.data
+
+val log : CORE_identifier.t -> string ->
+  [ `OK of unit
+  | `KO of [> `SystemError of string ]
+  ] Lwt.t
+
+val save_source : CORE_identifier.t -> CORE_source.t ->
+  [ `OK of unit
+  | `KO of [> `SystemError of string ]
+  ] Lwt.t
+
+val load_source : CORE_identifier.t -> CORE_source.filename ->
+  [ `OK of CORE_source.t
+  | `KO of [> `SystemError of string ]
+  ] Lwt.t
+
+val exists : CORE_identifier.t -> bool
 
 val timestamp : CORE_identifier.t ->
   [ `OK of Int64.t

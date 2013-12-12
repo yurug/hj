@@ -10,6 +10,26 @@ open CORE_inmemory_entity
 open CORE_identifier
 open CORE_standard_identifiers
 
+let who = "system.onthedisk_entity <here@hackojo.org>"
+
+module type S = sig
+
+  type data
+
+  val save : data CORE_inmemory_entity.meta ->
+    [ `OK of unit
+    | `KO of [> `SystemError of string ]
+    ] Lwt.t
+
+  val load : CORE_identifier.t ->
+    [ `OK of data CORE_inmemory_entity.meta
+    | `KO of [>
+      `UndefinedEntity of CORE_identifier.t
+    | `SystemError of string
+    ]] Lwt.t
+
+end
+
 let file path fname =
   concat path (make [label fname])
 
@@ -23,9 +43,41 @@ let timestamp id =
     return (`OK timestamp)
   )
 
-module Make (D : sig type data deriving (Json) end) = struct
+let save_source id s =
+  let path = root true (path_of_identifier id) in
+  CORE_vfs.save who ~relative:false
+    (file path (CORE_source.filename s))
+    (CORE_source.content s)
+  >>>= fun _ -> return (`OK ())
 
-  let who = "system.onthedisk_entity <here@hackojo.org>"
+let load_source id fname =
+  let path = root true (path_of_identifier id) in
+  CORE_vfs.latest ~relative:false (file path fname)
+  >>= function
+    | `KO e ->
+      (* FIXME: ... *)
+      return (`OK (CORE_source.make fname "(error load_source 3)"))
+    | `OK latest_version ->
+      CORE_vfs.read latest_version
+      >>= function
+        | `KO e ->
+          (* FIXME: ... *)
+          return (`OK (CORE_source.make fname "(error load_source 2"))
+        | `OK content ->
+          return (`OK (CORE_source.make fname content))
+
+let exists id =
+  let path = root true (path_of_identifier id) in
+  Sys.file_exists (string_of_path (metafile path))
+
+let log id what =
+  let path = path_of_identifier id in
+  CORE_vfs.append who (file path ".log") what
+
+module Make (D : sig type data deriving (Json) end)
+: S with type data = D.data = struct
+
+  type data = D.data
 
   let save (m : D.data meta) =
     let raw = to_string Json.t<D.data meta> m in
@@ -43,10 +95,6 @@ module Make (D : sig type data deriving (Json) end) = struct
     >>>= fun _ -> CORE_vfs.save who ~relative:false (metafile path) raw
     >>>= fun _ -> return (`OK ())
 
-  let exists id =
-    let path = root true (path_of_identifier id) in
-    Sys.file_exists (string_of_path (metafile path))
-
   let load id =
     let path = path_of_identifier id in
     (if not (exists id) then
@@ -58,9 +106,5 @@ module Make (D : sig type data deriving (Json) end) = struct
     >>>= fun raw ->
     let meta = from_string Json.t<D.data meta> raw in
     return (`OK meta)
-
-  let log id what =
-    let path = path_of_identifier id in
-    CORE_vfs.append who (file path ".log") what
 
 end

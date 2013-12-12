@@ -295,8 +295,8 @@ module TypeCheck = struct
 
   let statement_constructors_2 = List.iter
     (fun c -> primitive c (
-      ttemplate statement --> (ttemplate statement --> statement))
-    )
+      ttemplate statement --> statement
+    ))
     [
       "section"; "subsection"
     ]
@@ -304,7 +304,9 @@ module TypeCheck = struct
   let _ =
     primitive "checkpoint" ((unit --> unit) --> context);
     primitive "answer_in_file" (ttemplate string --> unit);
+    primitive "answer_values_of" (ttemplate string --> unit);
     primitive "mark_using" (ttemplate string --> unit);
+    primitive "mark_using_expected_values" (ttemplate string --> unit);
     primitive "source" (ttemplate string --> (ttemplate string --> unit));
     primitive "timeout" (int --> unit)
 
@@ -474,6 +476,16 @@ module Eval = struct
       >>= fun (s, _) -> return (s, VContext s)
     );
 
+    let as_string_list = function
+      | VTemplate t ->
+        eval_template ( List.flatten ) (function
+          | VString s -> [s]
+          | _ -> eraise `EvalError
+        ) t
+      | VString s ->
+        [s]
+      | _ -> eraise `EvalError
+    in
     let as_string = function
       | VTemplate t -> string_of_statement_template t
       | VString s -> s
@@ -512,11 +524,9 @@ module Eval = struct
       "italic", "span", Some "italic";
       "list", "ul", None;
       "enumerate", "ol", None;
-      "item", "li", None
-    ];
-    List.iter html_constructor2 [
-      "section", "h1", None, "section", None;
-      "subsection", "h2", None, "section", None;
+      "item", "li", None;
+      "section", "h1", None;
+      "subsection", "h2", None
     ];
 
     let marker (s, start, stop) =
@@ -534,9 +544,19 @@ module Eval = struct
       return (CORE_context.answer s)
     );
 
+    stateful "answer_values_of" (fun v ->
+      let s = as_string_list v in
+      return (CORE_context.key_values s)
+    );
+
     stateful "mark_using" (fun v ->
       let s = as_string v in
       return (CORE_context.command s)
+    );
+
+    stateful "mark_using_expected_values" (fun v ->
+      let s = as_string_list v in
+      return (CORE_context.expected_values s)
     );
 
     stateful "timeout" (function

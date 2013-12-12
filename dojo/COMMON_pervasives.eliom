@@ -23,6 +23,16 @@ let lwt_list_join cs =
       cs
       (return [])
 
+let lwt_list_foldmap f init xs =
+  let rec aux ys accu = function
+    | [] ->
+      return (accu, List.rev ys)
+    | x :: xs ->
+      lwt (accu, y) = f accu x in
+      aux (y :: ys) accu xs
+  in
+  aux [] init xs
+
 let lwt_if c pt pe =
   c >>= function
     | true -> pt
@@ -157,6 +167,25 @@ let range start stop =
     if k >= stop then [] else k :: aux (k + 1)
   in
   aux start
+
+let list_foldmap f init xs =
+  let rec aux ys accu = function
+    | [] ->
+      (accu, List.rev ys)
+    | x :: xs ->
+      let (accu, y) = f accu x in
+      aux (y :: ys) accu xs
+  in
+  aux [] init xs
+
+let list_take =
+  let rec aux k l =
+    if k = 0 then l
+    else match l with
+    | [] -> []
+    | x :: xs -> x :: aux (pred k) xs
+  in
+  aux
 
 let list_index_of k =
   let rec find i = function

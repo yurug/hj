@@ -12,12 +12,13 @@ open CORE_answer
 open CORE_exercise
 open CORE_identifier
 open CORE_error_messages
+open CORE_inmemory_entity
 open COMMON_pervasives
 }}
 
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let get () = CORE_evaluation.(
-    lwt d = observe evaluation (fun d -> return d) in
+    lwt d = observe evaluation (fun d -> return (content d)) in
     flush_diagnostic_commands_of_checkpoint evaluation checkpoint
     >> return d)
   in
@@ -70,8 +71,9 @@ let submit_file exo_id cp tmp_filename filename =
 
 let display_user_input exo_id checkpoint context =
   match CORE_context.get_answer_form context with
-    | None -> return (p [pcdata "..."])
-    | Some filename ->
+    | None ->
+      return (p [pcdata "..."])
+    | Some (`Filename filename) ->
       let tmp_filename = Filename.temp_file "hj" "" in
       let commit () =
         (* FIXME: handle error. *)
@@ -82,6 +84,8 @@ let display_user_input exo_id checkpoint context =
         (* FIXME: Check user_filename = filename. *)
         return (tmp_filename, commit)
       ))
+    | Some (`KeyValues vs) ->
+      return (div [pcdata "values"])
 
 let display_context exo_id checkpoint context evaluation =
   lwt user_input = display_user_input exo_id checkpoint context in

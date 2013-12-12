@@ -7,6 +7,7 @@ open Lwt
 open CORE_identifier
 open CORE_standard_identifiers
 open CORE_inmemory_entity
+open CORE_error_messages
 open COMMON_pervasives
 
 (* ****************** *)
@@ -32,11 +33,11 @@ type event =
 
 (** An entity ... *)
 type ('a, 'c) reaction =
-    CORE_identifier.t      (** [x] may react to ... *)
-    -> dependencies        (** a change of one of its dependencies ... *)
-    -> 'c list             (** or to external requests to change ... *)
-    -> ('c -> unit)        (** by scheduling an asynchronous change.*)
-    -> 'a change           (** or applying an immediate internal change. *)
+    'a meta                  (** with ['a meta] state may react to *)
+    -> dependencies          (** a change of one of its dependencies ... *)
+    -> 'c list               (** or to external requests to change ... *)
+    -> ('c -> unit Lwt.t)    (** by scheduling a change or ... *)
+    -> 'a state_change Lwt.t (** by requesting an immediate internal change. *)
 
 (** The state of an entity can be up-to-date or modified. In that
     later case, the modified dependencies and the scheduled changes
@@ -66,10 +67,11 @@ and ('a, 'c) entity = {
   (*   *) reaction    : ('a, 'c) reaction;
   (*   *) channel     : event CORE_client_reaction.c;
   (*   *) push        : event -> unit;
+  (*   *) react_lock  : Lwt_mutex.t;
   (*   *) commit_lock : Lwt_mutex.t;
   (*   *) commit_cond : unit Lwt_condition.t;
   mutable mode        : [ `Commit | `Observe of int ];
-  (*   *) log         : ('c * timestamp) Queue.t;
+  mutable log         : ('c * timestamp) list;
 }
 
 (** Shortcut for the type of entities. *)
@@ -80,17 +82,8 @@ and ('a, 'c) t = ('a, 'c) entity
     an existential quantification. *)
 type some_t = SomeEntity : ('a, 'c) t -> some_t
 
-(** Accessor to the dependencies. *)
-let dependencies e = CORE_inmemory_entity.dependencies e.description
-
 (** Accessor to the unique identifier of the entity. *)
 let identifier e = CORE_inmemory_entity.identifier e.description
-
-(** Accessor to the properties. *)
-let properties e = CORE_inmemory_entity.properties e.description
-
-(** Accessor to the timestamp. *)
-let timestamp e = CORE_inmemory_entity.timestamp e.description
 
 (* ********************** *)
 (*  Reverse dependencies  *)
@@ -180,8 +173,9 @@ module type S = sig
     ]] Lwt.t
 
   val change : ?immediate:bool -> t -> change -> unit Lwt.t
-  val observe : t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
+  val observe : ?fresh:bool -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
   val identifier : t -> CORE_identifier.t
+  val log : t -> int -> (change * timestamp) list
 end
 
 (** The client must provide the following information
@@ -193,22 +187,31 @@ module type U = sig
   val string_of_change : change -> string
 end
 
-module MakePassive (I : sig
+module type D =
+sig
   type data deriving (Json)
-  val string_of_replacement : data -> data -> string
-end) : U = struct
-  type data = data deriving (Json)
-  type change = data CORE_inmemory_entity.change
+  val string_of_replacement : data -> string
+end
+
+module Passive (I : D) : U
+  with type data = I.data
+  and type change = I.data CORE_inmemory_entity.state_change
+= struct
+  type data = I.data deriving (Json)
+  type change = I.data CORE_inmemory_entity.state_change
 
   let react _ _ cs _ =
-    CORE_inmemory_entity.UpdateSequence cs
+    return (CORE_inmemory_entity.state_changes cs)
 
   let string_of_change =
-    CORE_inmemory_entity.string_of_change string_of_replacement
+    CORE_inmemory_entity.string_of_state_change I.string_of_replacement
 end
 
 (** The implementation of the operations over entities. *)
-module Make (I : U) : S with type data = I.data = struct
+module Make (I : U) : S
+with type data = I.data
+and type change = I.change
+= struct
 
   type data = I.data
 
@@ -237,24 +240,27 @@ module Make (I : U) : S with type data = I.data = struct
     (** Notice that the following sequence of operations are
         atomic w.r.t. the concurrency model. *)
     let channel, push = CORE_client_reaction.channel () in
+    let react_lock = Lwt_mutex.create () in
     let commit_lock = Lwt_mutex.create () in
     let commit_cond = Lwt_condition.create () in
     let e = {
       description; reaction; state = UpToDate;
-      channel; push;
+      channel; push; react_lock;
       commit_lock; commit_cond;
       mode = `Observe 0;
-      log = Queue.create ()
+      log = []
     } in
     load id e;
-    List.iter (register_dependency e) (dependency_image (dependencies e));
+    List.iter (register_dependency e)
+      (dependency_image (dependencies e.description)
+      );
     return (`OK e)
 
   (** [initialize init deps fnames id] creates the on-the-disk
       representation of [id] so that it can be loaded afterwards.
       Precondition: [id] must not already exist. *)
   let initialize init deps properties fnames id =
-    if OTD.exists id then
+    if CORE_onthedisk_entity.exists id then
       return (`KO (`AlreadyExists (path_of_identifier id)))
     else
       OTD.save (CORE_inmemory_entity.make id deps properties fnames init)
@@ -287,12 +293,17 @@ module Make (I : U) : S with type data = I.data = struct
       e.mode <- `Commit;
       (** Nobody is watching! Do your stuff! *)
       commit ()
-      >> return (e.mode <- `Observe 0)
+      >> return (
+        e.mode <- `Observe 0;
+        Lwt_condition.signal e.commit_cond ()
+      )
     )
 
   (** [apply deps e c] does the effective changes [cs] of the
       content of [e]. *)
   let rec apply dependencies e cs =
+
+    let state = e.description in
 
     (** Notice that we globally maintain the invariant that two
         reactions cannot run concurrently on the same entity. So,
@@ -304,8 +315,11 @@ module Make (I : U) : S with type data = I.data = struct
         itself can be computed concurrently to observations: as soon
         as nothing is observable from the point of view of these
         observations, this is fine. *)
-
-    e.reaction (identifier e) dependencies cs >>= function
+    let change_later = change ~immediate:true e in
+    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes)"
+                               (string_of_identifier (identifier e))
+                               (List.length cs + List.length (to_list dependencies)));
+    e.reaction state dependencies cs change_later >>= function
       | NoUpdate ->
         return ()
 
@@ -316,31 +330,24 @@ module Make (I : U) : S with type data = I.data = struct
           OTD.save e.description
           >>= function
             | `KO error -> warn error; return (e.description <- old)
-            | `OK _ -> savelog e cs >>> return (e.push HasChanged)
+            | `OK _ -> savelog e cs >> return (e.push HasChanged)
         )
 
   and savelog e cs =
     let ts = CORE_inmemory_entity.timestamp e.description in
-    List.iter (fun c -> Queue.push (c, ts) e.log) cs;
-    let extra = Queue.length e.log - CORE_config.size_of_entity_log_history in
-    let b = Buffer.create in
-    if extra > 0 then
-      for i = 0 to extra - 1 do
-        try
-          let (c, ts) = Queue.take e.log in
-          Buffer.add_string b (
-            Printf.sprintf "%f: %s\n" ts (string_of_change c)
-          )
-        with Queue.Empty -> assert false
-      done;
-    OTD.log e.identifier (Buffer.contents b)
+    let ls = List.map (fun c -> (c, ts)) cs in
+    e.log <- ls @ e.log;
+    let extra = List.length e.log - CORE_config.size_of_entity_log_history in
+    if extra > 0 then e.log <- COMMON_pervasives.list_tl_cut extra e.log;
+    let b = Buffer.create 31 in
+    List.iter (fun (c, ts) ->
+      Buffer.add_string b (Printf.sprintf "%f: %s\n" ts (I.string_of_change c))
+    ) ls;
+    Ocsigen_messages.errlog (Buffer.contents b);
+    CORE_onthedisk_entity.log (identifier e) (Buffer.contents b)
 
-  and log k e =
-    let rec take accu = function
-      | 0 -> accu
-      | k -> try take (pred k) (Queue.peek e.log) with Queue.Empty -> accu
-    in
-    take k []
+  and log e k =
+    COMMON_pervasives.list_take k e.log
 
   (** [update e] is the process that applies scheduled changes. *)
   and update e =
@@ -349,10 +356,16 @@ module Make (I : U) : S with type data = I.data = struct
         return ()
 
       | Modified (dependencies, queue) ->
-        let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
-        Queue.clear queue;
-        apply dependencies e (List.rev cs)
-        >> return (e.state <- UpToDate)
+(*        Lwt_mutex.with_lock e.react_lock (fun () -> *)
+          let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
+          Queue.clear queue;
+          apply dependencies e (List.rev cs)
+          >> return (
+            Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
+                                       (string_of_identifier (identifier e)));
+            e.state <- UpToDate
+          )
+(*        )*)
 
   (** As long as a change is being applied, we have to
       push other required changes into a queue. *)
@@ -376,95 +389,138 @@ module Make (I : U) : S with type data = I.data = struct
         Queue.push c queue;
         if immediate then update e else return ()
 
-  let observe (type a) (e : t) (o : data meta -> a Lwt.t) : a Lwt.t =
-    (** We want the content to be as much fresh as possible. *)
-    let rec try_to_observe () =
-      update e >> (
-        (let master = ref false in
-         (if Lwt_mutex.is_locked e.commit_lock then
-             match e.mode with
-               | `Commit ->
-                 (** A commit is being applied, wait for it to finish. *)
-                 Lwt_condition.wait ~mutex:e.commit_lock e.commit_cond
-                 (** and try to observe again. *)
-                 >> try_to_observe ()
+  let observe ?(fresh=false) (type a) (e : t) (o : data meta -> a Lwt.t)
+      : a Lwt.t =
+    let r = Random.bits () in
+    let say msg = () in (* Ocsigen_messages.errlog (Printf.sprintf "%s %d %s" (string_of_identifier (identifier e)) r msg) in *)
+    let master = ref false in
+    (if fresh then update e else return ()) >>
+      let rec aux () =
+        Ocsigen_messages.errlog (Printf.sprintf "%s trying to be observed (%d)"
+                                   (string_of_identifier (identifier e)) r);
 
-               | `Observe x -> return (
-                 (** An observer already took the mutex. *)
-                 assert (x > 1);
-                 (** Let us register our presence to him. *)
-                 e.mode <- `Observe (x + 1)
-               )
-          else (
-            (** Neither a change nor an observer is working on that entity. *)
-            assert (e.mode = `Observe 0);
+        let incr_observers () =
+          match e.mode with
+            | `Commit ->
+              bad_assumption "Observing mode."
+            | `Observe x -> e.mode <- `Observe (x + 1)
+        in
+        if Lwt_mutex.is_locked e.commit_lock
+          || not (Lwt_mutex.is_empty e.commit_lock)
+        then
+          match e.mode with
+            | `Commit ->
+                (** A commit is being applied, wait for it to finish. *)
+              Ocsigen_messages.errlog (Printf.sprintf "%s: Observer waits commit"
+                                         (string_of_identifier (identifier e)));
+              Lwt_condition.wait e.commit_cond
+                (** and try to observe again. *)
+              >> aux ()
 
-            (** Entity, you are now observed: you cannot change while I am
-                watching you! *)
-            e.mode <- `Observe 1;
+            | `Observe x -> return (
+              Ocsigen_messages.errlog (Printf.sprintf "%s: is observed"
+                                         (string_of_identifier (identifier e)));
 
-            (** This observer is called the "master" observer. *)
-            master := true;
+                (** An observer already took the mutex. *)
+                (** Let us register our presence to him. *)
+              incr_observers ()
+            )
+        else (
+          say
+            (Printf.sprintf "Waiting for lock (%B, %B)"
+               (Lwt_mutex.is_locked e.commit_lock)
+               (Lwt_mutex.is_empty e.commit_lock));
 
-            (** The master observer owns the lock and it will release it
-                only when no more observation is required. This model
-                clearly gives priority to observations over changes,
-                which is a good property for user-reactivity.  Yet, we
-                will have to be careful not to totally starve changes
-                processes...
+            (** The master observer owns the lock and it will release
+                it only when no more observation is required. This
+                model clearly gives priority to observations over
+                changes, which is a good property for user-reactivity.
+                Yet, we will have to be careful not to totally starve
+                changes processes...
 
                 If I am correct, the fact that an observation first
                 calls [update] for changes to be applied prevents an
                 unbound creation of observers that could blocked the
                 effective application of changes.
             *)
-            Lwt_mutex.lock e.commit_lock
-          ))
-         >> (
-           (** At this point, the lock is taken and the mode is to observe. *)
-           assert (Lwt_mutex.is_locked e.commit_lock);
-           assert (match e.mode with `Observe _ -> true | _ -> false);
+          Lwt_mutex.lock e.commit_lock >> return (
 
-           (** A good place for the observation to take place. *)
-           lwt ret = o e.description in
+            (** Neither a change nor an observer is working on that entity. *)
+            assert (e.mode <> `Commit);
 
-           (** We are done with this observation. Let us release
-               some time for other processes... *)
-           (if !master then
+            (** Entity, you are now observed: you cannot change while I am
+                watching you! *)
+            incr_observers ();
 
-               (** The master waits for other observers to finish their
-                   observations. *)
-               let rec wait_for_other_observers () =
-                 match e.mode with
-                   | `Observe 1 -> return (
-                     e.mode <- `Observe 0;
-                     Lwt_mutex.unlock e.commit_lock
-                   )
-                   | `Observe x when x > 1 ->
-                     Lwt_condition.wait e.commit_cond
-                     >> wait_for_other_observers ()
-                   | `Observe x -> assert false
-                   | `Commit -> assert false
-               in
-               wait_for_other_observers ()
-
-            else (
-
-              (** For others, it simply means to quit the master. *)
-              match e.mode with
-                | `Observe x when x > 1 -> return (
-                  e.mode <- `Observe (x - 1);
-                  Lwt_condition.signal e.commit_cond ()
-                )
-                | `Observe _ -> assert false
-                | `Commit -> assert false
-            )
-           ) >> return ret
-         )
+            (** This observer is called the "master" observer. *)
+            master := true;
+          )
         )
+      in
+      aux ()
+      >> (
+         (** At this point, the lock is taken and the mode is to observe. *)
+         assert (Lwt_mutex.is_locked e.commit_lock);
+         assert (match e.mode with `Observe _ -> true | _ -> false);
+
+         (** A good place for the observation to take place. *)
+         lwt ret = try_lwt
+                     o e.description
+           with e ->
+             bad_assumption (
+               Printf.sprintf
+                 "Observers do not raise exceptions (Here: %s)."
+                 (Printexc.to_string e)
+             );
+             assert false
+         in
+
+         (** We are done with this observation. Let us release
+             some time for other processes... *)
+         (if !master then
+
+             (** The master waits for other observers to finish their
+                 observations. *)
+             let rec wait_for_other_observers () =
+               match e.mode with
+                 | `Observe 1 -> return (
+                   e.mode <- `Observe 0;
+                   say "Unlock";
+                   Lwt_mutex.unlock e.commit_lock
+                 )
+                 | `Observe x when x > 1 ->
+                   Lwt_condition.wait e.commit_cond
+                   >> wait_for_other_observers ()
+                 | `Observe x -> assert false
+                 | `Commit -> assert false
+             in
+             wait_for_other_observers () >> return (
+             )
+
+          else (
+            (** For others, it simply means to quit the master. *)
+            match e.mode with
+              | `Observe x -> return (
+                if not (x >= 1) then
+                  bad_assumption (
+                    Printf.sprintf "Still (%d >= 1) when slave observer stops"
+                      x
+                  );
+                e.mode <- `Observe (x - 1);
+                Lwt_condition.signal e.commit_cond ()
+              )
+              | `Commit ->
+                bad_assumption
+                  "Entity can be in commit mode during observation.";
+                return ()
+          )
+         )
+         >> (
+           say
+             (Printf.sprintf "Observation done (master=%B)!" !master);
+           return ret
+         )
       )
-    in
-    try_to_observe ()
 
   let identifier = identifier
 
@@ -481,19 +537,20 @@ module Tests = struct
     count : int;
   } deriving (Json)
 
+  type public_change = Incr
+
   module DummyEntity = Make (struct
 
     type data = t deriving (Json)
 
-    let react _ _ deps new_content old_content =
-      let (count_log, count) =
-        match new_content with
-          | None ->
-            (Printf.sprintf "= %02d" old_content.count, old_content.count)
-          | Some nc ->
-            (Printf.sprintf "+ %02d" nc.count, nc.count)
+    type change = public_change
+
+    let string_of_change _ = "Increment."
+
+    let react state deps cs change_later =
+      let count =
+        List.fold_left (fun count _ -> count + 1) (content state).count cs
       in
-      let count = count + 1 in
       let deps_log =
         let ping_log rel ids id =
           Printf.sprintf "? %s (%s) = %s"
@@ -506,8 +563,8 @@ module Tests = struct
         ) (to_list deps))
       in
       let log s = Printf.sprintf "[%010f] %s" (Unix.gettimeofday ()) s in
-      return (Some {
-        log = List.map log (count_log :: deps_log);
+      return (UpdateContent {
+        log = List.map log deps_log;
         count
       })
 
@@ -538,15 +595,12 @@ module Tests = struct
     >>>= fun e' -> do_not_fail (fun () -> assert (e == e'))
 
   let observe_entity e update =
-    lwt log = E.observe e (fun d -> return d.log) in
+    lwt log = E.observe e (fun d -> return (content d).log) in
     List.iter update log;
     return (`OK ())
 
   let change_entity e update =
-    E.change e (fun c ->
-      return (Some { c with count = c.count + 1 })
-    )
-    >> return (`OK ())
+    E.change e Incr >> return (`OK ())
 
   let echo_entity e update =
     let dependencies =
@@ -557,8 +611,8 @@ module Tests = struct
     E.observe e' (fun d ->
       update (Printf.sprintf "%s.count = %d"
                 (string_of_identifier (identifier e'))
-                d.count);
-      return d.count
+                (content d).count);
+      return (content d).count
     ) >>= fun c -> do_not_fail (fun () -> assert (c = 1))
 
   let check update =

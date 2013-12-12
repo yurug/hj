@@ -29,13 +29,15 @@ type dependencies
 
 (** A low-level change to the state of an entity is of
     the following form. *)
-type 'a change =
+type 'a state_change =
   | UpdateDependencies of dependencies
-  | UpdateSources      of CORE_source.filename list
+  | UpdateSources      of CORE_source.t list
   | UpdateProperties   of CORE_property.set
   | UpdateContent      of 'a
-  | UpdateSequence     of 'a change * 'a change
+  | UpdateSequence     of 'a state_change * 'a state_change
   | NoUpdate
+
+val state_changes : 'a state_change list -> 'a state_change
 
 (** [identifier m] returns the identifier of [m]. *)
 val identifier : 'a meta -> identifier
@@ -104,4 +106,6 @@ val make :
 
 (** [update e c] applies the low-level change [c] on the state
     of [e]. *)
-val update : 'a meta -> 'a change -> 'a meta
+val update : 'a meta -> 'a state_change -> 'a meta
+
+val string_of_state_change : ('a -> string) -> 'a state_change -> string
