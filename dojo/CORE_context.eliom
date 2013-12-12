@@ -13,8 +13,10 @@ open COMMON_pervasives
 
 type rule =
   | Answer  of string
+  | Choices of string list
   | KeyValues of string list
   | ExpectedValues of string list
+  | ExpectedChoices of int list
   | Command of string
   | TimeOut of int
 deriving (Json)
@@ -32,8 +34,16 @@ let rec string_of_context = Printf.(function
     sprintf "expected(%s) %s"
       (String.concat ", " vs)
       (string_of_context c)
+  | Compose (ExpectedChoices vs, c) ->
+    sprintf "valid_choices(%s) %s"
+      (String.concat ", " (List.map string_of_int vs))
+      (string_of_context c)
   | Compose (KeyValues vs, c) ->
     sprintf "keys(%s) %s"
+      (String.concat ", " vs)
+      (string_of_context c)
+  | Compose (Choices vs, c) ->
+    sprintf "choices(%s) %s"
       (String.concat ", " vs)
       (string_of_context c)
   | Compose (Answer f, c) -> sprintf "file(%s) %s" f (string_of_context c)
@@ -58,9 +68,13 @@ let push r c = Compose (r, c)
 
 let answer fname = Answer fname
 
+let choices cs = Choices cs
+
 let key_values keys = KeyValues keys
 
 let expected_values kvs = ExpectedValues kvs
+
+let expected_choices cs = ExpectedChoices cs
 
 let command c = Command c
 
@@ -89,11 +103,13 @@ let all what c =
 let get_answer_form = get (function
   | Answer fname -> Some (`Filename fname)
   | KeyValues keys -> Some (`KeyValues keys)
+  | Choices cs -> Some (`Choices cs)
   | _ -> None)
 
 let get_command = get (function
   | Command c -> Some (`Command c)
   | ExpectedValues kvs -> Some (`ExpectedValues kvs)
+  | ExpectedChoices cs -> Some (`ExpectedChoices cs)
   | _ -> None)
 
 let get_timeout = get (function TimeOut t -> Some t | _ -> None)
@@ -103,18 +119,26 @@ let get_timeout = get (function TimeOut t -> Some t | _ -> None)
 type submission =
   | SubmittedFile of string
   | SubmittedValues of string list
+  | SubmittedChoices of int list
 deriving (Json)
 
 let string_of_submission = function
-  | SubmittedFile f -> Printf.sprintf "file(%s)" f
-  | SubmittedValues vs -> Printf.sprintf "values(%s)" (String.concat "," vs)
+  | SubmittedFile f ->
+    Printf.sprintf "file(%s)" f
+  | SubmittedValues vs ->
+    Printf.sprintf "values(%s)" (String.concat "," vs)
+  | SubmittedChoices vs ->
+    Printf.sprintf "choices(%s)" (String.concat "," (List.map string_of_int vs))
 
 let new_submitted_file s = SubmittedFile s
 
 let new_submitted_values vs = SubmittedValues vs
 
+let new_submitted_choices cs = SubmittedChoices cs
+
 let null_score = []
 
+(* FIXME: Factorize the following two kinds of answers? *)
 let check_expected_values xs = function
   | SubmittedValues vs ->
     if List.length vs <> List.length xs then
@@ -124,6 +148,21 @@ let check_expected_values xs = function
         List.fold_left2 (fun (m, o) v x ->
           if v = x then (succ m, succ o) else (m, succ o)
         ) (0, 0) xs vs
+      in
+      [("Score", score)]
+  | _ ->
+    null_score
+
+let check_expected_choices xs = function
+  | SubmittedChoices cs ->
+    if List.length cs <> List.length xs then
+      null_score
+    else
+      let score =
+        if List.(for_all (fun x -> mem x xs) cs) then
+          (1, 1)
+        else
+          (0, 1)
       in
       [("Score", score)]
   | _ ->

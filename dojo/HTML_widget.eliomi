@@ -53,6 +53,12 @@ val get_list_editor :
   -> (int -> [ td_content_fun ] elt list)
   -> (unit, [> div ] elt) server_function
 
+val get_choices_editor :
+  string list ->
+  (int -> unit Lwt.t) ->
+  (int -> unit Lwt.t) ->
+  (unit, [> div ] elt) server_function
+
 val nonempty_field : (string -> string option) client_value
 
 val field :

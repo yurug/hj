@@ -233,6 +233,26 @@ let get_list_editor
     list_editor ~no_header ~no_action ~no_insertion desc extra_actions
   )
 
+let get_choices_editor choices add del =
+  let choice_item idx c =
+    let change_choice =
+      let choice = ref false in
+      fun _ ->
+        if !choice then del idx else add idx;
+        choice := not !choice
+    in
+    let change_choice_cb = server_function Json.t<unit> (fun () ->
+      Lwt.return (change_choice ())
+    )
+    in
+    p [input ~a:[a_onclick {{ fun _ -> Lwt.async (fun () -> %change_choice_cb ()) }}]
+          ~input_type:`Checkbox();
+       pcdata c]
+  in
+  server_function Json.t<unit> (fun () ->
+    return (div (List.mapi choice_item choices))
+  )
+
 {client{
   let toggle s e =
     match !s with

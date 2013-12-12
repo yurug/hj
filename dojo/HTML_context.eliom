@@ -54,7 +54,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
   in
   return (div [d; diagnostic])
 
-(* FIXME: Factorize the following two functions. *)
+(* FIXME: Factorize the following three functions. *)
 
 let submit_file exo_id cp tmp_filename filename =
   CORE_user.authenticate "root" "foo" >>= function
@@ -63,6 +63,21 @@ let submit_file exo_id cp tmp_filename filename =
       answer_of_exercise_from_authors exo [u] >>= function
         | `OK a ->
           CORE_answer.submit_file a cp tmp_filename filename
+        | `KO e ->
+          warn e;
+          return (`OK ())
+    )
+    | `KO e ->
+      warn e;
+      return (`OK ())
+
+let submit_answer_choices exo_id cp vs =
+  CORE_user.authenticate "root" "foo" >>= function
+    | `OK u -> (
+      CORE_exercise.make exo_id >>>= fun exo ->
+      answer_of_exercise_from_authors exo [u] >>= function
+        | `OK a ->
+          CORE_answer.submit_answer_choices a cp vs
         | `KO e ->
           warn e;
           return (`OK ())
@@ -86,6 +101,7 @@ let submit_answer_values exo_id cp vs =
       warn e;
       return (`OK ())
 
+
 let display_user_input exo_id checkpoint context =
   match CORE_context.get_answer_form context with
     | None ->
@@ -101,6 +117,31 @@ let display_user_input exo_id checkpoint context =
         (* FIXME: Check user_filename = filename. *)
         return (tmp_filename, commit)
       ))
+    | Some (`Choices cs) ->
+      let choices = ref [] in
+      let add x = return (choices := x :: !choices) in
+      let del x = return (choices := List.filter (( = ) x) !choices) in
+      let choices_editor =
+        HTML_widget.get_choices_editor cs add del
+      in
+      (* FIXME: The following sequence of code is too inelegant! *)
+      let choices_div = Id.create_global_elt (div []) in
+      {unit Lwt.t{
+        lwt e = %choices_editor () in
+        return (Manip.replaceAllChild %choices_div [e])
+      }};
+      let submit = server_function Json.t<unit> (fun () ->
+        submit_answer_choices exo_id checkpoint !choices
+      )
+      in
+      let submit_button = HTML_widget.button ["OK"] {{
+        fun _ ->
+          Lwt.async (fun () -> %submit ())
+      }}
+      in
+      return (div [choices_div; submit_button])
+
+
     | Some (`KeyValues vs) ->
       let answers = ref (List.map (fun v -> [v; ""]) vs) in
       let get () = return !answers in
@@ -116,6 +157,7 @@ let display_user_input exo_id checkpoint context =
           ~no_insertion:true
           fields get (Some set) extra
       in
+      (* FIXME: The following sequence of code is too inelegant! *)
       let editor_div = Id.create_global_elt (div []) in
       {unit Lwt.t{
         lwt e = %list_editor () in

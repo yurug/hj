@@ -131,6 +131,10 @@ let create_job checkpoint context submission change_later =
         score := CORE_context.check_expected_values vs submission;
         mark ()
         >> return (Some ImmediateEvaluation)
+      | Some (`ExpectedChoices vs) ->
+        score := CORE_context.check_expected_choices vs submission;
+        mark ()
+        >> return (Some ImmediateEvaluation)
       | Some (`Command cmd) ->
         let timeout =
           match get_timeout context with

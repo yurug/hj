@@ -235,6 +235,15 @@ let submit_answer_values answer checkpoint values =
     )
   )
 
+let submit_answer_choices answer checkpoint choices =
+  ltry (fun lraise ->
+    change ~immediate:true answer (
+      NewSubmissionData (checkpoint,
+                         CORE_context.new_submitted_choices choices,
+                         [])
+    )
+  )
+
 let submission_of_checkpoint answer cp =
   observe answer (fun a -> return (opt_assoc cp (content a).submissions))
 

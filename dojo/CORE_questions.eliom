@@ -305,8 +305,10 @@ module TypeCheck = struct
     primitive "checkpoint" ((unit --> unit) --> context);
     primitive "answer_in_file" (ttemplate string --> unit);
     primitive "answer_values_of" (ttemplate string --> unit);
+    primitive "answer_choices_of" (ttemplate string --> unit);
     primitive "mark_using" (ttemplate string --> unit);
     primitive "mark_using_expected_values" (ttemplate string --> unit);
+    primitive "mark_using_expected_choices" (ttemplate int --> unit);
     primitive "source" (ttemplate string --> (ttemplate string --> unit));
     primitive "timeout" (int --> unit)
 
@@ -476,19 +478,33 @@ module Eval = struct
       >>= fun (s, _) -> return (s, VContext s)
     );
 
+    (* FIXME: Factorize this out! *)
     let as_string_list = function
       | VTemplate t ->
         eval_template ( List.flatten ) (function
-          | VString "" -> []
+          | VString ("" | "\n") -> []
           | VString s -> [s]
           | _ -> eraise `EvalError
         ) t
-      | VString "" ->
+      | VString ("" | "\n") ->
         []
       | VString s ->
         [s]
       | _ -> eraise `EvalError
     in
+    let as_int_list = function
+      | VTemplate t ->
+        eval_template ( List.flatten ) (function
+          | VInt s -> [s]
+          | VString s -> (try [int_of_string s] with _ -> [])
+          | _ -> eraise `EvalError
+        ) t
+      | VString s -> (try [int_of_string s] with _ -> [])
+      | VInt s ->
+        [s]
+      | _ -> eraise `EvalError
+    in
+
     let as_string = function
       | VTemplate t -> string_of_statement_template t
       | VString s -> s
@@ -554,6 +570,11 @@ module Eval = struct
       return (CORE_context.key_values s)
     );
 
+    stateful "answer_choices_of" (fun v ->
+      let s = as_string_list v in
+      return (CORE_context.choices s)
+    );
+
     stateful "mark_using" (fun v ->
       let s = as_string v in
       return (CORE_context.command s)
@@ -562,6 +583,11 @@ module Eval = struct
     stateful "mark_using_expected_values" (fun v ->
       let s = as_string_list v in
       return (CORE_context.expected_values s)
+    );
+
+    stateful "mark_using_expected_choices" (fun v ->
+      let c = as_int_list v in
+      return (CORE_context.expected_choices c)
     );
 
     stateful "timeout" (function
