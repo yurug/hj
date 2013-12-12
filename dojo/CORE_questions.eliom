@@ -289,7 +289,7 @@ module TypeCheck = struct
   let statement_constructors = List.iter
     (fun c -> primitive c (ttemplate statement --> statement))
     [
-      "paragraph"; "statement"; "bold"; "italic"; "list"; "enumerate";
+      "paragraph"; "code"; "statement"; "bold"; "italic"; "list"; "enumerate";
       "item"; "latex"; "ilatex"
     ]
 
@@ -298,7 +298,7 @@ module TypeCheck = struct
       ttemplate statement --> statement
     ))
     [
-      "section"; "subsection"
+      "section"; "subsection"; "question"
     ]
 
   let _ =
@@ -523,13 +523,15 @@ module Eval = struct
     List.iter html_constructor [
       "statement", "div", None;
       "paragraph", "p", None;
+      "code", "pre", None;
       "bold", "span", Some "bold";
       "italic", "span", Some "italic";
       "list", "ul", None;
       "enumerate", "ol", None;
       "item", "li", None;
       "section", "h1", None;
-      "subsection", "h2", None
+      "subsection", "h2", None;
+      "question", "h3", None
     ];
 
     let marker (s, start, stop) =

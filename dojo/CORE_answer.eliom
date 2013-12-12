@@ -218,7 +218,6 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
 
 let submit_file answer checkpoint tmp_filename filename =
   ltry (fun lraise ->
-    Ocsigen_messages.errlog "Submit file";
     lwt content = COMMON_unix.cat tmp_filename lraise in
     let source = CORE_source.make filename content in
     change ~immediate:true answer (
@@ -228,9 +227,6 @@ let submit_file answer checkpoint tmp_filename filename =
   ))
 
 let submit_answer_values answer checkpoint values =
-  Ocsigen_messages.errlog (
-    Printf.sprintf "Values submitted! (%s)" (String.concat " " values)
-  );
   ltry (fun lraise ->
     change ~immediate:true answer (
       NewSubmissionData (checkpoint,
