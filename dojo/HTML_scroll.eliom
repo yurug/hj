@@ -29,7 +29,7 @@ let elt_of_hackojo_scroll x =
   x.elt
 
 let create_subscroll () =
-  let id = new_elt_id () in
+  let id = new_elt_id ~global:false () in
   let subs = create_named_elt ~id (div ~a:[a_class ["scroll_item_subs"]] []) in
   lwt (reaction, sender) =
     CORE_client_reaction.listening

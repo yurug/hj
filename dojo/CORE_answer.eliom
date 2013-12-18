@@ -69,7 +69,6 @@ include CORE_entity.Make (struct
       let new_states ss = (ss, source_updates) in
       match change with
         | MarkSubmissionAsHandled (c, ctx) ->
-          Ocsigen_messages.errlog "Processs Mark submission as hansled";
           begin match current c ss with
             | NoSubmission ->
               bad_assumption
@@ -86,7 +85,6 @@ include CORE_entity.Make (struct
         end
 
       | NewSubmissionData (c, s, sources) ->
-        Ocsigen_messages.errlog "Processs 'New submission data'";
         begin match current c ss with
           | NewSubmission s' when s = s' ->
             (** We already are in the process of submission evaluation. *)
@@ -133,7 +131,6 @@ let answer_of exo author =
 let assign_answer exo answer author =
   CORE_exercise.change exo
     (CORE_exercise.NewAnswer (
-(*      push exo answer_of_dependency_kind*)
         [CORE_user.identifier author], (identifier answer)
      ))
 

@@ -71,7 +71,7 @@ let machinist_page mc =
             | `KO e -> warn e; return ()
     )
     in
-    let id = Id.new_elt_id () in
+    let id = Id.new_elt_id ~global:false () in
     let i = Id.create_named_elt id (string_input ~a:[a_onkeypress {{ fun e ->
       if e##keyCode = 13 then (* FIXME: Check the portability of this. *)
         let input_elt = Id.get_element %id in

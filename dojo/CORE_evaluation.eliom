@@ -93,7 +93,6 @@ let create_job checkpoint context submission change_later =
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s =
-    Ocsigen_messages.errlog "Change state";
     change_later (NewEvaluationState (checkpoint, s))
   in
   let message job msg =
@@ -165,7 +164,7 @@ let evaluate change_later exercise answer cps data =
       (CORE_answer.mark_handled_submission answer checkpoint c
        >> create_job checkpoint c s change_later >>= function
          | Some job ->
-           Ocsigen_messages.errlog "Job created.";
+           Ocsigen_messages.errlog "Executable job created.";
            return (BeingEvaluated (job, CORE_diagnostic.Empty, c))
          | None ->
            (* FIXME: transmission error. *)
@@ -188,29 +187,36 @@ let evaluate change_later exercise answer cps data =
         *)
         begin
           try_lwt
-            lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
-            lwt job, c' = match current_state with
-              | Some (Evaluated (_, _, c')) -> return (None, Some c')
-              | Some (BeingEvaluated (job, _, c')) -> return (Some job, Some c')
-              | _ -> raise_lwt Not_found
-            in
-            Ocsigen_messages.errlog (
-              match c' with
-                | None -> "no context"
-                | Some c' -> "context " ^ CORE_context.string_of_context c'
-            );
-            if Some c = c' then (
-              Ocsigen_messages.errlog "Same context, do nothing";
-              match current_state with
-                | None -> assert false
-                | Some e -> return e
-            ) else (
-              Ocsigen_messages.errlog "New context, reeval";
-            (** We have already have a score but with a different
-                context. It must be recomputed. *)
-              cancel_job_if_present job
-              >> run_submission_evaluation c s
-            )
+          lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
+          lwt job, c' = match current_state with
+            | Evaluated (_, _, c') ->
+              return (None, Some c')
+            | BeingEvaluated (job, _, c') ->
+              return (Some job, Some c')
+            | Unevaluated ->
+              raise_lwt Not_found
+          in
+          Ocsigen_messages.errlog (
+            match c' with
+              | None -> "no context"
+              | Some c' -> "context " ^ CORE_context.string_of_context c'
+          );
+          if Some c = c' then (
+            Ocsigen_messages.errlog "Same context, do nothing";
+            return current_state
+          ) else (
+            Ocsigen_messages.errlog "New context, reeval";
+              (** We have already have a score but with a different
+                  context. It must be recomputed. *)
+            cancel_job_if_present job
+            >> run_submission_evaluation c s
+          )
+          with Not_found ->
+            (** We are in the case where a submission is marked as
+                handled by a reaction of this evaluation but it
+                has not finished reacting. We let it finish
+                that reaction. *)
+            return current_state
         end
 
       | Some (NewSubmission s) ->
@@ -218,21 +224,14 @@ let evaluate change_later exercise answer cps data =
         run_submission_evaluation c s
 
   in
-  try_lwt
     lwt jobs = Lwt_list.fold_left_s (fun jobs cp ->
-      let e = try Some (List.assoc cp data.jobs) with Not_found -> None in
+      let e = try List.assoc cp data.jobs with Not_found -> Unevaluated in
       lwt e = evaluate cp e in
       return ((cp, e) :: jobs)
     ) [] cps
     in
     Ocsigen_messages.errlog ("Updating jobs of evaluation");
     return (UpdateContent { data with jobs })
-  with Not_found ->
-    (** We are in the case where a submission is marked as
-        handled by a reaction of this evaluation but it
-        has not finished reacting. We let it finish
-        that reaction. *)
-    return NoUpdate
 
 
 (* let evaluate_all change_later exercise answer data =
@@ -351,8 +350,16 @@ let evaluation_of_exercise_from_authors exo answer =
   let answer_id = CORE_answer.identifier answer in
   lwt id = identifier_of_answer_evaluation answer_id in
   make id >>= function
-    | `OK e -> return (`OK e)
-    | `KO (`UndefinedEntity _) -> create id exo answer
+    | `OK e ->
+      Ocsigen_messages.errlog
+        (Printf.sprintf "Already have an evaluation for %s."
+           (string_of_identifier answer_id));
+      return (`OK e)
+    | `KO (`UndefinedEntity _) ->
+      Ocsigen_messages.errlog
+        (Printf.sprintf "Create an evaluation for %s."
+           (string_of_identifier answer_id));
+      create id exo answer
     | `KO e -> return (`KO e)
 
 let flush_diagnostic_commands_of_checkpoint evaluation checkpoint =

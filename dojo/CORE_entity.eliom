@@ -172,9 +172,14 @@ module type S = sig
       | `SystemError     of string
     ]] Lwt.t
 
-  val change : ?immediate:bool -> t -> change -> unit Lwt.t
-  val observe : ?fresh:bool -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
+  val change
+    : ?immediate:bool -> ?who:identifier -> t -> change -> unit Lwt.t
+
+  val observe
+    : ?fresh:bool -> ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
+
   val identifier : t -> CORE_identifier.t
+
   val log : t -> int -> (change * timestamp) list
 end
 
@@ -319,15 +324,22 @@ and type change = I.change
     let change_later c =
       return (laters := (fun () -> change ~immediate:true e c) :: !laters)
     in
-(*    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes)"
+    let card_changes =
+      List.length cs + List.length (to_list dependencies)
+    in
+    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes : %s)"
                                (string_of_identifier (identifier e))
-                               (List.length cs + List.length (to_list dependencies)));*)
-    e.reaction state dependencies cs change_later >>= function
-      | NoUpdate ->
-        return ()
+                               card_changes
+                               (String.concat " " (List.map I.string_of_change cs))
+    );
+    if card_changes = 0 then
+      return []
+    else
+      e.reaction state dependencies cs change_later >>= function
+        | NoUpdate ->
+          return !laters
 
-      | llc ->
-        lwt ret =
+        | llc ->
           wait_to_be_observer_free e (fun () ->
             let old = e.description in
             e.description <- CORE_inmemory_entity.update e.description llc;
@@ -335,13 +347,7 @@ and type change = I.change
             >>= function
               | `KO error -> warn error; return (e.description <- old)
               | `OK _ -> savelog e cs >> return (e.push HasChanged)
-          )
-        in
-        let rec aux = function
-          | [] -> return ret
-          | j :: js -> j () >> aux js
-        in
-        aux !laters
+          ) >> return !laters
 
   and savelog e cs =
     let ts = CORE_inmemory_entity.timestamp e.description in
@@ -366,23 +372,31 @@ and type change = I.change
         return ()
 
       | Modified (dependencies, queue) ->
-(*        Lwt_mutex.with_lock e.react_lock (fun () -> *)
-          let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
-          Queue.clear queue;
-          apply dependencies e (List.rev cs)
-          >> return (
-(*            Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
-                                       (string_of_identifier (identifier e)));*)
-            e.state <- UpToDate
-          )
-(*        )*)
+        let laters = ref [] in
+        Lwt_mutex.with_lock e.react_lock (fun () ->
+        let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
+        Queue.clear queue;
+        lwt claters = apply dependencies e (List.rev cs) in
+        return (
+          laters := claters;
+          Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
+                                     (string_of_identifier (identifier e)));
+          e.state <- UpToDate
+        )
+        ) >>
+          let rec aux = function
+            | [] -> return ()
+            | j :: js -> j () >> aux js
+          in
+          aux !laters
+
 
   (** As long as a change is being applied, we have to
       push other required changes into a queue. *)
   and now_only_accumulate_changes e =
     e.state <- Modified (empty_dependencies, Queue.create ())
 
-  and change ?(immediate = false) e c =
+  and change ?(immediate = false) ?who e c =
     (** Shake the reverse dependencies for them to wait for
         a change of [e]. *)
     propagate_change (identifier e);
@@ -391,19 +405,25 @@ and type change = I.change
       | UpToDate ->
         (** Good, the change is applied immediately. *)
         now_only_accumulate_changes e;
-        apply empty_dependencies e [c]
-        >> update e
+        change ~immediate ?who e c
 
       | Modified (dependencies, queue) ->
         (** This change is scheduled for further application. *)
         Queue.push c queue;
         if immediate then update e else return ()
 
-  let observe ?(fresh=false) (type a) (e : t) (o : data meta -> a Lwt.t)
+  let observe ?(fresh=false) (type a) ?who (e : t) (o : data meta -> a Lwt.t)
       : a Lwt.t =
-    let r = Random.bits () in
-    let say msg = () in (* Ocsigen_messages.errlog (Printf.sprintf "%s %d %s" (string_of_identifier (identifier e)) r msg) in *)
+    let who = match who with
+      | None -> "anonymous"
+      | Some id -> string_of_identifier id
+    in
+    let say msg =
+      Ocsigen_messages.errlog (Printf.sprintf "%s observes %s: %s"
+                                 who (string_of_identifier (identifier e)) msg)
+    in
     let master = ref false in
+    say "";
     (if fresh then update e else return ()) >>
       let rec aux () =
 (*        Ocsigen_messages.errlog (Printf.sprintf "%s trying to be observed (%d)"
@@ -422,24 +442,24 @@ and type change = I.change
             | `Commit ->
                 (** A commit is being applied, wait for it to finish. *)
 (*              Ocsigen_messages.errlog (Printf.sprintf "%s: Observer waits commit"
-                                         (string_of_identifier (identifier e)));*)
+                                         (string_of_identifier (identifier e))); *)
               Lwt_condition.wait e.commit_cond
                 (** and try to observe again. *)
               >> aux ()
 
             | `Observe x -> return (
-(*              Ocsigen_messages.errlog (Printf.sprintf "%s: is observed"
-                                         (string_of_identifier (identifier e)));*)
+              Ocsigen_messages.errlog (Printf.sprintf "%s: is observed"
+                                         (string_of_identifier (identifier e)));
 
                 (** An observer already took the mutex. *)
                 (** Let us register our presence to him. *)
               incr_observers ()
             )
         else (
-          say
+(*          say
             (Printf.sprintf "Waiting for lock (%B, %B)"
                (Lwt_mutex.is_locked e.commit_lock)
-               (Lwt_mutex.is_empty e.commit_lock));
+               (Lwt_mutex.is_empty e.commit_lock)); *)
 
             (** The master observer owns the lock and it will release
                 it only when no more observation is required. This
@@ -495,7 +515,7 @@ and type change = I.change
                match e.mode with
                  | `Observe 1 -> return (
                    e.mode <- `Observe 0;
-                   say "Unlock";
+(*                   say "Unlock"; *)
                    Lwt_mutex.unlock e.commit_lock
                  )
                  | `Observe x when x > 1 ->
@@ -526,8 +546,8 @@ and type change = I.change
           )
          )
          >> (
-           say
-             (Printf.sprintf "Observation done (master=%B)!" !master);
+(*           say
+             (Printf.sprintf "Observation done (master=%B)!" !master);*)
            return ret
          )
       )

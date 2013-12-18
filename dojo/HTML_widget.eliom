@@ -14,7 +14,7 @@
   type onclick_cb = (Dom_html.mouseEvent Js.t -> unit) client_value
 
   let generic_button classes labels onclick =
-    let id = Id.new_elt_id ~global:true () in
+    let id = Id.new_elt_id ~global:false () in
     let onclick = {{
       let state = ref 0 in
       let next () =
@@ -33,6 +33,7 @@
       div ~a:[a_onclick onclick; a_class ("inlined" :: classes) ] [label]
     )
 
+  let small_button ls = generic_button ["menu_button"] (List.map (fun l -> pcdata l) ls)
   let button ls = generic_button ["button"] (List.map (fun l -> pcdata l) ls)
   let icon = generic_button ["icon"]
 
@@ -184,11 +185,11 @@ let list_editor
 
   and row_of_idx table i =
     lwt fields = list.display i in
-    let id = indices_fresh_for (Id.new_elt_id ()) i in
+    let id = indices_fresh_for (Id.new_elt_id ~global:false ()) i in
     let cells = cells_of_tr fields table id i in
     return (Id.create_named_elt ~id (tr cells))
   in
-  let tableid = Id.new_elt_id () in
+  let tableid = Id.new_elt_id ~global:false () in
   lwt e = list.index_end () in
   let r = range 0 (if no_insertion then e else e + 1) in
   lwt rows = Lwt_list.map_s (row_of_idx tableid) r in
@@ -329,7 +330,7 @@ let field
     ?(fieldname : [ `Input ] Id.id option) input_type text =
   let input_id : [> `Input ] Id.id =
     match fieldname with
-      | None -> Id.new_elt_id ~global:true ()
+      | None -> Id.new_elt_id ~global:false ()
       | Some id -> (id :> [ `Input ] Id.id)
   in
   let input_validator, message =
@@ -367,7 +368,7 @@ let fileuploader import =
         >> commit ()
       )
   in
-  let form_id = Id.new_elt_id () in
+  let form_id = Id.new_elt_id ~global:false () in
   let onchange = {{ fun _ ->
     let f = Id.get_element %form_id in
     let f = To_dom.of_form f in

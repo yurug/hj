@@ -46,7 +46,7 @@ type ('a, 'b) c = 'a EltProduct.prod * 'b CORE_client_reaction.c
 }}
 
 let async_elts inits computation reaction =
-  let elts = EltProduct.map { fapply = Html5.Id.create_global_elt } inits in
+  let elts = EltProduct.map { fapply = fun x -> x } inits in
   CORE_client_reaction.on computation (fun bus -> reaction (elts, bus)) >>
   return elts
 

@@ -14,6 +14,10 @@ type onclick_cb = (mouseEvent Js.t -> unit) client_value
     [onclick_cb] when it is clicked. *)
 val button: string list -> onclick_cb -> [> div ] elt
 
+(** [menu_button label onclick_cb] returns a button that executes
+    [onclick_cb] when it is clicked. *)
+val small_button: string list -> onclick_cb -> [> div ] elt
+
 (** [icon onclick_cb].  *)
 val icon : [ flow5 ] elt list -> onclick_cb -> [> div ] elt
 

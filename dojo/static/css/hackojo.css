@@ -4,6 +4,15 @@
     font-family: monospace;
 }
 
+pre {
+    border: thin solid #DDDDDD;
+    margin-left:auto;
+    margin-right:auto;
+    margin-top:0.5em;
+    margin-bottom:0.5em;
+    padding: 0.5em;
+}
+
 body {
     margin: 0 0 0 0;
     margin-bottom: 5em;
@@ -41,6 +50,8 @@ body {
 }
 
 .menu_button {
+    margin-top: 2em;
+    margin-bottom: 2em;
     text-decoration:none;
     font-size:0.6em;
     font-weight:bold ;
@@ -318,7 +329,7 @@ td {
     padding-right: 0.5em;
 }
 
-span.button {
+div.button {
     font-weight:bold;
     cursor:pointer;
     margin-right: 1em;
@@ -335,7 +346,7 @@ span.button {
     font-size:1em;
 }
 
-span.button:hover, span.button:focus {
+div.button:hover, div.button:focus {
     background-color :#99969C;
     -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
@@ -457,3 +468,8 @@ div.exercise_sources {
     font-size: 0.9em;
     float: right;
 }
+
+div.user_answer {
+    padding: 1em;
+}
+

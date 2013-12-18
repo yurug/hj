@@ -159,7 +159,7 @@ let create
         | Some _ -> None
         | None ->
           hello msg;
-          let id = Id.new_elt_id () in
+          let id = Id.new_elt_id ~global:false () in
           let onload _ =
             Lwt.async (fun () -> Lwt_js.sleep timeout >> (
               Manip.removeChild %questions_box (Id.get_element id);

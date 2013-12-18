@@ -74,7 +74,7 @@ let offer_creation emake creation_service page id =
       return (error_page (CORE_error_messages.string_of_error e))
 
 let reactive_div e after_display get display  =
-  let elt = Id.create_global_elt (div [pcdata "Loading..."]) in
+  let elt = div [pcdata "Loading..."] in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
     get () >> return ()

@@ -18,11 +18,11 @@ open COMMON_pervasives
 
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let get () = CORE_evaluation.(
-    lwt d = observe ~fresh:true evaluation (fun d -> return (content d)) in
-    flush_diagnostic_commands_of_checkpoint evaluation checkpoint
-    >> return d)
+    lwt d = observe ~fresh:true ~who:(identifier_of_string "HTML_context") evaluation (fun d -> return (content d)) in
+(*    flush_diagnostic_commands_of_checkpoint evaluation checkpoint
+    >> *) return d)
   in
-  let diagnostic = Id.create_global_elt (div []) in
+  let diagnostic = div [] in
   lwt d =
     HTML_entity.reactive_div evaluation None get {{
       let rec interpret_diagnostic_command = CORE_diagnostic.(function
@@ -125,7 +125,7 @@ let display_user_input exo_id checkpoint context =
         HTML_widget.get_choices_editor cs add del
       in
       (* FIXME: The following sequence of code is too inelegant! *)
-      let choices_div = Id.create_global_elt (div []) in
+      let choices_div = div [] in
       {unit Lwt.t{
         lwt e = %choices_editor () in
         return (Manip.replaceAllChild %choices_div [e])
@@ -134,12 +134,12 @@ let display_user_input exo_id checkpoint context =
         submit_answer_choices exo_id checkpoint !choices
       )
       in
-      let submit_button = HTML_widget.button ["OK"] {{
+      let submit_button = HTML_widget.small_button ["OK"] {{
         fun _ ->
           Lwt.async (fun () -> %submit ())
       }}
       in
-      return (div [choices_div; submit_button])
+      return (div ~a:[a_class ["user_answer"]] [choices_div; submit_button])
 
 
     | Some (`KeyValues vs) ->
@@ -158,7 +158,7 @@ let display_user_input exo_id checkpoint context =
           fields get (Some set) extra
       in
       (* FIXME: The following sequence of code is too inelegant! *)
-      let editor_div = Id.create_global_elt (div []) in
+      let editor_div = div [] in
       {unit Lwt.t{
         lwt e = %list_editor () in
         return (Manip.replaceAllChild %editor_div [e])
@@ -169,12 +169,12 @@ let display_user_input exo_id checkpoint context =
           )
       )
       in
-      let submit_button = HTML_widget.button ["OK"] {{
+      let submit_button = HTML_widget.small_button ["OK"] {{
         fun _ ->
           Lwt.async (fun () -> %submit ())
       }}
       in
-      return (div [editor_div; submit_button])
+      return (div ~a:[a_class ["user_answer"]] [editor_div; submit_button])
 
 let display_context exo_id checkpoint context evaluation =
   lwt user_input = display_user_input exo_id checkpoint context in

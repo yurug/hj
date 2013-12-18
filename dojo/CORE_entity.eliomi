@@ -40,6 +40,7 @@
 (** The following module defines entities' state whose content has
     type ['a] and low-level ['a change] on this state. *)
 open CORE_inmemory_entity
+open CORE_identifier
 
 (** The type of entity with content of type ['a] and high-level
     changes of type ['c]. *)
@@ -138,7 +139,8 @@ module type S = sig
       If [immediate] is set, the reaction without further delay.
       Otherwise, we are lazy: the change is not applied unless a
       process actively observes the state of entity. *)
-  val change : ?immediate:bool -> t -> change -> unit Lwt.t
+  val change
+    : ?immediate:bool -> ?who:identifier -> t -> change -> unit Lwt.t
 
   (** [observe e o] evaluates [o] with the content of [e].
 
@@ -147,7 +149,8 @@ module type S = sig
 
       As long as [o] is not finished, the requested changes to [e] are
       suspended. *)
-  val observe : ?fresh:bool -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
+  val observe
+    : ?fresh:bool -> ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
 
   (** [identifier e] returns the identifier of [e]. This information
       will never change during the life of [e]. *)

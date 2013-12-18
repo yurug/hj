@@ -200,7 +200,7 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
   in
   let get () =
     CORE_exercise.eval_if_needed exo
-    >> observe exo (fun d -> return (content d))
+    >> CORE_exercise.observe exo (fun d -> return (content d))
   in
   CORE_exercise.eval exo
   >> HTML_entity.reactive_div exo (Some display_math) get display_exercise
