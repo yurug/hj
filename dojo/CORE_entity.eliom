@@ -67,7 +67,7 @@ and ('a, 'c) entity = {
   (*   *) reaction    : ('a, 'c) reaction;
   (*   *) channel     : event CORE_client_reaction.c;
   (*   *) push        : event -> unit;
-  (*   *) react_lock  : Lwt_mutex.t;
+  (*   *) react_cond  : unit Lwt_condition.t;
   (*   *) commit_lock : Lwt_mutex.t;
   (*   *) commit_cond : unit Lwt_condition.t;
   mutable mode        : [ `Commit | `Observe of int ];
@@ -143,7 +143,8 @@ let propagate_change id =
 
     (** We also notify [e] that [id] has one of its dependencies that
         has changed. *)
-    e.state <- Modified (push dependencies (id, (l, xs)), queue)
+    e.state <- Modified (push dependencies (id, (l, xs)), queue);
+    Lwt_condition.signal e.react_cond ();
   in
   EntitySet.iter wake_up (watchers_of id)
 
@@ -245,12 +246,12 @@ and type change = I.change
     (** Notice that the following sequence of operations are
         atomic w.r.t. the concurrency model. *)
     let channel, push = CORE_client_reaction.channel () in
-    let react_lock = Lwt_mutex.create () in
+    let react_cond = Lwt_condition.create () in
     let commit_lock = Lwt_mutex.create () in
     let commit_cond = Lwt_condition.create () in
     let e = {
       description; reaction; state = UpToDate;
-      channel; push; react_lock;
+      channel; push; react_cond;
       commit_lock; commit_cond;
       mode = `Observe 0;
       log = []
@@ -261,7 +262,8 @@ and type change = I.change
       );
     Lwt.async (fun () ->
       let rec tick () =
-        Lwt_unix.sleep 0.1 >> update e >> tick ()
+        (** This is the only place where update is called. *)
+        update e >> Lwt_condition.wait e.react_cond >> tick ()
       in
       tick ()
     );
@@ -403,7 +405,7 @@ and type change = I.change
     e.state <- Modified (empty_dependencies, Queue.create ())
 
   and change ?(immediate = false) ?who e c =
-
+    Lwt_condition.signal e.react_cond ();
     match e.state with
       | UpToDate ->
         (** Good, the change is applied immediately. *)
