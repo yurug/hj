@@ -40,10 +40,10 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
           match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
             | Some Unevaluated ->
               return [pcdata "Pas évalué"]
-            | Some (BeingEvaluated (_, dcmd, _)) ->
+            | Some (BeingEvaluated (_, _, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
               return [pcdata "En cours..."]
-            | Some (Evaluated (score, dcmd, _)) ->
+            | Some (Evaluated (score, _, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
               return [pcdata (string_of_score score)]

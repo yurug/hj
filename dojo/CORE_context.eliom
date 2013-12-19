@@ -114,23 +114,36 @@ let get_command = get (function
 
 let get_timeout = get (function TimeOut t -> Some t | _ -> None)
 
-}}
-
 type submission =
-  | SubmittedFile of string
+  | SubmittedFile of string * string
   | SubmittedValues of string list
   | SubmittedChoices of int list
 deriving (Json)
 
+}}
+
+
+let equivalent_submission s1 s2 =
+  match s1, s2 with
+    | SubmittedFile (f1, digest1), SubmittedFile (f2, digest2) ->
+      f1 = f2 && digest1 = digest2
+    | s1, s2 ->
+      s1 = s2
+
+let equivalent_context c1 c2 =
+  c1 = c2
+
 let string_of_submission = function
-  | SubmittedFile f ->
-    Printf.sprintf "file(%s)" f
+  | SubmittedFile (f, digest) ->
+    Printf.sprintf "file(%s[%s])" f digest
   | SubmittedValues vs ->
     Printf.sprintf "values(%s)" (String.concat "," vs)
   | SubmittedChoices vs ->
     Printf.sprintf "choices(%s)" (String.concat "," (List.map string_of_int vs))
 
-let new_submitted_file s = SubmittedFile s
+let new_submitted_file s =
+  let d = try Digest.file s with _ -> "NoFileNoDigest" in
+  SubmittedFile (s, d)
 
 let new_submitted_values vs = SubmittedValues vs
 

@@ -12,8 +12,8 @@ open COMMON_pervasives
 
 type submission_state =
   | NoSubmission
-  | NewSubmission of CORE_context.submission
-  | HandledSubmission of CORE_context.submission * CORE_context.t
+  | Submission of CORE_context.submission
+
 deriving (Json)
 
 type description = {
@@ -27,10 +27,6 @@ type public_change =
       CORE_exercise.checkpoint
     * CORE_context.submission
     * CORE_source.t list
-
-  | MarkSubmissionAsHandled of
-      CORE_exercise.checkpoint
-    * CORE_context.t
 
 include CORE_entity.Make (struct
 
@@ -48,50 +44,14 @@ include CORE_entity.Make (struct
          else
             (String.concat " " (List.map CORE_source.filename ss))
         )
-    | MarkSubmissionAsHandled (c, ctx) ->
-      Printf.sprintf "Submission %s handled by %s."
-        c
-        (CORE_context.string_of_context ctx)
 
   exception InvalidCheckpoint
 
   let react state deps changes change_later =
-    let current c ss =
-      try
-        List.assoc c ss
-      with Not_found ->
-        NoSubmission
-    in
-
-    (* FIXME: Optimize this quadratic complexity? *)
     let make_change (ss, source_updates) change =
-      let keep = (ss, source_updates) in
-      let new_states ss = (ss, source_updates) in
       match change with
-        | MarkSubmissionAsHandled (c, ctx) ->
-          begin match current c ss with
-            | NoSubmission ->
-              bad_assumption
-                "Marking a checkpoint as handled is only done on checkpoint
-               that already have a submission.";
-              keep
-            | HandledSubmission (s, _) ->
-              bad_assumption
-                "A submission cannot be marked as handled twice.";
-(*              keep *)
-              new_states (update_assoc c (HandledSubmission (s, ctx)) ss)
-            | NewSubmission s ->
-              new_states (update_assoc c (HandledSubmission (s, ctx)) ss)
-        end
-
       | NewSubmissionData (c, s, sources) ->
-        begin match current c ss with
-          | NewSubmission s' when s = s' ->
-            (** We already are in the process of submission evaluation. *)
-            keep
-          | _ ->
-            (update_assoc c (NewSubmission s) ss, sources @ source_updates)
-        end
+        (update_assoc c (Submission s) ss, sources @ source_updates)
     in
     try
       let submissions, source_updates =
@@ -244,13 +204,3 @@ let submit_answer_choices answer checkpoint choices =
 let submission_of_checkpoint answer cp =
   observe answer (fun a -> return (opt_assoc cp (content a).submissions))
 
-let checkpoints_of_new_submissions answer =
-  observe answer (fun a ->
-    return (fst (List.(split (filter (function
-      | (_, NewSubmission _) -> true
-      | _ -> false
-    ) (content a).submissions))))
-  )
-
-let mark_handled_submission answer cp c =
-  change answer (MarkSubmissionAsHandled (cp, c))
