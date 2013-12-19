@@ -74,6 +74,7 @@ let offer_creation emake creation_service page id =
       return (error_page (CORE_error_messages.string_of_error e))
 
 let reactive_div e after_display get display  =
+  let sid = string_of_identifier (CORE_entity.identifier e) in
   let elt = div [pcdata "Loading..."] in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
@@ -94,13 +95,14 @@ let reactive_div e after_display get display  =
     in
     CORE_client_reaction.react_on_background %e_channel (function
       | CORE_entity.HasChanged ->
-        Firebug.console##log (Js.string "Entity has changed");
+        Firebug.console##log (Js.string (Printf.sprintf "Entity %s has changed" %sid));
         (** Update the entity view. *)
         (try_lwt
            lwt data = %remote_get () in
            process data
          with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e))))
       | CORE_entity.MayChange ->
+        Firebug.console##log (Js.string (Printf.sprintf "Entity %s may change" %sid));
         (** Force the change as we are observing the entity. *)
         %update ()
     );

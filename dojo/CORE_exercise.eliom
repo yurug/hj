@@ -97,7 +97,7 @@ include CORE_entity.Make (struct
         )
 
       | EvalQuestions ->
-        lwt content = eval_questions (identifier state) content in
+        lwt content = eval_questions (CORE_inmemory_entity.identifier state) content in
         return (dependencies, content)
 
       | Update (title, questions) ->
@@ -124,7 +124,7 @@ include CORE_entity.Make (struct
 
       | UpdateSource (raw, cst) ->
         let c = { content with cst } in
-        update_description_source (identifier state) raw
+        update_description_source (CORE_inmemory_entity.identifier state) raw
         >>= function
           | `OK () -> return (dependencies, c)
           | `KO e -> warn e; return (dependencies, c) (* FIXME: handle error. *)
@@ -444,7 +444,7 @@ let exercise_id username =
   )
 
 let rec eval_if_needed e =
-  observe e (fun d -> return (content d).questions_value) >>= function
+  observe ~fresh:true e (fun d -> return (content d).questions_value) >>= function
     | None -> eval e >> eval_if_needed e
     | Some (_, v) -> return v
 

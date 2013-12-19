@@ -240,7 +240,7 @@ and type change = I.change
 
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
-  let wakeup id reaction =
+  let rec wakeup id reaction =
     OTD.load id >>>= fun description ->
     (** Notice that the following sequence of operations are
         atomic w.r.t. the concurrency model. *)
@@ -259,12 +259,18 @@ and type change = I.change
     List.iter (register_dependency e)
       (dependency_image (dependencies e.description)
       );
+    Lwt.async (fun () ->
+      let rec tick () =
+        Lwt_unix.sleep 0.1 >> update e >> tick ()
+      in
+      tick ()
+    );
     return (`OK e)
 
   (** [initialize init deps fnames id] creates the on-the-disk
       representation of [id] so that it can be loaded afterwards.
       Precondition: [id] must not already exist. *)
-  let initialize init deps properties fnames id =
+  and initialize init deps properties fnames id =
     if CORE_onthedisk_entity.exists id then
       return (`KO (`AlreadyExists (path_of_identifier id)))
     else
@@ -275,7 +281,7 @@ and type change = I.change
   (* ************************** *)
 
   (** [make init reaction id] deals with the instanciation of [id] ... *)
-  let rec make ?init ?(reaction = I.react) id =
+  and make ?init ?(reaction = I.react) id =
     match init with
       | Some (init, dependencies, properties, filenames) ->
         (** This is the first time for [id], we make room for it in
@@ -292,7 +298,7 @@ and type change = I.change
           (** ... on the disk, we load it from the file system. *)
           | None -> wakeup id reaction
 
-  let wait_to_be_observer_free e commit =
+  and wait_to_be_observer_free e commit =
     Lwt_mutex.with_lock e.commit_lock (fun () ->
       (** Set the commit mode, no observers are allowed to run. *)
       e.mode <- `Commit;
@@ -306,7 +312,7 @@ and type change = I.change
 
   (** [apply deps e c] does the effective changes [cs] of the
       content of [e]. *)
-  let rec apply dependencies e cs =
+  and apply dependencies e cs =
 
     let state = e.description in
 
@@ -347,7 +353,10 @@ and type change = I.change
             >>= function
               | `KO error -> warn error; return (e.description <- old)
               | `OK _ -> savelog e cs >> return (e.push HasChanged)
-          ) >> return !laters
+          ) >> return (
+            propagate_change (identifier e);
+            !laters
+          )
 
   and savelog e cs =
     let ts = CORE_inmemory_entity.timestamp e.description in
@@ -373,23 +382,20 @@ and type change = I.change
 
       | Modified (dependencies, queue) ->
         let laters = ref [] in
-        Lwt_mutex.with_lock e.react_lock (fun () ->
         let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
-        Queue.clear queue;
+        e.state <- UpToDate;
         lwt claters = apply dependencies e (List.rev cs) in
         return (
           laters := claters;
           Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
                                      (string_of_identifier (identifier e)));
-          e.state <- UpToDate
-        )
+
         ) >>
           let rec aux = function
             | [] -> return ()
             | j :: js -> j () >> aux js
           in
-          aux !laters
-
+          aux (List.rev !laters)
 
   (** As long as a change is being applied, we have to
       push other required changes into a queue. *)
@@ -397,9 +403,6 @@ and type change = I.change
     e.state <- Modified (empty_dependencies, Queue.create ())
 
   and change ?(immediate = false) ?who e c =
-    (** Shake the reverse dependencies for them to wait for
-        a change of [e]. *)
-    propagate_change (identifier e);
 
     match e.state with
       | UpToDate ->
@@ -410,7 +413,8 @@ and type change = I.change
       | Modified (dependencies, queue) ->
         (** This change is scheduled for further application. *)
         Queue.push c queue;
-        if immediate then update e else return ()
+        return ()
+(*        if immediate then update e else return ()*)
 
   let observe ?(fresh=false) (type a) ?who (e : t) (o : data meta -> a Lwt.t)
       : a Lwt.t =
@@ -419,15 +423,17 @@ and type change = I.change
       | Some id -> string_of_identifier id
     in
     let say msg =
-      Ocsigen_messages.errlog (Printf.sprintf "%s observes %s: %s"
-                                 who (string_of_identifier (identifier e)) msg)
+      if false then
+        Ocsigen_messages.errlog (Printf.sprintf "%s observes %s%s: %s"
+                                   who
+                                   (if fresh then "fresh " else "")
+                                   (string_of_identifier (identifier e)) msg)
     in
     let master = ref false in
     say "";
-    (if fresh then update e else return ()) >>
       let rec aux () =
-(*        Ocsigen_messages.errlog (Printf.sprintf "%s trying to be observed (%d)"
-                                   (string_of_identifier (identifier e)) r); *)
+        say (Printf.sprintf "%s trying to be observed"
+               (string_of_identifier (identifier e)));
 
         let incr_observers () =
           match e.mode with
@@ -440,15 +446,15 @@ and type change = I.change
         then
           match e.mode with
             | `Commit ->
-                (** A commit is being applied, wait for it to finish. *)
-(*              Ocsigen_messages.errlog (Printf.sprintf "%s: Observer waits commit"
-                                         (string_of_identifier (identifier e))); *)
+              (** A commit is being applied, wait for it to finish. *)
+              say (Printf.sprintf "%s: Observer waits commit"
+                                         (string_of_identifier (identifier e)));
               Lwt_condition.wait e.commit_cond
-                (** and try to observe again. *)
+              (** and try to observe again. *)
               >> aux ()
 
             | `Observe x -> return (
-              Ocsigen_messages.errlog (Printf.sprintf "%s: is observed"
+              say (Printf.sprintf "%s: is observed"
                                          (string_of_identifier (identifier e)));
 
                 (** An observer already took the mutex. *)
@@ -456,10 +462,10 @@ and type change = I.change
               incr_observers ()
             )
         else (
-(*          say
+          say
             (Printf.sprintf "Waiting for lock (%B, %B)"
                (Lwt_mutex.is_locked e.commit_lock)
-               (Lwt_mutex.is_empty e.commit_lock)); *)
+               (Lwt_mutex.is_empty e.commit_lock));
 
             (** The master observer owns the lock and it will release
                 it only when no more observation is required. This
@@ -515,7 +521,7 @@ and type change = I.change
                match e.mode with
                  | `Observe 1 -> return (
                    e.mode <- `Observe 0;
-(*                   say "Unlock"; *)
+                   say "Unlock";
                    Lwt_mutex.unlock e.commit_lock
                  )
                  | `Observe x when x > 1 ->
@@ -546,8 +552,8 @@ and type change = I.change
           )
          )
          >> (
-(*           say
-             (Printf.sprintf "Observation done (master=%B)!" !master);*)
+           say
+             (Printf.sprintf "Observation done (master=%B)!" !master);
            return ret
          )
       )

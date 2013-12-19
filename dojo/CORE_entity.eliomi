@@ -86,6 +86,8 @@ type event =
 (** On the client side, we can react to every change. *)
 val channel: ('a, 'c) t -> event CORE_client_reaction.c
 
+val identifier: ('a, 'c) t -> CORE_identifier.t
+
 (** The following module signature specifies the general operations
     over entities of content type [data] and high-level changes of
     type [change]. *)

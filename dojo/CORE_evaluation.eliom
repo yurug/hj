@@ -118,9 +118,11 @@ let create_job checkpoint context submission change_later =
     change_state (BeingEvaluated (job, submission, CORE_diagnostic.PushLine msg, context))
   in
   let mark () =
+    Ocsigen_messages.errlog "Mark!";
     change_state (Evaluated (!score, submission, CORE_diagnostic.Empty, context))
   in
   let init () =
+    Ocsigen_messages.errlog "Init!";
     change_state Unevaluated
   in
   init ()
@@ -259,6 +261,8 @@ include CORE_entity.Make (struct
 
   let react state deps cs (change_later : change -> unit Lwt.t) =
 
+    let content0 = content state in
+
     let flush_diagnostic_commands_of_checkpoint checkpoint content =
       return { content with jobs =
           COMMON_pervasives.map_assoc checkpoint (function
@@ -278,8 +282,11 @@ include CORE_entity.Make (struct
     let changes_from_dependencies content =
       match CORE_inmemory_entity.to_list deps with
       | [] ->
-        (** Only the state of the evaluation changed. *)
-        return NoUpdate
+        if content0 == content then
+          return NoUpdate
+        else
+          (** Only the state of the evaluation changed. *)
+          return (UpdateContent content)
 
       | ldeps ->
         (
@@ -292,7 +299,7 @@ include CORE_entity.Make (struct
           | `OK e -> return e
           | `KO e -> warn e; return NoUpdate
     in
-    lwt content = Lwt_list.fold_left_s make_change (content state) cs in
+    lwt content = Lwt_list.fold_left_s make_change content0 cs in
     changes_from_dependencies content
 
 end)

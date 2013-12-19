@@ -36,44 +36,6 @@ let editor_div (e : CORE_exercise.t) =
     | `KO e -> raise_lwt LoadingError
   in
 
-(*  let patch_request (start, stop, what) =
-    return (HTML_editor.patch start stop what)
-  in
-*)
-(*  let push_online_definition =
-    let ods = Hashtbl.create 13 in
-    let create id =
-      (CORE_exercise.make_blank id >>>= fun q ->
-       CORE_exercise.push_dependency e "questions" [] (SomeEntity q)
-       >> CORE_exercise.change_from_user_description q (Hashtbl.find ods id)
-      ) >>= function
-        | `OK _ ->
-          return []
-        | `KO (`NeedPatch p) ->
-          lwt r = patch_request p in
-          return [r]
-        | `KO (#CORE_errors.all as e) ->
-          return [HTML_editor.message (CORE_error_messages.string_of_error e)]
-    in
-    fun (id, user_description) ->
-      let sid = string_of_identifier id in
-
-      (** There is a user interface problem here: At some point,
-          someone may refuse the creation of some entity X and, so,
-          may answer 'no' to the following confirmation. But, what if,
-          later on, he decides that he finally wants to create X?
-          Currently, we will not propose the creation of X because of
-          its first answer.  Maybe a solution would be to attach a
-          timeout to negative answers. *)
-
-      Hashtbl.replace ods id user_description;
-      return [
-        HTML_editor.confirm
-          (I18N.String.do_you_really_want_to_create_a_question_named sid)
-          (server_function Json.t<unit> (fun () -> create id))
-      ]
-  in
-*)
   let client_change =
     {{ fun echo (s : string) ->
       match CORE_description_format.exercise_of_string s with
@@ -91,51 +53,11 @@ let editor_div (e : CORE_exercise.t) =
       change_from_user_description e cst
       >> observe ~fresh:true e (fun d -> return d)
       >> return []
-(*
-        | `OK new_ods ->
-          return []
-          (* FIXME: Patch application is currently broken. *)
-(*          lwt rqs = Lwt_list.map_s push_online_definition new_ods in
-          return (List.flatten rqs) *)
-        | `KO (`NeedPatch p) ->
-          (* FIXME: Patch application is currently broken.
-          lwt r = patch_request p in
-          return [r] *)
-          return []
-        | `KO (#CORE_errors.all as e) ->
-          return [HTML_editor.message (CORE_error_messages.string_of_error e)]
-*)
      ))
   in
   lwt (editor_div, editor_id, editor_process) =
     HTML_editor.create (CORE_source.content init) client_change server_change
   in
-  (* FIXME: Optimize the following channel. For the moment, the entire
-     description of the exercise is sent to the clients each time the
-     exercise is modified.  This is HUGE! *)
-(*  let e_channel = CORE_entity.channel e in
-  ignore {unit{
-    CORE_client_reaction.react_on_background %e_channel (fun data ->
-    lwt content = CORE_exercise.raw_user_description %id in
-    match data with
-    (* FIXME: In the future, we will try to "merge" the current state
-       FIXME: of the editor. *)
-    | CORE_entity.MayChange ->
-      Firebug.console##log (Js.string "May change");
-      (** Oh, a question definition must have changed. *)
-      begin match CORE_description_format.exercise_of_string content with
-        | `OK cst ->
-          lwt rqs = %server_change cst in
-          Lwt_list.iter_s %editor_process rqs
-        | `KO _ ->
-          Firebug.console##log ("This should not happen.");
-          return ()
-      end
-
-    | CORE_entity.HasChanged ->
-      Firebug.console##log (Js.string "Has changed");
-      return (HTML_editor.refresh %editor_id content)
-  )}}; *)
   lwt sources_div =
     lwt d = HTML_source.entity_sources_div (module CORE_exercise) e in
     return (div ~a:[a_class ["exercise_sources"]] [ d ])
@@ -200,10 +122,14 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
   in
   let get () =
     CORE_exercise.eval_if_needed exo
-    >> CORE_exercise.observe exo (fun d -> return (content d))
+    >> CORE_exercise.observe ~fresh:true exo (fun d -> return (content d))
   in
+
   CORE_exercise.eval exo
-  >> HTML_entity.reactive_div exo (Some display_math) get display_exercise
+  >> (
+    HTML_entity.reactive_div exo (Some display_math) get display_exercise
+  )
+
 
 type role =
   | Student   of CORE_user.t * CORE_user.t list
