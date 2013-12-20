@@ -111,7 +111,7 @@ let display_user_input exo_id checkpoint context =
       let commit () =
         (* FIXME: handle error. *)
         submit_file exo_id checkpoint tmp_filename filename
-        >> return ()
+        >>= fun _ -> return ()
       in
       return (HTML_widget.fileuploader (fun user_filename ->
         (* FIXME: Check user_filename = filename. *)
@@ -131,6 +131,7 @@ let display_user_input exo_id checkpoint context =
         return (Manip.replaceAllChild %choices_div [e])
       }};
       let submit = server_function Json.t<unit> (fun () ->
+        Ocsigen_messages.errlog "OK clicked.";
         submit_answer_choices exo_id checkpoint !choices
       )
       in
@@ -164,14 +165,16 @@ let display_user_input exo_id checkpoint context =
         return (Manip.replaceAllChild %editor_div [e])
       }};
       let submit = server_function Json.t<unit> (fun () ->
-          submit_answer_values exo_id checkpoint (
-            List.map (function [_;x] -> x | _ -> assert false) !answers
-          )
+        Ocsigen_messages.errlog "OK clicked.";
+        submit_answer_values exo_id checkpoint (
+          List.map (function [_;x] -> x | _ -> assert false) !answers
+        )
       )
       in
       let submit_button = HTML_widget.small_button ["OK"] {{
-        fun _ ->
-          Lwt.async (fun () -> %submit ())
+        fun _ -> Lwt.async (fun () ->
+             Firebug.console##log ("Submit clicked");
+             %submit ())
       }}
       in
       return (div ~a:[a_class ["user_answer"]] [editor_div; submit_button])

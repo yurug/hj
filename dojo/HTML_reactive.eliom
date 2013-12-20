@@ -37,18 +37,18 @@ type ('a, 'b) c = 'a EltProduct.prod * 'b CORE_client_reaction.c
           forever (fun continue ->
             (* FIXME: Is it the right freq? *)
             Lwt_js.sleep 1.
-            >> update_elts (P1 (Only elt)) (fun () ->
+            >>= fun _ -> update_elts (P1 (Only elt)) (fun () ->
               lwt y = behavior (fun () -> Lwt.fail StopBackground) in
               return (P1 (Only y))) ()
-            >> continue ()
+            >>= continue
           )
         with StopBackground -> return ()))
 }}
 
 let async_elts inits computation reaction =
   let elts = EltProduct.map { fapply = fun x -> x } inits in
-  CORE_client_reaction.on computation (fun bus -> reaction (elts, bus)) >>
-  return elts
+  CORE_client_reaction.on computation (fun bus -> reaction (elts, bus))
+  >>= fun _ -> return elts
 
 let async_elt init computation reaction =
   lwt (P1 (Only x)) = async_elts (P1 (Only init)) computation reaction in

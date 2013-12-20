@@ -14,7 +14,7 @@ type 'a only = Only of 'a
 
 let lwt_list_iteri_s f l =
   let c = ref 0 in
-  Lwt_list.iter_s (fun x -> f !c x >> (incr c; return ())) l
+  Lwt_list.iter_s (fun x -> f !c x >>= fun _ -> (incr c; return ())) l
 
 let lwt_list_join cs =
   List.fold_right (fun c xs ->
@@ -155,7 +155,7 @@ let cons_if cond x xs =
   if cond then x :: xs else xs
 
 let lwt_repeat k f =
-  let rec aux i = if i = 0 then return () else f (k - i) >> aux (pred i) in
+  let rec aux i = if i = 0 then return () else f (k - i) >>= fun _ -> aux (pred i) in
   aux k
 
 let lwt_nat_stream () =
@@ -286,7 +286,7 @@ module ExtFilename = struct
   let temp_filename ?(temp_dir = Filename.get_temp_dir_name ()) prefix suffix =
     let fname = Filename.temp_file ~temp_dir prefix suffix in
     Lwt_unix.unlink fname
-    >> return fname
+    >>= fun _ -> return fname
 
 end
 
@@ -338,7 +338,7 @@ let warn_only msg =
 let ( @* ) f x = fun () -> f x
 
 let ( >>> ) e f =
-  fun l -> e l >> f l
+  fun l -> e l >>= fun _ -> f l
 
 let ( >-> ) e f =
   fun l -> e l >>= (fun x -> f x l)

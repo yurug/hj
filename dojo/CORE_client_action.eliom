@@ -11,11 +11,11 @@ type client_guardian = (unit -> unit) client_value
 let guard server_process =
   let b = Eliom_bus.create Json.t<unit> in
   let s = Eliom_bus.stream b in
-  let job x = Lwt_stream.next s >> server_process x in
+  let job x = Lwt_stream.next s >>= fun _ -> server_process x in
   let client_trigger = {unit -> unit { fun evt ->
     Lwt.async (fun _ ->
       Eliom_bus.write %b ()
-      >> Lwt.return (Eliom_bus.close %b))
+      >>= fun _ -> Lwt.return (Eliom_bus.close %b))
   }}
   in
   (job, client_trigger)

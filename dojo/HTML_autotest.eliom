@@ -69,7 +69,7 @@ let test_entry t =
         let log = ref CORE_document.Text.empty in
         fun (description, value) ->
           log := CORE_document.Text.add_line !log (string_of_test_state value);
-          Lwt_mvar.put %m value >>
+          Lwt_mvar.put %m value >>= fun _ ->
           return (show description value !log))
       }})
   in
@@ -107,7 +107,7 @@ let show_tests ts =
     let oks = ref 0 and kos = ref 0 in
     let show () = div [pcdata (Printf.sprintf "%d/%d/%d" !oks !kos %ntests)] in
     fun stop ->
-      (if !tests_status = [] then stop () else return ()) >>
+      (if !tests_status = [] then stop () else return ()) >>= fun _ ->
         lwt finished, running = nchoose_split !tests_status in
         tests_status := running;
         List.iter (function

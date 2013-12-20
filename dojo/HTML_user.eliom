@@ -143,5 +143,5 @@ let homepage root_service =
       return (connection_box ~message:I18N.String.bad_login_password_pair ())
     | `Logged u ->
       lwt menu = user_menu u in
-      HTML_app.set_menu menu >> homepage_div u
+      HTML_app.set_menu menu >>= fun _ -> homepage_div u
   )

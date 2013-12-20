@@ -34,7 +34,7 @@ let ls ps =
       with End_of_file -> return ls
     in
     lwt y = all [] in
-    closedir dh >>
+    closedir dh >>= fun _ ->
     return y
   ) []
 
@@ -42,12 +42,12 @@ let ls ps =
 let rmdir ps ?(content=false) lraise =
   let cmd = Printf.sprintf (if content then "rm -fr %s" else "rm -r %s") ps in
   success ~lraise (!% cmd)
-  >> return ()
+  >>= fun _ -> return ()
 
 let cp src dst lraise =
   let cmd = Printf.sprintf "cp %s %s" src dst in
   success ~lraise (!% cmd)
-  >> return ()
+  >>= fun _ -> return ()
 
 let read c =
   handle_unix_error (fun () -> return (
@@ -91,7 +91,7 @@ let cat f =
     Lwt_stream.iter
       (Buffer.add_char b)
       (Lwt_io.chars_of_file f)
-    >> return (Buffer.contents b)
+    >>= fun _ -> return (Buffer.contents b)
   ) "(empty)"
 
 let split c delim =
@@ -119,5 +119,5 @@ let ssh ?timeout username private_key addr port cmd observer =
         "ssh %s@%s %s -p %d -i %s '(%s)'"
         username addr os port private_key cmd))
     in
-    observer p >> return (fun () -> p#terminate)
+    observer p >>= fun _ -> return (fun () -> p#terminate)
   ) (fun () -> ())

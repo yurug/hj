@@ -51,8 +51,8 @@ let editor_div (e : CORE_exercise.t) =
     (server_function Json.t<exercise with_raw> (fun cst ->
       Ocsigen_messages.errlog "Change user description";
       change_from_user_description e cst
-      >> observe ~fresh:true e (fun d -> return d)
-      >> return []
+      >>= fun _ -> observe ~fresh:true e (fun d -> return d)
+      >>= fun _ -> return []
      ))
   in
   lwt (editor_div, editor_id, editor_process) =
@@ -122,11 +122,12 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
   in
   let get () =
     CORE_exercise.eval_if_needed exo
-    >> CORE_exercise.observe ~fresh:true exo (fun d -> return (content d))
+    >>= fun _ ->
+    CORE_exercise.observe ~fresh:true exo (fun d -> return (content d))
   in
 
   CORE_exercise.eval exo
-  >> (
+  >>= fun _ -> (
     HTML_entity.reactive_div exo (Some display_math) get display_exercise
   )
 

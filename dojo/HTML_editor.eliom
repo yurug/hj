@@ -161,7 +161,7 @@ let create
           hello msg;
           let id = Id.new_elt_id ~global:false () in
           let onload _ =
-            Lwt.async (fun () -> Lwt_js.sleep timeout >> (
+            Lwt.async (fun () -> Lwt_js.sleep timeout >>= fun _ -> (
               Manip.removeChild %questions_box (Id.get_element id);
               return (bye msg)
             )
@@ -197,7 +197,7 @@ let create
           return (%push_job (fun () ->
             Firebug.console##log ("Patching...");
             (** FIXME: Remove the following hack: *)
-            Lwt_js.sleep 0.5 >>
+            Lwt_js.sleep 0.5 >>= fun _ ->
             let e = Ace.get %editor_id in
             let s = e##getSession () in
             let r = Ace.range_from_lexing_position start stop in
@@ -216,7 +216,7 @@ let create
         let nb = ref 0 in fun _ ->
           incr nb;
           let nb_now = !nb in
-          ignore (Lwt_js.sleep 0.5 >> (
+          ignore (Lwt_js.sleep 0.5 >>= fun _ -> (
             if !nb = nb_now then
               let content = Js.to_string (editor##getValue ()) in
               let process () = (%local_process %echo content >>= function

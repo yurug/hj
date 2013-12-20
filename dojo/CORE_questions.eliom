@@ -109,9 +109,11 @@ let timestamp_of_sub cs rkey =
 
 {shared{
 
-type questions_value = [
-  | `OK of atomic_value list
-  | `KO of [ CORE_errors.all ]
+type questions_value = atomic_value list
+
+and questions_result = [
+  `OK of questions_value
+| `KO of [ CORE_errors.all ]
 ]
 
 and atomic_value =
@@ -717,7 +719,7 @@ let convert_to_string_error
 )
 
 (** A well-typed exercise description evaluates into a value. *)
-let eval this p : questions_value Lwt.t =
+let eval this p : questions_result Lwt.t =
   try_lwt
     lwt tenv = TypeCheck.program this p in
     lwt v = Eval.program this tenv p in

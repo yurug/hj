@@ -263,7 +263,11 @@ and type change = I.change
     Lwt.async (fun () ->
       let rec tick () =
         (** This is the only place where update is called. *)
-        update e >> Lwt_condition.wait e.react_cond >> tick ()
+        update e
+(*        >> Lwt_condition.wait e.react_cond*)
+        >> Lwt_unix.yield ()
+        >> Lwt_unix.sleep 1.
+        >>= tick
       in
       tick ()
     );
@@ -305,8 +309,8 @@ and type change = I.change
       (** Set the commit mode, no observers are allowed to run. *)
       e.mode <- `Commit;
       (** Nobody is watching! Do your stuff! *)
-      commit ()
-      >> return (
+      commit () >>= fun () ->
+      return (
         e.mode <- `Observe 0;
         Lwt_condition.signal e.commit_cond ()
       )
@@ -354,8 +358,8 @@ and type change = I.change
             OTD.save e.description
             >>= function
               | `KO error -> warn error; return (e.description <- old)
-              | `OK _ -> savelog e cs >> return (e.push HasChanged)
-          ) >> return (
+              | `OK _ -> savelog e cs >>= fun _ -> return (e.push HasChanged)
+          ) >>= fun () -> return (
             propagate_change (identifier e);
             !laters
           )
@@ -392,10 +396,10 @@ and type change = I.change
           Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
                                      (string_of_identifier (identifier e)));
 
-        ) >>
+        ) >>= fun () ->
           let rec aux = function
             | [] -> return ()
-            | j :: js -> j () >> aux js
+            | j :: js -> j () >>= fun () -> aux js
           in
           aux (List.rev !laters)
 
@@ -405,7 +409,7 @@ and type change = I.change
     e.state <- Modified (empty_dependencies, Queue.create ())
 
   and change ?(immediate = false) ?who e c =
-    Lwt_condition.signal e.react_cond ();
+    Ocsigen_messages.errlog (Printf.sprintf "Push change: %s\n" (I.string_of_change c));
     match e.state with
       | UpToDate ->
         (** Good, the change is applied immediately. *)
@@ -415,7 +419,8 @@ and type change = I.change
       | Modified (dependencies, queue) ->
         (** This change is scheduled for further application. *)
         Queue.push c queue;
-        return ()
+        return (Lwt_condition.signal e.react_cond ())
+
 (*        if immediate then update e else return ()*)
 
   let observe ?(fresh=false) (type a) ?who (e : t) (o : data meta -> a Lwt.t)
@@ -453,7 +458,7 @@ and type change = I.change
                                          (string_of_identifier (identifier e)));
               Lwt_condition.wait e.commit_cond
               (** and try to observe again. *)
-              >> aux ()
+              >>= aux
 
             | `Observe x -> return (
               say (Printf.sprintf "%s: is observed"
@@ -481,7 +486,7 @@ and type change = I.change
                 unbound creation of observers that could blocked the
                 effective application of changes.
             *)
-          Lwt_mutex.lock e.commit_lock >> return (
+          Lwt_mutex.lock e.commit_lock >>= fun () -> return (
 
             (** Neither a change nor an observer is working on that entity. *)
             assert (e.mode <> `Commit);
@@ -496,7 +501,7 @@ and type change = I.change
         )
       in
       aux ()
-      >> (
+      >>= fun () -> (
          (** At this point, the lock is taken and the mode is to observe. *)
          assert (Lwt_mutex.is_locked e.commit_lock);
          assert (match e.mode with `Observe _ -> true | _ -> false);
@@ -528,11 +533,11 @@ and type change = I.change
                  )
                  | `Observe x when x > 1 ->
                    Lwt_condition.wait e.commit_cond
-                   >> wait_for_other_observers ()
+                   >>= wait_for_other_observers
                  | `Observe x -> assert false
                  | `Commit -> assert false
              in
-             wait_for_other_observers () >> return (
+             wait_for_other_observers () >>= fun () -> return (
              )
 
           else (
@@ -553,7 +558,7 @@ and type change = I.change
                 return ()
           )
          )
-         >> (
+         >>= fun () -> (
            say
              (Printf.sprintf "Observation done (master=%B)!" !master);
            return ret
@@ -638,7 +643,7 @@ module Tests = struct
     return (`OK ())
 
   let change_entity e update =
-    E.change e Incr >> return (`OK ())
+    E.change e Incr >>= fun () -> return (`OK ())
 
   let echo_entity e update =
     let dependencies =

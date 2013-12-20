@@ -105,7 +105,7 @@ let authenticate u password =
     lwt c = observe user (fun d -> return (content d)) in
     ltry COMMON_unix.now >>>= fun date ->
     change user (UpdateContent { c with last_connection = date })
-    >> return (`OK user)
+    >>= fun _ -> return (`OK user)
   )
 
 (** [login] is in the public API, login information
@@ -144,7 +144,7 @@ let register_logout ~service =
     ~service
     (fun () () ->
       Eliom_state.discard ~scope:Eliom_common.default_session_scope ()
-      >> Eliom_reference.set username `NotLogged
+      >>= fun _ -> Eliom_reference.set username `NotLogged
     )
 
 (** Subscription. *)
@@ -184,6 +184,6 @@ let register_subscribe out_by ~service =
       make ~init id >>= function
         | `OK e ->
           Eliom_reference.set username (`Logged (identifier e))
-          >> out_by (`Right ())
+          >>= fun _ -> out_by (`Right ())
         | `KO e -> out_by (`Left (Some (string_of_error e)))
     )

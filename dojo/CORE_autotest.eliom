@@ -62,7 +62,7 @@ let client_server_asynchronous_communication_works =
     (fun update ->
       let k = ref number_of_packets in
       let rec ping () =
-        Lwt_unix.sleep 0.5 >>
+        Lwt_unix.sleep 0.5 >>= fun _ ->
           (decr k;
            if !k = 0 then
              return ()
@@ -74,7 +74,7 @@ let client_server_asynchronous_communication_works =
           )
       in
       ping ()
-      >> return Passed
+      >>= fun _ -> return Passed
     )
 
 let server_versioned_file_system_is_in_a_coherent_state =

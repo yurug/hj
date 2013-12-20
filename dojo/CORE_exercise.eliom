@@ -32,7 +32,7 @@ type description = {
   assignment_rules : (assignment_kind * CORE_property.rule list) list;
   title            : string;
   questions        : questions;
-  questions_value  : (questions * CORE_questions.questions_value) option;
+  questions_value  : (questions * CORE_questions.questions_result) option;
   cst              : C.exercise;
 } deriving (Json)
 
@@ -150,7 +150,7 @@ let current_value d =
 let force_update id =
   make id >>= function
     | `OK e ->
-      observe e (fun c -> return c) >> return ()
+      observe e (fun c -> return c) >>= fun _ -> return ()
     | `KO e ->
       warn e; return ()
 
@@ -379,7 +379,7 @@ and change_from_user_description x cr =
     | `OK s -> return (CORE_source.content s <> C.raw cr)
   in
   if source_changed then (
-    change x (UpdateSource cr) >>
+    change x (UpdateSource cr) >>= fun _ ->
       let cst = C.data cr in
       lwt questions = questions_from_cst (C.raw cr) x cst in
       lwt changed = changed x questions cst in
@@ -443,11 +443,6 @@ let exercise_id username =
     concat exercises_path (CORE_identifier.make [label username])
   )
 
-let rec eval_if_needed e =
-  observe ~fresh:true e (fun d -> return (content d).questions_value) >>= function
-    | None -> eval e >> eval_if_needed e
-    | Some (_, v) -> return v
-
 let _ =
   CORE_questions.set_import_exercise (fun id ->
     make id >>= function
@@ -455,15 +450,20 @@ let _ =
       | _ -> assert false (* FIXME *)
   )
 
+let eval_if_needed e =
+  observe ~fresh:true e (fun d -> return (content d).questions_value) >>= function
+    | None -> eval e >>= fun _ -> return None
+    | Some (_, v) -> return (Some v)
+
 let context_of_checkpoint e c =
   eval_if_needed e >>= function
-    | `OK v -> return (CORE_questions.context_of_checkpoint v c)
-    | `KO _ -> return CORE_context.empty
+    | Some (`OK v) -> return (Some (CORE_questions.context_of_checkpoint v c))
+    | _ -> return None
 
 let all_checkpoints e =
   eval_if_needed e >>= function
-    | `OK v -> return (CORE_questions.all_checkpoints v)
-    | `KO _ -> return []
+    | Some (`OK v) -> return (CORE_questions.all_checkpoints v)
+    | _ -> return []
 
 let make_blank id =
   let assignment_rules = [] in

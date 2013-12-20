@@ -126,7 +126,7 @@ let create_job checkpoint context submission change_later =
     change_state Unevaluated
   in
   init ()
-  >> let process_stdio job line =
+  >>= fun _ -> let process_stdio job line =
     match CORE_context.marker_io_interpretation seed line with
       | Some s ->
         score := CORE_context.new_score s !score;
@@ -152,11 +152,11 @@ let create_job checkpoint context submission change_later =
       | Some (`ExpectedValues vs) ->
         score := CORE_context.check_expected_values vs submission;
         mark ()
-        >> return (Some ImmediateEvaluation)
+        >>= fun _ -> return (Some ImmediateEvaluation)
       | Some (`ExpectedChoices vs) ->
         score := CORE_context.check_expected_choices vs submission;
         mark ()
-        >> return (Some ImmediateEvaluation)
+        >>= fun _ -> return (Some ImmediateEvaluation)
       | Some (`Command cmd) ->
         let timeout =
           match get_timeout context with
@@ -220,19 +220,21 @@ let evaluate change_later exercise answer cps data =
           in
 
           (** Is it a new context? *)
-          lwt c = CORE_exercise.context_of_checkpoint exercise checkpoint in
+          CORE_exercise.context_of_checkpoint exercise checkpoint >>= function
+            | None ->
+              return Unevaluated
 
-          let is_new_context =
-            match context, c with
-              | None, _ -> true
-              | Some c', c -> not (CORE_context.equivalent_context c' c)
-          in
-
-          if is_new_context || is_new_submission then
-            cancel_job_if_present job
-            >> run_submission_evaluation c s
-          else
-            return current_state
+            | Some c ->
+              let is_new_context =
+                match context, c with
+                  | None, _ -> true
+                  | Some c', c -> not (CORE_context.equivalent_context c' c)
+              in
+              if is_new_context || is_new_submission then
+                cancel_job_if_present job
+                >>= fun _ -> run_submission_evaluation c s
+              else
+                return current_state
         end
   in
   lwt jobs = Lwt_list.fold_left_s (fun jobs cp ->

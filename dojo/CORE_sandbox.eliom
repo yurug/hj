@@ -125,14 +125,14 @@ let sandboxing release_flag s limitations command (observer : _ -> unit Lwt.t) =
       lwt status = p#status in
       Ocsigen_messages.errlog "Exec finished";
       (if release_flag then s.CORE_machinist.release () else return ())
-      >> (
+      >>= fun _ -> (
         Ocsigen_messages.errlog "Notify observer";
         observer (Exited status)
       )
 
     | CORE_machinist.ObserveMessage msg ->
       observer (WriteStderr (job, msg))
-      >> observer (Exited (Unix.WEXITED (-1)))
+      >>= fun _ -> observer (Exited (Unix.WEXITED (-1)))
   in
   lwt canceler = s.CORE_machinist.execute ?timeout command observer in
   push_canceler job canceler;
@@ -169,7 +169,7 @@ let exec
 
     (** Process command. *)
     copy files sandbox
-    >> sandboxing release_when_finished sandbox limitations command observer
+    >>= fun _ -> sandboxing release_when_finished sandbox limitations command observer
     >>= fun job -> return (`OK (job, persistence))
 
   with NoSuchSandbox ->

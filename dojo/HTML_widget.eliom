@@ -98,7 +98,7 @@ let list_editor
           try
             lwt e = list.index_end () in
             let idx = indices_get elt in
-            f idx xc >> return (idx = e)
+            f idx xc >>= fun _ -> return (idx = e)
           with Not_found -> assert false
         )
         in
@@ -309,7 +309,7 @@ let validate_input validator id =
                 let nb_now = !nb in
                 let input_elt = Id.get_element %id in
                 let input_value = (To_dom.of_input input_elt)##value in
-                Lwt.async (fun () -> Lwt_js.sleep 0.5 >>
+                Lwt.async (fun () -> Lwt_js.sleep 0.5 >>= fun _ ->
                   if !nb = nb_now then
                     let v =
                       match %validator (Js.to_string input_value) with
@@ -365,7 +365,7 @@ let fileuploader import =
         (* FIXME: Handle error. *)
         lwt dest, commit = import file.original_basename in
         ltry COMMON_unix.(cp file.tmp_filename dest)
-        >> commit ()
+        >>= fun _ -> commit ()
       )
   in
   let form_id = Id.new_elt_id ~global:false () in

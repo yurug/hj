@@ -171,7 +171,7 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
     | `Join a -> assert false
   ) >>>= fun a ->
   Lwt_list.iter_s (assign_answer exo a) authors
-  >> return (`OK a)
+  >>= fun _ -> return (`OK a)
 
 let submit_file answer checkpoint tmp_filename filename =
   ltry (fun lraise ->
@@ -203,4 +203,3 @@ let submit_answer_choices answer checkpoint choices =
 
 let submission_of_checkpoint answer cp =
   observe answer (fun a -> return (opt_assoc cp (content a).submissions))
-

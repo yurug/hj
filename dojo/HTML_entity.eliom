@@ -78,7 +78,7 @@ let reactive_div e after_display get display  =
   let elt = div [pcdata "Loading..."] in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
-    get () >> return ()
+    get () >>= return
   )
   in
   let e_channel = CORE_entity.channel e in

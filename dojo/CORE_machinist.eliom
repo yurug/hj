@@ -85,7 +85,7 @@ let execute_using_ssh login_information addr =
       | `KO e ->
         (* FIXME *)
         observer (ObserveMessage "ssh error")
-        >> return (fun () -> ())
+        >>= fun _ -> return (fun () -> ())
 
 type sandbox_interface = {
   execute : execute;
@@ -126,7 +126,7 @@ let wait_for_sandbox mc addr waiting_rank =
       let (wl, t) = take_ticket wl in
       tr := Some t;
       set_wl data wl
-    )) >> (match !tr with
+    )) >>= fun _ -> (match !tr with
       | None -> (* FIXME *) assert false
       | Some t -> return t
     )
@@ -137,7 +137,7 @@ let wait_for_sandbox mc addr waiting_rank =
   let rec wait last_wl =
     (* FIXME: Reimplement that by extending observation to a
        notion of "observation for a change" (with a timeout). *)
-    Lwt_unix.sleep 1. >> observe mc (fun state ->
+    Lwt_unix.sleep 1. >>= fun _ -> observe mc (fun state ->
       let data = content state in
       let wl = get_wl data in
       if (last_wl = wl) then
@@ -154,12 +154,12 @@ let wait_for_sandbox mc addr waiting_rank =
         lwt data = observe mc (fun s -> return (content s)) in
         change ~immediate:true mc (
           UpdateContent (set_wl data (delete_ticket (get_wl data) ticket))
-        ) >> raise_lwt Not_found
+        ) >>= fun _ -> raise_lwt Not_found
         (* FIXME: How is that possible? *)
 
       | Waiting rank ->
         (** We still have to wait. Publish how long... *)
-        waiting_rank rank >> wait wl
+        waiting_rank rank >>= fun _ -> wait wl
 
       | Active r ->
         (** This is our turn. Build an interface out of this resource. *)

@@ -42,7 +42,7 @@ val questions : description -> questions
 
 (** [current_value e] returns the current evaluation of the exercise
     description as a list of questions. *)
-val current_value : description -> CORE_questions.questions_value option
+val current_value : description -> CORE_questions.questions_result option
 }}
 
 (** [assignment_rule e k] returns the assignment rule of the
@@ -54,13 +54,13 @@ val assignment_rule : t -> assignment_kind -> CORE_property.rule Lwt.t
 val all_checkpoints : t -> checkpoint list Lwt.t
 
 (** [context_of_checkpoint e c] computes the context of [c] in [e]. *)
-val context_of_checkpoint : t -> checkpoint -> CORE_context.t Lwt.t
+val context_of_checkpoint : t -> checkpoint -> CORE_context.t option Lwt.t
 
 (** [eval e] forces the evaluation of [e]. *)
 val eval : t -> unit Lwt.t
 
 (** [eval_if_needed e] compute the evaluation of [e] if needed. *)
-val eval_if_needed : t -> CORE_questions.questions_value Lwt.t
+val eval_if_needed : t -> CORE_questions.questions_result option Lwt.t
 
 val raw_user_description_source
 : CORE_identifier.t -> [
