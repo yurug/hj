@@ -86,8 +86,6 @@ include CORE_entity.Make (struct
 
   let react state deps cs change_later =
 
-    let extras = ref [] in
-
     let make_change (dependencies, content) = function
       | NewAnswer (authors, answer) ->
         (* FIXME: Is it correct ? *)
@@ -451,7 +449,7 @@ let _ =
   )
 
 let eval_if_needed e =
-  observe ~fresh:true e (fun d -> return (content d).questions_value) >>= function
+  observe e (fun d -> return (content d).questions_value) >>= function
     | None -> eval e >>= fun _ -> return None
     | Some (_, v) -> return (Some v)
 

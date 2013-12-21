@@ -18,7 +18,7 @@ open COMMON_pervasives
 
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let get () = CORE_evaluation.(
-    lwt d = observe ~fresh:true ~who:(identifier_of_string "HTML_context") evaluation (fun d -> return (content d)) in
+    lwt d = observe ~who:(identifier_of_string "HTML_context") evaluation (fun d -> return (content d)) in
 (*    flush_diagnostic_commands_of_checkpoint evaluation checkpoint
     >> *) return d)
   in

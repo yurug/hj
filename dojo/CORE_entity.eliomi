@@ -142,7 +142,7 @@ module type S = sig
       Otherwise, we are lazy: the change is not applied unless a
       process actively observes the state of entity. *)
   val change
-    : ?immediate:bool -> ?who:identifier -> t -> change -> unit Lwt.t
+    : ?who:identifier -> t -> change -> unit Lwt.t
 
   (** [observe e o] evaluates [o] with the content of [e].
 
@@ -152,7 +152,7 @@ module type S = sig
       As long as [o] is not finished, the requested changes to [e] are
       suspended. *)
   val observe
-    : ?fresh:bool -> ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
+    : ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
 
   (** [identifier e] returns the identifier of [e]. This information
       will never change during the life of [e]. *)

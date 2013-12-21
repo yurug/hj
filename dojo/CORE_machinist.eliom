@@ -121,7 +121,7 @@ let wait_for_sandbox mc addr waiting_rank =
        efficiency of the CORE_entity API. *)
     let tr = ref None in
     lwt data = observe mc (fun d -> return (content d)) in
-    change ~immediate:true mc (UpdateContent (
+    change mc (UpdateContent (
       let wl = get_wl data in
       let (wl, t) = take_ticket wl in
       tr := Some t;
@@ -152,7 +152,7 @@ let wait_for_sandbox mc addr waiting_rank =
       | Expired ->
         (** This ticket is expired. *)
         lwt data = observe mc (fun s -> return (content s)) in
-        change ~immediate:true mc (
+        change mc (
           UpdateContent (set_wl data (delete_ticket (get_wl data) ticket))
         ) >>= fun _ -> raise_lwt Not_found
         (* FIXME: How is that possible? *)
@@ -165,7 +165,7 @@ let wait_for_sandbox mc addr waiting_rank =
         (** This is our turn. Build an interface out of this resource. *)
         let release () =
         lwt data = observe mc (fun s -> return (content s)) in
-        change ~immediate:true mc (UpdateContent (
+        change mc (UpdateContent (
           let wl = COMMON_waiting_list.release (get_wl data) r in
           set_wl data wl
         ))

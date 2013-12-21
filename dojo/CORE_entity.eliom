@@ -174,10 +174,10 @@ module type S = sig
     ]] Lwt.t
 
   val change
-    : ?immediate:bool -> ?who:identifier -> t -> change -> unit Lwt.t
+    : ?who:identifier -> t -> change -> unit Lwt.t
 
   val observe
-    : ?fresh:bool -> ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
+    : ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
 
   val identifier : t -> CORE_identifier.t
 
@@ -339,16 +339,16 @@ and type change = I.change
         observations, this is fine. *)
     let laters = ref [] in
     let change_later c =
-      return (laters := (fun () -> change ~immediate:true e c) :: !laters)
+      return (laters := (fun () -> change e c) :: !laters)
     in
     let card_changes =
       List.length cs + List.length (to_list dependencies)
     in
-    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes : %s)"
-                               (string_of_identifier (identifier e))
-                               card_changes
-                               (String.concat " " (List.map I.string_of_change cs))
-    );
+    (* Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes : %s)" *)
+    (*                            (string_of_identifier (identifier e)) *)
+    (*                            card_changes *)
+    (*                            (String.concat " " (List.map I.string_of_change cs)) *)
+    (* ); *)
     if card_changes = 0 then
       return []
     else
@@ -413,22 +413,19 @@ and type change = I.change
   and now_only_accumulate_changes e =
     e.state <- Modified (empty_dependencies, Queue.create ())
 
-  and change ?(immediate = false) ?who e c =
-    Ocsigen_messages.errlog (Printf.sprintf "Push change: %s\n" (I.string_of_change c));
+  and change ?who e c =
     match e.state with
       | UpToDate ->
         (** Good, the change is applied immediately. *)
         now_only_accumulate_changes e;
-        change ~immediate ?who e c
+        change ?who e c
 
       | Modified (dependencies, queue) ->
         (** This change is scheduled for further application. *)
         Queue.push c queue;
         return (Lwt_condition.signal e.react_cond ())
 
-(*        if immediate then update e else return ()*)
-
-  let observe ?(fresh=false) (type a) ?who (e : t) (o : data meta -> a Lwt.t)
+  let observe (type a) ?who (e : t) (o : data meta -> a Lwt.t)
       : a Lwt.t =
     let who = match who with
       | None -> "anonymous"
@@ -436,9 +433,8 @@ and type change = I.change
     in
     let say msg =
       if false then
-        Ocsigen_messages.errlog (Printf.sprintf "%s observes %s%s: %s"
+        Ocsigen_messages.errlog (Printf.sprintf "%s observes %s: %s"
                                    who
-                                   (if fresh then "fresh " else "")
                                    (string_of_identifier (identifier e)) msg)
     in
     let master = ref false in

@@ -177,7 +177,7 @@ let submit_file answer checkpoint tmp_filename filename =
   ltry (fun lraise ->
     lwt content = COMMON_unix.cat tmp_filename lraise in
     let source = CORE_source.make filename content in
-    change ~immediate:true answer (
+    change answer (
       NewSubmissionData (checkpoint,
                          CORE_context.new_submitted_file filename,
                          [source])
@@ -185,7 +185,7 @@ let submit_file answer checkpoint tmp_filename filename =
 
 let submit_answer_values answer checkpoint values =
   ltry (fun lraise ->
-    change ~immediate:true answer (
+    change answer (
       NewSubmissionData (checkpoint,
                          CORE_context.new_submitted_values values,
                          [])
@@ -194,7 +194,7 @@ let submit_answer_values answer checkpoint values =
 
 let submit_answer_choices answer checkpoint choices =
   ltry (fun lraise ->
-    change ~immediate:true answer (
+    change answer (
       NewSubmissionData (checkpoint,
                          CORE_context.new_submitted_choices choices,
                          [])
