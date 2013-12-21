@@ -101,7 +101,6 @@ let submit_answer_values exo_id cp vs =
       warn e;
       return (`OK ())
 
-
 let display_user_input exo_id checkpoint context =
   match CORE_context.get_answer_form context with
     | None ->

@@ -337,24 +337,21 @@ and type change = I.change
         itself can be computed concurrently to observations: as soon
         as nothing is observable from the point of view of these
         observations, this is fine. *)
-    let laters = ref [] in
-    let change_later c =
-      return (laters := (fun () -> change e c) :: !laters)
-    in
+    let change_later c = change e c in
     let card_changes =
       List.length cs + List.length (to_list dependencies)
     in
-    (* Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes : %s)" *)
-    (*                            (string_of_identifier (identifier e)) *)
-    (*                            card_changes *)
-    (*                            (String.concat " " (List.map I.string_of_change cs)) *)
-    (* ); *)
+    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes : %s)"
+                               (string_of_identifier (identifier e))
+                               card_changes
+                               (String.concat " " (List.map I.string_of_change cs))
+    );
     if card_changes = 0 then
-      return []
+      return ()
     else
       e.reaction state dependencies cs change_later >>= function
         | NoUpdate ->
-          return !laters
+          return ()
 
         | llc ->
           wait_to_be_observer_free e (fun () ->
@@ -364,10 +361,7 @@ and type change = I.change
             >>= function
               | `KO error -> warn error; return (e.description <- old)
               | `OK _ -> savelog e cs >>= fun _ -> return (e.push HasChanged)
-          ) >>= fun () -> return (
-            propagate_change (identifier e);
-            !laters
-          )
+          ) >>= fun () -> return (propagate_change (identifier e))
 
   and savelog e cs =
     let ts = CORE_inmemory_entity.timestamp e.description in
@@ -392,21 +386,9 @@ and type change = I.change
         return ()
 
       | Modified (dependencies, queue) ->
-        let laters = ref [] in
         let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
         e.state <- UpToDate;
-        lwt claters = apply dependencies e (List.rev cs) in
-        return (
-          laters := claters;
-          Ocsigen_messages.errlog (Printf.sprintf "%s has reacted"
-                                     (string_of_identifier (identifier e)));
-
-        ) >>= fun () ->
-          let rec aux = function
-            | [] -> return ()
-            | j :: js -> j () >>= fun () -> aux js
-          in
-          aux (List.rev !laters)
+        apply dependencies e (List.rev cs)
 
   (** As long as a change is being applied, we have to
       push other required changes into a queue. *)
@@ -414,6 +396,9 @@ and type change = I.change
     e.state <- Modified (empty_dependencies, Queue.create ())
 
   and change ?who e c =
+
+    Ocsigen_messages.errlog (Printf.sprintf "Push change: %s\n" (I.string_of_change c));
+
     match e.state with
       | UpToDate ->
         (** Good, the change is applied immediately. *)

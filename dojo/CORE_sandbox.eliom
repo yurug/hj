@@ -95,6 +95,7 @@ let find_sandbox requirements waiter =
   let lock_required = List.exists (fun r -> r = Lockable) requirements in
   try_lwt
     lwt mc = Lwt_list.find_s compliant_machinist machinists in
+    Ocsigen_messages.errlog (Printf.sprintf "Asking %s\n" (string_of_identifier (CORE_machinist.identifier mc)));
     CORE_machinist.provide_sandbox_interface mc lock_required waiter
   with Not_found ->
     raise_lwt NoSuchSandbox

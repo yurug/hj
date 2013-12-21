@@ -51,11 +51,6 @@ type description = {
 type data = description
 }}
 
-include CORE_entity.Make (CORE_entity.Passive (struct
-  type data = description deriving (Json)
-  let string_of_replacement _ = "Update."
-end))
-
 type execution_observer =
   | ObserveProcess of process_full
   | ObserveMessage of string
@@ -96,84 +91,172 @@ let build_sandbox_interface login_information address release =
   let execute = execute_using_ssh login_information address in
   { execute; release }
 
-let choose_waiting_list mc exclusive =
-  (* FIXME: Handle exclusive = true. *)
-  let smallest_waiting_list (_, wl1) (_, wl2) = COMMON_waiting_list.(
-    Pervasives.compare (size wl1) (size wl2)
-  )
-  in
-  observe mc List.(fun data ->
-    match (content data).available_addresses with
-      | [] -> return None
-      | l -> return (Some (fst (hd (sort smallest_waiting_list l))))
-  )
+type allocation_result =
+  | AllocatedSandbox of sandbox_interface
+  | AllocationFailed
+  | InWaitingList of address * int * COMMON_waiting_list.ticket
 
-let wait_for_sandbox mc addr waiting_rank =
-  let get_wl data =
-    List.assoc addr data.available_addresses
-  and set_wl data wl =
-    { data with
-      available_addresses = update_assoc addr wl data.available_addresses
-    }
-  in
-  lwt ticket =
-    (* FIXME: The following piece of code shows an expressiveness
-       efficiency of the CORE_entity API. *)
-    let tr = ref None in
-    lwt data = observe mc (fun d -> return (content d)) in
-    change mc (UpdateContent (
-      let wl = get_wl data in
-      let (wl, t) = take_ticket wl in
-      tr := Some t;
-      set_wl data wl
-    )) >>= fun _ -> (match !tr with
-      | None -> (* FIXME *) assert false
-      | Some t -> return t
-    )
-  in
+type public_change =
+  | SetLogins of string list list
+  | SetAddresses of string list list
+  | AllocateSandbox of (address * ticket) option * allocation_result Lwt.u
+  | ReleaseSandbox of address * login_information COMMON_waiting_list.resource
 
-  (** We react to every change of mc, looking for an update
-      of the waiting list of [addr]. *)
-  let rec wait last_wl =
-    (* FIXME: Reimplement that by extending observation to a
-       notion of "observation for a change" (with a timeout). *)
-    Lwt_unix.sleep 1. >>= fun _ -> observe mc (fun state ->
-      let data = content state in
-      let wl = get_wl data in
-      if (last_wl = wl) then
-          (** No interesting change for us. *)
-        wait last_wl
-      else
-        process wl
-    )
+include CORE_entity.Make (struct
+  type data = description deriving (Json)
 
-  and process wl =
-    match ticket_turn wl ticket with
-      | Expired ->
-        (** This ticket is expired. *)
-        lwt data = observe mc (fun s -> return (content s)) in
-        change mc (
-          UpdateContent (set_wl data (delete_ticket (get_wl data) ticket))
-        ) >>= fun _ -> raise_lwt Not_found
-        (* FIXME: How is that possible? *)
+  type change = public_change
 
-      | Waiting rank ->
-        (** We still have to wait. Publish how long... *)
-        waiting_rank rank >>= fun _ -> wait wl
+  let string_of_change = function
+    | AllocateSandbox _ -> "Request sandbox"
+    | ReleaseSandbox _ -> "Release sandbox"
+    | SetLogins _ -> "Set logins"
+    | SetAddresses _ -> "Set addresses"
 
-      | Active r ->
-        (** This is our turn. Build an interface out of this resource. *)
-        let release () =
-        lwt data = observe mc (fun s -> return (content s)) in
-        change mc (UpdateContent (
-          let wl = COMMON_waiting_list.release (get_wl data) r in
-          set_wl data wl
-        ))
+  let react state deps cs change_later =
+    (** Changes will modify waiting lists. *)
+    let get_wl addr content =
+      List.assoc addr content.available_addresses
+    and set_wl addr wl content =
+      { content with
+        available_addresses = update_assoc addr wl content.available_addresses
+      }
+    in
+
+    let make_change content =
+
+      (** Sandbox allocation. *)
+      let allocate_sandbox ticket waiting_thread =
+
+        (** The following two functions communicate with the client thread
+            the outcome of the allocation. *)
+        let creturn = Lwt.wakeup waiting_thread in
+        let no_sandbox () = creturn AllocationFailed in
+        let provide s = creturn (AllocatedSandbox s) in
+        let put_on_wait a r t = creturn (InWaitingList (a, r, t)) in
+
+        (** Our strategy for scheduling is simple: we always choose the
+            smallest waiting list. *)
+        let choose_waiting_list exclusive =
+          (* FIXME: Handle exclusive = true. *)
+          let smallest_waiting_list (_, wl1) (_, wl2) = COMMON_waiting_list.(
+            Pervasives.compare (size wl1) (size wl2)
+          )
+          in
+          match content.available_addresses with
+            | [] ->
+              Ocsigen_messages.errlog "No addr avail.";
+              return None
+            | l ->
+              Ocsigen_messages.errlog "Some addr avail.";
+              return (Some (List.(hd (sort smallest_waiting_list l))))
         in
-        return (build_sandbox_interface (resource_value r) addr release)
-  in
-  lwt data = observe mc (fun data -> return (content data)) in
-  process (get_wl data)
+
+        (** First, take a ticket or use the one we already have. *)
+        try_lwt
+
+          lwt (content, addr, wl, ticket) =
+            match ticket with
+              | None ->
+                begin choose_waiting_list false >>= function
+                  | None ->
+                    no_sandbox ();
+                    raise_lwt Not_found
+
+                  | Some (addr, wl) ->
+                    let (wl, ticket) = take_ticket wl in
+                    return (set_wl addr wl content, addr, wl, ticket)
+                end
+              | Some (addr, ticket) ->
+                return (content, addr, get_wl addr content, ticket)
+          in
+
+          (** Second, act with respect to the ticket's turn. *)
+
+          match ticket_turn wl ticket with
+            | Expired ->
+            (** This ticket has expired. *)
+              Ocsigen_messages.errlog ("Expired ticket");
+              no_sandbox ();
+              return (set_wl addr (delete_ticket wl ticket) content)
+
+            | Waiting rank ->
+              Ocsigen_messages.errlog ("Waiting...");
+              (** We still have to wait. Publish the rank... *)
+              put_on_wait addr rank ticket;
+              return content
+
+            | Active r ->
+              (** This is our turn.
+                  Build an interface out of this resource. *)
+              Ocsigen_messages.errlog ("Got it!");
+              let release () =
+                Ocsigen_messages.errlog "Release!";
+                change_later (ReleaseSandbox (addr, r))
+              in
+              let login_info = resource_value r in
+              provide (build_sandbox_interface login_info addr release);
+              return content
+
+        with Not_found ->
+          return content
+      in
+
+      let release_sandbox addr r =
+        let wl = get_wl addr content in
+        return (set_wl addr (COMMON_waiting_list.release wl r) content)
+      in
+
+      let set_logins l =
+        (* FIXME: each time a login is added, we must extend
+           the waiting list of each address... *)
+        let available_logins =
+          List.map (function
+            | [username; ssh_key] -> { username; ssh_key }
+            | _ -> (* FIXME: handle user error *) assert false
+          ) l
+        in
+        return { content with available_logins }
+      in
+
+      let set_addresses l =
+        let l = List.map (function
+          | [hostname; port] -> (hostname, int_of_string port)
+          | _ -> (* FIXME: handle user error *) assert false
+        ) l
+        in
+        (* FIXME: For the moment, we lost all the running jobs...
+           So, the current implementation only makes sense if the
+           machinist is not already busy.
+           We must be a bit more careful by allowing untouched
+           addresses to keep their jobs. *)
+        let resource = content.available_logins in
+        let l = List.map (fun a -> (a, COMMON_waiting_list.empty resource)) l in
+        return { content with available_addresses = l }
+      in
+
+      function
+        | AllocateSandbox (ticket, waiting_thread) ->
+          allocate_sandbox ticket waiting_thread
+
+        | ReleaseSandbox (addr, r) ->
+          release_sandbox addr r
+
+        | SetLogins l ->
+          set_logins l
+
+        | SetAddresses l ->
+          set_addresses l
+
+    in
+    let content0 = content state in
+    lwt content = Lwt_list.fold_left_s make_change content0 cs in
+    if content0 == content then
+      return NoUpdate
+    else
+      return (UpdateContent content)
+
+end)
 
 
 (** [provide_sandbox_interface mc exclusive waiting_rank] returns a
@@ -183,15 +266,20 @@ let wait_for_sandbox mc addr waiting_rank =
     in which case it uses [waiting_rank] to advertise the number of
     sandboxes to wait for. *)
 let provide_sandbox_interface mc exclusive waiting_rank =
-
-  (** Choose a waiting list for this request. It is characterized
-      by the machine address. *)
-  choose_waiting_list mc exclusive >>= function
-    | None ->
-      raise_lwt Not_found
-    | Some addr ->
-      (** Wait. *)
-      wait_for_sandbox mc addr waiting_rank
+  (* FIXME: We should give up at some point... *)
+  let rec wait ticket =
+    let (waiter, wakener) = Lwt.wait () in
+    change mc (AllocateSandbox (ticket, wakener))
+    >> waiter >>= function
+      | AllocationFailed -> raise_lwt Not_found
+      | AllocatedSandbox s -> return s
+      | InWaitingList (addr, rank, ticket) ->
+        waiting_rank rank
+        >> Lwt_unix.yield ()
+        >> Lwt_unix.sleep 1. (* FIXME: This should depend on rank...*)
+        >> wait (Some (addr, ticket))
+  in
+  wait None
 
 (** [capable_of mc cmd] returns [true] if [cmd] is executed
     with success by the machine of [mc]. *)
@@ -212,39 +300,9 @@ let get_logins mc =
   lwt l = observe mc (fun d -> return (content d).available_logins) in
   return (List.map (fun i -> [i.username; i.ssh_key]) l)
 
-let set_logins mc l =
-  (* FIXME: each time a login is added, we must extend
-     the waiting list of each address... *)
-  let l =
-    List.map (function
-      | [username; ssh_key] -> { username; ssh_key }
-      | _ -> (* FIXME: handle user error *) assert false
-    ) l
-  in
-  lwt d = observe mc (fun d -> return (content d)) in
-  change mc (UpdateContent { d with available_logins = l })
-
 let get_addresses mc =
   lwt l = observe mc (fun d -> return (content d).available_addresses) in
   return (List.map (fun (a, _) -> [fst a; string_of_int (snd a)]) l)
-
-let set_addresses mc l =
-  let l = List.map (function
-    | [hostname; port] -> (hostname, int_of_string port)
-    | _ -> (* FIXME: handle user error *) assert false
-  ) l
-  in
-  (* FIXME: For the moment, we lost all the running jobs...
-     So, the current implementation only makes sense if the
-     machinist is not already busy.
-     We must be a bit more careful by allowing untouched
-     addresses to keep their jobs. *)
-  lwt d = observe mc (fun d -> return (content d)) in
-  change mc (UpdateContent (
-    let resource = d.available_logins in
-    let l = List.map (fun a -> (a, COMMON_waiting_list.empty resource)) l in
-    { d with available_addresses = l }
-  ))
 
 let make_default id =
   let default = {
