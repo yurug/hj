@@ -4,6 +4,7 @@
 {shared{
 
 open CORE_errors
+open CORE_identifier
 
 type 'a located = {
   node     : 'a;
@@ -39,30 +40,25 @@ type 'a enumerate =
   | Union of 'a enumerate list
 deriving (Json)
 
-type exercise = {
-  title : string located;
-  questions : t;
-}
+type exercise = term'
 
-and component =
-  | Include     of identifier * position * position
-  | Sub         of identifier * exercise located
-  | Binding     of binding
-  | Import      of ty enumerate * identifier * CORE_identifier.label enumerate
+and t = exercise
 
-and binding = CORE_identifier.label option * ty option * term located
-
-and t = component list
+and binding = label option * ty option * term located
 
 and term =
   | Lit of literal
   | Template of template
-  | Variable of variable
+  | Module of binding list
+  | Import of ty enumerate * path * label enumerate
+  | Variable of path
   | Lam of variable * ty option * term located
   | App of term located * term located
-  | IApp of term located * term located list
-  (* Syntactic sugars. *)
-  | Seq of term located list
+
+and path =
+  | PRoot of identifier
+  | PThis of label
+  | PSub of path * label
 
 and template = template_atom list
 
@@ -86,8 +82,6 @@ and variable = CORE_identifier.label
 
 and type_variable = TVariable of string
 
-and identifier = string located
-
 deriving (Json)
 
 type 'a with_raw = string * 'a deriving (Json)
@@ -99,24 +93,7 @@ let raw = fst
 let data = snd
 
 let rec equivalent_exercises e1 e2 =
-  e1.title.node = e2.title.node &&
-  equivalent_questions e1.questions e2.questions
-
-and equivalent_questions qs1 qs2 =
-  List.length qs1 = List.length qs2 &&
-  List.for_all2 equivalent_components qs1 qs2
-
-and equivalent_components q1 q2 =
-  match q1, q2 with
-    | Include (s1, _, _), Include (s2, _, _) ->
-      s1.node = s2.node
-    | Sub (s1, e1), Sub (s2, e2) ->
-      s1.node = s2.node && equivalent_exercises e1.node e2.node
-    | Import (tys1, xs1, e1), Import (tys2, xs2, e2) ->
-      tys1 = tys2 && xs1 = xs2 && e1 = e2
-    | Binding (x1, ty1, t1), Binding (x2, ty2, t2) ->
-      x1 = x2 && ty1 = ty2 && equivalent_terms t1.node t2.node
-    | _, _ -> false
+  equivalent_terms e1 e2
 
 and equivalent_terms t1 t2 =
   match t1, t2 with
@@ -128,9 +105,6 @@ and equivalent_terms t1 t2 =
       x1 = x2 && ty1 = ty2 && equivalent_terms' t1 t2
     | App (a1, b1), App (a2, b2) ->
       equivalent_terms' a1 a2 && equivalent_terms' b1 b2
-    | IApp (t1, ts1), IApp (t2, ts2) ->
-      equivalent_terms t1.node t2.node
-      && List.for_all2 equivalent_terms' ts1 ts2
     | _, _ ->
       false
 
@@ -140,10 +114,9 @@ let dummy_position = { line = -1; character = -1 }
 
 let dummy_loc x = { node = x; start = dummy_position; stop = dummy_position }
 
-let blank = {
-  title = dummy_loc I18N.String.no_title;
-  questions = []
-}
+let blank = Lit (LInt 42)
+
+let blank' = dummy_loc blank
 
 (** precondition: Assume that [s] contains a least [l] lines. *)
 let offset_of { line = l; character = c } s =

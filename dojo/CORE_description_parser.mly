@@ -28,7 +28,7 @@
 %token MINUS PLUS STAR EQUAL RARROW
 
 (** Keywords *)
-%token EXERCISE FROM
+%token FROM
 
 (** Priorities *)
 %right COMMA
@@ -46,17 +46,8 @@ description: e=exercise EOF {
   e
 }
 
-exercise: tpl=located(RAW) LBRACE questions=question* RBRACE {
-  match tpl.node with
-    | [ Raw title ] ->
-      { title = { node = title; start = tpl.start; stop = tpl.stop };
-        questions }
-    | _ ->
-      raise (CORE_errors.ParseError (
-        from_lexing_position $startpos,
-        from_lexing_position $endpos,
-        I18N.String.parse_error
-      ))
+exercise: t=located(term) {
+  t
 }
 | error {
   raise (CORE_errors.ParseError (
@@ -66,48 +57,14 @@ exercise: tpl=located(RAW) LBRACE questions=question* RBRACE {
   ))
 }
 
-question: EXERCISE i=identifier d=located(exercise)
-{
-  Sub (i, d)
-}
-| EXERCISE i=identifier _d=QMARK
-{
-  Include (i,
-           from_lexing_position $startpos(_d),
-           from_lexing_position $endpos(_d))
-}
-| f=label LPAREN x=label RPAREN xs=located(term0)+ SEMICOLON
-{
-  let v = lexing_locate $startpos(f) $endpos(f) (Variable f) in
-  Binding (Some x, None, app v xs)
-}
-| t=located(term) SEMICOLON
-{
-  Binding (None, None, t)
-}
-| i=label ty=type_ascription? EQUAL t=located(term) SEMICOLON
-{
-  Binding (Some i, ty, t)
-}
-| tys=enumeration(ty) FROM i=identifier names=enumeration(label)? SEMICOLON
-{
-  let names = match names with None -> All | Some n -> n in
-  Import (tys, i, names)
-}
-
 term0: n=label %prec pvar
 {
-  Variable n
+  Variable (PThis n)
 }
 | r=RAW
 {
   Template r
 }
-(* FIXME: implement string literal too. *)
-(* | r=RAW *)
-(* { *)
-(*   Lit (LString r) *)
-(* } *)
 | x=INT
 {
   Lit (LInt x)
@@ -120,19 +77,13 @@ term0: n=label %prec pvar
 {
   Lit LUnit
 }
+| LBRACE bs=separated_list(SEMICOLON, binding) RBRACE
+{
+  Module bs
+}
 | LPAREN t=structured_term RPAREN
 {
   t
-}
-| LBRACE ts=separated_nonempty_list(SEMICOLON, located(term)) RBRACE
-{
-  let t = match ts with
-    | [] -> assert false
-    | [t] -> t
-    | ts -> lexing_locate $startpos(ts) $endpos(ts) (Seq ts)
-  in
-  Lam (CORE_identifier.label "_", Some (TApp (TVariable "unit", [])),
-       t)
 }
 | LPAREN error RPAREN
 {
@@ -156,6 +107,15 @@ term: t=structured_term
 | t=term0
 {
   t
+}
+
+binding: l=label EQUAL t=located(term0)
+{
+  (Some l, None, t)
+}
+| t=located(term0)
+{
+  (None, None, t)
 }
 
 label: n=NAME

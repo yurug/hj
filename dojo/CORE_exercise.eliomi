@@ -21,7 +21,7 @@ type public_change =
       CORE_identifier.t list (** Authors *)
     * CORE_identifier.t      (** Answer  *)
   | EvalQuestions
-  | Update of string * questions
+  | Update of questions
   | UpdateSource of CORE_description_CST.exercise CORE_description_CST.with_raw
 
 include CORE_entity.S

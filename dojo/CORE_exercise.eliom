@@ -60,7 +60,7 @@ type public_change =
       CORE_identifier.t list (** Authors *)
     * CORE_identifier.t      (** Answer  *)
   | EvalQuestions
-  | Update of string * questions
+  | Update of questions
   | UpdateSource of C.exercise C.with_raw
 
 let answer_of_dependency_kind = "answer_of"
@@ -98,7 +98,7 @@ include CORE_entity.Make (struct
         lwt content = eval_questions (CORE_inmemory_entity.identifier state) content in
         return (dependencies, content)
 
-      | Update (title, questions) ->
+      | Update (questions) ->
         let must_reset_value =
           match content.questions_value with
             | Some (qv, _) when qv <> questions ->
@@ -107,9 +107,7 @@ include CORE_entity.Make (struct
               false
         in
         Ocsigen_messages.errlog (Printf.sprintf "Must reset value: %B (isNone: %B)" must_reset_value (content.questions_value = None));
-        if (not must_reset_value)
-          && title = content.title
-          && questions = content.questions
+        if (not must_reset_value) && questions = content.questions
         then
           return (dependencies, content)
         else
@@ -117,7 +115,7 @@ include CORE_entity.Make (struct
             if must_reset_value then None else content.questions_value
           in
           return (dependencies, {
-            content with title; questions; questions_value
+            content with questions; questions_value
           })
 
       | UpdateSource (raw, cst) ->
@@ -198,18 +196,6 @@ let sub_id_from_user_string s =
   return (List.flatten lps)
 *)
 
-let collect_on_subs cst f =
-  let rec aux = function
-    | C.Sub (id, def) ->
-      let id = sub_id_from_user_string id.C.node in
-      f id def
-
-    | _ ->
-      return []
-  in
-  lwt xs = Lwt_list.map_s aux cst.C.questions in
-  return (List.flatten xs)
-
 (*
 let new_inline_subs raw e cst =
   Ocsigen_messages.errlog ("Searching for new inline definitions");
@@ -270,46 +256,7 @@ let rec questions_from_cst raw e cst =
     { source = t; term = y }
   in
 
-  let rec component = function
-    | C.Sub _ -> assert false (* FIXME: to be implemented. *)
-    | C.Import (tys, id, xs) ->
-      return (
-        Import (enumeration typ tys,
-                CORE_identifier.identifier_of_string id.C.node,
-                enumeration (fun x -> x) xs)
-      )
-
-    | C.Include _ ->
-      (** Includes should have been processed at this point. *)
-      assert false
-
-    | C.Binding (l, ty, t) ->
-      let l = match l with
-        | None -> None
-        | Some l -> Some (Local l)
-      in
-      return (Binding (l, typ' ty, term t))
-
-(*    | C.Sub (id, def) ->
-      let id = sub_id_from_user_string id.C.node in
-      make id >>= function
-        | `OK e' ->
-          (lwt cst = observe e' (fun d -> return (content d).cst) in
-           Ocsigen_messages.errlog "Consider pushing.";
-           if cst <> def.C.node then
-                (** At this point, the inline definition is necessarily new. *)
-             !!> (fun () ->
-               Ocsigen_messages.errlog "Pushing new inline def.";
-               (* FIXME *)
-               change_from_user_description e' (C.with_sub_raw raw def)
-             ) with_local_error
-           else return []
-          ) >>= fun _ ->
-          lwt ts = observe e' (fun d -> return (CORE_inmemory_entity.timestamp d)) in
-          return (Sub (id, ts))
-        | `KO e -> with_local_error e *)
-
-  and typ' = function
+  let rec typ' = function
     | None -> None
     | Some ty -> Some (typ ty)
 
@@ -319,18 +266,20 @@ let rec questions_from_cst raw e cst =
 
   and term (t : C.term') = wrap (function
     | C.Lit l -> Lit (literal l)
-    | C.Template t -> Template (template t)
-    | C.Variable v -> Variable (Local v) (* FIXME: Generalize to external identifiers. *)
+    | C.Template t -> template t
+    | C.Variable p -> Variable (path p)
     | C.App (a, b) -> App (term a, term b)
     | C.Lam (x, ty, t) -> Lam (x, typ' ty, term t)
-    | C.Seq [] -> assert false
-    | C.Seq [x] -> (term x).term
-    | C.Seq (x :: xs) ->
-      make_let x (Some unit_ty) (fun _ -> term (C.locate_as t (C.Seq xs)))
     | _ -> (* FIXME *) assert false
   ) t
 
-  and template t = List.map template_atom t
+  and path = function
+    | C.PRoot i -> PRoot i
+    | C.PThis l -> PThis l
+    | C.PSub (p, l) -> PSub (path p, l)
+
+  and template t =
+    assert false
 
   and template_atom = function
     | C.Raw s -> Raw s
@@ -350,15 +299,15 @@ let rec questions_from_cst raw e cst =
     let t2 = t2 b in
     App ({ term = Lam (b, ty, t2); source = t2.source }, term t1)
 
+  and program t = term t
+
   in
-  Lwt_list.map_s component cst.C.questions
+  program cst
 
 (** Compare an entity with the user description CST to decide if
     the user description is different from the entity. *)
 and changed x questions cst =
-  lwt o1 = observe x (fun d -> return ((content d).questions <> questions)) in
-  lwt o2 = observe x (fun d -> return ((content d).title <> cst.C.title.C.node)) in
-  return (o1 || o2)
+  observe x (fun d -> return ((content d).questions <> questions))
 
 (** Take an exercise [x] and a user description [cr] and produce a
     required change on [x] to be up-to-date with respect to [cr].
@@ -379,10 +328,10 @@ and change_from_user_description x cr =
   if source_changed then (
     change x (UpdateSource cr) >>= fun _ ->
       let cst = C.data cr in
-      lwt questions = questions_from_cst (C.raw cr) x cst in
+      let questions = questions_from_cst (C.raw cr) x cst in
       lwt changed = changed x questions cst in
       if changed then
-        change x (Update (cst.C.title.C.node, questions))
+        change x (Update questions)
       else
         return ()
   ) else return ()
@@ -465,13 +414,13 @@ let all_checkpoints e =
 
 let make_blank id =
   let assignment_rules = [] in
-  let questions = [] in
+  let questions = CORE_questions.blank in
   let init = (
     { title = I18N.String.no_title;
       assignment_rules;
       questions;
       questions_value = None;
-      cst = C.blank
+      cst = C.blank'
     },
     CORE_inmemory_entity.empty_dependencies,
     CORE_property.empty,

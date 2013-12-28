@@ -43,7 +43,6 @@ rule main = parse
 
 (** Keywords. *)
 | "from"                                { FROM }
-| "exercise"                            { EXERCISE }
 
 (** Punctuations. *)
 | "("                                   { LPAREN }

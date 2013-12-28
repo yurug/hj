@@ -37,18 +37,12 @@ let exercise_of_string s =
       | `OK cst -> aux' cst
       | `KO e -> `KO e
   and aux' (raw, cst) =
-    let rec exercise e = { e with questions = questions e.questions }
-    and questions qs = List.map component qs
-    and component = function
-      | Binding (i, ty, t) -> Binding (i, ty, term' t)
-      | c -> c
+    let rec exercise e = term' e
     and term' t = locate_as t (term t.node)
     and term = function
       | Template t -> Template (template t)
       | Lam (x, ty, t) -> Lam (x, ty, term' t)
       | App (a, b) -> App (term' a, term' b)
-      | IApp (a, bs) -> IApp (term' a, List.map term' bs)
-      | Seq ts -> Seq (List.map term' ts)
       | t -> t
     and template t = List.map template_atom t
     and template_atom = function

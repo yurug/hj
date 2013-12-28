@@ -7,6 +7,8 @@
 
     - documents that describe the statement of the exercise ;
 
+    - (inlined) sources ;
+
     - evaluation specifiers that describe the protocol of evaluation,
     i.e. how the answers are submitted, how the submissions are
     evaluated and how the diagnostic is transmitted to the users.
@@ -29,26 +31,23 @@ type 'a enumerate =
   | Insert of 'a list
   | Remove of 'a list
   | Union of 'a enumerate list
-deriving (Json)
 
-type component =
-  | Sub     of identifier * CORE_entity.timestamp
-  | Binding of name option * ty option * term'
-  | Import  of ty enumerate * identifier * CORE_identifier.label enumerate
-
-and name =
-  | Local of CORE_identifier.label
-  | External of CORE_identifier.t * CORE_identifier.label
-
-and t = component list
+and t = term'
 
 and term =
   | Lit of literal
-  | Template of template
-  | Variable of name
+  | Variable of path
   | Lam of label * ty option * term'
   | App of term' * term'
-  | IApp of term' * term' list
+  | Module of module_term
+  | Import  of ty enumerate * path * CORE_identifier.label enumerate
+
+and module_term = (label * ty option * term') list
+
+and path =
+  | PRoot of identifier
+  | PThis of label
+  | PSub of path * label
 
 and template = template_atom list
 
@@ -69,6 +68,9 @@ and literal =
 
 and ty =
   | TApp of type_variable * ty list
+  | TModule of module_type
+
+and module_type = (label * ty) list
 
 and type_variable = TVariable of string
 
@@ -76,18 +78,30 @@ deriving (Json)
 
 type checkpoint = string deriving (Json)
 
+let blank = { source = CORE_description_CST.blank'; term = Module [] }
+
 let string_of_ty ty =
-  let rec aux context (TApp (TVariable tcon, args)) =
-    match tcon, args with
-      | tcon, [] ->
-        tcon
-      | "->", [ity; oty] ->
-        may_paren context tcon (
-          aux `LeftOfArrow ity ^ " -> "
-          ^ aux `RightOfArrow oty
-        )
-      | tcon, args ->
-        tcon ^ paren (String.concat ", " (List.map (aux `AsArgument) args))
+  let rec aux context = function
+    | TApp (TVariable tcon, args) ->
+      begin match tcon, args with
+        | tcon, [] ->
+          tcon
+        | "->", [ity; oty] ->
+          may_paren context tcon (
+            aux `LeftOfArrow ity ^ " -> "
+            ^ aux `RightOfArrow oty
+          )
+        | tcon, args ->
+          tcon ^ paren (String.concat ", " (List.map (aux `AsArgument) args))
+      end
+    | TModule mt ->
+      "{" ^ module_type mt ^ "}"
+  and module_type mt =
+    String.concat "; " (List.map binding_type mt)
+
+  and binding_type (n, ty) =
+    label_to_string n ^ " : " ^ aux `AsArgument ty
+
   and may_paren context tcon s =
     if (match context, tcon with
       | `LeftOfArrow, "->" -> true
@@ -98,14 +112,6 @@ let string_of_ty ty =
   aux `AsArgument ty
 
 }}
-
-let timestamp_of_sub cs rkey =
-  let rec aux = function
-    | [] -> []
-    | Sub (r, ts) :: _ when r = rkey -> [ ts ]
-    | _ :: qs -> aux qs
-  in
-  aux cs
 
 {shared{
 
@@ -127,7 +133,7 @@ deriving (Json)
 type internal_errors = [
 | `TypeError of CORE_description_CST.term' * ty * ty
 | `NeedAnnotation of CORE_description_CST.term'
-| `UnboundVariable of CORE_description_CST.term' * name
+| `UnboundVariable of CORE_description_CST.term' * label
 | `BadApplication of CORE_description_CST.term'
 | `EvalError
 ] deriving (Json)
@@ -166,7 +172,7 @@ let rec filter_map f l =
   in
   aux [] l
 
-let import_exercise = ref None
+let import_exercise : (identifier -> t Lwt.t) option ref = ref None
 
 let set_import_exercise f = import_exercise := Some f
 
@@ -174,15 +180,11 @@ let do_import_exercise id = match !import_exercise with
   | None -> assert false
   | Some f -> f id
 
-type filter = name -> bool
+type filter = label -> bool
 
 type origin =
   | This of identifier
   | That of identifier * filter
-
-let string_of_name = function
-  | Local l -> label_to_string l
-  | External (id, l) -> string_of_identifier id ^ "/" ^ label_to_string l
 
 let filter_from_enumerate predicate =
   let rec make = function
@@ -193,73 +195,69 @@ let filter_from_enumerate predicate =
   in
   make
 
-(* FIXME: The following implementation is probably broken.
-   Indeed, we should do a dependency analysis to compute the
-   transitive closure of imported names... *)
-let do_imports (this : identifier) ?typeof p =
-  let rec do_imports origin = function
-    | Sub (e, _) ->
-      lwt source = do_import_exercise e in
-      do_imports' (That (e, fun _ -> true)) source
+(* (\* FIXME: The following implementation is probably broken. *)
+(*    Indeed, we should do a dependency analysis to compute the *)
+(*    transitive closure of imported names... *\) *)
+(* let do_imports (this : identifier) ?typeof p = *)
+(*   let rec do_imports origin = function *)
+(*     | Import (tys, e, ls) -> *)
+(*       let filter = *)
+(*         match typeof with *)
+(*           | None -> fun _ -> true *)
+(*           | Some typeof -> *)
+(*             let fls = filter_from_enumerate ( = ) ls in *)
+(*             let filter_by_type = *)
+(*               filter_from_enumerate (fun id t -> typeof id = t) tys *)
+(*             in *)
+(*             fun n -> *)
+(*               let filter_by_name = function *)
+(*                 | Local l -> true *)
+(*                 | External (_, l) -> fls l *)
+(*               in *)
+(*               let rn = filter_by_name n in *)
+(*               let rt = filter_by_type n in *)
+(*               rn && rt *)
+(*       in *)
+(*       lwt source = do_import_exercise e in *)
+(*       do_imports' (That (e, filter)) source *)
 
-    | Import (tys, e, ls) ->
-      let filter =
-        match typeof with
-          | None -> fun _ -> true
-          | Some typeof ->
-            let fls = filter_from_enumerate ( = ) ls in
-            let filter_by_type =
-              filter_from_enumerate (fun id t -> typeof id = t) tys
-            in
-            fun n ->
-              let filter_by_name = function
-                | Local l -> true
-                | External (_, l) -> fls l
-              in
-              let rn = filter_by_name n in
-              let rt = filter_by_type n in
-              rn && rt
-      in
-      lwt source = do_import_exercise e in
-      do_imports' (That (e, filter)) source
+(*     | Binding (None, ty, t) -> *)
+(*       (\* FIXME: Maybe we should filter these if they come *)
+(*          from an external. *\) *)
+(*       return [Binding (None, ty, t)] *)
 
-    | Binding (None, ty, t) ->
-      (* FIXME: Maybe we should filter these if they come
-         from an external. *)
-      return [Binding (None, ty, t)]
+(*     | (Binding (Some ((External (_, _)) as name), _, _) as b) -> *)
+(*       (\** The only bindings that already are external are the ones *)
+(*           coming from an external source or that are already imported. *\) *)
+(*       begin match origin with *)
+(*         | This _ -> assert false *)
+(*         | That (_, filter) -> *)
+(*           if filter name then return [b] else return [] *)
+(*       end *)
 
-    | (Binding (Some ((External (_, _)) as name), _, _) as b) ->
-      (** The only bindings that already are external are the ones
-          coming from an external source or that are already imported. *)
-      begin match origin with
-        | This _ -> assert false
-        | That (_, filter) ->
-          if filter name then return [b] else return []
-      end
+(*     | Binding (Some (Local l as name), ty, t) -> *)
+(*       begin match origin with *)
+(*         | This _ -> *)
+(*           return [Binding (Some name, ty, t)] *)
+(*         | That (e, filter) -> *)
+(*           let name = External (e, l) in *)
+(*           if filter name then *)
+(*             return [Binding (Some name, ty, t)] *)
+(*           else *)
+(*             return [] *)
+(*       end *)
 
-    | Binding (Some (Local l as name), ty, t) ->
-      begin match origin with
-        | This _ ->
-          return [Binding (Some name, ty, t)]
-        | That (e, filter) ->
-          let name = External (e, l) in
-          if filter name then
-            return [Binding (Some name, ty, t)]
-          else
-            return []
-      end
-
-  and do_imports' (origin : origin) p =
-    lwt ss = Lwt_list.map_s (do_imports origin) p in
-    return (List.flatten ss)
-  in
-  do_imports' (This this) p
+(*   and do_imports' (origin : origin) p = *)
+(*     lwt ss = Lwt_list.map_s (do_imports origin) p in *)
+(*     return (List.flatten ss) *)
+(*   in *)
+(*   do_imports' (This this) p *)
 
 
 module TypeCheck = struct
 
   (** Invariant: bindings must be distinct. *)
-  type environment = (name * ty) list
+  type environment = (label * ty) list
 
   (* FIXME: Check invariant *)
   let bind x ty e : environment  = (x, ty) :: e
@@ -331,7 +329,7 @@ module TypeCheck = struct
     | Some ty ->
       match t.term, destruct_arrow ty with
         | Lam (x, None, t), Some (ity, oty) ->
-          check_term (bind (Local x) ity e) t (Some oty)
+          check_term (bind x ity e) t (Some oty)
         | _, _ ->
           let ity = infer_term e t.source t.term in
           if not (compatible ty ity) then
@@ -341,10 +339,6 @@ module TypeCheck = struct
   and infer_term e source = function
     | Lit l -> literal l
     | Variable x -> variable e source x
-    | Template t -> begin match template e source t with
-        | None -> ttemplate string
-        | Some ty -> ty
-    end
     | Lam (x, xty, t) -> lambda e source x t xty
     | App (a, b) -> app e source a b
     | _ -> assert false (* FIXME *)
@@ -376,15 +370,11 @@ module TypeCheck = struct
     | LFloat _ -> float
     | LUnit -> unit
 
-  and variable e source = function
-    | (External _ ) as x ->
-      begin try lookup x e with Not_found ->
-        eraise (`UnboundVariable (source, x))
-      end
-    | (Local l) as x ->
-      try lookup_primitive l with Not_found ->
-        try lookup x e with Not_found ->
-          eraise (`UnboundVariable (source, x))
+  and variable e source l =
+    assert false
+(*    try lookup_primitive l with Not_found ->
+      try lookup x e with Not_found ->
+        eraise (`UnboundVariable (source, x))*)
 
   and app e source a b =
     match destruct_arrow (infer_term e a.source a.term) with
@@ -393,20 +383,11 @@ module TypeCheck = struct
 
   and lambda e source x t = function
     | None -> eraise (`NeedAnnotation source)
-    | Some ty -> ty --> (infer_term (bind (Local x) ty e) t.source t.term)
-
-  let component e = function
-    | Sub _ | Import _ ->
-      assert false
-    | Binding (None, ty, t) ->
-      ignore (check_term e t ty);
-      e
-    | Binding (Some x, ty, t) ->
-      bind x (check_term e t ty) e
+    | Some ty -> ty --> (infer_term (bind x ty e) t.source t.term)
 
   let program this p =
-    lwt p = do_imports this p in
-    return (List.fold_left component [] p)
+    ignore (infer_term [] p.source p.term);
+    return p
 
 end
 
@@ -429,8 +410,9 @@ module Eval = struct
     | VClosure of environment * label * term
     | VPrimitive of (state -> value -> (state * value) Lwt.t)
     | VSource of string * string
+    | VModule of environment
 
-  and environment = (name * value) list
+  and environment = (label * value) list
 
   let rec eval_template join make t =
     join (List.map (eval_template_atom_value join make) t)
@@ -528,7 +510,7 @@ module Eval = struct
         VStatement (html_of_string b c (as_string v))
       ))
     in
-    let html_constructor2 (s, b1, c1, b2, c2) =
+    let _html_constructor2 (s, b1, c1, b2, c2) =
       functional s (fun v ->
         let s1 = as_string v in
         return (VPrimitive (fun s v ->
@@ -606,19 +588,8 @@ module Eval = struct
         ))))
     );
 
-  and variable s (e : environment) = function
-    | Local x ->
-      begin try_lwt
-        return (s, VPrimitive (Hashtbl.find primitives x))
-      with Not_found ->
-        try_lwt
-          return (s, List.assoc (Local x) e)
-        with Not_found -> eraise `EvalError
-      end
-    | x ->
-        try_lwt
-          return (s, List.assoc x e)
-        with Not_found -> eraise `EvalError
+  and variable s (e : environment) =
+    assert false
 
   and literal = function
     | LInt x -> VInt x
@@ -632,7 +603,7 @@ module Eval = struct
   and apply f s v : (state * value) Lwt.t =
     match f with
       | VClosure (e, x, t) ->
-        term s ((Local x, v) :: e) t
+        term s ((x, v) :: e) t
       | VPrimitive p -> p s v
       | _ -> eraise `EvalError (* FIXME: Handle error. *)
 
@@ -652,47 +623,33 @@ module Eval = struct
       return (s, v)
 
   and term s e = function
-    | Lit l -> return (s, literal l)
-    | Template t -> lwt s, tv = template s e t in return (s, VTemplate tv)
-    | Variable x -> variable s e x
-    | Lam (x, _, t) -> closure s e x t
+    | Lit l ->
+      return (s, literal l)
+    | Variable x ->
+      variable s e x
+    | Lam (x, _, t) ->
+      closure s e x t
     | App (a, b) ->
       lwt s, a = term' s e a in
       lwt s, b = term' s e b in
       apply a s b
-    | IApp _ -> assert false
 
   and term' s e t = term s e t.term
 
   let _ = make_primitive ()
 
-  let name_to_local_string = function
-    | Local l -> label_to_string l
-    | External (id, l) ->
-      let sid = string_of_identifier id in
-      Str.(global_replace (regexp "/") "_" sid) ^ "_" ^ label_to_string l
+  let values_of_module = function
+    | VModule m -> m
+    | _ -> []
 
   let program this tenv p =
-    let fresh =
-      let c = ref 0 in fun () ->
-        incr c;
-        Local (CORE_identifier.label ("_" ^ string_of_int !c))
-    in
-    lwt p = do_imports this ~typeof:(fun n -> TypeCheck.lookup n tenv) p in
-    let rec component (s, e) = function
-      | Sub _ | Import _ -> assert false
-      | Binding (None, _, t) ->
-        term' s e t >>= fun (s, v) -> return (s, (fresh (), v) :: e)
-      | Binding (Some x, _, t) ->
-        term' s e t >>= fun (s, v) -> return (s, (x, v) :: e)
-    in
-    lwt _, e = Lwt_list.fold_left_s component (CORE_context.empty, []) p in
+    lwt _, v = term' CORE_context.empty [] p in
     return (filter_map (fun x -> function
       | VStatement s -> Some (Statement s)
-      | VContext c -> Some (CheckpointContext (name_to_local_string x, c))
+      | VContext c -> Some (CheckpointContext (label_to_string x, c))
       | VSource (s, c) -> Some (Source (s, c))
       | _ -> None
-      ) (List.rev e)
+      ) (values_of_module v)
     )
 
 end
@@ -711,7 +668,7 @@ let convert_to_string_error
   | `NeedAnnotation t ->
     `NeedAnnotation (start_of t)
   | `UnboundVariable (t, n) ->
-    `UnboundVariable (start_of t, string_of_name n)
+    `UnboundVariable (start_of t, label_to_string n)
   | `BadApplication t ->
     `BadApplication (start_of t)
   | `EvalError ->
