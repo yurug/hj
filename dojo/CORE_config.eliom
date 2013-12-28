@@ -17,12 +17,13 @@ let mathjax_src () =
     "https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/\
      MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
-(** Ace editor location. *)
-let ace_editor_src () =
-  Eliom_content_core.Xml.uri_of_string "/ace-builds/src-noconflict/ace.js"
+(** codemirror editor source location. *)
+let codemirror_editor_src () =
+  Eliom_content_core.Xml.uri_of_string "/codemirror/lib/codemirror.js"
 
-let ace_alias_src () =
-  Eliom_content_core.Xml.uri_of_string "/ace-alias.js"
+(** codemirror editor css location. *)
+let codemirror_editor_css () =
+  ["codemirror"; "lib"; "codemirror.css"]
 
 (** Check the AUTOTEST environment variable. *)
 let autotest_enabled () =

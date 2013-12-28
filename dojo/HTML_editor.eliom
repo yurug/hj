@@ -1,21 +1,32 @@
 (* -*- tuareg -*- *)
 
 (** A widget for user edition with immediate feedback. *)
+
 {shared{
 open CORE_errors
 open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
 
+(** The widget can be requested to do the following actions: *)
 type user_request =
+  (** - it can ask for a confirmation about an action is about to do. *)
   | Confirm of string * (unit, user_request list) server_function
-  | Message of string
-  | Patch   of CORE_errors.position * CORE_errors.position * string
 
+  (** - it can transmit a message. *)
+  | Message of string
+
+(** The widget's behavior is split between the client and the server. *)
+
+(** Locally, the widget can process its content and may return some
+    value of type ['a] out of this content. *)
 type 'a local_process = (
   (string -> unit) -> string -> 'a option Lwt.t
 ) client_value
 
+(** If some value has been extracted from the content, it is processed
+    remotely on the server. This process may produce a list of new
+    requests to be process by the widget. *)
 type 'i remote_process = ('i, user_request list) server_function
 }}
 
@@ -25,9 +36,7 @@ let confirm msg what =
 let message msg =
   Message msg
 
-let patch start stop what =
-  Patch (start, stop, what)
-
+(** A minimal binding to CodeMirror. *)
 {client{
 
   open Js
@@ -44,93 +53,64 @@ let patch start stop what =
 
   class type js_object = object end
 
-  module Ace = struct
-
-    class type range = object end
-
-    let new_range
-        : (int -> int -> int -> int -> range t) constr =
-      Js.Unsafe.variable ("ace_range")
-
-    class type document = object
-      method setValue : js_string t -> unit meth
-      method replace : range t -> js_string t -> js_object meth
-    end
-
-    class type session = object
-      method setMode : js_string t -> unit meth
-      method setUseSoftTabs : boolean t -> unit meth
-      method getDocument : document t meth
-      method on : js_string t -> ('a, 'b) meth_callback -> unit meth
-      method replace : range t -> js_string t -> js_object meth
-      method remove : range t -> js_object meth
-    end
+  module CodeMirror = struct
 
     class type editor = object
-      method getSession : session t meth
+      method on : js_string t -> ('a, 'b) meth_callback -> unit meth
       method getValue : js_string t meth
-      method setValue : js_string t -> js_string t meth
-      method setReadOnly : boolean t -> unit meth
-      method setTheme : js_string t -> unit meth
     end
 
-    let make id : editor Js.t =
-      let ace = Js.Unsafe.variable "ace_library" in
-      let e = (coerce ace)##edit (Js.string id) in
-      e
-
-    let h = Hashtbl.create 13
-
-    let get =
-      fun id ->
-        try
-          fst (Hashtbl.find h id)
-        with Not_found ->
-          let e = make id in
-          Hashtbl.add h id (e, None);
-          e
-
-    let set_last_update id c =
-      Hashtbl.replace h id (get id, c)
-
-    let get_last_update id =
-      try
-        let up = snd (Hashtbl.find h id) in
-        set_last_update id None;
-        up
-      with Not_found -> None
-
-    let range_from_lexing_position start stop =
-      jsnew new_range (start.line - 1, start.character - 1,
-                       stop.line - 1, stop.character)
+    let make ta =
+      let codemirror = variable "CodeMirror" in
+      (coerce codemirror)##fromTextArea (ta)
 
   end
 
 }}
 
+(** A fresh identifier generator. *)
 let fresh_editor_id =
   let c = ref 0 in
   fun () -> incr c; "editor" ^ string_of_int !c
 
+(** [create init local remote] instantiates a widget whose content is
+    [init] and whose behavior is the composition of [local] and
+    [remote]. *)
 let create
     (init           : string)
     (local_process  : 'a local_process)
     (remote_process : 'a remote_process)
-=
-  let editor_id = fresh_editor_id () in
+    =
+
+  (** The widget is composed of three parts:
+      - an editor
+      - a message box
+      - a question box.
+  *)
+
+  (** Message box. *)
+  (** ------------ *)
+
+  (** The message displays only one string at a time. *)
   let message_box = div ~a:[a_class ["editor_message"]] [] in
   let echo = {string -> unit{ fun s ->
     Manip.replaceAllChild %message_box [
       pcdata s
     ]
-  }} in
+   }} in
 
-  let push_job = {(unit -> unit Lwt.t) -> unit{
-    let jobs, push = Lwt_stream.create () in
-    Lwt.async (fun () -> Lwt_stream.iter_s (fun job -> job ()) jobs);
-    fun job -> push (Some job)
-  }} in
+  (** Question box. *)
+  (** ------------- *)
 
+  (** The question box manages a stack of questions that may be
+      ignored by the user. (A question disappears after some
+      seconds.)
+
+      A question is defined by a string and a list of buttons
+      associated to callbacks. If this list if empty, the question
+      is merely an information message that disappears after some
+      time.
+  *)
   let questions_box = div ~a:[a_class ["editor_questions_box"]] [] in
 
   let process_request = {user_request -> unit Lwt.t{
@@ -168,12 +148,13 @@ let create
             )
           in
           Some (Id.create_named_elt ~id
-            (div
-               ~a:[a_class ["editor_message"];
-                   a_onload onload
-                  ] (
-                 pcdata msg :: List.map (button process_request msg id) buttons
-               )))
+                  (div
+                     ~a:[a_class ["editor_message"];
+                         a_onload onload
+                        ] (
+                       pcdata msg
+                       :: List.map (button process_request msg id) buttons
+                     )))
     in
     let message aux msg = question aux ~timeout:10. msg [] in
     let push e =
@@ -189,30 +170,24 @@ let create
                                    I18N.String.yes, what; ])
         | Message msg ->
           push (message aux msg)
-
-        | Patch (start, stop, what) ->
-          (** Ace prevents modifications of the document inside
-              on_change handlers, which is quite reasonable.
-              We push the patches as background jobs. *)
-          return (%push_job (fun () ->
-            Firebug.console##log ("Patching...");
-            (** FIXME: Remove the following hack: *)
-            Lwt_js.sleep 0.5 >>= fun _ ->
-            let e = Ace.get %editor_id in
-            let s = e##getSession () in
-            let r = Ace.range_from_lexing_position start stop in
-            ignore (s##replace (r, Js.string what));
-            return ()
-          ))
     in
     aux
   }}
   in
+
+  (** Editor. *)
+  (** ------- *)
+
+  (** The editor is implemented by a third party library called "CodeMirror".
+      A previous implementation used a library called "Ace" but it happened
+      to interact badly with ocsigen (for strange reasons). *)
+
+  let editor_id = fresh_editor_id () in
   let on_load = a_onload {#Dom_html.event Js.t -> unit{ fun _ ->
       let open Js.Unsafe in
       let open Lwt in
-      let editor = Ace.get %editor_id in
-      let hi = Js.wrap_callback (
+
+      let hi editor = Js.wrap_callback (
         let nb = ref 0 in fun _ ->
           incr nb;
           let nb_now = !nb in
@@ -226,37 +201,30 @@ let create
                   lwt urqs = %remote_process v in
                   Lwt_list.iter_s %process_request urqs)
               in
-              match Ace.get_last_update %editor_id with
-                | None -> process ()
-                | Some c when c <> content -> process ()
-                | _ -> return ()
-            else return ()));
+              process ()
+            else
+              return ()));
          Js._false
       )
       in
-      let session = editor##getSession () in
-      session##on (Js.string "change", hi);
-      session##setUseSoftTabs (true_object);
-      ignore (editor##setValue (Js.string %init)
-    )
+      let e = Js.Opt.get (
+        Dom_html.document##getElementById (Js.string %editor_id)
+      ) (fun _ -> To_dom.of_div (div [
+        pcdata "getElementById failed for textarea editor."
+      ]))
+      in
+      let i = CodeMirror.make e in
+      i##on (Js.string "change", hi i)
   }}
   in
+  let editor_textarea =
+    Eliom_content_core.Html5.D.textarea
+      ~a:[a_id editor_id; on_load; a_class ["editor"]] (pcdata "")
+  in
   let editor = div ~a:[a_class ["editor_box"]] [
-    div ~a:[a_id editor_id; on_load; a_class ["editor"]] [];
+    editor_textarea;
     message_box;
     questions_box
   ] in
   return (editor, editor_id, process_request)
 
-{client{
-
-  let refresh id content =
-    let editor = Ace.get id in
-    if String.compare (Js.to_string (editor##getValue ())) content <> 0 then (
-      let s = editor##getSession () in
-      let d = s##getDocument () in
-      Ace.set_last_update id (Some content);
-      d##setValue (Js.string content);
-    )
-
-}}

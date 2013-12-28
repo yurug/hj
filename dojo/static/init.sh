@@ -1,2 +1,5 @@
 #!/usr/bin/env bash
-git clone https://github.com/ajaxorg/ace-builds.git    
+wget http://codemirror.net/codemirror.zip
+unzip codemirror.zip
+mv codemirror-3.20 codemirror
+rm codemirror.zip

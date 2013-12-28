@@ -62,9 +62,10 @@ let include_javascript url =
     ~a:[a_src url; a_mime_type "text/javascript"; a_charset "utf-8" ]
     (pcdata "")
 
+let editor_css = CORE_config.codemirror_editor_css ()
+
 let editor_script = [
-  include_javascript (CORE_config.ace_editor_src ());
-  include_javascript (CORE_config.ace_alias_src ());
+  include_javascript (CORE_config.codemirror_editor_src ());
   include_javascript (CORE_config.mathjax_src ())
 ]
 
@@ -73,7 +74,7 @@ let hackojo_page body_contents =
   return (
     Eliom_tools.F.html
       ~title:I18N.String.the_hacking_dojo
-      ~css:[["css";"hackojo.css"]]
+      ~css:[["css";"hackojo.css"]; editor_css]
       ~other_head:editor_script
       (body ~a:[a_id "global"]
          (bar

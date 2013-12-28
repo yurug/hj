@@ -14,14 +14,13 @@ val autotest_enabled : unit -> bool
     in the project. *)
 val mathjax_src : unit -> Eliom_content_core.Xml.uri
 
-(** [ace_editor_src ()] returns the way to import the [ace editor]
-    in the project. *)
-val ace_editor_src : unit -> Eliom_content_core.Xml.uri
+(** [codemirror_editor_src ()] returns the way to import the
+    [codemirror editor] in the project. *)
+val codemirror_editor_src : unit -> Eliom_content_core.Xml.uri
 
-(** [ace_alias_src ()] returns the alias to the [ace editor] in the
-    project, avoiding common name clash with identifiers generated
-    by js_of_ocaml (!). *)
-val ace_alias_src : unit -> Eliom_content_core.Xml.uri
+(** [codemirror_editor_css ()] returns the way to import the
+    [codemirror css] in the project. *)
+val codemirror_editor_css : unit -> string list
 
 (** [number_of_login_attempts_per_second] *)
 val number_of_login_attempts_per_second : int
