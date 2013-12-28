@@ -219,7 +219,7 @@ let create
   in
   let editor_textarea =
     Eliom_content_core.Html5.D.textarea
-      ~a:[a_id editor_id; on_load; a_class ["editor"]] (pcdata "")
+      ~a:[a_id editor_id; on_load; a_class ["editor"]] (pcdata init)
   in
   let editor = div ~a:[a_class ["editor_box"]] [
     editor_textarea;
@@ -227,4 +227,3 @@ let create
     questions_box
   ] in
   return (editor, editor_id, process_request)
-
