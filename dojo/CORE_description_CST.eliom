@@ -57,7 +57,7 @@ and term =
 
 and path =
   | PRoot of identifier
-  | PThis of label
+  | PThis
   | PSub of path * label
 
 and template = template_atom list

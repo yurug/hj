@@ -275,7 +275,7 @@ let rec questions_from_cst raw e cst =
 
   and path = function
     | C.PRoot i -> PRoot i
-    | C.PThis l -> PThis l
+    | C.PThis -> PThis
     | C.PSub (p, l) -> PSub (path p, l)
 
   and template t =

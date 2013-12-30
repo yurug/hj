@@ -59,7 +59,7 @@ exercise: t=located(term) {
 
 term0: n=label %prec pvar
 {
-  Variable (PThis n)
+  Variable (PSub (PThis, n))
 }
 | r=RAW
 {

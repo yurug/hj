@@ -25,6 +25,7 @@
 
 open Lwt
 open CORE_identifier
+open COMMON_pervasives
 
 type 'a enumerate =
   | All
@@ -46,7 +47,7 @@ and module_term = (label * ty option * term') list
 
 and path =
   | PRoot of identifier
-  | PThis of label
+  | PThis
   | PSub of path * label
 
 and template = template_atom list
@@ -341,7 +342,15 @@ module TypeCheck = struct
     | Variable x -> variable e source x
     | Lam (x, xty, t) -> lambda e source x t xty
     | App (a, b) -> app e source a b
-    | _ -> assert false (* FIXME *)
+    | Module mt -> module_term e mt
+
+  and module_term e mt =
+    let (_, mc) = list_foldmap module_component e mt in
+    TModule mc
+
+  and module_component e (l, ty, t) =
+    let ty = check_term e t ty in
+    (bind l ty e, (l, ty))
 
   and template e source = function
     | [] -> None
@@ -633,8 +642,20 @@ module Eval = struct
       lwt s, a = term' s e a in
       lwt s, b = term' s e b in
       apply a s b
+    | Module mt ->
+      module_term s e mt
 
   and term' s e t = term s e t.term
+
+  and module_term s e mt =
+    lwt (s, e, me) =
+      Lwt_list.fold_left_s module_component (s, e, []) mt
+    in
+    return (s, VModule me)
+
+  and module_component (s, e, cs) (l, _, t) =
+    lwt s, v = term' s e t in
+    return (s, (l, v) :: e, (l, v) :: cs)
 
   let _ = make_primitive ()
 
