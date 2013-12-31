@@ -85,15 +85,6 @@ term0: n=label %prec pvar
 {
   t
 }
-| LPAREN error RPAREN
-{
-  raise (
-    CORE_errors.ParseError (
-      from_lexing_position $startpos,
-      from_lexing_position $endpos,
-      I18N.String.parse_error) (* FIXME: Be more informative. *)
-  )
-}
 
 structured_term: a=located(term) b=located(term0)
 {

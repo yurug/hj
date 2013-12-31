@@ -1,5 +1,14 @@
 (** -*- tuareg -*- *)
 
+{client{
+  let trace m = Firebug.console##log (Js.string m)
+}}
+
+{server{
+  let trace m = ()
+}}
+
+
 {shared{
 
 open Lwt
@@ -19,9 +28,11 @@ let process ~lexer_init ~lexer_fun ~parser_fun ~input  =
     | ParseError (start, stop, msg) -> `KO (`SyntaxError (start, stop, msg))
 
 let process_string parser_fun s =
+  trace "parse start";
   let ret =
     process ~lexer_init:Lexing.from_string ~lexer_fun:main ~parser_fun ~input:s
   in
+  trace "parse stop";
   match ret with
     | `OK cst -> `OK (with_raw s cst)
     | `KO e -> `KO e
