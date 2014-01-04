@@ -23,7 +23,6 @@ type public_change =
   | EvalQuestions
   | Update of questions
   | UpdateSource of CORE_description_CST.exercise CORE_description_CST.with_raw
-  | ExtraSource of CORE_source.t
 
 include CORE_entity.S
 with type data = description and type change = public_change

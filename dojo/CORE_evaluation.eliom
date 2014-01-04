@@ -115,14 +115,16 @@ let create_job exo_id checkpoint context submission change_later =
     change_later (NewEvaluationState (checkpoint, s))
   in
   let message job msg =
-    change_state (BeingEvaluated (job, submission, CORE_diagnostic.PushLine msg, context))
+    change_state (
+      BeingEvaluated (job, submission, CORE_diagnostic.PushLine msg, context)
+    )
   in
   let mark () =
-    Ocsigen_messages.errlog "Mark!";
-    change_state (Evaluated (!score, submission, CORE_diagnostic.Empty, context))
+    change_state (
+      Evaluated (!score, submission, CORE_diagnostic.Empty, context)
+    )
   in
   let init () =
-    Ocsigen_messages.errlog "Init!";
     change_state Unevaluated
   in
   init ()

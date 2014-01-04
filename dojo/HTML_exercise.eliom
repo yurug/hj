@@ -77,11 +77,6 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
       HTML_context.display_context e_id cp context evaluation
     )
   in
-  let change_source = server_function Json.t<string * string> (fun (f, c) ->
-    Ocsigen_messages.errlog (Printf.sprintf "Change source %s: %s\n" f c);
-    CORE_exercise.change exo (ExtraSource (CORE_source.make f c))
-  )
-  in
   let display_exercise =
     (* FIXME: For the moment, we redisplay the entire exercise
        FIXME: description each time it is updated. We should
@@ -101,18 +96,17 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
                  FIXME: the user is a student?) *)
               return [p [pcdata (string_of_error e)]]
             | `OK v ->
-              let display_atomic = function
-                | CORE_questions.Statement s ->
+              let display_atomic = CORE_questions.(function
+                | Statement s ->
                   let d = div [] in
                   let d = To_dom.of_element d in
                   d##innerHTML <- Js.string s;
                   d##id <- Js.string "exercise_view";
                   return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
-                | CORE_questions.CheckpointContext (cp, context) ->
+
+                | CheckpointContext (cp, context) ->
                   %display_context (cp, context)
-                | CORE_questions.Source (fname, content) ->
-                  %change_source (fname, content)
-                  >> return []
+              )
               in
               Firebug.console##log (Js.string "Redisplay");
               lwt all = Lwt_list.map_s display_atomic v in

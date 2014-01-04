@@ -121,6 +121,7 @@ and atomic_value =
   | CheckpointContext of checkpoint * CORE_context.t
   | Statement of string
   | Source of string * string
+  | Title of string
 deriving (Json)
 
 }}
@@ -562,19 +563,27 @@ module Eval = struct
 
   let program this p =
     lwt _, v = term' CORE_context.empty [] p in
-    return (filter_map (fun x -> function
+    let sources = ref [] in
+    let title = ref "Sans titre" (* FIXME *) in
+    let v = (filter_map (fun x -> function
       | VStatement s ->
         Some (Statement s)
-      | (VString _ | VModule _) as v ->
+      | (VString _ | VModule _) as v when x = CORE_identifier.label "title" ->
+        title := as_string v;
+        None
+      | (VModule _) as v ->
         Some (Statement ("<p>" ^ as_string v ^ "</p>"))
       | VContext c ->
         Some (CheckpointContext (label_to_string x, c))
       | VSource (s, c) ->
-        Some (Source (s, c))
+        sources := (s, c) :: !sources;
+        None
       | _ ->
         None
       ) (values_of_module v)
     )
+    in
+    return (!title, v, !sources)
 
 end
 
@@ -600,10 +609,10 @@ let convert_to_string_error
 )
 
 (** A well-typed exercise description evaluates into a value. *)
-let eval this p : questions_result Lwt.t =
+let eval this p =
   try_lwt
 (*    lwt tenv = TypeCheck.program this p in*)
-    lwt v = Eval.program this p in
-    return (`OK v)
+    lwt title, v, sources = Eval.program this p in
+    return (title, `OK v, sources)
   with Error e ->
-    return (`KO (convert_to_string_error e))
+    return ("", `KO (convert_to_string_error e), [])

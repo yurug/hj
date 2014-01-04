@@ -47,8 +47,11 @@ type data = description
 let raw_user_description_filename = "description.txt"
 
 let eval_questions this c =
-  lwt v = CORE_questions.eval this c.questions in
-  return { c with questions_value = Some (c.questions, v) }
+  lwt title, v, sources = CORE_questions.eval this c.questions in
+  return ({ c with
+    title;
+    questions_value = Some (c.questions, v)
+  }, sources)
 
 exception Error of [ `UndefinedEntity of CORE_identifier.t
                    | `AlreadyExists   of CORE_identifier.path
@@ -62,7 +65,6 @@ type public_change =
   | EvalQuestions
   | Update of questions
   | UpdateSource of C.exercise C.with_raw
-  | ExtraSource of CORE_source.t
 
 let answer_of_dependency_kind = "answer_of"
 
@@ -80,7 +82,6 @@ include CORE_entity.Make (struct
     | EvalQuestions -> "Evaluate questions."
     | Update _ -> "Update the questions' AST."
     | UpdateSource _ -> "Update the questions' CST."
-    | ExtraSource s -> "New version of " ^ (CORE_source.filename s) ^ "."
 
   let update_description_source state raw =
     let source = CORE_source.make raw_user_description_filename raw in
@@ -98,10 +99,22 @@ include CORE_entity.Make (struct
         )
 
       | EvalQuestions ->
-        lwt content =
+        lwt content, xsources =
           eval_questions (CORE_inmemory_entity.identifier state) content
         in
-        return (sources, dependencies, content)
+        let source (sources, dependencies, content) (f, c) =
+          let s = CORE_source.make f c in
+          save_source (CORE_inmemory_entity.identifier state) s
+          >>= function
+            | `OK true ->
+              return (s :: sources, dependencies, content)
+            | `OK false ->
+              return (sources, dependencies, content)
+            | `KO e ->
+              warn e;
+              return (sources, dependencies, content) (* FIXME: handle error. *)
+        in
+        Lwt_list.fold_left_s source (sources, dependencies, content) xsources
 
       | Update (questions) ->
         let must_reset_value =
@@ -131,17 +144,6 @@ include CORE_entity.Make (struct
           | `KO e ->
             warn e; return (sources, dependencies, c) (* FIXME: handle error. *)
       end
-
-      | ExtraSource s ->
-        save_source (CORE_inmemory_entity.identifier state) s
-        >>= function
-          | `OK true ->
-            return (s :: sources, dependencies, content)
-          | `OK false ->
-            return (sources, dependencies, content)
-          | `KO e ->
-            warn e;
-            return (sources, dependencies, content) (* FIXME: handle error. *)
     in
     lwt s, d, c =
       Lwt_list.fold_left_s
