@@ -63,7 +63,7 @@ and path =
 and template = template_atom list
 
 and template_atom =
-  | Raw  of string
+  | Raw  of string located
   | Code of term located
   | RawCode of string (** Should not occur in final AST. *)
 

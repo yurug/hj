@@ -62,6 +62,7 @@ type public_change =
   | EvalQuestions
   | Update of questions
   | UpdateSource of C.exercise C.with_raw
+  | ExtraSource of CORE_source.t
 
 let answer_of_dependency_kind = "answer_of"
 
@@ -79,6 +80,7 @@ include CORE_entity.Make (struct
     | EvalQuestions -> "Evaluate questions."
     | Update _ -> "Update the questions' AST."
     | UpdateSource _ -> "Update the questions' CST."
+    | ExtraSource s -> "New version of " ^ (CORE_source.filename s) ^ "."
 
   let update_description_source state raw =
     let source = CORE_source.make raw_user_description_filename raw in
@@ -86,17 +88,18 @@ include CORE_entity.Make (struct
 
   let react state deps cs change_later =
 
-    let make_change (dependencies, content) = function
+    let make_change (sources, dependencies, content) = function
       | NewAnswer (authors, answer) ->
         (* FIXME: Is it correct ? *)
         return (
+          sources,
           push dependencies (answer, (answer_of_dependency_kind, authors)),
           content
         )
 
       | EvalQuestions ->
         lwt content = eval_questions (CORE_inmemory_entity.identifier state) content in
-        return (dependencies, content)
+        return (sources, dependencies, content)
 
       | Update (questions) ->
         let must_reset_value =
@@ -109,26 +112,42 @@ include CORE_entity.Make (struct
         Ocsigen_messages.errlog (Printf.sprintf "Must reset value: %B (isNone: %B)" must_reset_value (content.questions_value = None));
         if (not must_reset_value) && questions = content.questions
         then
-          return (dependencies, content)
+          return (sources, dependencies, content)
         else
           let questions_value =
             if must_reset_value then None else content.questions_value
           in
-          return (dependencies, {
+          return (sources, dependencies, {
             content with questions; questions_value
           })
 
-      | UpdateSource (raw, cst) ->
+      | UpdateSource (raw, cst) -> begin
         let c = { content with cst } in
         update_description_source (CORE_inmemory_entity.identifier state) raw
         >>= function
-          | `OK () -> return (dependencies, c)
-          | `KO e -> warn e; return (dependencies, c) (* FIXME: handle error. *)
+          | `OK _ -> return (sources, dependencies, c)
+          | `KO e -> warn e; return (sources, dependencies, c) (* FIXME: handle error. *)
+      end
+
+      | ExtraSource s ->
+        save_source (CORE_inmemory_entity.identifier state) s
+        >>= function
+          | `OK true -> return (s :: sources, dependencies, content)
+          | `OK false -> return (sources, dependencies, content)
+          | `KO e -> warn e; return (sources, dependencies, content) (* FIXME: handle error. *)
     in
-    lwt d, c =
-      Lwt_list.fold_left_s make_change (dependencies state, content state) cs
+    lwt s, d, c =
+      Lwt_list.fold_left_s
+        make_change
+        ([], dependencies state, content state)
+        cs
     in
-    return (UpdateSequence (UpdateContent c, UpdateDependencies d))
+    let push x x0 c cs = if x <> x0 then UpdateSequence (c, cs) else cs in
+    let cs = NoUpdate in
+    let cs = push s [] (UpdateSources s) cs in
+    let cs = push c (content state) (UpdateContent c) cs in
+    let cs = push d (dependencies state) (UpdateDependencies d) cs in
+    return cs
 
 end)
 
@@ -153,8 +172,7 @@ let force_update id =
 let raw_user_description_source id =
   (** We force the update of [id] because some update of the source
       might be dangling. *)
-(*  force_update id
-  >> *) CORE_onthedisk_entity.load_source id raw_user_description_filename
+  CORE_onthedisk_entity.load_source id raw_user_description_filename
 
 let raw_user_description_retrieve =
   server_function Json.t<CORE_identifier.t> (fun id ->
@@ -175,70 +193,6 @@ let with_local_error e = raise (Error e)
 let sub_id_from_user_string s =
   let ps = path_of_string s in
   identifier_of_path (concat exercises_path ps)
-
-(* let include_subs cst =
-  let aux = function
-
-    | C.Include (id, start, stop) ->
-      let id = sub_id_from_user_string id.C.node in
-      (make id >>= function
-        | `OK e' ->
-          lwt source = raw_user_description_source (identifier e') in
-          let content = CORE_source.content source in
-          let patch = (start, stop, content) in
-          return ([patch])
-
-        | `KO e -> with_local_error e)
-
-    | _ -> return []
-  in
-  lwt lps = Lwt_list.map_s aux cst.C.questions in
-  return (List.flatten lps)
-*)
-
-(*
-let new_inline_subs raw e cst =
-  Ocsigen_messages.errlog ("Searching for new inline definitions");
-  collect_on_subs cst (fun id def ->
-    make id >>= function
-      | `OK e' ->
-        (** We enforce the fact that the entity [e] depends on [e']. *)
-        push_dependency e "subs" [] (SomeEntity e')
-        >> return []
-      | `KO e ->
-        return [(id, C.with_sub_raw raw def)]
-  )
-
-let outdated_subs e cst =
-  Ocsigen_messages.errlog ("Searching for outdated definitions");
-  collect_on_subs cst (fun id def ->
-    !!> begin fun () ->
-      make id >>>= fun e' ->
-        (** There already is an exercise [e'] named [id]. *)
-        lwt cst = observe e' (fun d -> return d.cst) in
-
-        if not (C.equivalent_exercises cst def.C.node) then
-
-            (** There is a conflict between the two definitions. *)
-
-            observe e (fun data ->
-              if List.for_all
-                (fun x -> x >= timestamp e')
-                (timestamp_of_sub data.questions id)
-              then (
-                return (`OK [])
-              ) else
-                (** The definition has a new statement. Update the
-                    inline definition in the exercise. *)
-                lwt source = raw_user_description_source e' in
-                let content = CORE_source.content source in
-                let patch = C.(def.start, def.stop, content) in (
-                  return (`OK [patch])
-                )
-            )
-         else return (`OK [])
-   end with_local_error)
-*)
 
 let initial_source_filenames = [
   raw_user_description_filename
@@ -264,14 +218,25 @@ let rec questions_from_cst raw e cst =
     | C.TApp (C.TVariable v, tys) ->
       TApp (TVariable v, List.map typ tys)
 
-  and term (t : C.term') = wrap (function
+  and term' (t : C.term') = wrap (function
     | C.Lit l -> Lit (literal l)
     | C.Template t -> template t
     | C.Variable p -> Variable (path p)
-    | C.App (a, b) -> App (term a, term b)
-    | C.Lam (x, ty, t) -> Lam (x, typ' ty, term t)
-    | _ -> (* FIXME *) assert false
+    | C.App (a, b) -> App (term' a, term' b)
+    | C.Lam (x, ty, t) -> Lam (x, typ' ty, term' t)
+    | C.Module mc -> Module (module_term mc)
   ) t
+
+  and module_term mc =
+    List.map module_component mc
+
+  and module_component (l, ty, t) =
+    let l =
+      match l with
+        | None -> CORE_identifier.fresh_label "_"
+        | Some l -> l
+    in
+    (l, typ' ty, term' t)
 
   and path = function
     | C.PRoot i -> PRoot i
@@ -279,11 +244,14 @@ let rec questions_from_cst raw e cst =
     | C.PSub (p, l) -> PSub (path p, l)
 
   and template t =
-    assert false
+    Module (List.map template_atom t)
+
+  and unamed_field s =
+    (CORE_identifier.fresh_label "_", None, s)
 
   and template_atom = function
-    | C.Raw s -> Raw s
-    | C.Code t -> Code (term t).term
+    | C.Raw s -> unamed_field (term' (C.(locate_as s (Lit (LString s.node)))))
+    | C.Code t -> unamed_field (term' t)
     | C.RawCode _ -> assert false (* by nested parsing fixpoint. *)
 
   and literal = function
@@ -297,9 +265,9 @@ let rec questions_from_cst raw e cst =
   and make_let t1 ty t2 =
     let b = CORE_identifier.fresh_label "_" in
     let t2 = t2 b in
-    App ({ term = Lam (b, ty, t2); source = t2.source }, term t1)
+    App ({ term = Lam (b, ty, t2); source = t2.source }, term' t1)
 
-  and program t = term t
+  and program t = term' t
 
   in
   program cst
@@ -335,46 +303,6 @@ and change_from_user_description x cr =
       else
         return ()
   ) else return ()
-
-(*  try_lwt
-    let cst = C.data cr in
-    include_subs cst >>= function
-      | [] ->
-        (new_inline_subs (C.raw cr) x cst >>= function
-          | [] ->
-            (outdated_subs x cst >>= function
-              | [] ->
-                Ocsigen_messages.errlog ("Pull done, let us push.");
-                lwt source = raw_user_description_source x in
-                if CORE_source.content source <> (C.raw cr) then (
-                  lwt questions = questions_from_cst (C.raw cr) x cst in
-                  lwt changed = changed x questions cst in
-                  (if changed then
-                      let data = {
-                        title = cst.C.title.C.node;
-                        assignment_rules = [];
-                        questions;
-                        questions_value = None;
-                        cst
-                      } in
-                      CORE_source.set_content source (C.raw cr);
-                      change x (fun data_now -> return (Some data))
-                   else return ())
-                  >> return (`OK [])
-                ) else return (`OK [])
-              | p :: _ ->
-                Ocsigen_messages.errlog ("Patch needed");
-                return (`KO (`NeedPatch p))
-            )
-          | new_inline_questions ->
-            Ocsigen_messages.errlog ("New inline definitions");
-            return (`OK new_inline_questions)
-        )
-      | p :: _ ->
-        return (`KO (`NeedPatch p))
-  with Error e ->
-    return (`KO e)
-*)
 
 let eval e = change e EvalQuestions
 

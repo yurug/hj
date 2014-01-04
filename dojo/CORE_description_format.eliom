@@ -28,11 +28,9 @@ let process ~lexer_init ~lexer_fun ~parser_fun ~input  =
     | ParseError (start, stop, msg) -> `KO (`SyntaxError (start, stop, msg))
 
 let process_string parser_fun s =
-  trace "parse start";
   let ret =
     process ~lexer_init:Lexing.from_string ~lexer_fun:main ~parser_fun ~input:s
   in
-  trace "parse stop";
   match ret with
     | `OK cst -> `OK (with_raw s cst)
     | `KO e -> `KO e
@@ -54,7 +52,10 @@ let exercise_of_string s =
       | Template t -> Template (template t)
       | Lam (x, ty, t) -> Lam (x, ty, term' t)
       | App (a, b) -> App (term' a, term' b)
+      | Module m -> Module (module_term m)
       | t -> t
+    and module_term m = List.map module_component m
+    and module_component (l, ty, t) = (l, ty, term' t)
     and template t = List.map template_atom t
     and template_atom = function
       | RawCode p -> begin match term_of_string p with

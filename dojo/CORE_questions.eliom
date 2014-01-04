@@ -50,12 +50,6 @@ and path =
   | PThis
   | PSub of path * label
 
-and template = template_atom list
-
-and template_atom =
-  | Raw of string
-  | Code of term
-
 and term' = {
   source : CORE_description_CST.term';
   term   : term
@@ -196,65 +190,6 @@ let filter_from_enumerate predicate =
   in
   make
 
-(* (\* FIXME: The following implementation is probably broken. *)
-(*    Indeed, we should do a dependency analysis to compute the *)
-(*    transitive closure of imported names... *\) *)
-(* let do_imports (this : identifier) ?typeof p = *)
-(*   let rec do_imports origin = function *)
-(*     | Import (tys, e, ls) -> *)
-(*       let filter = *)
-(*         match typeof with *)
-(*           | None -> fun _ -> true *)
-(*           | Some typeof -> *)
-(*             let fls = filter_from_enumerate ( = ) ls in *)
-(*             let filter_by_type = *)
-(*               filter_from_enumerate (fun id t -> typeof id = t) tys *)
-(*             in *)
-(*             fun n -> *)
-(*               let filter_by_name = function *)
-(*                 | Local l -> true *)
-(*                 | External (_, l) -> fls l *)
-(*               in *)
-(*               let rn = filter_by_name n in *)
-(*               let rt = filter_by_type n in *)
-(*               rn && rt *)
-(*       in *)
-(*       lwt source = do_import_exercise e in *)
-(*       do_imports' (That (e, filter)) source *)
-
-(*     | Binding (None, ty, t) -> *)
-(*       (\* FIXME: Maybe we should filter these if they come *)
-(*          from an external. *\) *)
-(*       return [Binding (None, ty, t)] *)
-
-(*     | (Binding (Some ((External (_, _)) as name), _, _) as b) -> *)
-(*       (\** The only bindings that already are external are the ones *)
-(*           coming from an external source or that are already imported. *\) *)
-(*       begin match origin with *)
-(*         | This _ -> assert false *)
-(*         | That (_, filter) -> *)
-(*           if filter name then return [b] else return [] *)
-(*       end *)
-
-(*     | Binding (Some (Local l as name), ty, t) -> *)
-(*       begin match origin with *)
-(*         | This _ -> *)
-(*           return [Binding (Some name, ty, t)] *)
-(*         | That (e, filter) -> *)
-(*           let name = External (e, l) in *)
-(*           if filter name then *)
-(*             return [Binding (Some name, ty, t)] *)
-(*           else *)
-(*             return [] *)
-(*       end *)
-
-(*   and do_imports' (origin : origin) p = *)
-(*     lwt ss = Lwt_list.map_s (do_imports origin) p in *)
-(*     return (List.flatten ss) *)
-(*   in *)
-(*   do_imports' (This this) p *)
-
-
 module TypeCheck = struct
 
   (** Invariant: bindings must be distinct. *)
@@ -352,38 +287,19 @@ module TypeCheck = struct
     let ty = check_term e t ty in
     (bind l ty e, (l, ty))
 
-  and template e source = function
-    | [] -> None
-    | [Code t] -> Some (ttemplate (infer_term e source t))
-    | Raw _ :: ts -> template e source ts
-    | Code t :: ts ->
-      let ty = infer_term e source t in
-      let rec flatten_ty = function
-        | TApp (TVariable "template", [ ty ]) -> flatten_ty ty
-        | ty -> ty
-      in
-      let ty = flatten_ty ty in
-      match template e source ts with
-        | Some (TApp (TVariable "template", [ ty' ])) ->
-          if (compatible ty ty') then
-            Some (ttemplate ty)
-          else
-            eraise (`TypeError (source, ttemplate ty, ttemplate ty'))
-        | None -> Some (ttemplate ty)
-        | Some ty' ->
-          eraise (`TypeError (source, ttemplate ty, ty'))
-
   and literal = function
     | LInt _ -> int
     | LString _ -> string
     | LFloat _ -> float
     | LUnit -> unit
 
-  and variable e source l =
-    assert false
-(*    try lookup_primitive l with Not_found ->
-      try lookup x e with Not_found ->
-        eraise (`UnboundVariable (source, x))*)
+  and variable e source = function
+    | PSub (PThis, l) -> begin
+      try lookup_primitive l with Not_found ->
+        try lookup l e with Not_found ->
+          eraise (`UnboundVariable (source, l))
+    end
+    | _ -> eraise `EvalError
 
   and app e source a b =
     match destruct_arrow (infer_term e a.source a.term) with
@@ -410,7 +326,6 @@ module Eval = struct
 
   type value =
     | VContext of CORE_context.t
-    | VTemplate of value list
     | VInt of int
     | VFloat of float
     | VString of string
@@ -423,25 +338,38 @@ module Eval = struct
 
   and environment = (label * value) list
 
-  let rec eval_template join make t =
-    join (List.map (eval_template_atom_value join make) t)
+  let rec flatten_module join map t =
+    join (List.map (map_module_component map) t)
 
-  and eval_template_atom_value join make = function
-    | VTemplate t -> eval_template join make t
-    | v -> make v
+  and map_module_component map (_, v) =
+    map v
 
-  let string_of_string_template =
-    eval_template
-      (String.concat "")
-      (function VString s -> s | _ -> eraise `EvalError)
+  let rec as_list = function
+    | VModule t ->
+      flatten_module List.flatten as_list t
+    | v ->
+      [v]
 
-  let string_of_statement_template =
-    eval_template
-      (String.concat "")
-      (function
-        | VStatement s -> s
-        | VString s -> s
-        | _ -> eraise `EvalError)
+  let rec as_string = function
+    | (VModule t) as v ->
+      String.concat "" (List.map as_string (as_list v))
+    | VString s ->
+      s
+    | VInt x ->
+      string_of_int x
+    | VFloat f ->
+      string_of_float f
+    | VUnit ->
+      ""
+    | _ -> ""
+
+  let as_int = function
+    | VInt s -> s
+    | v -> eraise `EvalError
+
+  let as_string_list v = List.map as_string (as_list v)
+
+  let as_int_list v = List.map as_int (as_list v)
 
   let primitives = Hashtbl.create 13
 
@@ -472,38 +400,6 @@ module Eval = struct
       >>= fun (s, _) -> return (state, VContext s)
     );
 
-    (* FIXME: Factorize this out! *)
-    let as_string_list = function
-      | VTemplate t ->
-        eval_template ( List.flatten ) (function
-          | VString ("" | "\n") -> []
-          | VString s -> [s]
-          | _ -> eraise `EvalError
-        ) t
-      | VString ("" | "\n") ->
-        []
-      | VString s ->
-        [s]
-      | _ -> eraise `EvalError
-    in
-    let as_int_list = function
-      | VTemplate t ->
-        eval_template ( List.flatten ) (function
-          | VInt s -> [s]
-          | VString s -> (try [int_of_string s] with _ -> [])
-          | _ -> eraise `EvalError
-        ) t
-      | VString s -> (try [int_of_string s] with _ -> [])
-      | VInt s ->
-        [s]
-      | _ -> eraise `EvalError
-    in
-
-    let as_string = function
-      | VTemplate t -> string_of_statement_template t
-      | VString s -> s
-      | _ -> eraise `EvalError
-    in
     let enclose start stop s =
       Printf.sprintf "%s%s%s" start s stop
     in
@@ -597,15 +493,23 @@ module Eval = struct
         ))))
     );
 
-  and variable s (e : environment) =
-    assert false
+  and variable s (e : environment) = function
+    | PSub (PThis, l) ->
+      begin try_lwt
+              return (s, VPrimitive (Hashtbl.find primitives l))
+        with Not_found ->
+          try_lwt
+            return (s, List.assoc l e)
+          with Not_found -> eraise `EvalError
+      end
+    | _ ->
+      eraise `EvalError (* FIXME *)
 
   and literal = function
     | LInt x -> VInt x
     | LString s -> VString s
     | LFloat f -> VFloat f
     | LUnit -> VUnit
-
   and closure s env x t =
     return (s, VClosure (env, x, t.term))
 
@@ -615,21 +519,6 @@ module Eval = struct
         term s ((x, v) :: e) t
       | VPrimitive p -> p s v
       | _ -> eraise `EvalError (* FIXME: Handle error. *)
-
-  and template s e = function
-    | [] ->
-      return (s, [])
-    | a :: t ->
-      lwt (s, av) = template_atom s e a in
-      lwt (s, tv) = template s e t in
-      return (s, av :: tv)
-
-  and template_atom s e = function
-    | Raw sl ->
-      return (s, VString sl)
-    | Code t ->
-      lwt (s, v) = term s e t in
-      return (s, v)
 
   and term s e = function
     | Lit l ->
@@ -651,7 +540,7 @@ module Eval = struct
     lwt (s, e, me) =
       Lwt_list.fold_left_s module_component (s, e, []) mt
     in
-    return (s, VModule me)
+    return (s, VModule (List.rev me))
 
   and module_component (s, e, cs) (l, _, t) =
     lwt s, v = term' s e t in
@@ -660,16 +549,24 @@ module Eval = struct
   let _ = make_primitive ()
 
   let values_of_module = function
-    | VModule m -> m
-    | _ -> []
+    | VModule m ->
+      m
+    | _ ->
+      []
 
-  let program this tenv p =
+  let program this p =
     lwt _, v = term' CORE_context.empty [] p in
     return (filter_map (fun x -> function
-      | VStatement s -> Some (Statement s)
-      | VContext c -> Some (CheckpointContext (label_to_string x, c))
-      | VSource (s, c) -> Some (Source (s, c))
-      | _ -> None
+      | VStatement s ->
+        Some (Statement s)
+      | (VString _ | VModule _) as v ->
+        Some (Statement ("<p>" ^ as_string v ^ "</p>"))
+      | VContext c ->
+        Some (CheckpointContext (label_to_string x, c))
+      | VSource (s, c) ->
+        Some (Source (s, c))
+      | _ ->
+        None
       ) (values_of_module v)
     )
 
@@ -699,8 +596,8 @@ let convert_to_string_error
 (** A well-typed exercise description evaluates into a value. *)
 let eval this p : questions_result Lwt.t =
   try_lwt
-    lwt tenv = TypeCheck.program this p in
-    lwt v = Eval.program this tenv p in
+(*    lwt tenv = TypeCheck.program this p in*)
+    lwt v = Eval.program this p in
     return (`OK v)
   with Error e ->
     return (`KO (convert_to_string_error e))

@@ -19,6 +19,7 @@ type rule =
   | ExpectedChoices of int list
   | Command of string
   | TimeOut of int
+  | Source of string
 deriving (Json)
 
 type context =
@@ -28,6 +29,7 @@ deriving (Json)
 
 type t = context deriving (Json)
 
+(* FIXME: Implement it more elegantly. *)
 let rec string_of_context = Printf.(function
   | Empty -> ""
   | Compose (ExpectedValues vs, c) ->
@@ -42,6 +44,9 @@ let rec string_of_context = Printf.(function
     sprintf "keys(%s) %s"
       (String.concat ", " vs)
       (string_of_context c)
+  | Compose (Source s, c) ->
+    sprintf "source(%s) %s"
+      s (string_of_context c)
   | Compose (Choices vs, c) ->
     sprintf "choices(%s) %s"
       (String.concat ", " vs)
@@ -67,6 +72,8 @@ let empty = Empty
 let push r c = Compose (r, c)
 
 let answer fname = Answer fname
+
+let source fname = Source fname
 
 let choices cs = Choices cs
 

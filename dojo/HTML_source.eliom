@@ -33,7 +33,7 @@ let entity_sources_div
           | `KO e -> warn e; return (CORE_source.make id "")
         in
         save_source (identifier e) s >>= function
-          | `OK () ->
+          | `OK _ ->
             return ()
           | `KO e -> warn e; return () (* FIXME: handle error *)
       in

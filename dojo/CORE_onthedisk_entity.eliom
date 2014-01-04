@@ -43,13 +43,6 @@ let timestamp id =
     return (`OK timestamp)
   )
 
-let save_source id s =
-  let path = root true (path_of_identifier id) in
-  CORE_vfs.save who ~relative:false
-    (file path (CORE_source.filename s))
-    (CORE_source.content s)
-  >>>= fun _ -> return (`OK ())
-
 let load_source id fname =
   let path = root true (path_of_identifier id) in
   CORE_vfs.latest ~relative:false (file path fname)
@@ -65,6 +58,24 @@ let load_source id fname =
           return (`OK (CORE_source.make fname "(error load_source 2"))
         | `OK content ->
           return (`OK (CORE_source.make fname content))
+
+let save_source id s =
+  let save () =
+    let path = root true (path_of_identifier id) in
+    CORE_vfs.save who ~relative:false
+      (file path (CORE_source.filename s))
+      (CORE_source.content s)
+    >>>= fun _ -> return (`OK true)
+  in
+  load_source id (CORE_source.filename s) >>= function
+    | `OK ls ->
+      if ls = s then
+        return (`OK false)
+      else
+        save ()
+    | `KO _ ->
+      save ()
+
 
 let exists id =
   let path = root true (path_of_identifier id) in

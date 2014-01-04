@@ -22,13 +22,13 @@
 %token<float> FLOAT
 
 (** Punctation. *)
-%token EOF LPAREN RPAREN LBRACE RBRACE QMARK COMMA COLON SEMICOLON
+%token EOF LPAREN RPAREN LBRACE RBRACE QMARK COMMA COLON DOT SEMICOLON
 
 (** Operators *)
 %token MINUS PLUS STAR EQUAL RARROW
 
 (** Keywords *)
-%token FROM
+%token FROM DO
 
 (** Priorities *)
 %right COMMA
@@ -77,9 +77,21 @@ term0: n=label %prec pvar
 {
   Lit LUnit
 }
-| LBRACE bs=separated_list(SEMICOLON, binding) RBRACE
+| LBRACE RBRACE
+{
+  Module []
+}
+| LBRACE bs=nonempty_list(terminated(binding,DOT)) RBRACE
 {
   Module bs
+}
+| LBRACE bs=separated_nonempty_list(SEMICOLON,binding) RBRACE
+{
+  Module bs
+}
+| DO s=located(term0)
+{
+  Lam (CORE_identifier.fresh_label "_", Some (TApp (TVariable "unit", [])), s)
 }
 | LPAREN t=structured_term RPAREN
 {
@@ -100,11 +112,11 @@ term: t=structured_term
   t
 }
 
-binding: l=label EQUAL t=located(term0)
+binding: l=label EQUAL t=located(term)
 {
   (Some l, None, t)
 }
-| t=located(term0)
+| t=located(term)
 {
   (None, None, t)
 }

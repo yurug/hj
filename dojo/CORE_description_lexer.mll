@@ -17,6 +17,13 @@
     Lexing.new_line lexbuf;
     f lexbuf
 
+  let raw_string lexbuf chunk =
+    Lexing.(CORE_description_CST.lexing_locate
+              lexbuf.lex_start_p lexbuf.lex_curr_p (
+                Buffer.contents chunk
+              )
+    )
+
 }
 
 (** Layout. *)
@@ -41,7 +48,10 @@ rule main = parse
 | blank+                                { main lexbuf }
 | eof                                   { EOF }
 
+| "{*"                                  { comment 1 lexbuf }
+
 (** Keywords. *)
+| "do"                                  { DO }
 | "from"                                { FROM }
 
 (** Punctuations. *)
@@ -53,6 +63,7 @@ rule main = parse
 | ","                                   { COMMA }
 | ":"                                   { COLON }
 | ";"                                   { SEMICOLON }
+| "."                                   { DOT }
 
 (** Operators. *)
 | "-"                                   { MINUS }
@@ -83,7 +94,7 @@ rule main = parse
 and raw chunk template level = parse
   | "]" {
     if level = 0 then
-      RAW (List.rev (Raw (Buffer.contents chunk) :: template))
+      RAW (List.rev (Raw (raw_string lexbuf chunk) :: template))
     else (
       let template =
         if level = 1 then
@@ -101,7 +112,7 @@ and raw chunk template level = parse
   | "[" {
     let template =
       if level = 0 then
-        let atom = Raw (Buffer.contents chunk) in (
+        let atom = Raw (raw_string lexbuf chunk) in (
           Buffer.clear chunk;
           atom :: template
         )
@@ -122,4 +133,24 @@ and raw chunk template level = parse
   | _ as c {
     Buffer.add_char chunk c;
     raw chunk template level lexbuf
+  }
+
+and comment level = parse
+  | "*}" {
+    if level = 1 then
+      main lexbuf
+    else
+      comment (pred level) lexbuf
+  }
+  | "{*" {
+    comment (succ level) lexbuf
+  }
+  | eof {
+    error lexbuf I18N.String.lexing_eof_in_raw
+  }
+  | newline as c {
+    next_line_and (comment level) lexbuf
+  }
+  | _ {
+    comment level lexbuf
   }

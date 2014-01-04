@@ -46,7 +46,7 @@ val log : CORE_identifier.t -> string ->
   ] Lwt.t
 
 val save_source : CORE_identifier.t -> CORE_source.t ->
-  [ `OK of unit
+  [ `OK of bool
   | `KO of [> `SystemError of string ]
   ] Lwt.t
 
