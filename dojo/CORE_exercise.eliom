@@ -98,7 +98,9 @@ include CORE_entity.Make (struct
         )
 
       | EvalQuestions ->
-        lwt content = eval_questions (CORE_inmemory_entity.identifier state) content in
+        lwt content =
+          eval_questions (CORE_inmemory_entity.identifier state) content
+        in
         return (sources, dependencies, content)
 
       | Update (questions) ->
@@ -109,7 +111,6 @@ include CORE_entity.Make (struct
             | _ ->
               false
         in
-        Ocsigen_messages.errlog (Printf.sprintf "Must reset value: %B (isNone: %B)" must_reset_value (content.questions_value = None));
         if (not must_reset_value) && questions = content.questions
         then
           return (sources, dependencies, content)
@@ -125,16 +126,22 @@ include CORE_entity.Make (struct
         let c = { content with cst } in
         update_description_source (CORE_inmemory_entity.identifier state) raw
         >>= function
-          | `OK _ -> return (sources, dependencies, c)
-          | `KO e -> warn e; return (sources, dependencies, c) (* FIXME: handle error. *)
+          | `OK _ ->
+            return (sources, dependencies, c)
+          | `KO e ->
+            warn e; return (sources, dependencies, c) (* FIXME: handle error. *)
       end
 
       | ExtraSource s ->
         save_source (CORE_inmemory_entity.identifier state) s
         >>= function
-          | `OK true -> return (s :: sources, dependencies, content)
-          | `OK false -> return (sources, dependencies, content)
-          | `KO e -> warn e; return (sources, dependencies, content) (* FIXME: handle error. *)
+          | `OK true ->
+            return (s :: sources, dependencies, content)
+          | `OK false ->
+            return (sources, dependencies, content)
+          | `KO e ->
+            warn e;
+            return (sources, dependencies, content) (* FIXME: handle error. *)
     in
     lwt s, d, c =
       Lwt_list.fold_left_s

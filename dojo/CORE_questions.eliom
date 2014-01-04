@@ -493,6 +493,12 @@ module Eval = struct
         ))))
     );
 
+    stateful "import_source" (fun v ->
+      let fname = as_string v in
+      return (CORE_context.source fname)
+    );
+
+
   and variable s (e : environment) = function
     | PSub (PThis, l) ->
       begin try_lwt

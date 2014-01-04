@@ -97,7 +97,7 @@ let new_evaluation_state_of_checkpoint c s d =
             ) ->
             Evaluated (score, s, CORE_diagnostic.merge cmd cmd', c)
 
-          | Evaluated (score, s, cmd, c), Evaluated (_, s', cmd', c')
+          | Evaluated (_, s, cmd, c), Evaluated (score, s', cmd', c')
             when CORE_context.(
               equivalent_submission s s' && equivalent_context c c'
             ) ->
@@ -108,7 +108,7 @@ let new_evaluation_state_of_checkpoint c s d =
   in
   return { d with jobs = update_assoc c s d.jobs }
 
-let create_job checkpoint context submission change_later =
+let create_job exo_id checkpoint context submission change_later =
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s =
@@ -126,26 +126,27 @@ let create_job checkpoint context submission change_later =
     change_state Unevaluated
   in
   init ()
-  >>= fun _ -> let process_stdio job line =
-    match CORE_context.marker_io_interpretation seed line with
-      | Some s ->
-        score := CORE_context.new_score s !score;
-        message job "Score!" (* FIXME *)
-      | None ->
-        message job line
-  in
-  let observer = CORE_sandbox.(function
-    | WriteStdout (job, l) ->
-      process_stdio (ExecutableJob job) l
-    | WriteStderr (job, l) ->
+  >>
+    let process_stdio job line =
+      match CORE_context.marker_io_interpretation seed line with
+        | Some s ->
+          score := CORE_context.new_score s !score;
+          return ()
+        | None ->
+          message job line
+    in
+    let observer = CORE_sandbox.(function
+      | WriteStdout (job, l) ->
+        process_stdio (ExecutableJob job) l
+      | WriteStderr (job, l) ->
       (* FIXME: Put that in the private log for teachers. *)
-      return ()
-    | Exited _ ->
-      mark ()
-    | _ -> return ()
-  ) in
-  CORE_context.(
-    (* FIXME: Should be move to CORE_context. *)
+        return ()
+      | Exited _ ->
+        mark ()
+      | _ -> return ()
+    ) in
+    CORE_context.(
+    (* FIXME: Should be moved to CORE_context. *)
     match get_command context with
       | None ->
         return None (* FIXME: is it sound? *)
@@ -164,9 +165,19 @@ let create_job checkpoint context submission change_later =
             | Some t -> float_of_int t
         in
         let cmd = CORE_context.substitute_seed seed cmd in
+        let files =
+          let absolute f = string_of_path (
+            CORE_standard_identifiers.root true (
+              CORE_identifier.(
+                concat (path_of_identifier exo_id) (make [label f])
+              ))
+          )
+          in
+          List.map absolute (get_sources context)
+        in
         (CORE_sandbox.exec
            ~limitations:[CORE_sandbox.TimeOut timeout]
-           []
+           files
            cmd
            observer
         ) >>= function
@@ -181,9 +192,10 @@ let cancel_job_if_present job =
   return ()
 
 let evaluate change_later exercise answer cps data =
+  let exo_id = CORE_exercise.identifier exercise in
   let evaluate checkpoint current_state =
     let run_submission_evaluation c s =
-      create_job checkpoint c s change_later >>= function
+      create_job exo_id checkpoint c s change_later >>= function
         | Some job ->
           Ocsigen_messages.errlog "Executable job created.";
           return (BeingEvaluated (job, s, CORE_diagnostic.Empty, c))

@@ -121,6 +121,8 @@ let get_command = get (function
 
 let get_timeout = get (function TimeOut t -> Some t | _ -> None)
 
+let get_sources = all (function Source s -> Some s | _ -> None)
+
 type submission =
   | SubmittedFile of string * string
   | SubmittedValues of string list
@@ -148,8 +150,8 @@ let string_of_submission = function
   | SubmittedChoices vs ->
     Printf.sprintf "choices(%s)" (String.concat "," (List.map string_of_int vs))
 
-let new_submitted_file s =
-  let d = try Digest.file s with _ -> "NoFileNoDigest" in
+let new_submitted_file s content =
+  let d = try Digest.string content with _ -> "NoFileNoDigest" in
   SubmittedFile (s, d)
 
 let new_submitted_values vs = SubmittedValues vs
@@ -201,7 +203,7 @@ let substitute_seed seed cmd = Str.(
 
 let marker_io_interpretation seed line = Str.(
   if string_match
-    (regexp "SCORE \\([0-9]+\\) \\([^,]\\) \\([0-9]+\\)/\\([0-9+]\\)")
+    (regexp "SCORE \\([0-9]+\\) \\([^:]+\\):\\([0-9]+\\)/\\([0-9+]\\)")
     line 0
   then
     let seed' = int_of_string (matched_group 1 line) in

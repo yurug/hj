@@ -123,6 +123,14 @@ and raw chunk template level = parse
     in
     raw chunk template (level + 1) lexbuf
   }
+  | "\\[" {
+    Buffer.add_char chunk '[';
+    raw chunk template level lexbuf
+  }
+  | "\\]" {
+    Buffer.add_char chunk ']';
+    raw chunk template level lexbuf
+  }
   | eof {
     error lexbuf I18N.String.lexing_eof_in_raw
   }

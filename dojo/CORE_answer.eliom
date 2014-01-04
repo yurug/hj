@@ -179,7 +179,7 @@ let submit_file answer checkpoint tmp_filename filename =
     let source = CORE_source.make filename content in
     change answer (
       NewSubmissionData (checkpoint,
-                         CORE_context.new_submitted_file filename,
+                         CORE_context.new_submitted_file filename content,
                          [source])
   ))
 

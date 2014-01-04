@@ -82,14 +82,40 @@ let execute_using_ssh login_information addr =
         observer (ObserveMessage "ssh error")
         >>= fun _ -> return (fun () -> ())
 
+type copy =
+    ?timeout:float
+    -> string list
+    -> (execution_observer -> unit Lwt.t)
+    -> (unit -> unit) Lwt.t
+
+let copy_using_scp login_information addr =
+  fun ?(timeout = default_timeout) srcs observer ->
+    ltry (fun lraise ->
+      COMMON_unix.scp
+        ~timeout
+        login_information.username login_information.ssh_key
+        (fst addr) (snd addr)
+        srcs
+        (fun p -> observer (ObserveProcess p))
+        lraise
+    ) >>= function
+      | `OK canceler ->
+        return canceler
+      | `KO e ->
+        (* FIXME *)
+        observer (ObserveMessage "scp error")
+        >>= fun _ -> return (fun () -> ())
+
 type sandbox_interface = {
   execute : execute;
+  copy    : copy;
   release : unit -> unit Lwt.t
 }
 
 let build_sandbox_interface login_information address release =
   let execute = execute_using_ssh login_information address in
-  { execute; release }
+  let copy = copy_using_scp login_information address in
+  { execute; release; copy }
 
 type allocation_result =
   | AllocatedSandbox of sandbox_interface

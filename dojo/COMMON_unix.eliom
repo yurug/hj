@@ -121,3 +121,17 @@ let ssh ?timeout username private_key addr port cmd observer =
     in
     observer p >>= fun _ -> return (fun () -> p#terminate)
   ) (fun () -> ())
+
+let scp ?timeout username private_key addr port srcs observer =
+  let os = "-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null'" in
+  handle_unix_error (fun () ->
+    let srcs =
+      String.concat " " (List.map Filename.quote srcs)
+    in
+    let p = exec ?timeout (!% (
+      Printf.sprintf
+        "scp %s -P %d -i %s %s %s@%s:"
+        os port private_key srcs username addr))
+    in
+    observer p >>= fun _ -> return (fun () -> p#terminate)
+  ) (fun () -> ())
