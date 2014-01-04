@@ -18,6 +18,7 @@
 (** Literals. *)
 %token<string> ID NAME
 %token<CORE_description_CST.template_atom list> RAW
+%token<CORE_description_CST.template_atom list list> TEXTBLOCK
 %token<int> INT
 %token<float> FLOAT
 
@@ -83,11 +84,11 @@ term0: n=label %prec pvar
 }
 | LBRACE bs=nonempty_list(terminated(binding,DOT)) RBRACE
 {
-  Module bs
+  Module (List.flatten bs)
 }
 | LBRACE bs=separated_nonempty_list(SEMICOLON,binding) RBRACE
 {
-  Module bs
+  Module (List.flatten bs)
 }
 | DO s=located(term0)
 {
@@ -114,11 +115,24 @@ term: t=structured_term
 
 binding: l=label EQUAL t=located(term)
 {
-  (Some l, None, t)
+  [(Some l, None, t)]
 }
 | t=located(term)
 {
-  (None, None, t)
+  [(None, None, t)]
+}
+| ts=TEXTBLOCK
+{
+  let locate = lexing_locate $startpos $endpos in
+  List.map (fun r ->
+    match r with
+      | [RawCode s] ->
+        (None, None, locate (Template r))
+      | r ->
+        let a = Variable (PSub (PThis, CORE_identifier.label "paragraph")) in
+        let b = Template r in
+        (None, None, locate (App (locate a, locate b)))
+  ) ts
 }
 
 label: n=NAME

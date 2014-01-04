@@ -362,6 +362,8 @@ module Eval = struct
       string_of_float f
     | VUnit ->
       ""
+    | VStatement s ->
+      s
     | _ -> ""
 
   let as_int = function

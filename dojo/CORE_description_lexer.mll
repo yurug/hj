@@ -83,6 +83,14 @@ rule main = parse
   lexbuf.lex_start_p <- p;
   token
 }
+
+| "<<" {
+  let p = lexbuf.Lexing.lex_curr_p in
+  let token = textblock (Buffer.create 13) [] [] 0 lexbuf in
+  lexbuf.lex_start_p <- p;
+  token
+}
+
 | '#' (identifier as id)                  { ID id }
 
 | label as id                           { NAME id }
@@ -142,6 +150,71 @@ and raw chunk template level = parse
     Buffer.add_char chunk c;
     raw chunk template level lexbuf
   }
+
+
+and textblock chunk template templates level = parse
+  | ">>" {
+    let template = List.rev (Raw (raw_string lexbuf chunk) :: template) in
+    let templates = template :: templates in
+    TEXTBLOCK (List.rev templates)
+  }
+  | "]" {
+    let template =
+      if level = 1 then
+        let atom = RawCode (Buffer.contents chunk) in (
+          Buffer.clear chunk;
+          atom :: template
+        ) else (
+          Buffer.add_char chunk ']';
+          template
+        )
+    in
+    textblock chunk template templates (level - 1) lexbuf
+  }
+  | "[" {
+    let template =
+      if level = 0 then
+        let atom = Raw (raw_string lexbuf chunk) in (
+          Buffer.clear chunk;
+          atom :: template
+        )
+      else (
+        Buffer.add_char chunk '[';
+        template
+      )
+    in
+    textblock chunk template templates (level + 1) lexbuf
+  }
+  | "\\[" {
+    Buffer.add_char chunk '[';
+    textblock chunk template templates level lexbuf
+  }
+  | "\\]" {
+    Buffer.add_char chunk ']';
+    textblock chunk template templates level lexbuf
+  }
+  | newline blank* newline {
+    let template =
+      let atom = Raw (raw_string lexbuf chunk) in
+      Buffer.clear chunk;
+      atom :: template
+    in
+    let templates = template :: templates in
+    let template = [] in
+    next_line_and (textblock chunk template templates level) lexbuf
+  }
+  | eof {
+    error lexbuf I18N.String.lexing_eof_in_raw
+  }
+  | newline as c {
+    Buffer.add_string chunk c;
+    next_line_and (textblock chunk template templates level) lexbuf
+  }
+  | _ as c {
+    Buffer.add_char chunk c;
+    textblock chunk template templates level lexbuf
+  }
+
 
 and comment level = parse
   | "*}" {
