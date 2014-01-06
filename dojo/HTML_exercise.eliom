@@ -28,6 +28,13 @@ open CORE_description_CST
 
 exception LoadingError
 
+{shared{
+type editor_intermediate_result =
+  | RCst of exercise with_raw
+  | RStr of string
+deriving (Json)
+}}
+
 let editor_div (e : CORE_exercise.t) =
 
   let id = CORE_exercise.identifier e in
@@ -38,21 +45,39 @@ let editor_div (e : CORE_exercise.t) =
 
   let client_change =
     {{ fun echo (s : string) ->
-      match CORE_description_format.exercise_of_string s with
-        | `OK cst ->
-          echo "";
-          return (Some cst)
-        | `KO e ->
-          echo (CORE_error_messages.string_of_error e);
-          return None
+      (* FIXME: Menhir produces mutually tail-recursive functions that
+         FIXME: are not optimized by js_of_ocaml. So, if the source is
+         FIXME: too large, the parsing is done on the server instead of
+         FIXME: on the client. *)
+      if String.length s < 4096 then
+        match CORE_description_format.exercise_of_string s with
+          | `OK cst ->
+            echo "";
+            return (Some (RCst cst))
+          | `KO e ->
+            echo (CORE_error_messages.string_of_error e);
+            return None
+      else
+        return (Some (RStr s))
      }}
   in
   let server_change =
-    (server_function Json.t<exercise with_raw> (fun cst ->
-      Ocsigen_messages.errlog "Change user description";
-      change_from_user_description e cst
-      >>= fun _ -> observe e (fun d -> return d)
-      >>= fun _ -> return []
+    (server_function Json.t<editor_intermediate_result> (
+      let change cst =
+        change_from_user_description e cst
+        >>= fun _ -> observe e (fun d -> return d)
+        >>= fun _ -> return []
+      in
+      function
+      | RCst cst ->
+        Ocsigen_messages.errlog "Change user description";
+        change cst
+      | RStr s ->
+        match CORE_description_format.exercise_of_string s with
+          | `OK cst ->
+            change cst
+          | `KO e ->
+            return [] (* FIXME: handle error. *)
      ))
   in
   lwt (editor_div, editor_id, editor_process) =
