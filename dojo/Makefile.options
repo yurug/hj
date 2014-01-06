@@ -11,7 +11,7 @@ SERVER_FILES := $(wildcard *.eliomi *.eliom)
 CLIENT_FILES := $(wildcard *.eliomi *.eliom)
 
 # OCamlfind packages for the server
-SERVER_PACKAGES := tyxml
+SERVER_PACKAGES := tyxml ldap
 # OCamlfind packages for the client
 CLIENT_PACKAGES :=
 
