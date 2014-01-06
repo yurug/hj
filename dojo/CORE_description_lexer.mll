@@ -77,7 +77,7 @@ rule main = parse
   INT (int_of_string x)
 }
 
-| "["                                   {
+| "[" | "[\n"                           {
   let p = lexbuf.Lexing.lex_curr_p in
   let token = raw (Buffer.create 13) [] 0 lexbuf in
   lexbuf.lex_start_p <- p;
@@ -100,7 +100,7 @@ rule main = parse
 }
 
 and raw chunk template level = parse
-  | "]" {
+  | "]" | "\n]" {
     if level = 0 then
       RAW (List.rev (Raw (raw_string lexbuf chunk) :: template))
     else (
@@ -117,7 +117,7 @@ and raw chunk template level = parse
       raw chunk template (level - 1) lexbuf
     )
   }
-  | "[" {
+  | "[" | "[\n" {
     let template =
       if level = 0 then
         let atom = Raw (raw_string lexbuf chunk) in (
@@ -171,7 +171,7 @@ and textblock chunk template templates level = parse
     in
     textblock chunk template templates (level - 1) lexbuf
   }
-  | "[" {
+  | "[" | "[\n" {
     let template =
       if level = 0 then
         let atom = Raw (raw_string lexbuf chunk) in (

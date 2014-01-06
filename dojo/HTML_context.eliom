@@ -36,20 +36,19 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
       )
       in
       fun d ->
-        Lwt_js.sleep 30. >>
         CORE_evaluation.(
           match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
             | Some Unevaluated ->
-              return [pcdata "Pas évalué"]
+              return [p [pcdata "▹ Pas évalué"]]
             | Some (BeingEvaluated (_, _, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
-              return [pcdata "En cours..."]
+              return [p [pcdata "▹ En cours..."]]
             | Some (Evaluated (score, _, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
-              return [pcdata (string_of_score score)]
+              return [p [pcdata ("▹ " ^ string_of_score score)]]
             | None ->
-              return [pcdata "?"]
+              return [p [pcdata "?"]]
         )
     }}
   in
@@ -113,10 +112,13 @@ let display_user_input exo_id checkpoint context =
         submit_file exo_id checkpoint tmp_filename filename
         >>= fun _ -> return ()
       in
-      return (HTML_widget.fileuploader (fun user_filename ->
+      return (div [
+        span [pcdata filename];
+        HTML_widget.fileuploader (fun user_filename ->
         (* FIXME: Check user_filename = filename. *)
-        return (tmp_filename, commit)
-      ))
+          return (tmp_filename, commit)
+        )
+      ])
     | Some (`Choices cs) ->
       let choices = ref [] in
       let add x = return (choices := x :: !choices) in
@@ -177,7 +179,7 @@ let display_user_input exo_id checkpoint context =
              %submit ())
       }}
       in
-      return (div ~a:[a_class ["user_answer"]] [editor_div; submit_button])
+      return (div ~a:[a_class ["user_answer"]] [editor_div; p [pcdata ""]; submit_button])
 
 let display_context exo_id checkpoint context evaluation =
   lwt user_input = display_user_input exo_id checkpoint context in

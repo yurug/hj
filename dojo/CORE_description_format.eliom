@@ -26,6 +26,7 @@ let process ~lexer_init ~lexer_fun ~parser_fun ~input  =
   with
     | Sys_error msg -> `KO (`SystemError msg)
     | ParseError (start, stop, msg) -> `KO (`SyntaxError (start, stop, msg))
+    | e -> `KO (`SystemError (Printexc.to_string e))
 
 let process_string parser_fun s =
   let ret =

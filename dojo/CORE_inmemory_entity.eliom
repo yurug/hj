@@ -68,7 +68,9 @@ let update_properties e s = now { e with properties = s }
 
 let update_dependencies e d = now { e with dependencies = d }
 
-let update_sources e sources = now { e with sources }
+let update_sources e s =
+  let sources = s @ List.(filter (fun x -> not (mem x s)) e.sources) in
+  now { e with sources }
 
 type 'a state_change =
   | UpdateDependencies of dependencies

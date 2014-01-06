@@ -8,8 +8,8 @@ pre {
     border: thin solid #DDDDDD;
     margin-left:auto;
     margin-right:auto;
-    margin-top:0.5em;
-    margin-bottom:0.5em;
+    margin-top:1em;
+    margin-bottom:0.1em;
     padding: 0.5em;
 }
 
@@ -470,6 +470,7 @@ div.exercise_sources {
 }
 
 div.user_answer {
-    padding: 1em;
+    margin-top: 0.1em;
+    padding: 0.5em;
 }
 
