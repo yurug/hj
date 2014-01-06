@@ -82,9 +82,10 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
        FIXME: description each time it is updated. We should
        FIXME: check if this is reasonable or if we should
        FIXME: have finer notion of changes... *)
-    {data -> [Html5_types.flow5] elt list Lwt.t{
-      fun data ->
-        match CORE_exercise.current_value data with
+    {CORE_questions.questions_result option * string
+     -> [Html5_types.flow5] elt list Lwt.t{
+      fun (current_value, title) ->
+        match current_value with
         | None -> return [p [pcdata "Displaying exercise..."]]
         | Some v ->
           lwt d = match v with
@@ -112,7 +113,7 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
               lwt all = Lwt_list.map_s display_atomic v in
               return (List.flatten all)
           in
-          return (h1 [pcdata (CORE_exercise.title data)] :: d)
+          return (h1 [pcdata title] :: d)
     }}
   in
   let display_math = {{ fun () ->
@@ -124,7 +125,10 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
   let get () =
     CORE_exercise.eval_if_needed exo
     >>= fun _ ->
-    CORE_exercise.observe exo (fun d -> return (content d))
+    CORE_exercise.(observe exo (fun d ->
+      let c = content d in
+      return (current_value c, title c))
+    )
   in
 
   CORE_exercise.eval exo

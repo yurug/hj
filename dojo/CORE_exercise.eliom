@@ -28,11 +28,15 @@ type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
 
 type questions = CORE_questions.t deriving (Json)
 
+type questions_value =
+    (questions * CORE_questions.questions_result) option
+deriving (Json)
+
 type description = {
   assignment_rules : (assignment_kind * CORE_property.rule list) list;
   title            : string;
   questions        : questions;
-  questions_value  : (questions * CORE_questions.questions_result) option;
+  questions_value  : questions_value;
   cst              : C.exercise;
 } deriving (Json)
 

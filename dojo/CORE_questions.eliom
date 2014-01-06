@@ -330,7 +330,7 @@ module Eval = struct
     | VInt of int
     | VFloat of float
     | VString of string
-    | VStatement of string
+    | VStatement of string (* FIXME: Should be replaced by TyXML.elt *)
     | VUnit
     | VClosure of environment * label * term
     | VPrimitive of (state -> value -> (state * value) Lwt.t)
@@ -433,7 +433,6 @@ module Eval = struct
     List.iter html_constructor [
       "statement", "div", None;
       "paragraph", "p", None;
-      "code", "pre", None;
       "bold", "span", Some "class='bold'";
       "italic", "span", Some "class='italic'";
       "list", "ul", None;
@@ -444,6 +443,15 @@ module Eval = struct
       "question", "h3", None
     ];
 
+
+    functional "code" (fun v ->
+      let s = as_string v in
+      (* FIXME: Use an eliom function to do that... *)
+      let s = Str.(global_replace (regexp "<") "&lt;" s) in
+      let s = Str.(global_replace (regexp ">") "&gt;" s) in
+      let s = Str.(global_replace (regexp "\"") "&quot;" s) in
+      return (VStatement (html_of_string "pre" None s))
+    );
 
     functional "link" (fun v ->
       let s1 = as_string v in
