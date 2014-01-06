@@ -101,7 +101,7 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
                   let d = div [] in
                   let d = To_dom.of_element d in
                   d##innerHTML <- Js.string s;
-                  d##id <- Js.string "exercise_view";
+(*                  d##id <- Js.string "exercise_view";*)
                   return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
 
                 | CheckpointContext (cp, context) ->

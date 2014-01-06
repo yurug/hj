@@ -36,6 +36,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
       )
       in
       fun d ->
+        Lwt_js.sleep 30. >>
         CORE_evaluation.(
           match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
             | Some Unevaluated ->

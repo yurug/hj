@@ -85,14 +85,18 @@ let reactive_div e after_display get display  =
   let remote_get = server_function Json.t<unit> (fun () -> get ()) in
   ignore {unit{
     let process data =
-      lwt cs = %display data in
-      Eliom_content.Html5.Manip.replaceAllChild %elt cs;
-      Lwt.return (
-        match %after_display with
-          | Some f -> f ()
-          | None -> ()
-      )
+      try_lwt
+        lwt cs = %display data in
+        Eliom_content.Html5.Manip.replaceAllChild %elt cs;
+        Lwt.return (
+          match %after_display with
+            | Some f -> f ()
+            | None -> ()
+        )
+      with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e)))
     in
+    let config = Eliom_comet.Configuration.new_configuration () in
+    Eliom_comet.Configuration.set_always_active config true;
     CORE_client_reaction.react_on_background %e_channel (function
       | CORE_entity.HasChanged ->
         Firebug.console##log (Js.string (Printf.sprintf "Entity %s has changed" %sid));
@@ -104,7 +108,8 @@ let reactive_div e after_display get display  =
       | CORE_entity.MayChange ->
         Firebug.console##log (Js.string (Printf.sprintf "Entity %s may change" %sid));
         (** Force the change as we are observing the entity. *)
-        %update ()
+        try_lwt %update ()
+        with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e)))
     );
     Lwt.async (fun () -> process %initial)
   }};

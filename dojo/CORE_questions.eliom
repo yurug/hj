@@ -368,6 +368,7 @@ module Eval = struct
 
   let as_int = function
     | VInt s -> s
+    | VString s -> begin try int_of_string s with _ -> eraise `EvalError end
     | v -> eraise `EvalError
 
   let as_string_list v = List.map as_string (as_list v)
@@ -409,7 +410,7 @@ module Eval = struct
     let html_of_string b c s =
       let c = match c with
         | None -> ""
-        | Some c -> " class='" ^ c ^ "'"
+        | Some c -> " " ^ c
       in
       enclose ("<" ^ b ^ c ^ ">") ("</" ^ b ^ ">") s
     in
@@ -433,8 +434,8 @@ module Eval = struct
       "statement", "div", None;
       "paragraph", "p", None;
       "code", "pre", None;
-      "bold", "span", Some "bold";
-      "italic", "span", Some "italic";
+      "bold", "span", Some "class='bold'";
+      "italic", "span", Some "class='italic'";
       "list", "ul", None;
       "enumerate", "ol", None;
       "item", "li", None;
@@ -442,6 +443,16 @@ module Eval = struct
       "subsection", "h2", None;
       "question", "h3", None
     ];
+
+
+    functional "link" (fun v ->
+      let s1 = as_string v in
+      return (VPrimitive (fun s v ->
+        let s2 = as_string v in
+        (* FIXME: Escape. *)
+        let h = Printf.sprintf "href='%s'" s2 in
+        return (s, VStatement (html_of_string "a" (Some h) s1))
+      )));
 
     let marker (s, start, stop) =
       functional s (fun v ->
@@ -616,5 +627,9 @@ let eval this p =
 (*    lwt tenv = TypeCheck.program this p in*)
     lwt title, v, sources = Eval.program this p in
     return (title, `OK v, sources)
-  with Error e ->
-    return ("", `KO (convert_to_string_error e), [])
+  with
+    | Error e ->
+      return ("", `KO (convert_to_string_error e), [])
+    | _ ->
+      Ocsigen_messages.errlog "Unexpected error during evaluation.";
+      return ("", `KO `EvalError, [])
