@@ -77,6 +77,13 @@ rule main = parse
   INT (int_of_string x)
 }
 
+| "[[" | "[[\n" {
+ let p = lexbuf.Lexing.lex_curr_p in
+  let token = flatraw (Buffer.create 13) 0 lexbuf in
+  lexbuf.lex_start_p <- p;
+  token
+}
+
 | "[" | "[\n"                           {
   let p = lexbuf.Lexing.lex_curr_p in
   let token = raw (Buffer.create 13) [] 0 lexbuf in
@@ -215,6 +222,30 @@ and textblock chunk template templates level = parse
     textblock chunk template templates level lexbuf
   }
 
+and flatraw chunk level = parse
+  | ("]]" | "\n]]") as s {
+    if level = 0 then
+      RAW [Raw (raw_string lexbuf chunk)]
+    else (
+      Buffer.add_string chunk s;
+      flatraw chunk (level - 1) lexbuf
+    )
+  }
+  | "[[" {
+    Buffer.add_string chunk "[[";
+    flatraw chunk (level + 1) lexbuf
+  }
+  | eof {
+    error lexbuf I18N.String.lexing_eof_in_raw
+  }
+  | newline as c {
+    Buffer.add_string chunk c;
+    next_line_and (flatraw chunk level) lexbuf
+  }
+  | _ as c {
+    Buffer.add_char chunk c;
+    flatraw chunk level lexbuf
+  }
 
 and comment level = parse
   | "*}" {
