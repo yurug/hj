@@ -77,7 +77,8 @@ let editor_div (e : CORE_exercise.t) =
           | `OK cst ->
             change cst
           | `KO e ->
-            return [] (* FIXME: handle error. *)
+            let msg = CORE_error_messages.string_of_error e in
+            return [HTML_editor.Message msg]
      ))
   in
   lwt (editor_div, editor_id, editor_process) =
