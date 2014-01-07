@@ -11,11 +11,11 @@
 
   open COMMON_pervasives
 
-  type onclick_cb = (Dom_html.mouseEvent Js.t -> unit) client_value
+  type onclick_cb = (unit -> unit) client_value
 
   let generic_button classes labels onclick =
     let id = Id.new_elt_id ~global:false () in
-    let onclick = {{
+    let onclick = {onclick_cb{
       let state = ref 0 in
       let next () =
         if !state = List.length %labels - 1 then state := 0 else incr state
@@ -30,7 +30,7 @@
     in
     let label = List.nth labels 0 in
     Id.create_named_elt ~id (
-      div ~a:[a_onclick onclick; a_class ("inlined" :: classes) ] [label]
+      div ~a:[a_onclick {{ fun _ -> %onclick () }}; a_class ("inlined" :: classes) ] [label]
     )
 
   let small_button ls = generic_button ["menu_button"] (List.map (fun l -> pcdata l) ls)
@@ -88,10 +88,10 @@ let list_editor
       (f : (int -> string list -> unit Lwt.t) option)
       elt
       (pre_action  : (unit -> (string list) Lwt.t) client_value)
-      (post_action : (bool -> unit Lwt.t) client_value) =
+      (post_action : (bool -> unit Lwt.t) client_value) : onclick_cb =
     match f with
       | None ->
-        {{ fun _ -> () }}
+        {{ fun () -> () }}
 
       | Some f ->
         let code = server_function Json.t<string list> (fun xc ->
@@ -102,7 +102,7 @@ let list_editor
           with Not_found -> assert false
         )
         in
-        {{ fun _ -> Lwt.async (fun () ->
+        {{ fun () -> Lwt.async (fun () ->
           %pre_action () >>= fun xc -> %code xc >>= %post_action
         )}}
   in
@@ -187,7 +187,15 @@ let list_editor
     lwt fields = list.display i in
     let id = indices_fresh_for (Id.new_elt_id ~global:false ()) i in
     let cells = cells_of_tr fields table id i in
-    return (Id.create_named_elt ~id (tr cells))
+    (** When no user action is enabled, editing means replacing. *)
+    let a =
+      if no_action then
+        let change = replace_item table id in
+        [a_onchange {{ fun _ -> %change () }} ]
+      else
+        []
+    in
+    return (Id.create_named_elt ~id (tr ~a cells))
   in
   let tableid = Id.new_elt_id ~global:false () in
   lwt e = list.index_end () in
@@ -273,10 +281,10 @@ let get_choices_editor choices add del =
     let see : [ body_content_fun ] elt =
       let labels = [I18N.cap I18N.String.hide; I18N.cap I18N.String.see] in
       let labels = if start_shown then labels else List.rev labels in
-      button labels {Dom_html.mouseEvent Js.t -> unit{
+      button labels {unit -> unit{
         let s = ref Shown in
         if not %start_shown then toggle s %e;
-        fun (_ : Dom_html.mouseEvent Js.t) -> toggle s %e
+        fun () -> toggle s %e
       }}
     in
     (see, e)
@@ -286,7 +294,7 @@ let get_choices_editor choices add del =
 let always_valid : (string -> string option) client_value =
   {{ fun (_ : string) -> (None : string option) }}
 
-let nonempty_field : (string -> string option) client_value =
+let nonempty_field:  (string -> string option) client_value =
   {{ fun (s : string) ->
     if String.length s = 0 then
       Some I18N.String.this_field_must_not_be_empty

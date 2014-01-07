@@ -158,6 +158,7 @@ let display_user_input exo_id checkpoint context =
         HTML_widget.get_list_editor
           ~no_header:true
           ~no_insertion:true
+          ~no_action:true
           fields get (Some set) extra
       in
       (* FIXME: The following sequence of code is too inelegant! *)
