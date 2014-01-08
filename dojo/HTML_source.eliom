@@ -40,11 +40,26 @@ let entity_sources_div
       let set_sources ss =
         Lwt_list.iter_s (function [ id ] -> commit id | _ -> assert false) ss
       in
-      let download = {int -> unit{
+      let download =
+        let link = server_function Json.t<int> (fun i ->
+          lwt sources = observe e (fun d -> return (sources d)) in
+          let path =
+            CORE_identifier.(CORE_standard_identifiers.(
+              string_of_path (root true (path_of_identifier (E.identifier e)))
+            ))
+          in
+          return (COMMON_file.send (Filename.concat path (List.nth sources i)))
+        )
+        in
+        {int -> unit{
         fun i ->
           (* FIXME: to be implemented. *)
-          Firebug.console##log ("Download")
-      }}
+          Lwt.async (fun () ->
+            lwt a = %link i in
+            Firebug.console##log_2 ("Download", a);
+            return (Dom_html.window##location##assign (Js.string a))
+          )
+        }}
       in
       let get_editor =
         (* FIXME: I8N. *)
