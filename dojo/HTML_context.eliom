@@ -170,7 +170,8 @@ let display_user_input exo_id checkpoint context =
       let submit = server_function Json.t<unit> (fun () ->
         Ocsigen_messages.errlog "OK clicked.";
         submit_answer_values exo_id checkpoint (
-          List.map (function [_;x] -> x | _ -> assert false) !answers
+          List.map (function [_;x] -> x | l ->
+            assert false) !answers
         )
       )
       in

@@ -121,7 +121,7 @@ let list_editor
       ) else return ()
     }}
 
-  and replace_item table elt =
+  and replace_item no_action table elt =
     let get_rows = {{ fun () ->
       let text_of_td ts (e : Dom.node Js.t) =
         let unpack e f =
@@ -136,9 +136,13 @@ let list_editor
       in
       let row = Id.get_element %elt in
       let tds = (To_dom.of_tr row)##childNodes in
-      return (List.(rev (list_cut 1 (
-        fold_left text_of_td [] (Dom.list_of_nodeList tds)
-      ))))
+      let select =
+        if %no_action then
+          fun x -> x
+        else
+          fun l -> List.(rev (list_cut 1 l))
+      in
+      return (select (List.fold_left text_of_td [] (Dom.list_of_nodeList tds)))
     }} in
     let fresh_row_if_needed = fresh_row_if_needed table elt in
     let after_replace = {bool -> unit Lwt.t{ fun on_last_idx ->
@@ -165,17 +169,18 @@ let list_editor
 
   and tools_of table id idx =
     let remove_action  = icon [pcdata "x"] (remove_item table id) in
-    let replace_action = icon [pcdata "✓"] (replace_item table id) in
+    let replace_action = icon [pcdata "✓"] (replace_item no_action table id) in
     td ([ remove_action; replace_action ] @ extra_actions idx)
 
-  and cells_of_tr fields table id idx =
-    List.map field fields @ (if no_action then [] else [tools_of table id idx])
+  and cells_of_tr a fields table id idx =
+    List.map (field a) fields
+    @ (if no_action then [] else [tools_of table id idx])
 
-  and field f =
+  and field a f =
     (* FIXME: A workaround to the following bug of Ocsigen:
        https://github.com/ocsigen/tyxml/commit
        /1a05bd9e7f96720b3a57289054ab9c4a5fd9926a#commitcomment-4425462 *)
-    let elt = span [pcdata f] in
+    let elt = span ~a [pcdata f] in
     if list.replace <> None then
       ignore {unit{
         let e = To_dom.of_span %elt in
@@ -186,16 +191,16 @@ let list_editor
   and row_of_idx table i =
     lwt fields = list.display i in
     let id = indices_fresh_for (Id.new_elt_id ~global:false ()) i in
-    let cells = cells_of_tr fields table id i in
     (** When no user action is enabled, editing means replacing. *)
     let a =
       if no_action then
-        let change = replace_item table id in
-        [a_onchange {{ fun _ -> %change () }} ]
+        let change = replace_item no_action table id in
+        [a_oninput {{ fun _ -> %change () }} ]
       else
         []
     in
-    return (Id.create_named_elt ~id (tr ~a cells))
+    let cells = cells_of_tr a fields table id i in
+    return (Id.create_named_elt ~id (tr cells))
   in
   let tableid = Id.new_elt_id ~global:false () in
   lwt e = list.index_end () in
