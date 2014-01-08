@@ -333,7 +333,7 @@ module Eval = struct
     | VStatement of string (* FIXME: Should be replaced by TyXML.elt *)
     | VUnit
     | VClosure of environment * label * term
-    | VPrimitive of (state -> value -> (state * value) Lwt.t)
+    | VPrimitive of (environment -> state -> value -> (state * value) Lwt.t)
     | VSource of string * string
     | VModule of environment
 
@@ -383,24 +383,24 @@ module Eval = struct
   let rec make_primitive () =
 
     let state_effect f =
-      fun state x ->
-        lwt y = f x in
+      fun env state x ->
+        lwt y = f env x in
         return (CORE_context.(push y state), VUnit)
     in
     let stateful name f =
       primitive name (state_effect f)
     in
     let qfunction f =
-      fun s x ->
-        lwt y = f x in
+      fun e s x ->
+        lwt y = f e x in
         return (s, y)
     in
     let functional name f =
       primitive name (qfunction f)
     in
-    primitive "checkpoint" (fun state block ->
+    primitive "checkpoint" (fun e state block ->
       (** Block with a local state. *)
-      apply block state VUnit
+      apply e block state VUnit
       >>= fun (s, _) -> return (state, VContext s)
     );
 
@@ -415,14 +415,14 @@ module Eval = struct
       enclose ("<" ^ b ^ c ^ ">") ("</" ^ b ^ ">") s
     in
     let html_constructor (s, b, c) =
-      functional s (fun v -> return (
+      functional s (fun _ v -> return (
         VStatement (html_of_string b c (as_string v))
       ))
     in
     let _html_constructor2 (s, b1, c1, b2, c2) =
-      functional s (fun v ->
+      functional s (fun _ v ->
         let s1 = as_string v in
-        return (VPrimitive (fun s v ->
+        return (VPrimitive (fun _ s v ->
           let s2 = as_string v in
           return (s, VStatement (html_of_string b2 c2 (
             html_of_string b1 c1 s1 ^ s2
@@ -440,11 +440,11 @@ module Eval = struct
       "item", "li", None;
       "section", "h1", None;
       "subsection", "h2", None;
-      "question", "h3", None
+      "question", "h3", None;
     ];
 
 
-    functional "code" (fun v ->
+    functional "code" (fun _ v ->
       let s = as_string v in
       (* FIXME: Use an eliom function to do that... *)
       let s = Str.(global_replace (regexp "<") "&lt;" s) in
@@ -453,17 +453,30 @@ module Eval = struct
       return (VStatement (html_of_string "pre" None s))
     );
 
-    functional "link" (fun v ->
+    functional "link" (fun _ v ->
       let s1 = as_string v in
-      return (VPrimitive (fun s v ->
+      return (VPrimitive (fun _ s v ->
         let s2 = as_string v in
         (* FIXME: Escape. *)
         let h = Printf.sprintf "href='%s'" s2 in
         return (s, VStatement (html_of_string "a" (Some h) s1))
       )));
 
+    functional "source_link" (fun e v ->
+      try
+        match List.assoc (CORE_identifier.label "_this_path") e with
+          | VString path ->
+            let s = as_string v in
+            let url = COMMON_file.send (Filename.concat path s) in
+            let h = Printf.sprintf "href='%s'" url in
+            return (VStatement (html_of_string "a" (Some h) s))
+          | _ ->
+            assert false
+      with _ -> assert false
+    );
+
     let marker (s, start, stop) =
-      functional s (fun v ->
+      functional s (fun _ v ->
         let s = as_string v in
         return (VStatement (enclose start stop s)))
     in
@@ -472,50 +485,50 @@ module Eval = struct
       "latex", "\\[", "\\]";
     ];
 
-    stateful "answer_in_file" (fun v ->
+    stateful "answer_in_file" (fun _ v ->
       let s = as_string v in
       return (CORE_context.answer s)
     );
 
-    stateful "answer_values_of" (fun v ->
+    stateful "answer_values_of" (fun _ v ->
       let s = as_string_list v in
       return (CORE_context.key_values s)
     );
 
-    stateful "answer_choices_of" (fun v ->
+    stateful "answer_choices_of" (fun _ v ->
       let s = as_string_list v in
       return (CORE_context.choices s)
     );
 
-    stateful "mark_using" (fun v ->
+    stateful "mark_using" (fun _ v ->
       let s = as_string v in
       return (CORE_context.command s)
     );
 
-    stateful "mark_using_expected_values" (fun v ->
+    stateful "mark_using_expected_values" (fun _ v ->
       let s = as_string_list v in
       return (CORE_context.expected_values s)
     );
 
-    stateful "mark_using_expected_choices" (fun v ->
+    stateful "mark_using_expected_choices" (fun _ v ->
       let c = as_int_list v in
       return (CORE_context.expected_choices c)
     );
 
-    stateful "timeout" (function
+    stateful "timeout" (fun _ -> function
       | VInt s -> return (CORE_context.timeout s)
       | _ -> eraise `EvalError
     );
 
-    functional "source" (fun v ->
+    functional "source" (fun _ v ->
       let fname = as_string v in
-      return (VPrimitive (qfunction (fun v ->
+      return (VPrimitive (qfunction (fun _ v ->
         let content = as_string v in
         return (VSource (fname, content)
         ))))
     );
 
-    stateful "import_source" (fun v ->
+    stateful "import_source" (fun _ v ->
       let fname = as_string v in
       return (CORE_context.source fname)
     );
@@ -541,11 +554,11 @@ module Eval = struct
   and closure s env x t =
     return (s, VClosure (env, x, t.term))
 
-  and apply f s v : (state * value) Lwt.t =
+  and apply e f s v : (state * value) Lwt.t =
     match f with
       | VClosure (e, x, t) ->
         term s ((x, v) :: e) t
-      | VPrimitive p -> p s v
+      | VPrimitive p -> p e s v
       | _ -> eraise `EvalError (* FIXME: Handle error. *)
 
   and term s e = function
@@ -558,7 +571,7 @@ module Eval = struct
     | App (a, b) ->
       lwt s, a = term' s e a in
       lwt s, b = term' s e b in
-      apply a s b
+      apply e a s b
     | Module mt ->
       module_term s e mt
 
@@ -583,7 +596,13 @@ module Eval = struct
       []
 
   let program this p =
-    lwt _, v = term' CORE_context.empty [] p in
+    let this_path =
+      CORE_identifier.(CORE_standard_identifiers.(
+        string_of_path (root true (path_of_identifier this))
+      ))
+    in
+    let e = [CORE_identifier.label "_this_path", VString this_path] in
+    lwt _, v = term' CORE_context.empty e p in
     let sources = ref [] in
     let title = ref "Sans titre" (* FIXME *) in
     let v = (filter_map (fun x -> function

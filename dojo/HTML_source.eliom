@@ -14,6 +14,17 @@ open CORE_onthedisk_entity
 open CORE_inmemory_entity
 open CORE_error_messages
 
+let source_path (type d) (type c)
+    (module E : CORE_entity.S with type data = d and type change = c)
+    (e : E.t) filename = E.(
+  let path =
+    CORE_identifier.(CORE_standard_identifiers.(
+      string_of_path (root true (path_of_identifier (E.identifier e)))
+    ))
+  in
+  Filename.concat path filename
+)
+
 (* FIXME: Missing features: Download, Preview, Versioning. *)
 let entity_sources_div
     (type d)
@@ -43,12 +54,7 @@ let entity_sources_div
       let download =
         let link = server_function Json.t<int> (fun i ->
           lwt sources = observe e (fun d -> return (sources d)) in
-          let path =
-            CORE_identifier.(CORE_standard_identifiers.(
-              string_of_path (root true (path_of_identifier (E.identifier e)))
-            ))
-          in
-          return (COMMON_file.send (Filename.concat path (List.nth sources i)))
+          return (COMMON_file.send (source_path (module E) e (List.nth sources i)))
         )
         in
         {int -> unit{
