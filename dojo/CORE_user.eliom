@@ -123,7 +123,10 @@ let subscribe out_by firstname surname email login password teacher =
 open Ldap_funclient
 open Ldap_types
 
-let ldap_search login server_config = CORE_config.(
+let ldap_search login server_config = 
+  Ocsigen_messages.errlog "LDAP search...";
+  Ocsigen_messages.errlog server_config.CORE_config.host;
+CORE_config.(
   let filter =
     (* FIXME: Watch for user injection. *)
     server_config.login_field ^"="^ login
@@ -135,9 +138,11 @@ let ldap_search login server_config = CORE_config.(
   (try_ (fun () ->
     init [Printf.sprintf "ldap://%s:%d" server_config.host server_config.port]
    ) >>>= (fun connection ->
+     Ocsigen_messages.errlog "LDAP connection: OK.";
      try_ (fun () ->
        search_s ~base:server_config.base connection filter
      ) >>>= fun l ->
+       Ocsigen_messages.errlog "LDAP search: OK.";
        let rec aux = function
          | [] ->
            return (`KO (`BadLoginPasswordPair))
@@ -151,8 +156,13 @@ let ldap_search login server_config = CORE_config.(
                  server_config.host
              );
            let lookup field =
-             let a = List.find (fun a -> a.attr_type = field) e.sr_attributes in
-             String.concat " " a.attr_vals
+	     try
+  	       let a = List.find (fun a -> a.attr_type = field) e.sr_attributes in
+               String.concat " " a.attr_vals
+             with Not_found -> Ocsigen_messages.errlog (
+               Printf.sprintf "Field %s not found in entry %s" field login
+             ); 
+             raise Not_found
            in
            try_lwt
              return (`OK (
@@ -160,7 +170,7 @@ let ldap_search login server_config = CORE_config.(
                lookup server_config.name_field,
                lookup server_config.email_field,
                lookup server_config.status_field
-               = lookup server_config.teacher_status_value)
+               = server_config.teacher_status_value)
              )
            with Not_found ->
              Ocsigen_messages.errlog (
@@ -171,8 +181,12 @@ let ldap_search login server_config = CORE_config.(
              return (`KO `BadLoginPasswordPair)
        in
        aux l
-     >>= fun r -> (unbind connection; return r))
-  ))
+     >>= fun r -> (
+     Ocsigen_messages.errlog "LDAP disconnection: OK.";
+     unbind connection; 
+     return r
+     )
+  )))
 
 let rec authenticate u password =
   user u >>= function

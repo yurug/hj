@@ -30,12 +30,14 @@ WWWUSER := www-data
 WWWGROUP := www-data
 
 # Port for running the server (make run.*)
-PORT := 80
+PORT := 443
 
 # Port for testing (make test.*)
 TEST_PORT := 8080
 TEST_SSLCERT := cert.pem
 TEST_SSLKEY := privkey.pem
+SSLCERT := /home/yann/hj/dojo/cert.pem
+SSLKEY := /home/yann/hj/dojo/privkey.pem
 
 # Root of installation (must end with /)
 PREFIX := /
