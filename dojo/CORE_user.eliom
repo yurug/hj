@@ -209,7 +209,20 @@ let rec authenticate u password =
 
     (** The user does not exist. *)
     | `KO `BadLoginPasswordPair ->
-      begin
+      let do_subscribe firstname surname email teacher =
+        let after = function
+          | `Left (Some error) ->
+            return (`KO (`SystemError error))
+          | `Left None ->
+            return (`KO (`SystemError "LDAP"))
+          | `Right _ ->
+            authenticate u password
+        in
+        subscribe after firstname surname email u password teacher
+      in
+      if CORE_config.development_mode () then
+        do_subscribe "Donald" "Knuth" "you@shallnotemail.me" true
+      else begin
         let error = function
           | [] -> `BadLoginPasswordPair
           | e :: _ -> e
@@ -217,15 +230,7 @@ let rec authenticate u password =
         first_success (ldap_search u) error (CORE_config.ldap_servers ())
         >>= function
           | `OK (firstname, surname, email, teacher) ->
-            let after = function
-              | `Left (Some error) ->
-                return (`KO (`SystemError error))
-              | `Left None ->
-                return (`KO (`SystemError "LDAP"))
-              | `Right _ ->
-                authenticate u password
-            in
-            subscribe after firstname surname email u password teacher
+            do_subscribe firstname surname email teacher
           | `KO e ->
             return (`KO e)
       end

@@ -53,3 +53,5 @@ type ldap_configuration = {
 }
 
 val ldap_servers : unit -> ldap_configuration list
+
+val development_mode : unit -> bool

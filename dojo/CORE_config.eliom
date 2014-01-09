@@ -102,7 +102,20 @@ let ldap_configuration = Ocsigen_extensions.Configuration.(
   element ~init ~name ~obligatory ~attributes ()
 )
 
-let _ =
-  Eliom_config.parse_config [ldap_configuration]
-
 let ldap_servers () = !ldap_servers
+
+let development_mode = ref false
+
+let development_mode_configuration = Ocsigen_extensions.Configuration.(
+  let init = fun () -> development_mode := true in
+  let name = "development" in
+  element ~init ~name ()
+)
+
+let development_mode () = !development_mode
+
+let _ =
+  Eliom_config.parse_config [
+    ldap_configuration;
+    development_mode_configuration
+  ]
