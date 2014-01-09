@@ -62,6 +62,9 @@ let user =
 
 (** Authentification system. *)
 
+let make_password_digest login password =
+  Digest.to_hex (Digest.string (login ^ password))
+
 (** The connected username is a server-side state which is shared with
     the client using a cookie. If I am correct, this piece of
     information cannot be forged without a knowledge of the
@@ -75,24 +78,6 @@ let username =
   Eliom_reference.eref
     ~scope:Eliom_common.default_session_scope
     (`NotLogged : cookie_state)
-
-let make_password_digest login password =
-  Digest.to_hex (Digest.string (login ^ password))
-
-let logged_user () =
-  Eliom_reference.get username >>= function
-    | `NotLogged -> return `NotLogged
-    | `FailedLogin -> return `FailedLogin
-    | `Logged id ->
-      make id >>= function
-        | `OK u -> return (`Logged u)
-        | `KO _ ->
-          (** Hmm, if [make e] fails, it means that:
-              - the cookie is corrupted ;
-              - or, the system is in bad state...
-              We log that and do not return a logged user. *)
-          COMMON_log.(unexpected_failure [Internal] (fun () -> assert false));
-          return `FailedLogin
 
 (** Subscribing is an action on the state of the server. *)
 let subscribe out_by firstname surname email login password teacher =
@@ -123,10 +108,7 @@ let subscribe out_by firstname surname email login password teacher =
 open Ldap_funclient
 open Ldap_types
 
-let ldap_search login server_config =
-  Ocsigen_messages.errlog "LDAP search...";
-  Ocsigen_messages.errlog server_config.CORE_config.host;
-CORE_config.(
+let ldap_search login server_config = CORE_config.(
   let filter =
     (* FIXME: Watch for user injection. *)
     server_config.login_field ^"="^ login
@@ -138,11 +120,9 @@ CORE_config.(
   (try_ (fun () ->
     init [Printf.sprintf "ldap://%s:%d" server_config.host server_config.port]
    ) >>>= (fun connection ->
-     Ocsigen_messages.errlog "LDAP connection: OK.";
      try_ (fun () ->
        search_s ~base:server_config.base connection filter
      ) >>>= fun l ->
-       Ocsigen_messages.errlog "LDAP search: OK.";
        let rec aux = function
          | [] ->
            return (`KO (`BadLoginPasswordPair))
@@ -185,7 +165,6 @@ CORE_config.(
        in
        aux l
      >>= fun r -> (
-     Ocsigen_messages.errlog "LDAP disconnection: OK.";
      unbind connection;
      return r
      )
@@ -238,6 +217,27 @@ let rec authenticate u password =
     (** Something else happens. *)
     | (`KO (`MaximalNumberOfLoginAttemptsReached | `SystemError _)) as e ->
       return e
+
+let logged_user () =
+  Eliom_reference.get username >>= function
+    | `NotLogged ->
+      if CORE_config.development_mode () then
+        authenticate "donald" "no_password_for_me" >>= function
+          | `OK u -> return (`Logged u)
+          | `KO _ -> return `NotLogged
+      else
+        return `NotLogged
+    | `FailedLogin -> return `FailedLogin
+    | `Logged id ->
+      make id >>= function
+        | `OK u -> return (`Logged u)
+        | `KO _ ->
+          (** Hmm, if [make e] fails, it means that:
+              - the cookie is corrupted ;
+              - or, the system is in bad state...
+              We log that and do not return a logged user. *)
+          COMMON_log.(unexpected_failure [Internal] (fun () -> assert false));
+          return `FailedLogin
 
 (** [login] is in the public API, login information
     is passed using the POST method. *)

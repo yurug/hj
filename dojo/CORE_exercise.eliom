@@ -182,22 +182,26 @@ let force_update id =
     | `KO e ->
       warn e; return ()
 
+let empty_description = "{\n  title = [].\n}"
+
 let raw_user_description_source id =
   (** We force the update of [id] because some update of the source
       might be dangling. *)
   CORE_onthedisk_entity.load_source id raw_user_description_filename
+  >>= function
+    | `KO e ->
+      warn e;
+      return (CORE_source.make raw_user_description_filename empty_description)
+    | `OK s ->
+      return s
 
 let raw_user_description_retrieve =
   server_function Json.t<CORE_identifier.t> (fun id ->
-    Ocsigen_messages.errlog "Retrieve exo description";
-    raw_user_description_source id >>= function
-      | `KO e -> warn e; return "(network error)" (* FIXME *)
-      | `OK s -> return (CORE_source.content s)
+    raw_user_description_source id >>= fun s -> return (CORE_source.content s)
   )
 
 {client{
 let raw_user_description id : string Lwt.t =
-  Firebug.console##log (Js.string "Get user description");
   %raw_user_description_retrieve id
 }}
 
@@ -302,9 +306,8 @@ and changed x questions cst =
 *)
 and change_from_user_description x cr =
   lwt source_changed =
-    raw_user_description_source (identifier x) >>= function
-    | `KO e -> warn e; return true (* FIXME *)
-    | `OK s -> return (CORE_source.content s <> C.raw cr)
+    raw_user_description_source (identifier x) >>= fun s ->
+    return (CORE_source.content s <> C.raw cr)
   in
   if source_changed then (
     change x (UpdateSource cr) >>= fun _ ->

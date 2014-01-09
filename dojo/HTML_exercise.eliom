@@ -38,10 +38,7 @@ deriving (Json)
 let editor_div (e : CORE_exercise.t) =
 
   let id = CORE_exercise.identifier e in
-  lwt init = raw_user_description_source id >>= function
-    | `OK s -> return s
-    | `KO e -> raise_lwt LoadingError
-  in
+  lwt init = raw_user_description_source id in
 
   let client_change =
     {{ fun echo (s : string) ->

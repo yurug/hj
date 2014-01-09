@@ -62,11 +62,7 @@ val eval : t -> unit Lwt.t
 (** [eval_if_needed e] compute the evaluation of [e] if needed. *)
 val eval_if_needed : t -> CORE_questions.questions_result option Lwt.t
 
-val raw_user_description_source
-: CORE_identifier.t -> [
-  `OK of CORE_source.t
-| `KO of [  `UndefinedEntity of CORE_identifier.t | `SystemError of string ]
-] Lwt.t
+val raw_user_description_source: CORE_identifier.t -> CORE_source.t Lwt.t
 
 type patch =
     CORE_errors.position * CORE_errors.position * string

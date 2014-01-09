@@ -48,14 +48,12 @@ let load_source id fname =
   CORE_vfs.latest ~relative:false (file path fname)
   >>= function
     | `KO e ->
-      (* FIXME: ... *)
-      return (`OK (CORE_source.make fname "(error load_source 3)"))
+      return (`KO e)
     | `OK latest_version ->
       CORE_vfs.read latest_version
       >>= function
         | `KO e ->
-          (* FIXME: ... *)
-          return (`OK (CORE_source.make fname "(error load_source 2"))
+          return (`KO e)
         | `OK content ->
           return (`OK (CORE_source.make fname content))
 
