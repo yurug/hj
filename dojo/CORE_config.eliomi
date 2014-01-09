@@ -39,3 +39,17 @@ type language = French
 val current_language : unit -> language
 
 }}
+
+type ldap_configuration = {
+  mutable host : string;
+  mutable port : int;
+  mutable base : string;
+  mutable firstname_field: string;
+  mutable name_field: string;
+  mutable login_field: string;
+  mutable email_field: string;
+  mutable status_field: string;
+  mutable teacher_status_value: string;
+}
+
+val ldap_servers : unit -> ldap_configuration list

@@ -375,6 +375,16 @@ let ( @| ) e p =
   with SmallJump ->
     p ()
 
+let first_success f error xs =
+  let rec aux es = function
+    | [] -> return (`KO (error es))
+    | x :: xs ->
+      f x >>= function
+        | `OK x -> return (`OK x)
+        | `KO e -> aux (e :: es) xs
+  in
+  aux [] xs
+
 module MRef = struct
   open Lwt_mutex
   type 'a t = { mutable content : 'a; mutex : Lwt_mutex.t }

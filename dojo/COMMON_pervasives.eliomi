@@ -184,6 +184,16 @@ val list_map_s : ('a -> ('b, 'e) exn_free) -> 'a list -> ('b list, 'e) exn_free
     [`OK x], returns [x]. *)
 val ( !!> ) : (unit -> ('a, 'e) exn_free) -> ('a, 'b, 'e) exn_abs
 
+(** [first_success f error xs] returns the first [f x] that is [`OK _]
+    trying all the [x] in [xs] from left to right. If no such [x]
+    exists, returns [`KO es] where [error es] is a all the errors we met
+    during the traversal. *)
+val first_success :
+  ('a -> ('b, 'e) exn_free)
+  -> ('e list -> 'f)
+  -> 'a list
+  -> ('b, 'f) exn_free
+
 (** [p1 >>> p2] is [fun l -> p1 l >> l2 l]. *)
 val ( >>> ) : ('a -> 'b Lwt.t) -> ('a -> 'c Lwt.t) -> 'a -> 'c Lwt.t
 
@@ -219,4 +229,3 @@ module MRef : sig
   val read : 'a t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
   val write : 'a t -> 'a -> unit Lwt.t
 end
-

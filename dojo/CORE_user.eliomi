@@ -31,6 +31,9 @@ val surname : t -> string Lwt.t
     last connection of the user [u]. *)
 val last_connection : t -> string Lwt.t
 
+(** [is_teacher u] returns [true] if [u] is a teacher. *)
+val is_teacher : t -> bool Lwt.t
+
 (** Services (automatically inferred using eliomc -i.) *)
 
 val login_service :
@@ -58,17 +61,17 @@ val register_login :
   unit
 
 val logout_service :
-   fallback:(unit, unit,
-              [ `Attached of
-                  ([ `Internal of [ `Service ] ], [ `Get ]) Eliom_service.a_s ],
-              [ `WithoutSuffix ], unit, unit, [< Eliom_service.registrable ],
-              'a)
-             Eliom_service.service ->
-    (unit, unit,
-     [> `Attached of
-          ([> `Internal of [> `Coservice ] ], [> `Get ]) Eliom_service.a_s ],
-     [ `WithoutSuffix ], unit, unit,
-     [< Eliom_service.registrable > `Registrable ], 'b)
+  fallback:(unit, unit,
+            [ `Attached of
+                ([ `Internal of [ `Service ] ], [ `Get ]) Eliom_service.a_s ],
+            [ `WithoutSuffix ], unit, unit, [< Eliom_service.registrable ],
+            'a)
+  Eliom_service.service ->
+  (unit, unit,
+   [> `Attached of
+       ([> `Internal of [> `Coservice ] ], [> `Get ]) Eliom_service.a_s ],
+   [ `WithoutSuffix ], unit, unit,
+   [< Eliom_service.registrable > `Registrable ], 'b)
     Eliom_service.service
 
 val register_logout :
@@ -98,10 +101,13 @@ val subscribe_service :
    [< Eliom_service.registrable > `Registrable ], 'e)
     Eliom_service.service
 
+
 val register_subscribe :
   ([> `Left of string option | `Right of unit ] -> unit Lwt.t) ->
-  service:(unit, string * (string * ('a * (string * string))),
-           [< Eliom_service.internal_service_kind ], [< Eliom_service.suff ],
-           'b, 'c, [ `Registrable ], Eliom_registration.http_service)
-  Eliom_service.service ->
+  service:(unit,
+           string * (string * (string * (string * string))),
+           [< Eliom_service.internal_service_kind ],
+           [< Eliom_service.suff ], 'a, 'b, [ `Registrable ],
+           Eliom_registration.http_service)
+    Eliom_service.service ->
   unit

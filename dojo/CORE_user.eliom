@@ -15,6 +15,8 @@ type description = {
   last_connection : string;
   firstname       : string;
   surname         : string;
+  email           : string;
+  teacher         : bool;
 } deriving (Json)
 
 include CORE_entity.Make (CORE_entity.Passive (struct
@@ -74,6 +76,9 @@ let username =
     ~scope:Eliom_common.default_session_scope
     (`NotLogged : cookie_state)
 
+let make_password_digest login password =
+  Digest.to_hex (Digest.string (login ^ password))
+
 let logged_user () =
   Eliom_reference.get username >>= function
     | `NotLogged -> return `NotLogged
@@ -89,24 +94,128 @@ let logged_user () =
           COMMON_log.(unexpected_failure [Internal] (fun () -> assert false));
           return `FailedLogin
 
+(** Subscribing is an action on the state of the server. *)
+let subscribe out_by firstname surname email login password teacher =
+  let id = user_id login in
+  let password_digest = make_password_digest login password in
+  let last_connection = I18N.String.never_connected_before in
+  let dependencies =
+    let deps = empty_dependencies in
+    (** A user depends on the assigner entity. *)
+    let deps = push deps (assigner, ("assigner", [])) in
+    deps
+  in
+  let init =
+    ({ login; password_digest; last_connection;
+       firstname; surname; teacher; email },
+     dependencies,
+     CORE_property.empty,
+     [])
+  in
+  make ~init id >>= function
+    | `OK e ->
+      Eliom_reference.set username (`Logged (identifier e))
+      >>= fun _ -> out_by (`Right ())
+    | `KO e -> out_by (`Left (Some (string_of_error e)))
+
 (** Authentification. *)
 
-let make_password_digest login password =
-  Digest.to_hex (Digest.string (login ^ password))
+open Ldap_funclient
+open Ldap_types
 
-let authenticate u password =
-  user u >>>= fun user ->
-  lwt login = login user in
-  let digest = make_password_digest login password in
-  lwt expected_digest = password_digest user in
-  if (expected_digest <> digest) then
-    return (`KO `BadLoginPasswordPair)
-  else (
-    lwt c = observe user (fun d -> return (content d)) in
-    ltry COMMON_unix.now >>>= fun date ->
-    change user (UpdateContent { c with last_connection = date })
-    >>= fun _ -> return (`OK user)
-  )
+let ldap_search login server_config = CORE_config.(
+  let filter =
+    (* FIXME: Watch for user injection. *)
+    server_config.login_field ^"="^ login
+  in
+  let try_ f =
+    try_lwt return (`OK (f ()))
+    with e -> return (`KO (`SystemError (Ldap_error.ldap_strerror "" e)))
+  in
+  (try_ (fun () ->
+    init [Printf.sprintf "ldap://%s:%d" server_config.host server_config.port]
+   ) >>>= (fun connection ->
+     try_ (fun () ->
+       search_s ~base:server_config.base connection filter
+     ) >>>= fun l ->
+       let rec aux = function
+         | [] ->
+           return (`KO (`BadLoginPasswordPair))
+         | (`Referral _) :: es ->
+           aux es
+         | (`Entry e) :: es ->
+           if es <> [] then
+             Ocsigen_messages.errlog (
+               Printf.sprintf
+                 "Two entries share the same login in LDAP server %s!"
+                 server_config.host
+             );
+           let lookup field =
+             let a = List.find (fun a -> a.attr_type = field) e.sr_attributes in
+             String.concat " " a.attr_vals
+           in
+           try_lwt
+             return (`OK (
+               lookup server_config.firstname_field,
+               lookup server_config.name_field,
+               lookup server_config.email_field,
+               lookup server_config.status_field
+               = lookup server_config.teacher_status_value)
+             )
+           with Not_found ->
+             Ocsigen_messages.errlog (
+               Printf.sprintf
+                 "LDAP server %s does not respond as configurated here!"
+                 server_config.host
+             );
+             return (`KO `BadLoginPasswordPair)
+       in
+       aux l
+     >>= fun r -> (unbind connection; return r))
+  ))
+
+let rec authenticate u password =
+  user u >>= function
+    (** The user does exist. *)
+    | `OK user ->
+      lwt login = login user in
+      let digest = make_password_digest login password in
+      lwt expected_digest = password_digest user in
+      if (expected_digest <> digest) then
+        return (`KO `BadLoginPasswordPair)
+      else (
+        lwt c = observe user (fun d -> return (content d)) in
+        ltry COMMON_unix.now >>>= fun date ->
+        change user (UpdateContent { c with last_connection = date })
+        >>= fun _ -> return (`OK user)
+      )
+
+    (** The user does not exist. *)
+    | `KO `BadLoginPasswordPair ->
+      begin
+        let error = function
+          | [] -> `BadLoginPasswordPair
+          | e :: _ -> e
+        in
+        first_success (ldap_search u) error (CORE_config.ldap_servers ())
+        >>= function
+          | `OK (firstname, surname, email, teacher) ->
+            let after = function
+              | `Left (Some error) ->
+                return (`KO (`SystemError error))
+              | `Left None ->
+                return (`KO (`SystemError "LDAP"))
+              | `Right _ ->
+                authenticate u password
+            in
+            subscribe after firstname surname email u password teacher
+          | `KO e ->
+            return (`KO e)
+      end
+
+    (** Something else happens. *)
+    | (`KO (`MaximalNumberOfLoginAttemptsReached | `SystemError _)) as e ->
+      return e
 
 (** [login] is in the public API, login information
     is passed using the POST method. *)
@@ -160,30 +269,14 @@ let subscribe_service ~fallback =
       ** string "login"  ** string "password"
     ) ()
 
-(** Subscribing is an action on the state of the server. *)
-
 let register_subscribe out_by ~service =
   Eliom_registration.Action.register
     ~service
     (fun () (firstname, (surname, (email, (login, password)))) ->
-      let id = user_id login in
-      let password_digest = make_password_digest login password in
-      let last_connection = I18N.String.never_connected_before in
-      let dependencies =
-        let deps = empty_dependencies in
-        (** A user depends on the assigner entity. *)
-        let deps = push deps (assigner, ("assigner", [])) in
-        deps
-      in
-      let init =
-        ({ login; password_digest; last_connection; firstname; surname },
-         dependencies,
-         CORE_property.empty,
-         [])
-      in
-      make ~init id >>= function
-        | `OK e ->
-          Eliom_reference.set username (`Logged (identifier e))
-          >>= fun _ -> out_by (`Right ())
-        | `KO e -> out_by (`Left (Some (string_of_error e)))
+      (** Public subscription cannot create teachers. *)
+      let teacher = false in
+      subscribe out_by firstname surname email login password teacher
     )
+
+(** [is_teacher u] returns [true] if [u] is a teacher. *)
+let is_teacher u = observe u (fun d -> return (content d).teacher)

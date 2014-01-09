@@ -40,3 +40,61 @@ type language = French
 let current_language () = French
 
 }}
+
+type ldap_configuration = {
+  mutable host : string;
+  mutable port : int;
+  mutable base : string;
+  mutable firstname_field: string;
+  mutable name_field: string;
+  mutable login_field: string;
+  mutable email_field: string;
+  mutable status_field: string;
+  mutable teacher_status_value: string;
+}
+
+let ldap_servers = ref []
+
+let ldap_configuration = Ocsigen_extensions.Configuration.(
+  (** Default configuration *)
+  let config = {
+    host = "";
+    port = 339;
+    base = "";
+    firstname_field = "";
+    name_field = "";
+    login_field = "";
+    email_field = "";
+    status_field = "";
+    teacher_status_value = ""
+  }
+  in
+  let _push_config =
+    ldap_servers := config :: !ldap_servers
+  in
+
+  (** Parsing functions. *)
+  let req_attr name = attribute ~name ~obligatory:true
+  and opt_attr name = attribute ~name ~obligatory:false
+  in
+  let name = "ldap"
+  and obligatory = false
+  and attributes = [
+    req_attr "host" (fun h -> config.host <- h);
+    opt_attr "port" (fun p -> config.port <- int_of_string p);
+    req_attr "base" (fun h -> config.base <- h);
+    req_attr "firstname" (fun h -> config.firstname_field <- h);
+    req_attr "name" (fun h -> config.name_field <- h);
+    req_attr "login" (fun h -> config.login_field <- h);
+    req_attr "email" (fun h -> config.email_field <- h);
+    req_attr "status" (fun h -> config.status_field <- h);
+    req_attr "teacher_status_value" (fun h -> config.teacher_status_value <- h);
+  ]
+  in
+  element ~name ~obligatory ~attributes ()
+)
+
+let _ =
+  Eliom_config.parse_config [ldap_configuration]
+
+let ldap_servers () = !ldap_servers
