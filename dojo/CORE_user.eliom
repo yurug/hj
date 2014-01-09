@@ -123,7 +123,7 @@ let subscribe out_by firstname surname email login password teacher =
 open Ldap_funclient
 open Ldap_types
 
-let ldap_search login server_config = 
+let ldap_search login server_config =
   Ocsigen_messages.errlog "LDAP search...";
   Ocsigen_messages.errlog server_config.CORE_config.host;
 CORE_config.(
@@ -156,17 +156,20 @@ CORE_config.(
                  server_config.host
              );
            let lookup field =
-	     try
-  	       let a = List.find (fun a -> a.attr_type = field) e.sr_attributes in
+             try
+               let a =
+                 List.find (fun a -> a.attr_type = field) e.sr_attributes
+               in
                String.concat " " a.attr_vals
              with Not_found -> Ocsigen_messages.errlog (
                Printf.sprintf "Field %s not found in entry %s" field login
-             ); 
+             );
              raise Not_found
            in
            try_lwt
+             let pretty s = String.(capitalize (lowercase s)) in
              return (`OK (
-               lookup server_config.firstname_field,
+               pretty (lookup server_config.firstname_field),
                lookup server_config.name_field,
                lookup server_config.email_field,
                lookup server_config.status_field
@@ -183,7 +186,7 @@ CORE_config.(
        aux l
      >>= fun r -> (
      Ocsigen_messages.errlog "LDAP disconnection: OK.";
-     unbind connection; 
+     unbind connection;
      return r
      )
   )))
