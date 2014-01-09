@@ -28,21 +28,6 @@
       <static dir="%%STATICDIR%%" />
       <static dir="%%ELIOMSTATICDIR%%" />
       <eliommodule module="%%LIBDIR%%/%%PROJECT_NAME%%.cma">
-
-	<!-- UFR Informatique -->
-
-        <LDAP
-      	  host="194.254.199.85"
-          port="389"
-	  base="dc=ufr-info-p7,dc=jussieu,dc=fr"
-          firstname="sn"
-	  name="givenName"
-	  login="uid"
-	  email="mail"
-	  status="description"
-	  teacher_status_value="ENS"
-	  />
-
       </eliommodule>
       <eliom/>
     </host>
