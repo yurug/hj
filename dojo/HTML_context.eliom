@@ -57,8 +57,8 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
 (* FIXME: Factorize the following three functions. *)
 
 let submit_file exo_id cp tmp_filename filename =
-  CORE_user.authenticate "root" "foo" >>= function
-    | `OK u -> (
+  CORE_user.logged_user () >>= function
+    | `Logged u -> (
       CORE_exercise.make exo_id >>>= fun exo ->
       answer_of_exercise_from_authors exo [u] >>= function
         | `OK a ->
@@ -67,13 +67,12 @@ let submit_file exo_id cp tmp_filename filename =
           warn e;
           return (`OK ())
     )
-    | `KO e ->
-      warn e;
+    | _ ->
       return (`OK ())
 
 let submit_answer_choices exo_id cp vs =
-  CORE_user.authenticate "root" "foo" >>= function
-    | `OK u -> (
+  CORE_user.logged_user () >>= function
+    | `Logged u -> (
       CORE_exercise.make exo_id >>>= fun exo ->
       answer_of_exercise_from_authors exo [u] >>= function
         | `OK a ->
@@ -82,13 +81,12 @@ let submit_answer_choices exo_id cp vs =
           warn e;
           return (`OK ())
     )
-    | `KO e ->
-      warn e;
+    | _ ->
       return (`OK ())
 
 let submit_answer_values exo_id cp vs =
-  CORE_user.authenticate "root" "foo" >>= function
-    | `OK u -> (
+  CORE_user.logged_user () >>= function
+    | `Logged u -> (
       CORE_exercise.make exo_id >>>= fun exo ->
       answer_of_exercise_from_authors exo [u] >>= function
         | `OK a ->
@@ -97,8 +95,7 @@ let submit_answer_values exo_id cp vs =
           warn e;
           return (`OK ())
     )
-    | `KO e ->
-      warn e;
+    | _ ->
       return (`OK ())
 
 let display_user_input exo_id checkpoint context =

@@ -171,9 +171,14 @@ let role e =
 (* FIXME: Determine the role of the user wrt to this exercise.
    FIXME: This means determining the group of the user as well
    FIXME: as its status (student or evaluatuor.) *)
-  CORE_user.authenticate "root" "foo" >>= function
-    | `OK u -> return (Evaluator u)
-    | `KO e -> warn e; return NoRole
+  CORE_user.(logged_user () >>= function
+    | `Logged u ->
+      is_teacher u >>= (function
+        | true -> return (Evaluator u)
+        | false -> return (Student (u, [u])) (* FIXME *)
+      )
+    | _ -> return NoRole
+  )
 
 let group_of_user e =
   role e >>= function
