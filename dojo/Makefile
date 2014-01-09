@@ -169,6 +169,8 @@ LOCAL_SED_ARGS += -e "s|%%SSLCERT%%|$(TEST_SSLCERT)|g"
 LOCAL_SED_ARGS += -e "s|%%USERGROUP%%||g"
 GLOBAL_SED_ARGS := -e "s|%%PORT%%|$(PORT)|g"
 GLOBAL_SED_ARGS += -e "s|%%STATICDIR%%|%%PREFIX%%$(STATICDIR)|g"
+GLOBAL_SED_ARGS += -e "s|%%SSLKEY%%|$(SSLKEY)|g"
+GLOBAL_SED_ARGS += -e "s|%%SSLCERT%%|$(SSLCERT)|g"
 ifeq ($(WWWUSER)$(WWWGROUP),)
   GLOBAL_SED_ARGS += -e "s|%%USERGROUP%%||g"
 else
