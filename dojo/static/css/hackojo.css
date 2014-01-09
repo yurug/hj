@@ -40,6 +40,22 @@ body {
     height: 64px;
 }
 
+#hrule {
+    background: white url(/img/bar.png) no-repeat bottom;
+    width: 1080px;
+    height: 64px;
+}
+
+#homepage_header {
+    width: 1080px;
+    height: 20.5em;
+}
+
+#about_box {
+    float: right;
+    width: 30em;
+}
+
 #bar_space {
     height: 64px;
 }
@@ -475,3 +491,15 @@ div.user_answer {
     padding: 0.5em;
 }
 
+div.homepage_photo {
+    float: left;
+    margin-top: 2em;
+    margin-left: 1em;
+    margin-right: auto;
+    width: 20em;
+}
+
+img.homepage_photo {
+    width: auto;
+    height: 20em;
+}

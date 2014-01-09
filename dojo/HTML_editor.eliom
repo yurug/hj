@@ -223,7 +223,7 @@ let create
   in
   let editor = div ~a:[a_class ["editor_box"]] [
     editor_textarea;
-(*  FIXME: Reenable this:
+    (*  FIXME: Reenable this:
     message_box*)
     questions_box
   ] in

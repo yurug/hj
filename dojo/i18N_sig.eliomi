@@ -61,6 +61,13 @@ sig
   val logins : string
   val addresses : string
   val sandboxes : string
+  val about : string
+  val notifications : string
+  val read : [`Male | `Female] -> string
+
+  (** Forms. *)
+  val not_ : string -> string
+  val many : string -> string
 
   (** Sentences. *)
   val sorry_autotesting_is_disabled : string

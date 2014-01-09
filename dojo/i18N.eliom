@@ -21,6 +21,9 @@ module Fr : I18N_sig.Text = struct
   let mark' things =
     form things "" "s"
 
+  let many s =
+    s ^ "s"
+
   let the_hacking_dojo = "Le Dojo de Programmation"
 
   let assignments = "exercices"
@@ -60,6 +63,12 @@ module Fr : I18N_sig.Text = struct
   let mandatory = "obligatoires"
 
   let see = "voir"
+
+  let read = function
+    | `Male -> "lu"
+    | `Female -> "lue"
+
+  let not_ w = "non " ^ w
 
   let hide = "cacher"
 
@@ -162,6 +171,12 @@ module Fr : I18N_sig.Text = struct
 
   let entity =
     "entité"
+
+  let about =
+    "à propos"
+
+  let notifications =
+    "notifications"
 
   let the_following_file_already_exists fname =
     Printf.sprintf

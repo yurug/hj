@@ -40,4 +40,4 @@ let send =
           bname
       in
       Hashtbl.add h fname (url, link);
-      url
+      Xml.uri_of_string url

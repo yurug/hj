@@ -54,7 +54,9 @@ let entity_sources_div
       let download =
         let link = server_function Json.t<int> (fun i ->
           lwt sources = observe e (fun d -> return (sources d)) in
-          return (COMMON_file.send (source_path (module E) e (List.nth sources i)))
+          return (COMMON_file.send (
+            source_path (module E) e (List.nth sources i)
+          ))
         )
         in
         {int -> unit{
