@@ -57,7 +57,7 @@ let ldap_servers = ref []
 
 let ldap_configuration = Ocsigen_extensions.Configuration.(
   (** Default configuration *)
-  let config = {
+  let config () = {
     host = "";
     port = 339;
     base = "";
@@ -69,29 +69,37 @@ let ldap_configuration = Ocsigen_extensions.Configuration.(
     teacher_status_value = ""
   }
   in
-  let _push_config =
-    ldap_servers := config :: !ldap_servers
+  let init () =
+    ldap_servers := config () :: !ldap_servers
+  in
+  let current () =
+    List.hd !ldap_servers
   in
 
   (** Parsing functions. *)
   let req_attr name = attribute ~name ~obligatory:true
   and opt_attr name = attribute ~name ~obligatory:false
   in
-  let name = "ldap"
+  let name = "LDAP"
   and obligatory = false
   and attributes = [
-    req_attr "host" (fun h -> config.host <- h);
-    opt_attr "port" (fun p -> config.port <- int_of_string p);
-    req_attr "base" (fun h -> config.base <- h);
-    req_attr "firstname" (fun h -> config.firstname_field <- h);
-    req_attr "name" (fun h -> config.name_field <- h);
-    req_attr "login" (fun h -> config.login_field <- h);
-    req_attr "email" (fun h -> config.email_field <- h);
-    req_attr "status" (fun h -> config.status_field <- h);
-    req_attr "teacher_status_value" (fun h -> config.teacher_status_value <- h);
+    req_attr "host" (fun h ->
+      Ocsigen_messages.errlog ("Found LDAP server at " ^ h);
+      (current ()).host <- h
+    );
+    opt_attr "port" (fun p -> (current ()).port <- int_of_string p);
+    req_attr "base" (fun h -> (current ()).base <- h);
+    req_attr "firstname" (fun h -> (current ()).firstname_field <- h);
+    req_attr "name" (fun h -> (current ()).name_field <- h);
+    req_attr "login" (fun h -> (current ()).login_field <- h);
+    req_attr "email" (fun h -> (current ()).email_field <- h);
+    req_attr "status" (fun h -> (current ()).status_field <- h);
+    req_attr "teacher_status_value" (fun h ->
+      (current ()).teacher_status_value <- h
+    );
   ]
   in
-  element ~name ~obligatory ~attributes ()
+  element ~init ~name ~obligatory ~attributes ()
 )
 
 let _ =
