@@ -373,8 +373,8 @@ span.report {
 }
 
 .editor_box {
-   padding-left: 3em;
-   width: 60em;
+   padding-left: 2em;
+   width: 66em;
    height: 25em;
    position: relative;
    margin-top: 1em;
@@ -388,7 +388,7 @@ span.report {
    right: 0;
    bottom: 0;
    left: 0;
-   width: 60em;
+   width: 65em;
    height: 23em;
  }
 
@@ -397,8 +397,8 @@ span.report {
    margin-top: 0.2em;
    font-style: italic;
    background-color: #EEEEEE;
-   width: 61em;
-   height: 1.7em;
+   width: 71em;
+   height: 3em;
    padding-left: 1em;
    padding-top: 5px;
 }
@@ -459,9 +459,10 @@ span.bold {
 }
 
 div.exercise_editor {
-    width: 60em;
+    width: 65em;
     margin: 0;
     padding: 0;
+    margin-bottom: 4em;
 }
 
 div.exercise_sources {

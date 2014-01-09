@@ -191,7 +191,7 @@ let create
         let nb = ref 0 in fun _ ->
           incr nb;
           let nb_now = !nb in
-          ignore (Lwt_js.sleep 0.5 >>= fun _ -> (
+          ignore (Lwt_js.sleep 3. >>= fun _ -> (
             if !nb = nb_now then
               let content = Js.to_string (editor##getValue ()) in
               let process () = (%local_process %echo content >>= function
@@ -223,7 +223,8 @@ let create
   in
   let editor = div ~a:[a_class ["editor_box"]] [
     editor_textarea;
-    message_box;
+(*  FIXME: Reenable this:
+    message_box*)
     questions_box
   ] in
   return (editor, editor_id, process_request)
