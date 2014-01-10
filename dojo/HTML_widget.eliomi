@@ -71,6 +71,7 @@ val get_list_editor :
   -> (unit, [> div ] elt) server_function
 
 val get_choices_editor :
+  int list ->
   string list ->
   (int -> unit Lwt.t) ->
   (int -> unit Lwt.t) ->

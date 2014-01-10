@@ -123,20 +123,27 @@ let display_user_input exo_id answer_id checkpoint context submission =
       let width = float_of_int (String.length msg) in
       let style = Printf.sprintf "height:1em; width:%fem;" width in
 
-      return (div ~a:[a_style style; a_class ["user_input_file"]] (
-        (HTML_widget.fileuploader_wrapper width 1. (fun user_filename ->
+      return (div (
+        (div ~a:[a_style style; a_class ["user_input_file"]] [
+          HTML_widget.fileuploader_wrapper width 1. (fun user_filename ->
           (* FIXME: Check user_filename = filename. *)
-          return (tmp_filename, commit)
-         ) span (pcdata msg))
-          :: previous_file
+            return (tmp_filename, commit)
+          ) span (pcdata msg)
+        ]
+        ) :: previous_file
       ))
 
     | Some (`Choices cs) ->
-      let choices = ref [] in
+      let initial_choices =
+        match submission with
+          | Some (SubmittedChoices cs) -> cs
+          | _ -> []
+      in
+      let choices = ref initial_choices in
       let add x = return (choices := x :: !choices) in
       let del x = return (choices := List.filter (( = ) x) !choices) in
       let choices_editor =
-        HTML_widget.get_choices_editor cs add del
+        HTML_widget.get_choices_editor initial_choices cs add del
       in
       (* FIXME: The following sequence of code is too inelegant! *)
       let choices_div = div [] in
@@ -156,8 +163,13 @@ let display_user_input exo_id answer_id checkpoint context submission =
       in
       return (div ~a:[a_class ["user_answer"]] [choices_div; submit_button])
 
-    | Some (`KeyValues vs) ->
-      let answers = ref (List.map (fun v -> [v; ""]) vs) in
+    | Some (`KeyValues ks) ->
+      let vs =
+        match submission with
+          | Some (SubmittedValues vs) -> vs
+          | None -> List.map (fun _ -> "") ks
+      in
+      let answers = ref (List.map2 (fun k v -> [k; v]) ks vs) in
       let get () = return !answers in
       let set ss = return (answers := ss) in
       let fields = ["Key"; "Value"] in

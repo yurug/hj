@@ -262,7 +262,7 @@ let get_list_editor
       fields get set extra_actions cell_status
   )
 
-let get_choices_editor choices add del =
+let get_choices_editor initial_choices choices add del =
   let choice_item idx c =
     let idx = succ idx in
     let change_choice =
@@ -275,10 +275,13 @@ let get_choices_editor choices add del =
       Lwt.return (change_choice ())
     )
     in
+    let checked =
+      if List.mem idx initial_choices then [a_checked `Checked] else []
+    in
     p [input
-          ~a:[a_onclick {{ fun _ -> Lwt.async (fun () ->
+          ~a:(a_onclick {{ fun _ -> Lwt.async (fun () ->
               %change_choice_cb ())
-             }}]
+             }} :: checked)
           ~input_type:`Checkbox();
        pcdata c]
   in
