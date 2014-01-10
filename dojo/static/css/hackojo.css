@@ -26,6 +26,7 @@ body {
 
 #contents {
     background: white;
+    width: 80em;
 }
 
 #logo {
@@ -396,7 +397,7 @@ span.report {
 
 .editor_box {
    padding-left: 2em;
-   width: 66em;
+   width: 65em;
    height: 25em;
    position: relative;
    margin-top: 1em;
