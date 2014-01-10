@@ -503,3 +503,32 @@ img.homepage_photo {
     width: auto;
     height: 20em;
 }
+
+div.user_input_file {
+    font-style: italic;
+    font-weight: bold;
+    text-decoration: underline;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    font-size:1em;
+    font-weight:bold ;
+    cursor:pointer;
+    margin-right: auto;
+    padding:5px 25px;
+    background: #dddddd;
+
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+    border-radius: 10px;
+    -webkit-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 4px rgba(1, 1, 1, .75);
+    color:#000000;
+}
+
+div.user_input_file:hover, div.user_input_file:focus {
+    background-color :#eeeeee;
+    -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+    box-shadow: 0 0 1px rgba(1, 1, 1, .75);
+}

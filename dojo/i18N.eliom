@@ -269,6 +269,8 @@ module Fr : I18N_sig.Text = struct
   let runtime_error =
     "Erreur à l'exécution."
 
+  let to_be_provided =
+    " à fournir."
 
 end
 

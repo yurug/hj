@@ -109,12 +109,15 @@ let display_user_input exo_id checkpoint context =
         submit_file exo_id checkpoint tmp_filename filename
         >>= fun _ -> return ()
       in
-      return (div [
-        span [pcdata filename];
-        HTML_widget.fileuploader (fun user_filename ->
-        (* FIXME: Check user_filename = filename. *)
+      let msg = filename ^ I18N.String.to_be_provided in
+      let width = float_of_int (String.length msg) in
+      let style = Printf.sprintf "height:1em; width:%fem;" width in
+      return (div ~a:[a_style style; a_class ["user_input_file"]] [
+        HTML_widget.fileuploader_wrapper width 1. (fun user_filename ->
+          (* FIXME: Check user_filename = filename. *)
           return (tmp_filename, commit)
-        )
+        ) span (pcdata msg);
+
       ])
     | Some (`Choices cs) ->
       let choices = ref [] in
@@ -146,7 +149,7 @@ let display_user_input exo_id checkpoint context =
       let answers = ref (List.map (fun v -> [v; ""]) vs) in
       let get () = return !answers in
       let set ss =
-        Ocsigen_messages.errlog "Set!";
+        Ocsigen_messages.errlog ("Set:" ^ String.concat "| " (List.map (String.concat ", ") ss));
         return (answers := ss)
       in
       let fields = ["Key"; "Value"] in
@@ -178,12 +181,14 @@ let display_user_input exo_id checkpoint context =
              %submit ())
       }}
       in
-      return (div ~a:[a_class ["user_answer"]] [editor_div; p [pcdata ""]; submit_button])
+      return (div ~a:[a_class ["user_answer"]] [editor_div;
+                                                p [pcdata ""];
+                                                submit_button])
 
 let display_context exo_id checkpoint context evaluation =
   lwt user_input = display_user_input exo_id checkpoint context in
   lwt score = display_score checkpoint evaluation in
   return [
     user_input;
-    score
+    div [ score ]
   ]

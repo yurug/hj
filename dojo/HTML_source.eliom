@@ -98,7 +98,7 @@ let entity_sources_div
           ~no_header:true ["Filenames"] get_sources (Some set_sources)
           (fun i ->
             let source () = List.nth sources i in
-            let upload_form = fileuploader (import (module E) e source) in
+            let upload_form = fileuploader 1. 1. (import (module E) e source) in
             [
               icon [pcdata "↓"] {{ fun _ -> %download %i }};
               upload_form

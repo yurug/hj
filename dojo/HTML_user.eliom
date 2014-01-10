@@ -65,7 +65,10 @@ let homepage u =
             return (X.uri_of_string u)
     in
     return (div ~a:[a_class ["homepage_photo"]] [
-      HTML_widget.fileuploader_wrapper (
+      (* FIXME: 20. should be replaced by a symbolic constant. Yet, I do not
+         know how to use these symbol constants in the CSS. Should I move
+         to a programmatically defined CSS? *)
+      HTML_widget.fileuploader_wrapper 20. 20. (
         HTML_source.import (module CORE_user) u photo_filename
       ) div (img
         ~a:[a_class ["homepage_photo"]]

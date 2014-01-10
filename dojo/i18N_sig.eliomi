@@ -104,6 +104,7 @@ sig
   val unbound_variable : string -> string -> string
   val illtyped_application: string -> string
   val runtime_error : string
+  val to_be_provided : string
 end
 
 }}

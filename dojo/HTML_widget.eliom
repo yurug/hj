@@ -386,7 +386,7 @@ type ('a, 'b, 'c) c =
     ?a:'a Eliom_content.Html5.D.attrib list ->
     'b Eliom_content.Html5.D.elt list -> 'c Eliom_content.Html5.D.elt
 
-let fileuploader_wrapper import (constructor : (_, _, _) c) body =
+let fileuploader_wrapper width height import (constructor : (_, _, _) c) body =
   let form_id = Id.new_elt_id ~global:false () in
   let onchange = {{ fun _ ->
     let f = Id.get_element %form_id in
@@ -394,16 +394,25 @@ let fileuploader_wrapper import (constructor : (_, _, _) c) body =
     f##submit ()
   }}
   in
+  let style =
+    Printf.sprintf
+      "width:%fem; height:%fem; position:absolute; text-align:center;"
+      width height
+  in
   Id.create_named_elt form_id (
     post_form ~a:[a_class ["inlined"]]
       ~xhr:true
       ~service:(file_upload_service import) (fun f -> [
-        constructor ~a:[a_class ["fileContainer"; "inlined"]] [
-          file_input ~a:[a_onchange onchange; a_class ["inlined"]] ~name:f ();
+        constructor ~a:[a_class ["fileContainer"; "inlined"]; a_style style] [
+          file_input
+            ~a:[a_onchange onchange; a_class ["inlined"]; a_style style]
+            ~name:f ();
           body
         ];
       ]) ()
   )
 
-let fileuploader import =
-  fileuploader_wrapper import (label : _ :> (_, _, _) c) (pcdata "↑")
+let fileuploader width height import =
+  fileuploader_wrapper width height import
+    (label : _ :> (_, _, _) c)
+    (pcdata "↑")
