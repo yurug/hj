@@ -60,7 +60,7 @@ let list_editor
     ?(no_insertion = false)
     list
     (extra_actions : int -> _)
-    (column_status : int -> [`RO | `RW])
+    (cell_status : int -> int -> [`RO | `RW])
 =
 
   (** A table to convert HTML5 identifier into list indices. *)
@@ -176,14 +176,14 @@ let list_editor
     td ([ remove_action; replace_action ] @ extra_actions idx)
 
   and cells_of_tr a fields table id idx =
-    List.mapi (field a) fields
+    List.mapi (field a idx) fields
     @ (if no_action then [] else [tools_of table id idx])
 
-  and field a i f =
+  and field a row col f =
     (* FIXME: A workaround to the following bug of Ocsigen:
        https://github.com/ocsigen/tyxml/commit
        /1a05bd9e7f96720b3a57289054ab9c4a5fd9926a#commitcomment-4425462 *)
-    let editable = list.replace <> None && column_status i = `RW in
+    let editable = list.replace <> None && cell_status row col = `RW in
     let a = if editable then a_class ["editable_cell"] :: a else a in
     let elt = span ~a [pcdata f] in
     if editable then
@@ -223,11 +223,11 @@ let list_editor
   in
   return (div [table])
 
-let get_list_editor
+let server_get_list_editor
     ?(no_header    = false)
     ?(no_action    = false)
     ?(no_insertion = false)
-    fields get set extra_actions column_status =
+    fields get set extra_actions cell_status =
   let rd f = lwt l = get () in f l in
   let empty = List.map (fun _ -> "") fields in
   let remove, replace =
@@ -248,10 +248,18 @@ let get_list_editor
       replace;
     })
   in
+  list_editor
+    ~no_header ~no_action ~no_insertion
+    desc extra_actions cell_status
+
+let get_list_editor
+    ?(no_header    = false)
+    ?(no_action    = false)
+    ?(no_insertion = false)
+    fields get set extra_actions cell_status =
   server_function Json.t<unit> (fun () ->
-    list_editor
-      ~no_header ~no_action ~no_insertion
-      desc extra_actions column_status
+    server_get_list_editor ~no_header ~no_action ~no_insertion
+      fields get set extra_actions cell_status
   )
 
 let get_choices_editor choices add del =

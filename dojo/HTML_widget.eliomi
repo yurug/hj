@@ -45,7 +45,18 @@ val list_editor
   -> ?no_insertion:bool
   -> editable_list
   -> (int -> [ td_content_fun ] elt list)
-  -> (int -> [`RO | `RW ])
+  -> (int -> int -> [`RO | `RW ])
+  -> [> div ] elt Lwt.t
+
+val server_get_list_editor :
+  ?no_header:bool
+  -> ?no_action:bool
+  -> ?no_insertion:bool
+  -> string list
+  -> (unit -> string list list Lwt.t)
+  -> (string list list -> unit Lwt.t) option
+  -> (int -> [ td_content_fun ] elt list)
+  -> (int -> int -> [`RO | `RW ])
   -> [> div ] elt Lwt.t
 
 val get_list_editor :
@@ -56,7 +67,7 @@ val get_list_editor :
   -> (unit -> string list list Lwt.t)
   -> (string list list -> unit Lwt.t) option
   -> (int -> [ td_content_fun ] elt list)
-  -> (int -> [`RO | `RW ])
+  -> (int -> int -> [`RO | `RW ])
   -> (unit, [> div ] elt) server_function
 
 val get_choices_editor :
@@ -81,7 +92,6 @@ val field :
 type ('a, 'b, 'c) c =
     ?a:'a Eliom_content.Html5.D.attrib list ->
     'b Eliom_content.Html5.D.elt list -> 'c Eliom_content.Html5.D.elt
-
 
 val fileuploader_wrapper :
   float -> float ->

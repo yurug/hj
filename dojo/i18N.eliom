@@ -272,6 +272,15 @@ module Fr : I18N_sig.Text = struct
   let to_be_provided =
     " à fournir."
 
+  let student =
+    "étudiant"
+
+  let master =
+    "maître"
+
+  let last_connection =
+    "dernière connexion"
+
 end
 
 module String = (val

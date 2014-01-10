@@ -148,10 +148,7 @@ let display_user_input exo_id checkpoint context =
     | Some (`KeyValues vs) ->
       let answers = ref (List.map (fun v -> [v; ""]) vs) in
       let get () = return !answers in
-      let set ss =
-        Ocsigen_messages.errlog ("Set:" ^ String.concat "| " (List.map (String.concat ", ") ss));
-        return (answers := ss)
-      in
+      let set ss = return (answers := ss) in
       let fields = ["Key"; "Value"] in
       let extra _ = [] in
       let list_editor =
@@ -160,7 +157,7 @@ let display_user_input exo_id checkpoint context =
           ~no_insertion:true
           ~no_action:true
           fields get (Some set) extra
-          (function 1 -> `RW | _ -> `RO)
+          (fun _ -> function 1 -> `RW | _ -> `RO)
       in
       (* FIXME: The following sequence of code is too inelegant! *)
       let editor_div = div [] in

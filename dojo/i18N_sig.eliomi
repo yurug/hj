@@ -49,6 +49,8 @@ sig
   val surname : string
   val about : string
   val home : string
+  val student: string
+  val master: string
   val logout : string
   val exercises : string
   val must_do : string
@@ -70,6 +72,7 @@ sig
   val many : string -> string
 
   (** Sentences. *)
+  val last_connection: string
   val sorry_autotesting_is_disabled : string
   val the_following_operation_is_broken : string -> string -> string
   val the_server_is_up : string

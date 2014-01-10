@@ -32,6 +32,13 @@ let login           e = observe e (fun u -> return (content u).login)
 let firstname       e = observe e (fun u -> return (content u).firstname)
 let surname         e = observe e (fun u -> return (content u).surname)
 let last_connection e = observe e (fun u -> return (content u).last_connection)
+let email           e = observe e (fun u -> return (content u).email)
+
+let set on_c e =
+  lwt c = observe e (fun u -> return (content u)) in
+  change e (UpdateContent (on_c c))
+
+let set_email e email = set (fun c -> { c with email }) e
 
 (** By convention, users are stored in the "users" folder. *)
 

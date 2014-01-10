@@ -38,13 +38,13 @@ let machinist_page mc =
     edit_list I18N.String.logins ["username"; "ssh key"]
       (fun () -> get_logins mc)
       (Some (fun l -> change mc (SetLogins l)))
-      (fun _ -> `RW)
+      (fun _ _ -> `RW)
   in
   let addresses_div =
     edit_list I18N.String.addresses ["address"; "port"]
       (fun () -> get_addresses mc)
       (Some (fun l -> change mc (SetAddresses l)))
-      (fun _ -> `RW)
+      (fun _ _ -> `RW)
   in
   lwt divs = Lwt_list.map_s (react_to_mc get) [
     (selector_of_machine_kind (kind mc));

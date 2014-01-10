@@ -76,11 +76,41 @@ let homepage u =
         ~alt:"Homepage photo" ());
     ])
   in
-  let about =
-    div [
+  lwt about =
+    let get_user_infos () =
+      lwt email_value = email u in
+      lwt is_teacher_value = is_teacher u in
+      lwt last_connection_value = last_connection u in
+      return I18N.String.([
+        [ email; email_value ];
+        [ status; (if is_teacher_value then master else student) ];
+        [ last_connection; last_connection_value ]
+      ])
+    in
+    let set_user_infos = function
+      | [ _; email ] :: _ ->
+        CORE_user.set_email u email
+      | _ ->
+        (* FIXME: This should never happen. *)
+        return ()
+    in
+    lwt editor =
+      HTML_widget.server_get_list_editor
+        ~no_header:true ~no_action:true ~no_insertion:true
+        ["Key"; "Value"]
+        get_user_infos
+        (Some set_user_infos)
+        (fun _ -> [])
+        (fun row col ->
+          match (row, col) with
+            | (0, 1) -> `RW
+            | _ -> `RO
+        )
+    in
+    return (div [
       h2 [pcdata (I18N.String.(cap about))];
-      p [pcdata "about"]
-    ]
+      editor
+    ])
   in
   lwt notifications =
     lwt scrolls = notifications_scrolls u in

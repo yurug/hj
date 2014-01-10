@@ -34,6 +34,10 @@ val last_connection : t -> string Lwt.t
 (** [is_teacher u] returns [true] if [u] is a teacher. *)
 val is_teacher : t -> bool Lwt.t
 
+(** [email u] returns the email of the user [u]. *)
+val email : t -> string Lwt.t
+val set_email : t -> string-> unit Lwt.t
+
 (** Services (automatically inferred using eliomc -i.) *)
 
 val login_service :
