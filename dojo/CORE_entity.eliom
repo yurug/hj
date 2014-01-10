@@ -182,6 +182,8 @@ module type S = sig
   val identifier : t -> CORE_identifier.t
 
   val log : t -> int -> (change * timestamp) list
+
+  val source_filename : t -> string -> string
 end
 
 (** The client must provide the following information
@@ -341,10 +343,11 @@ and type change = I.change
     let card_changes =
       List.length cs + List.length (to_list dependencies)
     in
-    Ocsigen_messages.errlog (Printf.sprintf "%s is reacting (%d changes : %s)"
-                               (string_of_identifier (identifier e))
-                               card_changes
-                               (String.concat " " (List.map I.string_of_change cs))
+    Ocsigen_messages.errlog (
+      Printf.sprintf "%s is reacting (%d changes : %s)"
+        (string_of_identifier (identifier e))
+        card_changes
+        (String.concat " " (List.map I.string_of_change cs))
     );
     if card_changes = 0 then
       return ()
@@ -396,8 +399,6 @@ and type change = I.change
     e.state <- Modified (empty_dependencies, Queue.create ())
 
   and change ?who e c =
-
-    Ocsigen_messages.errlog (Printf.sprintf "Push change: %s\n" (I.string_of_change c));
 
     match e.state with
       | UpToDate ->
@@ -552,6 +553,9 @@ and type change = I.change
       )
 
   let identifier = identifier
+
+  let source_filename x =
+    CORE_standard_identifiers.source_filename (identifier x)
 
 end
 

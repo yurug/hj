@@ -47,3 +47,7 @@ let all_identifiers_at path =
   ) >>= function
     | `OK ls -> return ls
     | `KO _ -> (* FIXME: handle this correctly. *) return []
+
+let source_filename x fname =
+  let apath = root true (path_of_identifier x) in
+  Filename.concat (string_of_path apath) fname

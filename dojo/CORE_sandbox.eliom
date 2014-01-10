@@ -172,8 +172,11 @@ let exec
     let release_when_finished = persistence <> RequirePersistence in
 
     (** Process command. *)
-    copy_on_sandbox files false sandbox limitations observer
-    >> exec_on_sandbox cmd release_when_finished sandbox limitations observer
+    (if files <> [] then
+        copy_on_sandbox files false sandbox limitations observer
+     else
+        return 0
+    ) >> exec_on_sandbox cmd release_when_finished sandbox limitations observer
     >>= fun job -> return (`OK (job, persistence))
 
   with NoSuchSandbox ->

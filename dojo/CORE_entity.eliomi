@@ -163,6 +163,9 @@ module type S = sig
       first. *)
   val log : t -> int -> (change * timestamp) list
 
+  (** [source_filename e fname] returns the absolute path of a source
+      of [e] named [fname]. *)
+  val source_filename : t -> string -> string
 end
 
 (** The following module interface has to be implemented to instantiate

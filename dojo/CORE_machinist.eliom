@@ -238,7 +238,12 @@ include CORE_entity.Make (struct
            the waiting list of each address... *)
         let available_logins =
           List.map (function
-            | [username; ssh_key] -> { username; ssh_key }
+            | [username; ssh_key] ->
+              let ssh_key = CORE_standard_identifiers.(
+                source_filename (CORE_inmemory_entity.identifier state) ssh_key
+              )
+              in
+              { username; ssh_key }
             | _ -> (* FIXME: handle user error *) assert false
           ) l
         in

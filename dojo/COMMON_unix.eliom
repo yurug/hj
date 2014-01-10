@@ -38,7 +38,6 @@ let ls ps =
     return y
   ) []
 
-
 let rmdir ps ?(content=false) lraise =
   let cmd = Printf.sprintf (if content then "rm -fr %s" else "rm -r %s") ps in
   success ~lraise (!% cmd)
@@ -116,7 +115,7 @@ let ssh ?timeout username private_key addr port cmd observer =
   handle_unix_error (fun () ->
     let p = exec ?timeout (!% (
       Printf.sprintf
-        "ssh %s@%s %s -p %d -i %s '(%s)'"
+        "ssh %s@%s %s -q -p %d -i %s '(%s)'"
         username addr os port private_key cmd))
     in
     observer p >>= fun _ -> return (fun () -> p#terminate)
@@ -130,7 +129,7 @@ let scp ?timeout username private_key addr port srcs observer =
     in
     let p = exec ?timeout (!% (
       Printf.sprintf
-        "scp %s -P %d -i %s %s %s@%s:"
+        "scp %s -P %d -q -i %s %s %s@%s:"
         os port private_key srcs username addr))
     in
     observer p >>= fun _ -> return (fun () -> p#terminate)
