@@ -280,8 +280,15 @@ include CORE_entity.Make (struct
           set_addresses l
 
     in
+    let refresh_wl content (addr, wl) =
+      let wl' = COMMON_waiting_list.fresh_for_this_session wl in
+      if wl == wl' then content else set_wl addr wl' content
+    in
     let content0 = content state in
-    lwt content = Lwt_list.fold_left_s make_change content0 cs in
+    let content =
+      List.fold_left refresh_wl content0 content0.available_addresses
+    in
+    lwt content = Lwt_list.fold_left_s make_change content cs in
     if content0 == content then
       return NoUpdate
     else
