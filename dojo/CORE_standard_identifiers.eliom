@@ -49,5 +49,8 @@ let all_identifiers_at path =
     | `KO _ -> (* FIXME: handle this correctly. *) return []
 
 let source_filename x fname =
-  let apath = root true (path_of_identifier x) in
-  Filename.concat (string_of_path apath) fname
+  if Filename.is_relative fname then
+    let apath = root true (path_of_identifier x) in
+    Filename.concat (string_of_path apath) fname
+  else
+    fname
