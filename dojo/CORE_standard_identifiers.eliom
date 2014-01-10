@@ -54,3 +54,6 @@ let source_filename x fname =
     Filename.concat (string_of_path apath) fname
   else
     fname
+
+let ping id =
+  Sys.file_exists (source_filename id ".meta.json")

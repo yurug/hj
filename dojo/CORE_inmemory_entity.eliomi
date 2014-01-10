@@ -93,6 +93,9 @@ val of_list:
 val to_list:
   dependencies -> (dependency_kind * ((identifier list * identifier) list)) list
 
+(** [refresh d] makes sure that the references of [d] are still valid. *)
+val refresh : 'a meta -> 'a meta
+
 (** {2 Public API for the implementation of the entity engine} *)
 
 (** [make id ds c] returns an entity description for entity

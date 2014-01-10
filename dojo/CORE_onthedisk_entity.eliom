@@ -114,6 +114,7 @@ module Make (D : sig type data deriving (Json) end)
     >>>= fun latest_version -> CORE_vfs.read latest_version
     >>>= fun raw ->
     let meta = from_string Json.t<D.data meta> raw in
+    let meta = CORE_inmemory_entity.refresh meta in
     return (`OK meta)
 
 end

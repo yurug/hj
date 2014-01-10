@@ -110,6 +110,13 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
       given authors list. *)
   lwt authors_answers = Lwt_list.map_s (answer_of exo) authors in
 
+  List.iter2 (fun a author ->
+    Ocsigen_messages.errlog (
+      Printf.sprintf "Found answer %s for user %s"
+        (match a with None -> "none" | Some a -> string_of_identifier a)
+        (string_of_identifier (CORE_user.identifier author)))
+  ) authors_answers authors;
+
   (** There are several cases to handle:
 
       (i) The "standard" case:
@@ -150,8 +157,7 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
       let data = { submissions = [] } in
       let dependencies =
         of_list [(answer_to_dependency_kind, [
-          ([],
-           CORE_exercise.identifier exo)])]
+          ([], CORE_exercise.identifier exo)])]
       in
       let init = (data, dependencies, CORE_property.empty, []) in
       lwt path = path_of_exercise_answers exo_id in

@@ -45,6 +45,16 @@ type 'a meta = {
   tick            : float;
 } deriving (Json)
 
+let refresh e =  List.(CORE_standard_identifiers.(
+  let refresh_dependency (k, ds) =
+    let ds = filter (fun (_, y) -> ping y) ds in
+    let ds = map (fun (xs, y) -> (filter ping xs, y)) ds in
+    (k, ds)
+  in
+  let dependencies = List.map refresh_dependency e.dependencies in
+  { e with dependencies }
+))
+
 let now e = { e with tick = Unix.gettimeofday () }
 
 let make identifier dependencies properties sources content =

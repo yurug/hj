@@ -261,7 +261,6 @@ let evaluate change_later exercise answer cps data =
   Ocsigen_messages.errlog ("Updating jobs of evaluation");
   return (UpdateContent { data with jobs })
 
-
 include CORE_entity.Make (struct
 
   type data = description deriving (Json)

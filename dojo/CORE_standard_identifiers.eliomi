@@ -25,3 +25,5 @@ val assigner : identifier
 val all_identifiers_at : path -> identifier list Lwt.t
 
 val source_filename : identifier -> string -> string
+
+val ping : identifier -> bool
