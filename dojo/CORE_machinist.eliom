@@ -249,13 +249,13 @@ include CORE_entity.Make (struct
         in
         return { content with available_logins }
       in
-
-      let set_addresses l =
-        let l = List.map (function
+      let get_addresses l =
+        List.map (function
           | [hostname; port] -> (hostname, int_of_string port)
           | _ -> (* FIXME: handle user error *) assert false
         ) l
-        in
+      in
+      let set_available_addresses content l =
         (* FIXME: For the moment, we lost all the running jobs...
            So, the current implementation only makes sense if the
            machinist is not already busy.
@@ -274,10 +274,14 @@ include CORE_entity.Make (struct
           release_sandbox addr r
 
         | SetLogins l ->
-          set_logins l
+          lwt content = set_logins l in
+          (** The login information inside available_addresses
+              must be refreshed. *)
+          let addresses = fst (List.split content.available_addresses) in
+          set_available_addresses content addresses
 
         | SetAddresses l ->
-          set_addresses l
+          set_available_addresses content (get_addresses l)
 
     in
     let refresh_wl content (addr, wl) =
