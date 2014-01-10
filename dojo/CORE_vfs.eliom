@@ -13,6 +13,9 @@ open COMMON_process
 open COMMON_log
 open COMMON_unix
 
+(** The file system is the exclusive property of www-data. *)
+let _ = Unix.umask 0o077
+
 (** {1 Functional part.} *)
 
 type filename = CORE_identifier.t
