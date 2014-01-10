@@ -108,7 +108,7 @@ let new_evaluation_state_of_checkpoint c s d =
   in
   return { d with jobs = update_assoc c s d.jobs }
 
-let create_job exo_id checkpoint context submission change_later =
+let create_job exo_id answer_id checkpoint context submission change_later =
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s =
@@ -167,19 +167,19 @@ let create_job exo_id checkpoint context submission change_later =
             | Some t -> float_of_int t
         in
         let cmd = CORE_context.substitute_seed seed cmd in
+        let submissions_files =
+          List.map
+            (CORE_standard_identifiers.source_filename answer_id)
+            (CORE_context.submission_files submission)
+        in
         let files =
-          let absolute f = string_of_path (
-            CORE_standard_identifiers.root true (
-              CORE_identifier.(
-                concat (path_of_identifier exo_id) (make [label f])
-              ))
-          )
-          in
-          List.map absolute (get_sources context)
+          List.map
+            (CORE_standard_identifiers.source_filename exo_id)
+            (get_sources context)
         in
         (CORE_sandbox.exec
            ~limitations:[CORE_sandbox.TimeOut timeout]
-           files
+           (submissions_files @ files)
            cmd
            observer
         ) >>= function
@@ -195,9 +195,10 @@ let cancel_job_if_present job =
 
 let evaluate change_later exercise answer cps data =
   let exo_id = CORE_exercise.identifier exercise in
+  let answer_id = CORE_answer.identifier answer in
   let evaluate checkpoint current_state =
     let run_submission_evaluation c s =
-      create_job exo_id checkpoint c s change_later >>= function
+      create_job exo_id answer_id checkpoint c s change_later >>= function
         | Some job ->
           Ocsigen_messages.errlog "Executable job created.";
           return (BeingEvaluated (job, s, CORE_diagnostic.Empty, c))

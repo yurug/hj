@@ -131,6 +131,9 @@ deriving (Json)
 
 }}
 
+let submission_files = function
+  | SubmittedFile (s, _) -> [s]
+  | _ -> []
 
 let equivalent_submission s1 s2 =
   match s1, s2 with

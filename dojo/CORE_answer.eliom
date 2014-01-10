@@ -48,14 +48,23 @@ include CORE_entity.Make (struct
   exception InvalidCheckpoint
 
   let react state deps changes change_later =
+    let update_source s =
+      CORE_onthedisk_entity.save_source
+        (CORE_inmemory_entity.identifier state)
+        s
+      >> return ()
+      (* FIXME: take the resulting boolean into account. *)
+    in
     let make_change (ss, source_updates) change =
       match change with
       | NewSubmissionData (c, s, sources) ->
-        (update_assoc c (Submission s) ss, sources @ source_updates)
+        Lwt_list.iter_s update_source sources
+        >> return (update_assoc c (Submission s) ss, sources @ source_updates)
     in
     try
-      let submissions, source_updates =
-        List.fold_left make_change ((content state).submissions, []) changes
+      lwt submissions, source_updates =
+        Lwt_list.fold_left_s make_change
+          ((content state).submissions, []) changes
       in
       return (state_changes [
         if (submissions == (content state).submissions) then
