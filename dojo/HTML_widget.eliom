@@ -365,33 +365,45 @@ open Ocsigen_extensions
    For the moment, js_of_ocaml seems not to provide
    enough on that aspect...
 *)
-let fileuploader import =
-  let file_upload_service =
-    Eliom_registration.Action.register_post_coservice'
-      ~post_params:(Eliom_parameter.(file "file"))
-      (fun () file ->
-          Ocsigen_messages.errlog
-            (Printf.sprintf "Received a file:\n %s\n%s\n%s"
-               file.Ocsigen_extensions.tmp_filename
-               file.Ocsigen_extensions.raw_original_filename
-               file.Ocsigen_extensions.original_basename);
+
+let file_upload_service import =
+  Eliom_registration.Action.register_post_coservice'
+    ~post_params:(Eliom_parameter.(file "file"))
+    (fun () file ->
+      Ocsigen_messages.errlog
+        (Printf.sprintf "Received a file (%Ld):\n %s\n%s\n%s"
+           file.Ocsigen_extensions.filesize
+           file.Ocsigen_extensions.tmp_filename
+           file.Ocsigen_extensions.raw_original_filename
+           file.Ocsigen_extensions.original_basename);
         (* FIXME: Handle error. *)
-        lwt dest, commit = import file.original_basename in
-        ltry COMMON_unix.(cp file.tmp_filename dest)
-        >>= fun _ -> commit ()
-      )
-  in
+      lwt dest, commit = import file.original_basename in
+      ltry COMMON_unix.(cp file.tmp_filename dest)
+      >>= fun _ -> commit ()
+    )
+
+type ('a, 'b, 'c) c =
+    ?a:'a Eliom_content.Html5.D.attrib list ->
+    'b Eliom_content.Html5.D.elt list -> 'c Eliom_content.Html5.D.elt
+
+let fileuploader_wrapper import (constructor : (_, _, _) c) body =
   let form_id = Id.new_elt_id ~global:false () in
   let onchange = {{ fun _ ->
     let f = Id.get_element %form_id in
     let f = To_dom.of_form f in
     f##submit ()
-  }} in
-  Id.create_named_elt form_id (post_form ~a:[a_class ["inlined"]]
-    ~xhr:true ~service:file_upload_service (fun f -> [
-      label ~a:[a_class ["fileContainer"; "inlined"]] [
-        file_input ~a:[a_onchange onchange; a_class ["inlined"]] ~name:f ();
-        pcdata "↑"
-      ];
-    ]) ()
+  }}
+  in
+  Id.create_named_elt form_id (
+    post_form ~a:[a_class ["inlined"]]
+      ~xhr:true
+      ~service:(file_upload_service import) (fun f -> [
+        constructor ~a:[a_class ["fileContainer"; "inlined"]] [
+          file_input ~a:[a_onchange onchange; a_class ["inlined"]] ~name:f ();
+          body
+        ];
+      ]) ()
   )
+
+let fileuploader import =
+  fileuploader_wrapper import (label : _ :> (_, _, _) c) (pcdata "↑")

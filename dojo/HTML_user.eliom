@@ -48,9 +48,9 @@ let homepage u =
     ])
   in
   lwt photo =
-    let photo_filename = "photo.jpg" in
+    let photo_filename () = "photo.jpg" in
     lwt (img_uri : string) =
-      CORE_onthedisk_entity.load_source uid photo_filename >>=
+      CORE_onthedisk_entity.load_source uid (photo_filename ()) >>=
         function
           | `OK s ->
             return (COMMON_file.send (
@@ -65,10 +65,12 @@ let homepage u =
             return (X.uri_of_string u)
     in
     return (div ~a:[a_class ["homepage_photo"]] [
-      img
+      HTML_widget.fileuploader_wrapper (
+        HTML_source.import (module CORE_user) u photo_filename
+      ) div (img
         ~a:[a_class ["homepage_photo"]]
         ~src:(Xml.uri_of_string img_uri)
-        ~alt:"Homepage photo" ();
+        ~alt:"Homepage photo" ());
     ])
   in
   let about =

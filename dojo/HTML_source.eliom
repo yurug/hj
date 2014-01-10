@@ -25,7 +25,41 @@ let source_path (type d) (type c)
   Filename.concat path filename
 )
 
-(* FIXME: Missing features: Download, Preview, Versioning. *)
+let commit
+    (type d)
+    (type c)
+    (module E : CORE_entity.S with type data = d and type change = c)
+    (e : E.t)
+    id = E.(
+      (** If [s] does not already exist in [e], it will be
+          created and assigned an empty file. *)
+      lwt s = load_source (identifier e) id >>= function
+        | `OK s -> return s
+        | `KO e -> warn e; return (CORE_source.make id "")
+      in
+      save_source (identifier e) s >>= function
+        | `OK _ -> return ()
+        | `KO e -> warn e; return () (* FIXME: handle error *)
+     )
+
+let import
+    (type d)
+    (type c)
+    (module E : CORE_entity.S with type data = d and type change = c)
+    (e : E.t)
+    source suggested_filename = E.(
+      let eid = E.identifier e in
+      let root f =
+        Filename.concat
+          (CORE_identifier.(CORE_standard_identifiers.(string_of_path (
+            root true (path_of_identifier eid)
+           )))) f
+      in
+      let filename = try source () with _ -> suggested_filename in
+      return (root filename, fun () -> commit (module E) e filename)
+    )
+
+(* FIXME: Missing features: Preview, Versioning. *)
 let entity_sources_div
     (type d)
     (type c)
@@ -35,21 +69,11 @@ let entity_sources_div
         lwt ss = observe e (fun d -> return (sources d)) in
         return (List.map (fun s -> [s]) ss)
       in
-      let commit id =
-        (** If [s] does not already exist in [e], it will be
-            created and assigned an empty file. *)
-        lwt s = load_source (identifier e) id >>= function
-          | `OK s ->
-            return s
-          | `KO e -> warn e; return (CORE_source.make id "")
-        in
-        save_source (identifier e) s >>= function
-          | `OK _ ->
-            return ()
-          | `KO e -> warn e; return () (* FIXME: handle error *)
-      in
       let set_sources ss =
-        Lwt_list.iter_s (function [ id ] -> commit id | _ -> assert false) ss
+        Lwt_list.iter_s (function
+          | [ id ] -> commit (module E) e id
+          | _ -> assert false
+        ) ss
       in
       let download =
         let link = server_function Json.t<int> (fun i ->
@@ -64,24 +88,17 @@ let entity_sources_div
           (* FIXME: to be implemented. *)
           Lwt.async (fun () ->
             lwt a = %link i in
-            Firebug.console##log_2 ("Download", a);
             return (Dom_html.window##location##assign (Js.string a))
           )
         }}
       in
+      lwt sources = observe e (fun d -> return (sources d)) in
       let get_editor =
-        (* FIXME: I8N. *)
-        get_list_editor ~no_header:true ["Filenames"] get_sources (Some set_sources)
+        get_list_editor
+          ~no_header:true ["Filenames"] get_sources (Some set_sources)
           (fun i ->
-            let import suggested_filename =
-              try_lwt
-                lwt sources = observe e (fun d -> return (sources d)) in
-                lwt filename = try return (List.nth sources i) with _ -> raise_lwt Not_found in
-                return (filename, fun () -> commit filename)
-              with e ->
-                return (suggested_filename, fun () -> commit suggested_filename)
-            in
-            let upload_form = fileuploader import in
+            let source () = List.nth sources i in
+            let upload_form = fileuploader (import (module E) e source) in
             [
               icon [pcdata "↓"] {{ fun _ -> %download %i }};
               upload_form

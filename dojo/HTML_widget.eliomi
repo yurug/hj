@@ -76,5 +76,16 @@ val field :
   | `Submit | `Tel | `Text | `Time | `Url | `Week ]
   -> string -> [> Html5_types.div ] Eliom_content.Html5.D.elt
 
+type ('a, 'b, 'c) c =
+    ?a:'a Eliom_content.Html5.D.attrib list ->
+    'b Eliom_content.Html5.D.elt list -> 'c Eliom_content.Html5.D.elt
+
+
+val fileuploader_wrapper :
+  (string -> (string * (unit -> unit Lwt.t)) Lwt.t) ->
+  ([> `Class ], [> Html5_types.input ] as 'a, Html5_types.form_content) c ->
+  'a Eliom_content.Html5.D.elt ->
+    [> Html5_types.form ] Eliom_content_core.Html5.elt
+
 val fileuploader :
   (string -> (string * (unit -> unit Lwt.t)) Lwt.t) -> [ td_content ] elt
