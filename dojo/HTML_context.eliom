@@ -98,10 +98,11 @@ let submit_answer_values exo_id cp vs =
     | _ ->
       return (`OK ())
 
-let display_user_input exo_id checkpoint context =
+let display_user_input exo_id answer_id checkpoint context submission =
   match CORE_context.get_answer_form context with
     | None ->
       return (p [pcdata "..."])
+
     | Some (`Filename filename) ->
       let tmp_filename = Filename.temp_file "hj" "" in
       let commit () =
@@ -109,16 +110,27 @@ let display_user_input exo_id checkpoint context =
         submit_file exo_id checkpoint tmp_filename filename
         >>= fun _ -> return ()
       in
+      let previous_file =
+        match submission with
+          | Some (SubmittedFile (filename, digest)) ->
+            [Raw.a ~a:[a_href (Xml.uri_of_string (COMMON_file.send (
+              CORE_standard_identifiers.source_filename answer_id filename
+            )))] [pcdata (filename ^ "(" ^ Digest.to_hex digest ^ ")")]]
+          | None ->
+            []
+      in
       let msg = filename ^ I18N.String.to_be_provided in
       let width = float_of_int (String.length msg) in
       let style = Printf.sprintf "height:1em; width:%fem;" width in
-      return (div ~a:[a_style style; a_class ["user_input_file"]] [
-        HTML_widget.fileuploader_wrapper width 1. (fun user_filename ->
+
+      return (div ~a:[a_style style; a_class ["user_input_file"]] (
+        (HTML_widget.fileuploader_wrapper width 1. (fun user_filename ->
           (* FIXME: Check user_filename = filename. *)
           return (tmp_filename, commit)
-        ) span (pcdata msg);
+         ) span (pcdata msg))
+          :: previous_file
+      ))
 
-      ])
     | Some (`Choices cs) ->
       let choices = ref [] in
       let add x = return (choices := x :: !choices) in
@@ -143,7 +155,6 @@ let display_user_input exo_id checkpoint context =
       }}
       in
       return (div ~a:[a_class ["user_answer"]] [choices_div; submit_button])
-
 
     | Some (`KeyValues vs) ->
       let answers = ref (List.map (fun v -> [v; ""]) vs) in
@@ -183,8 +194,23 @@ let display_user_input exo_id checkpoint context =
                                                 p [pcdata ""];
                                                 submit_button])
 
-let display_context exo_id checkpoint context evaluation =
-  lwt user_input = display_user_input exo_id checkpoint context in
+let extract_previous_submission checkpoint evaluation =
+  CORE_evaluation.(observe evaluation (fun s ->
+    let d = content s in
+    match COMMON_pervasives.opt_assoc checkpoint d.jobs with
+      | Some Unevaluated | None ->
+        return None
+      | Some (BeingEvaluated (_, s, _, _))
+      | Some (Evaluated (_, s, _, _)) ->
+        return (Some s)
+  )
+  )
+
+let display_context exo_id answer_id checkpoint context evaluation =
+  lwt submission = extract_previous_submission checkpoint evaluation in
+  lwt user_input =
+    display_user_input exo_id answer_id checkpoint context submission
+  in
   lwt score = display_score checkpoint evaluation in
   return [
     user_input;
