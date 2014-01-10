@@ -340,6 +340,12 @@ thead {
     border-style:solid;
 }
 
+span.editable_cell {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    background-color: #F0F0F0;
+}
+
 td {
     padding-left: 0.5em;
     padding-right: 0.5em;

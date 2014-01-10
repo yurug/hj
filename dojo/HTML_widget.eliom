@@ -58,7 +58,10 @@ let list_editor
     ?(no_header    = false)
     ?(no_action    = false)
     ?(no_insertion = false)
-    list (extra_actions : int -> _) =
+    list
+    (extra_actions : int -> _)
+    (column_status : int -> [`RO | `RW])
+=
 
   (** A table to convert HTML5 identifier into list indices. *)
 
@@ -138,7 +141,7 @@ let list_editor
       let tds = (To_dom.of_tr row)##childNodes in
       let select =
         if %no_action then
-          fun x -> x
+          fun x -> List.rev x
         else
           fun l -> List.(rev (list_cut 1 l))
       in
@@ -173,15 +176,17 @@ let list_editor
     td ([ remove_action; replace_action ] @ extra_actions idx)
 
   and cells_of_tr a fields table id idx =
-    List.map (field a) fields
+    List.mapi (field a) fields
     @ (if no_action then [] else [tools_of table id idx])
 
-  and field a f =
+  and field a i f =
     (* FIXME: A workaround to the following bug of Ocsigen:
        https://github.com/ocsigen/tyxml/commit
        /1a05bd9e7f96720b3a57289054ab9c4a5fd9926a#commitcomment-4425462 *)
+    let editable = list.replace <> None && column_status i = `RW in
+    let a = if editable then a_class ["editable_cell"] :: a else a in
     let elt = span ~a [pcdata f] in
-    if list.replace <> None then
+    if editable then
       ignore {unit{
         let e = To_dom.of_span %elt in
         e##setAttribute (Js.string "contenteditable", Js.string "true")
@@ -222,7 +227,7 @@ let get_list_editor
     ?(no_header    = false)
     ?(no_action    = false)
     ?(no_insertion = false)
-    fields get set extra_actions =
+    fields get set extra_actions column_status =
   let rd f = lwt l = get () in f l in
   let empty = List.map (fun _ -> "") fields in
   let remove, replace =
@@ -244,7 +249,9 @@ let get_list_editor
     })
   in
   server_function Json.t<unit> (fun () ->
-    list_editor ~no_header ~no_action ~no_insertion desc extra_actions
+    list_editor
+      ~no_header ~no_action ~no_insertion
+      desc extra_actions column_status
   )
 
 let get_choices_editor choices add del =
@@ -260,7 +267,10 @@ let get_choices_editor choices add del =
       Lwt.return (change_choice ())
     )
     in
-    p [input ~a:[a_onclick {{ fun _ -> Lwt.async (fun () -> %change_choice_cb ()) }}]
+    p [input
+          ~a:[a_onclick {{ fun _ -> Lwt.async (fun () ->
+              %change_choice_cb ())
+             }}]
           ~input_type:`Checkbox();
        pcdata c]
   in

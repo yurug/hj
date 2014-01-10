@@ -45,6 +45,7 @@ val list_editor
   -> ?no_insertion:bool
   -> editable_list
   -> (int -> [ td_content_fun ] elt list)
+  -> (int -> [`RO | `RW ])
   -> [> div ] elt Lwt.t
 
 val get_list_editor :
@@ -55,6 +56,7 @@ val get_list_editor :
   -> (unit -> string list list Lwt.t)
   -> (string list list -> unit Lwt.t) option
   -> (int -> [ td_content_fun ] elt list)
+  -> (int -> [`RO | `RW ])
   -> (unit, [> div ] elt) server_function
 
 val get_choices_editor :

@@ -160,6 +160,7 @@ let display_user_input exo_id checkpoint context =
           ~no_insertion:true
           ~no_action:true
           fields get (Some set) extra
+          (function 1 -> `RW | _ -> `RO)
       in
       (* FIXME: The following sequence of code is too inelegant! *)
       let editor_div = div [] in

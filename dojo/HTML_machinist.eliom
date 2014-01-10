@@ -21,9 +21,10 @@ let selector_of_machine_kind k =
   return [div []]
 }}
 
-let edit_list label fields get set =
+let edit_list label fields get set column_status =
   let get_editor = get_list_editor fields get set
     (fun i -> [])
+    column_status
   in
   {CORE_machinist.data -> [> Html5_types.div ] elt list Lwt.t{fun _ ->
     lwt e = %get_editor () in
@@ -37,11 +38,13 @@ let machinist_page mc =
     edit_list I18N.String.logins ["username"; "ssh key"]
       (fun () -> get_logins mc)
       (Some (fun l -> change mc (SetLogins l)))
+      (fun _ -> `RW)
   in
   let addresses_div =
     edit_list I18N.String.addresses ["address"; "port"]
       (fun () -> get_addresses mc)
       (Some (fun l -> change mc (SetAddresses l)))
+      (fun _ -> `RW)
   in
   lwt divs = Lwt_list.map_s (react_to_mc get) [
     (selector_of_machine_kind (kind mc));

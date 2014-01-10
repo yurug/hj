@@ -103,6 +103,7 @@ let entity_sources_div
               icon [pcdata "↓"] {{ fun _ -> %download %i }};
               upload_form
             ])
+          (fun _ -> `RO)
       in
       reactive_div e None get_sources
         {CORE_source.filename list list -> [> Html5_types.div ] elt list Lwt.t{
