@@ -36,6 +36,11 @@ let dependency d k xs =
     Some (List.assoc xs (List.assoc k d))
   with Not_found -> None
 
+let all_dependencies d k =
+  try
+    List.assoc k d
+  with Not_found -> []
+
 type 'a meta = {
   identifier      : CORE_identifier.t;
   dependencies    : dependencies;

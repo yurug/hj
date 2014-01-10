@@ -81,6 +81,11 @@ val dependency_image : dependencies -> dependency list
 val dependency
   : dependencies -> dependency_kind -> identifier list -> identifier option
 
+(** [all_dependencies d k] returns all the [(xs, y)] such that
+    there is a [y] in [d] such [k (xs) = y]. *)
+val all_dependencies
+  : dependencies -> dependency_kind -> (identifier list * identifier) list
+
 (** [push ds d] is the dependencies [ds] with an extra dependency [d]. *)
 val push : dependencies -> dependency -> dependencies
 

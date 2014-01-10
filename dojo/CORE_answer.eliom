@@ -103,6 +103,15 @@ let assign_answer exo answer author =
         [CORE_user.identifier author], (identifier answer)
      ))
 
+let answers_of_exercise exo =
+  CORE_exercise.observe exo (fun d ->
+    return (
+      CORE_inmemory_entity.all_dependencies
+        (dependencies d)
+        CORE_exercise.answer_of_dependency_kind
+    )
+  )
+
 let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
   let exo_id = CORE_exercise.identifier exo in
 
