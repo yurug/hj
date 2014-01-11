@@ -39,6 +39,7 @@ body {
     position:fixed;
     width: 1080px;
     height: 64px;
+    z-index: 1;
 }
 
 #hrule {
