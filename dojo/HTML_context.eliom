@@ -401,11 +401,11 @@ let display_master_view master exo checkpoint context =
             | Some u -> return (Dom_html.window##location##assign (Js.string u))
         )}}
     in
-    return [
-      e;
-      p [pcdata ""]; (* FIXME: Ugly! *)
-      div [ download_all_files ]
-    ]
+    return (
+      e :: (if !files = [] then [] else [
+        p [pcdata ""]; (* FIXME: Ugly! *)
+        div [ download_all_files ]
+      ]))
   in
   lwt rdiv =
     HTML_entity.reactive_div exo None get {{ fun d -> return d }}
