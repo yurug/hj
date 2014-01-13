@@ -99,14 +99,14 @@ let reactive_div e after_display get display  =
     Eliom_comet.Configuration.set_always_active config true;
     CORE_client_reaction.react_on_background %e_channel (function
       | CORE_entity.HasChanged ->
-        Firebug.console##log (Js.string (Printf.sprintf "Entity %s has changed" %sid));
+(*        Firebug.console##log (Js.string (Printf.sprintf "Entity %s has changed" %sid));*)
         (** Update the entity view. *)
         (try_lwt
            lwt data = %remote_get () in
            process data
          with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e))))
       | CORE_entity.MayChange ->
-        Firebug.console##log (Js.string (Printf.sprintf "Entity %s may change" %sid));
+(*        Firebug.console##log (Js.string (Printf.sprintf "Entity %s may change" %sid));*)
         (** Force the change as we are observing the entity. *)
         try_lwt %update ()
         with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e)))
