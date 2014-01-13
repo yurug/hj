@@ -403,7 +403,7 @@ let display_master_view master exo checkpoint context =
     in
     return [
       e;
-      download_all_files
+      p [ download_all_files ]
     ]
   in
   lwt rdiv =
