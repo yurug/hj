@@ -113,9 +113,12 @@ let display_user_input exo_id answer_id checkpoint context submission =
       let previous_file =
         match submission with
           | Some (SubmittedFile (filename, digest)) ->
-            [Raw.a ~a:[a_href (Xml.uri_of_string (COMMON_file.send (
-              CORE_standard_identifiers.source_filename answer_id filename
-            )))] [pcdata (filename ^ "(" ^ Digest.to_hex digest ^ ")")]]
+            [
+              span [pcdata (I18N.(String.(cap last_submitted_file) ^ ": "))];
+              Raw.a ~a:[a_href (Xml.uri_of_string (COMMON_file.send (
+                CORE_standard_identifiers.source_filename answer_id filename
+              )))] [pcdata (filename ^ "(" ^ Digest.to_hex digest ^ ")")]
+            ]
           | None ->
             []
       in

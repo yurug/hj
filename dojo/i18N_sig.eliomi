@@ -108,6 +108,7 @@ sig
   val illtyped_application: string -> string
   val runtime_error : string
   val to_be_provided : string
+  val last_submitted_file : string
 end
 
 }}

@@ -649,7 +649,7 @@ let convert_to_string_error
 )
 
 (** A well-typed exercise description evaluates into a value. *)
-let eval this p =
+let eval authors this p =
   try_lwt
 (*    lwt tenv = TypeCheck.program this p in*)
     lwt title, v, sources = Eval.program this p in

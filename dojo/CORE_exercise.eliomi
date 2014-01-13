@@ -20,7 +20,7 @@ type public_change =
   | NewAnswer of
       CORE_identifier.t list (** Authors *)
     * CORE_identifier.t      (** Answer  *)
-  | EvalQuestions
+  | EvalQuestions of CORE_identifier.t list
   | Update of questions
   | UpdateSource of CORE_description_CST.exercise CORE_description_CST.with_raw
 
@@ -51,16 +51,20 @@ val assignment_rule : t -> assignment_kind -> CORE_property.rule Lwt.t
 
 (** [all_checkpoints e] returns all the checkpoints in the description
     of [e]. *)
-val all_checkpoints : t -> checkpoint list Lwt.t
+val all_checkpoints
+  : t -> CORE_identifier.t list -> checkpoint list Lwt.t
 
 (** [context_of_checkpoint e c] computes the context of [c] in [e]. *)
-val context_of_checkpoint : t -> checkpoint -> CORE_context.t option Lwt.t
+val context_of_checkpoint
+  : t -> checkpoint -> CORE_context.t option Lwt.t
 
 (** [eval e] forces the evaluation of [e]. *)
-val eval : t -> unit Lwt.t
+val eval
+  : t -> CORE_identifier.t list -> unit Lwt.t
 
 (** [eval_if_needed e] compute the evaluation of [e] if needed. *)
-val eval_if_needed : t -> CORE_questions.questions_result option Lwt.t
+val eval_if_needed
+  : t -> CORE_identifier.t list -> CORE_questions.questions_result option Lwt.t
 
 val raw_user_description_source: CORE_identifier.t -> CORE_source.t Lwt.t
 

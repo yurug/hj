@@ -55,6 +55,7 @@ let string_of_evaluation_state = function
 type description = {
   answer   : CORE_identifier.t;
   exercise : CORE_identifier.t;
+  authors  : CORE_identifier.t list;
   jobs     : (CORE_exercise.checkpoint * evaluation_state) list;
 } deriving (Json)
 
@@ -308,7 +309,7 @@ include CORE_entity.Make (struct
         (
           CORE_answer.make content.answer >>>= fun answer ->
           CORE_exercise.make content.exercise >>>= fun exercise ->
-          lwt cps = CORE_exercise.all_checkpoints exercise in
+          lwt cps = CORE_exercise.all_checkpoints exercise content.authors in
           lwt change = evaluate change_later exercise answer cps content in
           return (`OK change)
         ) >>= function
@@ -329,9 +330,10 @@ let identifier_of_answer_evaluation answer_id =
   CORE_vfs.create who path
   >>= function _ -> return (identifier_of_path path)
 
-let initial_evaluation exercise answer = {
+let initial_evaluation exercise answer authors = {
   exercise = CORE_exercise.identifier exercise;
   answer = CORE_answer.identifier answer;
+  authors;
   jobs = [];
 }
 
@@ -343,9 +345,9 @@ let evaluation_dependencies exercise answer =
     (evaluation_of_exercise_dependency_kind, [ ([], exercise) ])
   ]
 
-let create id exo answer =
+let create id exo answer authors =
   let init = (
-    initial_evaluation exo answer,
+    initial_evaluation exo answer authors,
     evaluation_dependencies exo answer,
     CORE_property.empty,
     []
@@ -354,12 +356,12 @@ let create id exo answer =
     | `OK e -> return (`OK e)
     | r -> return r
 
-let evaluation_of_exercise_from_authors exo answer =
+let evaluation_of_exercise_from_authors exo answer authors =
   let answer_id = CORE_answer.identifier answer in
   lwt id = identifier_of_answer_evaluation answer_id in
   make id >>= function
     | `OK e -> return (`OK e)
-    | `KO (`UndefinedEntity _) -> create id exo answer
+    | `KO (`UndefinedEntity _) -> create id exo answer authors
     | `KO e -> return (`KO e)
 
 let flush_diagnostic_commands_of_checkpoint evaluation checkpoint =

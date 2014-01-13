@@ -50,8 +50,8 @@ type data = description
 
 let raw_user_description_filename = "description.txt"
 
-let eval_questions this c =
-  lwt title, v, sources = CORE_questions.eval this c.questions in
+let eval_questions authors this c =
+  lwt title, v, sources = CORE_questions.eval authors this c.questions in
   return ({ c with
     title;
     questions_value = Some (c.questions, v)
@@ -66,7 +66,7 @@ type public_change =
   | NewAnswer of
       CORE_identifier.t list (** Authors *)
     * CORE_identifier.t      (** Answer  *)
-  | EvalQuestions
+  | EvalQuestions of CORE_identifier.t list
   | Update of questions
   | UpdateSource of C.exercise C.with_raw
 
@@ -83,7 +83,9 @@ include CORE_entity.Make (struct
       Printf.sprintf "New answer %s from %s."
         (string_of_identifier answer)
         (String.concat ", " (List.map string_of_identifier authors))
-    | EvalQuestions -> "Evaluate questions."
+    | EvalQuestions authors ->
+      Printf.sprintf "Evaluate questions for %s."
+        (String.concat ", " (List.map string_of_identifier authors))
     | Update _ -> "Update the questions' AST."
     | UpdateSource _ -> "Update the questions' CST."
 
@@ -102,9 +104,9 @@ include CORE_entity.Make (struct
           content
         )
 
-      | EvalQuestions ->
+      | EvalQuestions authors ->
         lwt content, xsources =
-          eval_questions (CORE_inmemory_entity.identifier state) content
+          eval_questions authors (CORE_inmemory_entity.identifier state) content
         in
         let source (sources, dependencies, content) (f, c) =
           let s = CORE_source.make f c in
@@ -320,7 +322,7 @@ and change_from_user_description x cr =
         return ()
   ) else return ()
 
-let eval e = change e EvalQuestions
+let eval e authors = change e (EvalQuestions authors)
 
 let assignment_rule e k =
   observe e (fun c -> return (
@@ -341,18 +343,18 @@ let _ =
       | _ -> assert false (* FIXME *)
   )
 
-let eval_if_needed e =
+let eval_if_needed e authors =
   observe e (fun d -> return (content d).questions_value) >>= function
-    | None -> eval e >>= fun _ -> return None
+    | None -> eval e authors >>= fun _ -> return None
     | Some (_, v) -> return (Some v)
 
-let context_of_checkpoint e c =
-  eval_if_needed e >>= function
+let context_of_checkpoint e c authors =
+  eval_if_needed e authors >>= function
     | Some (`OK v) -> return (Some (CORE_questions.context_of_checkpoint v c))
     | _ -> return None
 
-let all_checkpoints e =
-  eval_if_needed e >>= function
+let all_checkpoints e authors =
+  eval_if_needed e authors >>= function
     | Some (`OK v) -> return (CORE_questions.all_checkpoints v)
     | _ -> return []
 

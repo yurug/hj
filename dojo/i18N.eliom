@@ -281,6 +281,9 @@ module Fr : I18N_sig.Text = struct
   let last_connection =
     "dernière connexion"
 
+  let last_submitted_file =
+    "dernier fichier soumis"
+
 end
 
 module String = (val

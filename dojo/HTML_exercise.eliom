@@ -35,7 +35,7 @@ type editor_intermediate_result =
 deriving (Json)
 }}
 
-let editor_div (e : CORE_exercise.t) =
+let editor_div (e : CORE_exercise.t) authors =
 
   let id = CORE_exercise.identifier e in
   lwt init = raw_user_description_source id in
@@ -88,12 +88,12 @@ let editor_div (e : CORE_exercise.t) =
   let editor_div = div ~a:[a_class ["exercise_editor"]] [editor_div] in
   return (div [sources_div; editor_div])
 
-let editor_div e =
+let editor_div e authors =
   try_lwt
-    editor_div e
+    editor_div e authors
   with LoadingError -> return (div [pcdata "Error when loading editor."])
 
-let exercise_div (exo : CORE_exercise.t) answer evaluation =
+let exercise_div (exo : CORE_exercise.t) answer evaluation authors =
   let e_id = CORE_exercise.identifier exo in
   let answer_id = CORE_answer.identifier answer in
   let display_context = server_function Json.t<checkpoint * CORE_context.t>
@@ -147,7 +147,7 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
    }}
   in
   let get () =
-    CORE_exercise.eval_if_needed exo
+    CORE_exercise.eval_if_needed exo authors
     >>= fun _ ->
     CORE_exercise.(observe exo (fun d ->
       let c = content d in
@@ -155,7 +155,7 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation =
     )
   in
 
-  CORE_exercise.eval exo
+  CORE_exercise.eval exo authors
   >>= fun _ -> (
     HTML_entity.reactive_div exo (Some display_math) get display_exercise
   )
@@ -186,11 +186,12 @@ let group_of_user e =
 
 let exercise_page exo =
   (lwt group = group_of_user exo in
+   let group_ids = List.map CORE_user.identifier group in
    CORE_answer.answer_of_exercise_from_authors exo group >>>= fun a ->
-   CORE_evaluation.evaluation_of_exercise_from_authors exo a >>>= fun e ->
+   CORE_evaluation.evaluation_of_exercise_from_authors exo a group_ids >>>= fun e ->
    (lwt r = role exo in
     (lwt_list_join (
-      (match r with Evaluator _ -> [editor_div exo] | _ -> [])
+      (match r with Evaluator _ -> [editor_div exo authors] | _ -> [])
       @ [exercise_div exo a e]
      ) >>= fun es -> return (`OK (div es)))))
   >>= function
