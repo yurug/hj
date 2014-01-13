@@ -384,3 +384,8 @@ let evaluation_of_exercise_from_authors exo answer authors =
 
 let flush_diagnostic_commands_of_checkpoint evaluation checkpoint =
   change evaluation (FlushDiagnosticCommandsOfCheckpoint checkpoint)
+
+let state_of_checkpoint evaluation checkpoint =
+  observe evaluation (fun d ->
+    return (COMMON_pervasives.opt_assoc checkpoint (content d).jobs)
+  )

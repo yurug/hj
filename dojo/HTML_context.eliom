@@ -339,7 +339,21 @@ let display_master_view master exo checkpoint context =
                     s
                 )
           in
-          let evaluation_descr = "Evaluation" in
+          lwt evaluation_descr =
+            CORE_evaluation.evaluation_of_exercise_from_authors
+              exo answer authors
+            >>= function
+              | `KO _ -> return "error"
+              | `OK evaluation ->
+                CORE_evaluation.state_of_checkpoint evaluation checkpoint
+                >>= function
+                  | None | Some Unevaluated ->
+                    return "?"
+                  | Some (Evaluated (s, _, _, _)) ->
+                    return (CORE_context.string_of_score s)
+                  | Some (BeingEvaluated _) ->
+                    return "..."
+          in
           let display author =
             CORE_user.make author >>= function
               | `OK u ->
