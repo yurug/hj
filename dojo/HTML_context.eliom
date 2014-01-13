@@ -354,7 +354,7 @@ let display_master_view master exo checkpoint context =
     lwt list = Lwt_list.map_s display_answer all_answers in
     let list = List.flatten list in
     lwt e = HTML_widget.server_get_list_editor
-      ~no_header:true ~no_insertion:true ~no_action:true
+      ~no_header:true ~no_insertion:true
       ["Name"; "Surname"; "Answer"; "Score"]
       (fun () -> return list) (* FIXME: should be dynamic. *)
       None
