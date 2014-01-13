@@ -305,11 +305,31 @@ let display_master_view master exo checkpoint context =
         | _ ->
           return all_answers
     in
-    return (List.map (fun (authors, answer) ->
-      p [pcdata (Printf.sprintf "%s -> %s"
-                   (String.concat " " (List.map string_of_identifier authors))
-                   (string_of_identifier answer))]
-    ) all_answers)
+    let display_answer (authors, answer) =
+      let answer_descr = "Answer" in
+      let evaluation_descr = "Evaluation" in
+      let display author =
+        CORE_user.make author >>= function
+          | `OK u ->
+            lwt firstname = CORE_user.firstname u in
+            lwt surname = CORE_user.surname u in
+            return [ firstname; surname; answer_descr; evaluation_descr ]
+          | _ ->
+            return []
+      in
+      Lwt_list.map_s display authors
+    in
+    lwt list = Lwt_list.map_s display_answer all_answers in
+    let list = List.flatten list in
+    lwt e = HTML_widget.server_get_list_editor
+      ~no_header:true ~no_insertion:true ~no_action:true
+      ["Name"; "Surname"; "Answer"; "Score"]
+      (fun () -> return list) (* FIXME: should be dynamic. *)
+      None
+      (fun _ -> [])
+      (fun _ _ -> `RO)
+    in
+    return [e]
   in
   lwt rdiv =
     HTML_entity.reactive_div exo None get {{ fun d -> return d }}
