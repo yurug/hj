@@ -225,5 +225,14 @@ let submit_answer_choices answer checkpoint choices =
     )
   )
 
+let submit_property_choice answer checkpoint choice =
+  ltry (fun lraise ->
+    change answer (
+      NewSubmissionData (checkpoint,
+                         CORE_context.new_property_choice choice,
+                         [])
+    )
+  )
+
 let submission_of_checkpoint answer cp =
   observe answer (fun a -> return (opt_assoc cp (content a).submissions))

@@ -40,6 +40,10 @@ let set on_c e =
 
 let set_email e email = set (fun c -> { c with email }) e
 
+let change_properties e f =
+  lwt s = observe e (fun u -> return (properties u)) in
+  change e (UpdateProperties (f s))
+
 (** By convention, users are stored in the "users" folder. *)
 
 let user_id username =

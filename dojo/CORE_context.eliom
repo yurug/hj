@@ -20,6 +20,7 @@ type rule =
   | Command of string
   | TimeOut of int
   | Source of string
+  | ChooseProperty of string list
 deriving (Json)
 
 type context =
@@ -54,6 +55,8 @@ let rec string_of_context = Printf.(function
   | Compose (Answer f, c) -> sprintf "file(%s) %s" f (string_of_context c)
   | Compose (Command d, c) -> sprintf "cmd(%s) %s" d (string_of_context c)
   | Compose (TimeOut t, c) -> sprintf "timeout(%d) %s" t (string_of_context c)
+  | Compose (ChooseProperty p, c) ->
+    sprintf "choose_property(%s) %s" (String.concat "," p) (string_of_context c)
 )
 
 type criteria = string deriving (Json)
@@ -87,6 +90,8 @@ let command c = Command c
 
 let timeout t = TimeOut t
 
+let choose_property cs = ChooseProperty cs
+
 let get what c =
   let rec aux last = function
   | Empty -> last
@@ -111,12 +116,14 @@ let get_answer_form = get (function
   | Answer fname -> Some (`Filename fname)
   | KeyValues keys -> Some (`KeyValues keys)
   | Choices cs -> Some (`Choices cs)
+  | ChooseProperty cs -> Some (`ChooseProperty cs)
   | _ -> None)
 
 let get_command = get (function
   | Command c -> Some (`Command c)
   | ExpectedValues kvs -> Some (`ExpectedValues kvs)
   | ExpectedChoices cs -> Some (`ExpectedChoices cs)
+  | ChooseProperty cs -> Some (`ChooseProperty cs)
   | _ -> None)
 
 let get_timeout = get (function TimeOut t -> Some t | _ -> None)
@@ -127,6 +134,7 @@ type submission =
   | SubmittedFile of string * string
   | SubmittedValues of string list
   | SubmittedChoices of int list
+  | SubmittedPropertyChoice of string
 deriving (Json)
 
 }}
@@ -152,6 +160,8 @@ let string_of_submission = function
     Printf.sprintf "values(%s)" (String.concat "," vs)
   | SubmittedChoices vs ->
     Printf.sprintf "choices(%s)" (String.concat "," (List.map string_of_int vs))
+  | SubmittedPropertyChoice s ->
+    Printf.sprintf "choose_property(%s)" s
 
 let new_submitted_file s content =
   let d = try Digest.string content with _ -> "NoFileNoDigest" in
@@ -160,6 +170,8 @@ let new_submitted_file s content =
 let new_submitted_values vs = SubmittedValues vs
 
 let new_submitted_choices cs = SubmittedChoices cs
+
+let new_property_choice s = SubmittedPropertyChoice s
 
 let null_score = []
 
@@ -199,6 +211,26 @@ let new_score s ss =
 
 let make_seed () =
   Random.bits ()
+
+let set_chosen_property authors submission cs =
+  match submission with
+    | SubmittedPropertyChoice choice ->
+      let set author =
+        CORE_user.change_properties author (fun set ->
+          let set =
+            List.fold_left
+              (fun set c -> CORE_property.unassign set (CORE_property.atom c))
+              set
+              cs
+          in
+          CORE_property.assign set (CORE_property.atom choice)
+        )
+      in
+      Lwt_list.iter_s set authors
+      >> return [I18N.(String.(cap update)), (1, 1)]
+    | _ ->
+      (* FIXME: Is that possible? *)
+      Lwt.return []
 
 let substitute_seed seed cmd = Str.(
   global_replace (regexp "%seed%") (string_of_int seed) cmd

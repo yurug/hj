@@ -16,6 +16,7 @@ let atom x =
   assert (valid_atom x);
   x
 
+(* FIXME: We may need a more efficient representation here. *)
 type set = t list deriving (Json)
 
 let empty = []
@@ -23,6 +24,8 @@ let empty = []
 let is = List.mem
 
 let assign s p = p :: s
+
+let unassign s p = List.filter (( <> ) p) s
 
 {shared{
 

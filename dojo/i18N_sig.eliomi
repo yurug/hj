@@ -66,6 +66,7 @@ sig
   val about : string
   val notifications : string
   val read : [`Male | `Female] -> string
+  val update : string
 
   (** Forms. *)
   val not_ : string -> string

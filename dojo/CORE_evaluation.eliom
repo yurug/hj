@@ -109,7 +109,9 @@ let new_evaluation_state_of_checkpoint c s d =
   in
   return { d with jobs = update_assoc c s d.jobs }
 
-let create_job exo_id answer_id checkpoint context submission change_later =
+let create_job
+    exo_id answer_id checkpoint context submission change_later authors
+    =
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s =
@@ -153,6 +155,11 @@ let create_job exo_id answer_id checkpoint context submission change_later =
     match get_command context with
       | None ->
         return None (* FIXME: is it sound? *)
+      | Some (`ChooseProperty cs) ->
+        lwt status = CORE_context.set_chosen_property authors submission cs in
+        score := status;
+        mark ()
+        >>= fun _ -> return (Some ImmediateEvaluation)
       | Some (`ExpectedValues vs) ->
         score := CORE_context.check_expected_values vs submission;
         mark ()
@@ -194,12 +201,14 @@ let cancel_job_if_present job =
   (* FIXME *)
   return ()
 
-let evaluate change_later exercise answer cps data =
+let evaluate change_later exercise answer cps data authors =
   let exo_id = CORE_exercise.identifier exercise in
   let answer_id = CORE_answer.identifier answer in
+  let authors_ids = List.map CORE_user.identifier authors in
   let evaluate checkpoint current_state =
     let run_submission_evaluation c s =
-      create_job exo_id answer_id checkpoint c s change_later >>= function
+      create_job exo_id answer_id checkpoint c s change_later authors
+      >>= function
         | Some job ->
           Ocsigen_messages.errlog "Executable job created.";
           return (BeingEvaluated (job, s, CORE_diagnostic.Empty, c))
@@ -236,7 +245,8 @@ let evaluate change_later exercise answer cps data =
           in
 
           (** Is it a new context? *)
-          CORE_exercise.context_of_checkpoint exercise checkpoint >>= function
+          CORE_exercise.context_of_checkpoint exercise checkpoint authors_ids
+          >>= function
             | None ->
               return Unevaluated
 
@@ -309,8 +319,16 @@ include CORE_entity.Make (struct
         (
           CORE_answer.make content.answer >>>= fun answer ->
           CORE_exercise.make content.exercise >>>= fun exercise ->
+          lwt authors =
+            Lwt_list.fold_left_s (fun authors a ->
+              CORE_user.make a >>= function
+                | `OK a -> return (a :: authors)
+                | `KO _ -> return authors
+            ) [] content.authors
+          in
           lwt cps = CORE_exercise.all_checkpoints exercise content.authors in
-          lwt change = evaluate change_later exercise answer cps content in
+          lwt change = evaluate change_later exercise answer cps content authors
+          in
           return (`OK change)
         ) >>= function
           | `OK e -> return e

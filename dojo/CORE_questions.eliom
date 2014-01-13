@@ -490,6 +490,11 @@ module Eval = struct
       return (CORE_context.answer s)
     );
 
+    stateful "choose_property" (fun _ v ->
+      let s = as_string_list v in
+      return (CORE_context.choose_property s)
+    );
+
     stateful "answer_values_of" (fun _ v ->
       let s = as_string_list v in
       return (CORE_context.key_values s)

@@ -56,7 +56,7 @@ val all_checkpoints
 
 (** [context_of_checkpoint e c] computes the context of [c] in [e]. *)
 val context_of_checkpoint
-  : t -> checkpoint -> CORE_context.t option Lwt.t
+  : t -> checkpoint -> CORE_identifier.t list -> CORE_context.t option Lwt.t
 
 (** [eval e] forces the evaluation of [e]. *)
 val eval

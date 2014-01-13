@@ -32,6 +32,10 @@ val is : t -> set -> bool
 (** [assign s p] is the set [s] with the property [p]. *)
 val assign : set -> t -> set
 
+(** [unassign s p] is the set [s] without the property [p]. *)
+val unassign : set -> t -> set
+
+
 (** {1 Rules}
 
     Propositional formulas over properties.

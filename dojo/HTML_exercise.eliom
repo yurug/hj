@@ -191,8 +191,8 @@ let exercise_page exo =
    CORE_evaluation.evaluation_of_exercise_from_authors exo a group_ids >>>= fun e ->
    (lwt r = role exo in
     (lwt_list_join (
-      (match r with Evaluator _ -> [editor_div exo authors] | _ -> [])
-      @ [exercise_div exo a e]
+      (match r with Evaluator _ -> [editor_div exo group_ids] | _ -> [])
+      @ [exercise_div exo a e group_ids]
      ) >>= fun es -> return (`OK (div es)))))
   >>= function
     | `OK d -> return d

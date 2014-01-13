@@ -98,6 +98,20 @@ let submit_answer_values exo_id cp vs =
     | _ ->
       return (`OK ())
 
+let submit_property_choice exo_id cp vs =
+  CORE_user.logged_user () >>= function
+    | `Logged u -> (
+      CORE_exercise.make exo_id >>>= fun exo ->
+      answer_of_exercise_from_authors exo [u] >>= function
+        | `OK a ->
+          CORE_answer.submit_property_choice a cp vs
+        | `KO e ->
+          warn e;
+          return (`OK ())
+    )
+    | _ ->
+      return (`OK ())
+
 let display_user_input exo_id answer_id checkpoint context submission =
   match CORE_context.get_answer_form context with
     | None ->
@@ -192,7 +206,6 @@ let display_user_input exo_id answer_id checkpoint context submission =
         return (Manip.replaceAllChild %editor_div [e])
       }};
       let submit = server_function Json.t<unit> (fun () ->
-        Ocsigen_messages.errlog "OK clicked.";
         submit_answer_values exo_id checkpoint (
           List.map (function [_;x] -> x | l ->
             assert false) !answers
@@ -200,14 +213,35 @@ let display_user_input exo_id answer_id checkpoint context submission =
       )
       in
       let submit_button = HTML_widget.small_button ["OK"] {{
-        fun _ -> Lwt.async (fun () ->
-             Firebug.console##log ("Submit clicked");
-             %submit ())
+        fun _ -> Lwt.async (fun () -> %submit ())
       }}
       in
       return (div ~a:[a_class ["user_answer"]] [editor_div;
                                                 p [pcdata ""];
                                                 submit_button])
+
+    | Some (`ChooseProperty cs) ->
+      let submit = server_function Json.t<string> (fun choice ->
+        submit_property_choice exo_id checkpoint choice
+      )
+      in
+      let id = Id.new_elt_id () in
+      let select = {{ fun _ ->
+        let e = Id.get_element %id in
+        let e = To_dom.of_select e in
+        Firebug.console##log (e##value);
+        Lwt.async (fun () -> %submit (Js.to_string e##value))
+      }}
+      in
+      let property_selector =
+        Id.create_named_elt ~id (
+          Raw.select ~a:[a_onchange select] (
+            List.map (fun s -> Raw.option (pcdata s)) cs
+          )
+        )
+      in
+      return (div ~a:[a_class ["user_answer"]] [property_selector])
+
 
 let extract_previous_submission checkpoint evaluation =
   CORE_evaluation.(observe evaluation (fun s ->

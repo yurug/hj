@@ -24,6 +24,8 @@ module Fr : I18N_sig.Text = struct
   let many s =
     s ^ "s"
 
+  let update = "mise à jour"
+
   let the_hacking_dojo = "Le Dojo de Programmation"
 
   let assignments = "exercices"
