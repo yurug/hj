@@ -27,6 +27,7 @@ body {
 #contents {
     background: white;
     width: 80em;
+    margin-left: 1em;
 }
 
 #logo {
