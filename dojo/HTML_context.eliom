@@ -312,10 +312,6 @@ let display_master_view master exo checkpoint context =
         Some (Hashtbl.find links i)
       with Not_found -> None
     in
-    let download = server_function Json.t<string> (fun a ->
-      return (Dom_html.window##location##assign (Js.string a))
-    )
-    in
     let display_answer (authors, answer_id) =
       CORE_answer.make answer_id >>= function
         | `KO _ -> return [] (* FIXME: handle error. *)
@@ -366,7 +362,9 @@ let display_master_view master exo checkpoint context =
         match get_link i with
           | None -> []
           | Some url -> [
-            HTML_widget.icon [pcdata "↓"] {{ fun _ -> Lwt.async (fun () -> %download %url) }}]
+            HTML_widget.icon [pcdata "↓"] {{ fun _ -> Lwt.async (fun () ->
+              return (Dom_html.window##location##assign (Js.string %url))
+            )}}]
       )
       (fun _ _ -> `RO)
     in
