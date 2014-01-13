@@ -93,12 +93,25 @@ let editor_div e authors =
     editor_div e authors
   with LoadingError -> return (div [pcdata "Error when loading editor."])
 
-let exercise_div (exo : CORE_exercise.t) answer evaluation authors =
+type role =
+  | Student   of CORE_user.t * CORE_user.t list
+  | Evaluator of CORE_user.t
+  | NoRole
+
+let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
   let e_id = CORE_exercise.identifier exo in
   let answer_id = CORE_answer.identifier answer in
   let display_context = server_function Json.t<checkpoint * CORE_context.t>
-    (fun (cp, context) ->
-      HTML_context.display_context e_id answer_id cp context evaluation
+    (fun (cp, ctx) ->
+      lwt ds = HTML_context.display_context e_id answer_id cp ctx evaluation in
+      lwt ms =
+        match r with
+          | Evaluator master ->
+            HTML_context.display_master_view master exo cp ctx
+          | _ ->
+            return []
+      in
+      return (ds @ ms)
     )
   in
   let display_exercise =
@@ -160,11 +173,6 @@ let exercise_div (exo : CORE_exercise.t) answer evaluation authors =
     HTML_entity.reactive_div exo (Some display_math) get display_exercise
   )
 
-type role =
-  | Student   of CORE_user.t * CORE_user.t list
-  | Evaluator of CORE_user.t
-  | NoRole
-
 let role e =
 (* FIXME: Determine the role of the user wrt to this exercise.
    FIXME: This means determining the group of the user as well
@@ -186,16 +194,17 @@ let group_of_user e =
 
 let exercise_page exo =
   (lwt group = group_of_user exo in
-   let group_ids = List.map CORE_user.identifier group in
+   let gids = List.map CORE_user.identifier group in
    CORE_answer.answer_of_exercise_from_authors exo group >>>= fun a ->
-   CORE_evaluation.evaluation_of_exercise_from_authors exo a group_ids >>>= fun e ->
+   CORE_evaluation.evaluation_of_exercise_from_authors exo a gids >>>= fun e ->
    (lwt r = role exo in
     (lwt_list_join (
-      (match r with Evaluator _ -> [editor_div exo group_ids] | _ -> [])
-      @ [exercise_div exo a e group_ids]
+      (match r with Evaluator _ -> [editor_div exo gids] | _ -> [])
+      @ [exercise_div r exo a e gids]
      ) >>= fun es -> return (`OK (div es)))))
   >>= function
-    | `OK d -> return d
+    | `OK d ->
+      return d
     | `KO e ->
       (* FIXME: Handle error properly. *)
       warn e;

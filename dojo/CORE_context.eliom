@@ -21,6 +21,7 @@ type rule =
   | TimeOut of int
   | Source of string
   | ChooseProperty of string list
+  | MasterFocus of string list
 deriving (Json)
 
 type context =
@@ -57,6 +58,8 @@ let rec string_of_context = Printf.(function
   | Compose (TimeOut t, c) -> sprintf "timeout(%d) %s" t (string_of_context c)
   | Compose (ChooseProperty p, c) ->
     sprintf "choose_property(%s) %s" (String.concat "," p) (string_of_context c)
+  | Compose (MasterFocus p, c) ->
+    sprintf "master_focus(%s) %s" (String.concat "," p) (string_of_context c)
 )
 
 type criteria = string deriving (Json)
@@ -92,6 +95,8 @@ let timeout t = TimeOut t
 
 let choose_property cs = ChooseProperty cs
 
+let master_focus cs = MasterFocus cs
+
 let get what c =
   let rec aux last = function
   | Empty -> last
@@ -111,6 +116,11 @@ let all what c =
       | Some y -> aux (y :: last) qs
   in
   aux [] c
+
+let get_master_focus = get (function
+  | MasterFocus cs -> Some cs
+  | _ -> None
+)
 
 let get_answer_form = get (function
   | Answer fname -> Some (`Filename fname)

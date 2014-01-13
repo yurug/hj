@@ -485,14 +485,19 @@ module Eval = struct
       "latex", "\\[", "\\]";
     ];
 
-    stateful "answer_in_file" (fun _ v ->
-      let s = as_string v in
-      return (CORE_context.answer s)
-    );
-
     stateful "choose_property" (fun _ v ->
       let s = as_string_list v in
       return (CORE_context.choose_property s)
+    );
+
+    stateful "master_focus" (fun _ v ->
+      let s = as_string_list v in
+      return (CORE_context.master_focus s)
+    );
+
+    stateful "answer_in_file" (fun _ v ->
+      let s = as_string v in
+      return (CORE_context.answer s)
     );
 
     stateful "answer_values_of" (fun _ v ->

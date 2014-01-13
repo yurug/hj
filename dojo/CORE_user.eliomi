@@ -41,6 +41,9 @@ val set_email : t -> string-> unit Lwt.t
 val change_properties
   : t -> (CORE_property.set -> CORE_property.set) -> unit Lwt.t
 
+val has_property
+  : t -> CORE_property.t -> bool Lwt.t
+
 (** Services (automatically inferred using eliomc -i.) *)
 
 val login_service :

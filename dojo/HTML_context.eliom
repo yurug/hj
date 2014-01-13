@@ -270,5 +270,41 @@ let display_context exo_id answer_id checkpoint context evaluation =
   lwt score = display_score checkpoint evaluation in
   return [
     user_input;
-    div [ score ]
+    div [ score ];
   ]
+
+let display_master_view master exo checkpoint context =
+  lwt all_answers = CORE_answer.answers_of_exercise exo in
+  lwt all_answers =
+    match CORE_context.get_master_focus context with
+      | Some groups ->
+        lwt master_groups =
+          Lwt_list.filter_s
+            (fun g -> CORE_user.has_property master (CORE_property.atom g))
+            groups
+        in
+        let interest_master a =
+          Lwt_list.exists_s
+            (fun g -> CORE_user.has_property a (CORE_property.atom g))
+            master_groups
+        in
+        Lwt_list.filter_s
+          (fun (authors, _) ->
+            lwt authors = Lwt_list.fold_left_s (fun authors a ->
+              CORE_user.make a >>= function
+                | `OK a -> return (a :: authors)
+                | `KO _ -> return authors
+            ) [] authors
+            in
+            Lwt_list.exists_s interest_master authors)
+          all_answers
+
+      | _ ->
+        return all_answers
+  in
+  return (List.map (fun (authors, answer) ->
+    p [pcdata (Printf.sprintf "%s -> %s"
+                 (String.concat " " (List.map string_of_identifier authors))
+                 (string_of_identifier answer))]
+  ) all_answers
+  )
