@@ -616,8 +616,8 @@ module Eval = struct
       | (VString _ | VModule _) as v when x = CORE_identifier.label "title" ->
         title := as_string v;
         None
-      | (VModule _) as v ->
-        Some (Statement ("<p>" ^ as_string v ^ "</p>"))
+(*      | (VModule _) as v ->
+        Some (Statement ("<p>" ^ as_string v ^ "</p>"))*)
       | VContext c ->
         Some (CheckpointContext (label_to_string x, c))
       | VSource (s, c) ->

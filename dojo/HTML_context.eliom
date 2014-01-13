@@ -221,6 +221,11 @@ let display_user_input exo_id answer_id checkpoint context submission =
                                                 submit_button])
 
     | Some (`ChooseProperty cs) ->
+      let previous =
+        match submission with
+          | Some (SubmittedPropertyChoice s) -> s
+          | None -> ""
+      in
       let submit = server_function Json.t<string> (fun choice ->
         submit_property_choice exo_id checkpoint choice
       )
@@ -236,7 +241,9 @@ let display_user_input exo_id answer_id checkpoint context submission =
       let property_selector =
         Id.create_named_elt ~id (
           Raw.select ~a:[a_onchange select] (
-            List.map (fun s -> Raw.option (pcdata s)) cs
+            List.map (fun s ->
+              let a = if s = previous then [a_selected `Selected] else [] in
+              Raw.option ~a (pcdata s)) cs
           )
         )
       in
