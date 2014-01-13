@@ -403,7 +403,8 @@ let display_master_view master exo checkpoint context =
     in
     return [
       e;
-      p [ download_all_files ]
+      p [pcdata ""]; (* FIXME: Ugly! *)
+      div [ download_all_files ]
     ]
   in
   lwt rdiv =
