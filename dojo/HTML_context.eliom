@@ -305,19 +305,55 @@ let display_master_view master exo checkpoint context =
         | _ ->
           return all_answers
     in
-    let display_answer (authors, answer) =
-      let answer_descr = "Answer" in
-      let evaluation_descr = "Evaluation" in
-      let display author =
-        CORE_user.make author >>= function
-          | `OK u ->
-            lwt firstname = CORE_user.firstname u in
-            lwt surname = CORE_user.surname u in
-            return [ firstname; surname; answer_descr; evaluation_descr ]
-          | _ ->
-            return []
-      in
-      Lwt_list.map_s display authors
+    let answer_idx = ref (-1) in
+    let links = Hashtbl.create 13 in
+    let get_link i =
+      try
+        Some (Hashtbl.find links i)
+      with Not_found -> None
+    in
+    let download = server_function Json.t<string> (fun a ->
+      return (Dom_html.window##location##assign (Js.string a))
+    )
+    in
+    let display_answer (authors, answer_id) =
+      CORE_answer.make answer_id >>= function
+        | `KO _ -> return [] (* FIXME: handle error. *)
+        | `OK answer ->
+          incr answer_idx;
+          lwt answer_descr =
+            CORE_answer.submission_of_checkpoint answer checkpoint
+            >>= function
+              | None | Some NoSubmission -> return "?"
+              | Some (Submission submission) ->
+                return (match submission with
+                  | SubmittedFile (f, digest) ->
+                    let link =
+                      COMMON_file.send (
+                        CORE_standard_identifiers.source_filename answer_id f
+                      )
+                    in
+                    Hashtbl.add links !answer_idx link;
+                    f ^ "(" ^ Digest.to_hex digest ^ ")"
+                  | SubmittedValues vs ->
+                    String.concat "," vs
+                  | SubmittedChoices vs ->
+                    String.concat "," (List.map string_of_int vs)
+                  | SubmittedPropertyChoice s ->
+                    s
+                )
+          in
+          let evaluation_descr = "Evaluation" in
+          let display author =
+            CORE_user.make author >>= function
+              | `OK u ->
+                lwt firstname = CORE_user.firstname u in
+                lwt surname = CORE_user.surname u in
+                return [ firstname; surname; answer_descr; evaluation_descr ]
+              | _ ->
+                return []
+          in
+          Lwt_list.map_s display authors
     in
     lwt list = Lwt_list.map_s display_answer all_answers in
     let list = List.flatten list in
@@ -326,7 +362,12 @@ let display_master_view master exo checkpoint context =
       ["Name"; "Surname"; "Answer"; "Score"]
       (fun () -> return list) (* FIXME: should be dynamic. *)
       None
-      (fun _ -> [])
+      (fun i ->
+        match get_link i with
+          | None -> []
+          | Some url -> [
+            HTML_widget.icon [pcdata "↓"] {{ fun _ -> Lwt.async (fun () -> %download %url) }}]
+      )
       (fun _ _ -> `RO)
     in
     return [e]
