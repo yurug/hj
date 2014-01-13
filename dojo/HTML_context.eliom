@@ -306,6 +306,7 @@ let display_master_view master exo checkpoint context =
           return all_answers
     in
     let answer_idx = ref (-1) in
+    let files = ref [] in
     let links = Hashtbl.create 13 in
     let get_link i =
       try
@@ -324,11 +325,11 @@ let display_master_view master exo checkpoint context =
               | Some (Submission submission) ->
                 return (match submission with
                   | SubmittedFile (f, digest) ->
-                    let link =
-                      COMMON_file.send (
-                        CORE_standard_identifiers.source_filename answer_id f
-                      )
+                    let file =
+                      CORE_standard_identifiers.source_filename answer_id f
                     in
+                    let link = COMMON_file.send file in
+                    files := file :: !files;
                     Hashtbl.add links !answer_idx link;
                     f ^ "(" ^ Digest.to_hex digest ^ ")"
                   | SubmittedValues vs ->
@@ -381,7 +382,29 @@ let display_master_view master exo checkpoint context =
       )
       (fun _ _ -> `RO)
     in
-    return [e]
+    let download_all_files =
+      let all_files = server_function Json.t<unit> (fun () ->
+        if !files = [] then
+          return None
+        else
+          let archive = Filename.temp_file "hjarc" ".tar.gz" in
+          ltry (COMMON_unix.tar_create archive !files)
+          >>= function
+            | `KO e -> warn e; return None
+            | `OK _ -> return (Some (COMMON_file.send archive))
+      )
+      in
+      HTML_widget.small_button [I18N.(String.(cap download_all))] {{
+        fun _ -> Lwt.async (fun () ->
+          %all_files () >>= function
+            | None -> return ()
+            | Some u -> return (Dom_html.window##location##assign (Js.string u))
+        )}}
+    in
+    return [
+      e;
+      download_all_files
+    ]
   in
   lwt rdiv =
     HTML_entity.reactive_div exo None get {{ fun d -> return d }}

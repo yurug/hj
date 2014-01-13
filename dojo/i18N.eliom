@@ -286,6 +286,9 @@ module Fr : I18N_sig.Text = struct
   let last_submitted_file =
     "dernier fichier soumis"
 
+  let download_all =
+    "tout télécharger"
+
 end
 
 module String = (val
