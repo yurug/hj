@@ -19,7 +19,6 @@ let page_makers : page_maker list ref =
   ref []
 
 let register_page_maker detect retrieve =
-  Ocsigen_messages.errlog "register page maker";
   page_makers := (detect, retrieve) :: !page_makers
 
 let empty_page =
