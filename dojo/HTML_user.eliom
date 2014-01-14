@@ -60,7 +60,7 @@ let homepage u =
             )
           | `KO _ ->
             let u =
-              "http://savepangolins.org/wp-content/uploads/2011/01/pangolin.jpg"
+              "http://farm4.staticflickr.com/3381/3661799343_e551f5a52b_z.jpg"
             in
             return (X.uri_of_string u)
     in
