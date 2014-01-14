@@ -139,7 +139,6 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
                   let d = div [] in
                   let d = To_dom.of_element d in
                   d##innerHTML <- Js.string s;
-(*                  d##id <- Js.string "exercise_view";*)
                   return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
 
                 | CheckpointContext (cp, context) ->
@@ -154,9 +153,10 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
     }}
   in
   let display_math = {{ fun () ->
-    Firebug.console##log (Js.string "Math jaxing");
-    Js.Unsafe.eval_string
-      "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub, \"exercise_view\"]);";
+    Lwt.async (fun () -> Lwt_js.sleep 5. >>
+      return (Js.Unsafe.eval_string
+                "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub,\"exercise\"]);")
+    );
    }}
   in
   let get () =
