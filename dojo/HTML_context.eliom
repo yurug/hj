@@ -18,7 +18,9 @@ open COMMON_pervasives
 
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let get () = CORE_evaluation.(
-    lwt d = observe ~who:(identifier_of_string "HTML_context") evaluation (fun d -> return (content d)) in
+    lwt d = observe ~who:(identifier_of_string "HTML_context") evaluation (fun d ->
+      return (content d))
+    in
 (*    flush_diagnostic_commands_of_checkpoint evaluation checkpoint
     >> *) return d)
   in
@@ -274,37 +276,138 @@ let display_context exo_id answer_id checkpoint context evaluation =
   ]
 
 let display_master_view master exo checkpoint context =
-  lwt all_answers = CORE_answer.answers_of_exercise exo in
-  lwt all_answers =
-    match CORE_context.get_master_focus context with
-      | Some groups ->
-        lwt master_groups =
+  let get () =
+    lwt all_answers = CORE_answer.answers_of_exercise exo in
+    lwt all_answers =
+      match CORE_context.get_master_focus context with
+        | Some groups ->
+          lwt master_groups =
+            Lwt_list.filter_s
+              (fun g -> CORE_user.has_property master (CORE_property.atom g))
+              groups
+          in
+          let interest_master a =
+            Lwt_list.exists_s
+              (fun g -> CORE_user.has_property a (CORE_property.atom g))
+              master_groups
+          in
           Lwt_list.filter_s
-            (fun g -> CORE_user.has_property master (CORE_property.atom g))
-            groups
-        in
-        let interest_master a =
-          Lwt_list.exists_s
-            (fun g -> CORE_user.has_property a (CORE_property.atom g))
-            master_groups
-        in
-        Lwt_list.filter_s
-          (fun (authors, _) ->
-            lwt authors = Lwt_list.fold_left_s (fun authors a ->
-              CORE_user.make a >>= function
-                | `OK a -> return (a :: authors)
-                | `KO _ -> return authors
-            ) [] authors
-            in
-            Lwt_list.exists_s interest_master authors)
-          all_answers
+            (fun (authors, _) ->
+              lwt authors = Lwt_list.fold_left_s (fun authors a ->
+                CORE_user.make a >>= function
+                  | `OK a -> return (a :: authors)
+                  | `KO _ -> return authors
+              ) [] authors
+              in
+              Lwt_list.exists_s interest_master authors)
+            all_answers
 
-      | _ ->
-        return all_answers
+        | _ ->
+          return all_answers
+    in
+    let answer_idx = ref (-1) in
+    let files = ref [] in
+    let links = Hashtbl.create 13 in
+    let get_link i =
+      try
+        Some (Hashtbl.find links i)
+      with Not_found -> None
+    in
+    let display_answer (authors, answer_id) =
+      CORE_answer.make answer_id >>= function
+        | `KO _ -> return [] (* FIXME: handle error. *)
+        | `OK answer ->
+          incr answer_idx;
+          lwt answer_descr =
+            CORE_answer.submission_of_checkpoint answer checkpoint
+            >>= function
+              | None | Some NoSubmission -> return "?"
+              | Some (Submission submission) ->
+                return (match submission with
+                  | SubmittedFile (f, digest) ->
+                    let file =
+                      CORE_standard_identifiers.source_filename answer_id f
+                    in
+                    let link = COMMON_file.send file in
+                    files := file :: !files;
+                    Hashtbl.add links !answer_idx link;
+                    f ^ "(" ^ Digest.to_hex digest ^ ")"
+                  | SubmittedValues vs ->
+                    String.concat "," vs
+                  | SubmittedChoices vs ->
+                    String.concat "," (List.map string_of_int vs)
+                  | SubmittedPropertyChoice s ->
+                    s
+                )
+          in
+          lwt evaluation_descr = CORE_evaluation.(
+            evaluation_of_exercise_from_authors exo answer authors
+            >>= function
+              | `KO _ -> return "error"
+              | `OK evaluation ->
+                state_of_checkpoint evaluation checkpoint >>= function
+                  | None | Some Unevaluated ->
+                    return "?"
+                  | Some (Evaluated (s, _, _, _)) ->
+                    return (CORE_context.string_of_score s)
+                  | Some (BeingEvaluated _) ->
+                    return "..."
+          )
+          in
+          let display author =
+            CORE_user.make author >>= function
+              | `OK u ->
+                lwt firstname = CORE_user.firstname u in
+                lwt surname = CORE_user.surname u in
+                return [ firstname; surname; answer_descr; evaluation_descr ]
+              | _ ->
+                return []
+          in
+          Lwt_list.map_s display authors
+    in
+    lwt list = Lwt_list.map_s display_answer all_answers in
+    let list = List.flatten list in
+    lwt e = HTML_widget.server_get_list_editor
+      ~no_header:true ~no_insertion:true
+      ["Name"; "Surname"; "Answer"; "Score"]
+      (fun () -> return list) (* FIXME: should be dynamic. *)
+      None
+      (fun i ->
+        match get_link i with
+          | None -> []
+          | Some url -> [
+            HTML_widget.icon [pcdata "↓"] {{ fun _ -> Lwt.async (fun () ->
+              return (Dom_html.window##location##assign (Js.string %url))
+            )}}]
+      )
+      (fun _ _ -> `RO)
+    in
+    let download_all_files =
+      let all_files = server_function Json.t<unit> (fun () ->
+        if !files = [] then
+          return None
+        else
+          let archive = Filename.temp_file "hjarc" ".tar.gz" in
+          ltry (COMMON_unix.tar_create archive !files)
+          >>= function
+            | `KO e -> warn e; return None
+            | `OK _ -> return (Some (COMMON_file.send archive))
+      )
+      in
+      HTML_widget.small_button [I18N.(String.(cap download_all))] {{
+        fun _ -> Lwt.async (fun () ->
+          %all_files () >>= function
+            | None -> return ()
+            | Some u -> return (Dom_html.window##location##assign (Js.string u))
+        )}}
+    in
+    return (
+      e :: (if !files = [] then [] else [
+        p [pcdata ""]; (* FIXME: Ugly! *)
+        div [ download_all_files ]
+      ]))
   in
-  return (List.map (fun (authors, answer) ->
-    p [pcdata (Printf.sprintf "%s -> %s"
-                 (String.concat " " (List.map string_of_identifier authors))
-                 (string_of_identifier answer))]
-  ) all_answers
-  )
+  lwt rdiv =
+    HTML_entity.reactive_div exo None get {{ fun d -> return d }}
+  in
+  return [rdiv]

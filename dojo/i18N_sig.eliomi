@@ -73,6 +73,7 @@ sig
   val many : string -> string
 
   (** Sentences. *)
+  val download_all: string
   val last_connection: string
   val sorry_autotesting_is_disabled : string
   val the_following_operation_is_broken : string -> string -> string

@@ -167,10 +167,11 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
     )
   in
 
-  CORE_exercise.eval exo authors
-  >>= fun _ -> (
+  CORE_exercise.eval exo authors >>= fun _ ->
+  lwt rdiv =
     HTML_entity.reactive_div exo (Some display_math) get display_exercise
-  )
+  in
+    return (div ~a:[a_id "exercise"] [rdiv])
 
 let role e =
 (* FIXME: Determine the role of the user wrt to this exercise.

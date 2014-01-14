@@ -27,7 +27,10 @@ body {
 #contents {
     background: white;
     width: 80em;
-    margin-left: 1em;
+}
+
+#exercise {
+    margin-left: 2em;
 }
 
 #logo {
@@ -56,7 +59,7 @@ body {
 
 #about_box {
     float: right;
-    width: 30em;
+    width: 42em;
 }
 
 #bar_space {
@@ -351,7 +354,7 @@ span.editable_cell {
 
 td {
     padding-left: 0.5em;
-    padding-right: 0.5em;
+    padding-right: 1em;
 }
 
 div.button {

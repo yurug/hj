@@ -48,6 +48,13 @@ let cp src dst lraise =
   success ~lraise (!% cmd)
   >>= fun _ -> return ()
 
+let tar_create dst srcs lraise =
+  let dst = Filename.quote dst
+  and srcs = List.map Filename.quote srcs in
+  let cmd = Printf.sprintf "tar cvfz %s %s" dst (String.concat " " srcs) in
+  success ~lraise (!% cmd)
+  >>= fun _ -> return ()
+
 let read c =
   handle_unix_error (fun () -> return (
     strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
