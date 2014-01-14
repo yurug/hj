@@ -495,6 +495,13 @@ module Eval = struct
       return (CORE_context.master_focus s)
     );
 
+    functional "master_grade" (fun _ v ->
+      let criteria = as_string v in
+      return (VPrimitive (fun _ s v ->
+        let over = as_int v in
+        return (CORE_context.(push (master_grade criteria over) s), VUnit)
+      )));
+
     stateful "answer_in_file" (fun _ v ->
       let s = as_string v in
       return (CORE_context.answer s)

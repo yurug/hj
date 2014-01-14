@@ -305,6 +305,7 @@ let display_master_view master exo checkpoint context =
         | _ ->
           return all_answers
     in
+    let evaluations = Hashtbl.create 13 in
     let answer_idx = ref (-1) in
     let files = ref [] in
     let links = Hashtbl.create 13 in
@@ -313,7 +314,7 @@ let display_master_view master exo checkpoint context =
         Some (Hashtbl.find links i)
       with Not_found -> None
     in
-    let display_answer (authors, answer_id) =
+    let display_answer master_grade (authors, answer_id) =
       CORE_answer.make answer_id >>= function
         | `KO _ -> return [] (* FIXME: handle error. *)
         | `OK answer ->
@@ -340,15 +341,38 @@ let display_master_view master exo checkpoint context =
                     s
                 )
           in
-          lwt evaluation_descr = CORE_evaluation.(
-            evaluation_of_exercise_from_authors exo answer authors
+          lwt evaluation =
+            CORE_evaluation.evaluation_of_exercise_from_authors exo answer authors
             >>= function
-              | `KO _ -> return "error"
-              | `OK evaluation ->
+              | `KO _ -> return None
+              | `OK evaluation -> return (Some evaluation)
+          in
+
+          let master_score = ref None in
+          lwt evaluation_descr = CORE_evaluation.(
+            match evaluation with
+              | None -> return "error"
+              | Some evaluation ->
                 state_of_checkpoint evaluation checkpoint >>= function
                   | None | Some Unevaluated ->
+                    (match master_grade with
+                      | Some (_, over) ->
+                        master_score := Some ("?/" ^ string_of_int over)
+                      | _ -> ());
                     return "?"
                   | Some (Evaluated (s, _, _, _)) ->
+                    let s = match master_grade with
+                      | None -> s
+                      | Some (criteria, over) ->
+                        master_score := Some (
+                          match CORE_context.grade_for_criteria criteria s with
+                            | None ->
+                              ("?/" ^ string_of_int over)
+                            | Some (g, _) ->
+                              (string_of_int g ^ "/" ^ string_of_int over)
+                        );
+                        CORE_context.except criteria s
+                    in
                     return (CORE_context.string_of_score s)
                   | Some (BeingEvaluated _) ->
                     return "..."
@@ -359,19 +383,59 @@ let display_master_view master exo checkpoint context =
               | `OK u ->
                 lwt firstname = CORE_user.firstname u in
                 lwt surname = CORE_user.surname u in
-                return [ firstname; surname; answer_descr; evaluation_descr ]
+                let cells =
+                  [ firstname; surname; answer_descr; evaluation_descr ] @ (
+                    match !master_score with
+                      | None -> []
+                      | Some s -> [s]
+                  )
+                in
+                begin match evaluation with
+                  | None -> ()
+                  | Some evaluation ->
+                    Hashtbl.add evaluations (firstname, surname) evaluation
+                end;
+                return cells
               | _ ->
                 return []
           in
           Lwt_list.map_s display authors
     in
-    lwt list = Lwt_list.map_s display_answer all_answers in
+    let master_grade = CORE_context.get_master_grade context in
+    lwt list = Lwt_list.map_s (display_answer master_grade) all_answers in
     let list = List.flatten list in
-    lwt e = HTML_widget.server_get_list_editor
-      ~no_header:true ~no_insertion:true
+    let header =
       ["Name"; "Surname"; "Answer"; "Score"]
+      @ (match master_grade with
+        | None -> []
+        | Some (criteria, _) -> [criteria]
+      )
+    in
+    let replace l =
+      Ocsigen_messages.errlog (Printf.sprintf "replace: %s" (String.concat " " (List.map (String.concat ",") l)));
+      match master_grade with
+        | None -> return ()
+        | Some (criteria, _) ->
+          Lwt_list.iter_s (function
+            | [name; surname; _; _; mgrade] ->
+              begin try_lwt
+                      let evaluation = Hashtbl.find evaluations (name, surname) in
+                      let grade = ref 0 in
+                      let over = ref 0 in
+                      (* FIXME: Do more flexible parsing! *)
+                      Scanf.sscanf mgrade "%d/%d" (fun g o -> grade := o; over := o);
+                      CORE_evaluation.new_score criteria !grade !over evaluation checkpoint
+                with _ -> (* FIXME *)
+                  return ()
+              end
+            | _ -> (* FIXME: Should not happen. *)
+              return ()) l
+    in
+    lwt e = HTML_widget.server_get_list_editor
+      ~no_insertion:true
+      header
       (fun () -> return list) (* FIXME: should be dynamic. *)
-      None
+      (Some replace)
       (fun i ->
         match get_link i with
           | None -> []
@@ -380,7 +444,7 @@ let display_master_view master exo checkpoint context =
               return (Dom_html.window##location##assign (Js.string %url))
             )}}]
       )
-      (fun _ _ -> `RO)
+      (fun _ -> function 4 -> `RW | _ -> `RO)
     in
     let download_all_files =
       let all_files = server_function Json.t<unit> (fun () ->
@@ -389,16 +453,16 @@ let display_master_view master exo checkpoint context =
         else
           let archive = Filename.temp_file "hjarc" ".tar.gz" in
           ltry (COMMON_unix.tar_create archive !files)
-          >>= function
-            | `KO e -> warn e; return None
-            | `OK _ -> return (Some (COMMON_file.send archive))
+                    >>= function
+                      | `KO e -> warn e; return None
+                      | `OK _ -> return (Some (COMMON_file.send archive))
       )
       in
       HTML_widget.small_button [I18N.(String.(cap download_all))] {{
         fun _ -> Lwt.async (fun () ->
-          %all_files () >>= function
-            | None -> return ()
-            | Some u -> return (Dom_html.window##location##assign (Js.string u))
+%all_files () >>= function
+  | None -> return ()
+  | Some u -> return (Dom_html.window##location##assign (Js.string u))
         )}}
     in
     return (

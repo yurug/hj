@@ -389,3 +389,17 @@ let state_of_checkpoint evaluation checkpoint =
   observe evaluation (fun d ->
     return (COMMON_pervasives.opt_assoc checkpoint (content d).jobs)
   )
+
+let new_score criteria grade over evaluation checkpoint =
+  observe
+    evaluation
+    (fun d -> return (COMMON_pervasives.opt_assoc checkpoint (content d).jobs))
+  >>= function
+    | Some (Evaluated (score, s, c, ctx)) ->
+      let score = CORE_context.push_grade criteria grade over score in
+      let state = Evaluated (score, s, c, ctx) in
+      change evaluation (NewEvaluationState (checkpoint, state))
+    | _ ->
+      (* FIXME: This should not happen. Manual evaluation can only by
+         done on evaluated job. *)
+      return ()

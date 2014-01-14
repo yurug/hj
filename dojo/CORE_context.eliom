@@ -22,6 +22,7 @@ type rule =
   | Source of string
   | ChooseProperty of string list
   | MasterFocus of string list
+  | MasterGrade of string * int
 deriving (Json)
 
 type context =
@@ -60,6 +61,8 @@ let rec string_of_context = Printf.(function
     sprintf "choose_property(%s) %s" (String.concat "," p) (string_of_context c)
   | Compose (MasterFocus p, c) ->
     sprintf "master_focus(%s) %s" (String.concat "," p) (string_of_context c)
+  | Compose (MasterGrade (p, o), c) ->
+    sprintf "master_grade(%s[%d]) %s" p o (string_of_context c)
 )
 
 type criteria = string deriving (Json)
@@ -97,6 +100,8 @@ let choose_property cs = ChooseProperty cs
 
 let master_focus cs = MasterFocus cs
 
+let master_grade criteria points = MasterGrade (criteria, points)
+
 let get what c =
   let rec aux last = function
   | Empty -> last
@@ -119,6 +124,11 @@ let all what c =
 
 let get_master_focus = get (function
   | MasterFocus cs -> Some cs
+  | _ -> None
+)
+
+let get_master_grade = get (function
+  | MasterGrade (c, o) -> Some (c, o)
   | _ -> None
 )
 
@@ -260,3 +270,12 @@ let marker_io_interpretation seed line = Str.(
   else
     None
 )
+
+let push_grade criteria grade over score =
+  COMMON_pervasives.update_assoc criteria (grade, over) score
+
+let except criteria score =
+  List.filter (fun (c, _) -> c = criteria) score
+
+let grade_for_criteria criteria score =
+  COMMON_pervasives.opt_assoc criteria score
