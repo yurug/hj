@@ -155,7 +155,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
     }}
   in
   let display_math = {{ fun () ->
-    Lwt.async (fun () -> Lwt_js.sleep 1. >>
+    Lwt.async (fun () ->
       return (Js.Unsafe.eval_string (
         Printf.sprintf
           "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub,%s]);"
