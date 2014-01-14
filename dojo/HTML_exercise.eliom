@@ -114,6 +114,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
       return (ds @ ms)
     )
   in
+  let elements = {string list ref{ ref [] }} in
   let display_exercise =
     (* FIXME: For the moment, we redisplay the entire exercise
        FIXME: description each time it is updated. We should
@@ -139,6 +140,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
                   let d = div [] in
                   let d = To_dom.of_element d in
                   d##innerHTML <- Js.string s;
+                  %elements := (Js.to_string d##id) :: !(%elements);
                   return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
 
                 | CheckpointContext (cp, context) ->
@@ -153,9 +155,12 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
     }}
   in
   let display_math = {{ fun () ->
-    Lwt.async (fun () -> Lwt_js.sleep 5. >>
-      return (Js.Unsafe.eval_string
-                "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub,\"exercise\"]);")
+    Lwt.async (fun () -> Lwt_js.sleep 1. >>
+      return (Js.Unsafe.eval_string (
+        Printf.sprintf
+          "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub,%s]);"
+          (String.concat "," !(%elements))
+      ))
     );
    }}
   in
