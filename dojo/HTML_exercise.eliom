@@ -160,8 +160,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
    }}
   in
   let get () =
-    CORE_exercise.eval_if_needed exo authors
-    >>= fun _ ->
+    CORE_exercise.eval_if_needed exo authors >>= fun _ ->
     CORE_exercise.(observe exo (fun d ->
       let c = content d in
       return (current_value c, title c))
