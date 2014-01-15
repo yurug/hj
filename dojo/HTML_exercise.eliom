@@ -137,11 +137,10 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
             | `OK v ->
               let display_atomic = CORE_questions.(function
                 | Statement s ->
-                  let d = div [] in
-                  let d = To_dom.of_element d in
-                  d##innerHTML <- Js.string s;
-                  %elements := (Js.to_string d##id) :: !(%elements);
-                  return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
+                  let d = div [HTML_statement.to_html s] in
+                  let dom = To_dom.of_div d in
+                  %elements := (Js.to_string dom##id) :: !(%elements);
+                  return [d]
 
                 | CheckpointContext (cp, context) ->
                   %display_context (cp, context)
