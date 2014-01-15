@@ -294,6 +294,9 @@ module Fr : I18N_sig.Text = struct
       "Une évaluation de votre part est requise pour l'exercise %s"
       e
 
+  let wait_for_master_evaluation =
+    "En attente d'une évaluation du maître."
+
 end
 
 module String = (val

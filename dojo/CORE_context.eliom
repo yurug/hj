@@ -71,11 +71,6 @@ type grade = int * int deriving (Json)
 
 type score = (criteria * grade) list deriving (Json)
 
-let string_of_score score =
-  String.concat " " (List.map (fun (criteria, (n, o)) ->
-    Printf.sprintf "%s [%d/%d]" criteria n o
-  ) score)
-
 let empty = Empty
 
 let push r c = Compose (r, c)
@@ -156,6 +151,23 @@ type submission =
   | SubmittedChoices of int list
   | SubmittedPropertyChoice of string
 deriving (Json)
+
+let string_of_score ctx score =
+  let sscore =
+    String.concat " " (List.map (fun (criteria, (n, o)) ->
+      Printf.sprintf "%s [%d/%d]" criteria n o
+    ) score)
+  in
+  let wait_for_master =
+    match get_master_grade ctx with
+      | None -> ""
+      | Some (criteria, _) ->
+        if List.mem_assoc criteria score then
+          ""
+        else
+          " (" ^ I18N.String.wait_for_master_evaluation ^ ")"
+  in
+  sscore ^ wait_for_master
 
 }}
 

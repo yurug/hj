@@ -18,8 +18,8 @@ open COMMON_pervasives
 
 let display_score checkpoint (evaluation : CORE_evaluation.t) =
   let get () = CORE_evaluation.(
-    lwt d = observe ~who:(identifier_of_string "HTML_context") evaluation (fun d ->
-      return (content d))
+    let who = identifier_of_string "HTML_context" in
+    lwt d = observe ~who evaluation (fun d -> return (content d))
     in
 (*    flush_diagnostic_commands_of_checkpoint evaluation checkpoint
     >> *) return d)
@@ -45,10 +45,10 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
             | Some (BeingEvaluated (_, _, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
               return [p [pcdata "▹ En cours..."]]
-            | Some (Evaluated (score, _, dcmd, _)) ->
+            | Some (Evaluated (score, _, dcmd, ctx)) ->
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
-              return [p [pcdata ("▹ " ^ string_of_score score)]]
+              return [p [pcdata ("▹ " ^ string_of_score ctx score)]]
             | None ->
               return [p [pcdata "?"]]
         )
@@ -361,7 +361,7 @@ let display_master_view master exo checkpoint context =
                         master_score := Some ("?/" ^ string_of_int over)
                       | _ -> ());
                     return "?"
-                  | Some (Evaluated (s, _, _, _)) ->
+                  | Some (Evaluated (s, _, _, ctx)) ->
                     let s = match master_grade with
                       | None -> s
                       | Some (criteria, over) ->
@@ -374,7 +374,7 @@ let display_master_view master exo checkpoint context =
                         );
                         CORE_context.except criteria s
                     in
-                    return (CORE_context.string_of_score s)
+                    return (CORE_context.string_of_score ctx s)
                   | Some (BeingEvaluated _) ->
                     return "..."
           )

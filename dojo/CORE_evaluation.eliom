@@ -46,9 +46,9 @@ deriving (Json)
 let string_of_evaluation_state = function
   | Unevaluated ->
     "Not evaluated"
-  | Evaluated (score, _, _, _) ->
+  | Evaluated (score, _, _, ctx) ->
     Printf.sprintf "Evaluated with score %s"
-      (CORE_context.string_of_score score)
+      (CORE_context.string_of_score ctx score)
   | BeingEvaluated (job, _, _, _) ->
     Printf.sprintf "Being evaluated by job %s" (string_of_job job)
 
