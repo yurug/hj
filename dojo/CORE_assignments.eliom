@@ -70,46 +70,34 @@ let rules k =
     try List.assoc k (content e).rules with Not_found -> []
   ))
 
-let push_assignment_rule k r e =
+let register_rule e new_rules =
   lwt a = assigner () in
   lwt rules = observe a (fun s -> return (content s).rules) in
-  change a (
+  let refresh rules = List.(
+    filter (fun (_, ids) -> ids <> []) (
+      map (fun (r, ids) -> (r, filter (fun e' -> e <> e') ids)) rules
+    )
+  )
+  in
+  let rules = List.map (fun (k, rules) -> (k, refresh rules)) rules in
+  let register rules (k, r) =
     let rec aux = function
       | (k', rs) :: ks when k = k' -> (k, (r, [e]) :: rs) :: ks
       | k :: ks -> k :: aux ks
       | [] -> [(k, [(r, [e])])]
     in
-    UpdateContent { rules = aux rules }
+    aux rules
+  in
+  change a (UpdateContent { rules = List.fold_left register rules new_rules })
+
+let assignments k ps =
+  List.(
+    lwt rules = rules k in
+    let assignments = filter (fun (r, _) ->
+      CORE_property.evaluate ps r
+    ) rules
+    in
+    return (flatten (snd (split assignments)))
   )
 
-let assignments k u =
-  (* FIXME: To be reactivated later.
-  lwt rules = rules k in
-  let exo_refs = List.flatten (snd (List.split (List.filter (
-    fun (r, _) ->
-      lwt ps = CORE_user.observe u (fun s -> return (properties s)) in
-      return (CORE_property.evaluate ps r)
-  ) rules)))
-  in
-  (** If the system is in a coherent state, the dereferencing of
-      the exercise references must be OK. *)
-  (* FIXME: Check that and take the right decision if it is an
-     invalid assumption in practice. *)
-  Lwt_list.map_p (fun r -> CORE_exercise.deref r >>= function
-    | `OK e -> return e
-    | `KO _ -> assert false)
-  exo_refs
-  *)
-  assert false
-
 let all_assignment_kinds = [ `Must; `Should; `Can; `Cannot ]
-
-let register_exercise : CORE_exercise.t -> unit Lwt.t =
-  fun e ->
-    assert false
-    (* FIXME: To be reactivated later.
-    Lwt_list.iter_s (fun k ->
-      lwt r = CORE_exercise.assignment_rule e k in
-      push_assignment_rule k r (CORE_exercise.refer_to e)
-    ) all_assignment_kinds
-    *)

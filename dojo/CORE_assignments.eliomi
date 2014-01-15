@@ -19,6 +19,8 @@ open CORE_identifier
 
 type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
 
-val assignments : assignment_kind -> CORE_user.t -> CORE_exercise.t list Lwt.t
+val assignments
+  : assignment_kind -> CORE_property.set -> identifier list Lwt.t
 
-val register_exercise : CORE_exercise.t -> unit Lwt.t
+val register_rule
+  : identifier -> (assignment_kind * CORE_property.rule) list -> unit Lwt.t

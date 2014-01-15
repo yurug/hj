@@ -40,7 +40,14 @@ let exercises_scrolls u =
       that itself contains one subscroll per assignment. *)
   let create_subscroll (kind, label) =
     let title = p [pcdata (cap label)] in
-    hackojo_scroll (div []) (div [title]) []
+    lwt user_properties = CORE_user.properties u in
+    lwt assignments = CORE_assignments.assignments kind user_properties in
+    let display id =
+      p [a ~service:HTTP_services.page_of [
+        pcdata (string_of_identifier id)
+      ] (string_list_of_identifier id)]
+    in
+    hackojo_scroll (div []) (div [title]) (List.map display assignments)
   in
   let kinds = String.([ `Must, must_do; `Should, should_do; `Can, can_do ]) in
   lwt subs = Lwt_list.map_s create_subscroll kinds in

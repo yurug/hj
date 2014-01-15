@@ -336,6 +336,7 @@ module Eval = struct
     | VPrimitive of (environment -> state -> value -> (state * value) Lwt.t)
     | VSource of string * string
     | VModule of environment
+    | VPropertyRule of CORE_property.rule
 
   and environment = (label * value) list
 
@@ -550,6 +551,10 @@ module Eval = struct
       return (CORE_context.source fname)
     );
 
+    functional "is" (fun _ v ->
+      let what = as_string v in
+      return (VPropertyRule (CORE_property.(Is (atom what))))
+    )
 
   and variable s (e : environment) = function
     | PSub (PThis, l) ->
@@ -622,25 +627,42 @@ module Eval = struct
     lwt _, v = term' CORE_context.empty e p in
     let sources = ref [] in
     let title = ref "Sans titre" (* FIXME *) in
+    let must = ref CORE_property.False in
+    let can = ref CORE_property.False in
+    let should = ref CORE_property.False in
     let v = (filter_map (fun x -> function
       | VStatement s ->
         Some (Statement s)
+
+      | VPropertyRule r as v when x = CORE_identifier.label "must" ->
+        must := r;
+        None
+
+      | VPropertyRule r as v when x = CORE_identifier.label "should" ->
+        should := r;
+        None
+
+      | VPropertyRule r as v when x = CORE_identifier.label "can" ->
+        can := r;
+        None
+
       | (VString _ | VModule _) as v when x = CORE_identifier.label "title" ->
         title := as_string v;
         None
-(*      | (VModule _) as v ->
-        Some (Statement ("<p>" ^ as_string v ^ "</p>"))*)
+
       | VContext c ->
         Some (CheckpointContext (label_to_string x, c))
+
       | VSource (s, c) ->
         sources := (s, c) :: !sources;
         None
+
       | _ ->
         None
       ) (values_of_module v)
     )
     in
-    return (!title, v, !sources)
+    return (!title, v, !sources, !must, !can, !should)
 
 end
 
@@ -667,13 +689,14 @@ let convert_to_string_error
 
 (** A well-typed exercise description evaluates into a value. *)
 let eval authors this p =
+  let nil = CORE_property.False in
   try_lwt
 (*    lwt tenv = TypeCheck.program this p in*)
-    lwt title, v, sources = Eval.program this p in
-    return (title, `OK v, sources)
+    lwt title, v, sources, must, can, should = Eval.program this p in
+    return (title, `OK v, sources, must, can, should)
   with
     | Error e ->
-      return ("", `KO (convert_to_string_error e), [])
+      return ("", `KO (convert_to_string_error e), [], nil, nil, nil)
     | _ ->
       Ocsigen_messages.errlog "Unexpected error during evaluation.";
-      return ("", `KO `EvalError, [])
+      return ("", `KO `EvalError, [], nil, nil, nil)

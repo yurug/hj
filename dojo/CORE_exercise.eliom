@@ -51,11 +51,13 @@ type data = description
 let raw_user_description_filename = "description.txt"
 
 let eval_questions authors this c =
-  lwt title, v, sources = CORE_questions.eval authors this c.questions in
+  lwt title, v, sources, must, can, should =
+    CORE_questions.eval authors this c.questions
+  in
   return ({ c with
     title;
     questions_value = Some (c.questions, v)
-  }, sources)
+  }, sources, must, can, should)
 
 exception Error of [ `UndefinedEntity of CORE_identifier.t
                    | `AlreadyExists   of CORE_identifier.path
@@ -105,10 +107,16 @@ include CORE_entity.Make (struct
         )
 
       | EvalQuestions authors ->
-        lwt content, xsources =
-          eval_questions authors (CORE_inmemory_entity.identifier state) content
+        let exo_id = CORE_inmemory_entity.identifier state in
+        lwt content, xsources, must, can, should =
+          eval_questions authors exo_id content
         in
-        let source (sources, dependencies, content) (f, c) =
+        CORE_assignments.register_rule exo_id [
+          `Must, must;
+          `Can, can;
+          `Should, should
+        ] >>
+          let source (sources, dependencies, content) (f, c) =
           let s = CORE_source.make f c in
           save_source (CORE_inmemory_entity.identifier state) s
           >>= function

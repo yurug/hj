@@ -44,6 +44,9 @@ val change_properties
 val has_property
   : t -> CORE_property.t -> bool Lwt.t
 
+val properties
+  : t -> CORE_property.set Lwt.t
+
 val send
   : t -> CORE_message.t -> unit Lwt.t
 

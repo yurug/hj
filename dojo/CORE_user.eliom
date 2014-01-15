@@ -48,6 +48,9 @@ let change_properties e f =
 let has_property e s =
   observe e (fun u -> return (CORE_property.is s (properties u)))
 
+let properties e =
+  observe e (fun u -> return (properties u))
+
 (** By convention, users are stored in the "users" folder. *)
 
 let user_id username =
