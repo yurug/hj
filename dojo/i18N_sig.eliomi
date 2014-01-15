@@ -111,6 +111,7 @@ sig
   val runtime_error : string
   val to_be_provided : string
   val last_submitted_file : string
+  val evaluation_needed_for_exercise : string -> string
 end
 
 }}

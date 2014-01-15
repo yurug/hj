@@ -175,7 +175,7 @@ let equivalent_context c1 c2 =
 
 let string_of_submission = function
   | SubmittedFile (f, digest) ->
-    Printf.sprintf "file(%s[%s])" f digest
+    Printf.sprintf "file(%s[%s])" f (Digest.to_hex digest)
   | SubmittedValues vs ->
     Printf.sprintf "values(%s)" (String.concat "," vs)
   | SubmittedChoices vs ->

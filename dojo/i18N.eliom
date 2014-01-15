@@ -289,6 +289,11 @@ module Fr : I18N_sig.Text = struct
   let download_all =
     "tout télécharger"
 
+  let evaluation_needed_for_exercise e =
+    Printf.sprintf
+      "Une évaluation de votre part est requise pour l'exercise %s"
+      e
+
 end
 
 module String = (val

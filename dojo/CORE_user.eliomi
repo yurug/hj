@@ -44,6 +44,18 @@ val change_properties
 val has_property
   : t -> CORE_property.t -> bool Lwt.t
 
+val send
+  : t -> CORE_message.t -> unit Lwt.t
+
+val unread
+  : t -> CORE_message.t list Lwt.t
+
+val read
+  : t -> CORE_message.t list Lwt.t
+
+val mark_as_read
+  : t -> CORE_message.t -> unit Lwt.t
+
 (** Services (automatically inferred using eliomc -i.) *)
 
 val login_service :

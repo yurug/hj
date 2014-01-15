@@ -171,7 +171,6 @@ let display_user_input exo_id answer_id checkpoint context submission =
         return (Manip.replaceAllChild %choices_div [e])
       }};
       let submit = server_function Json.t<unit> (fun () ->
-        Ocsigen_messages.errlog "OK clicked.";
         submit_answer_choices exo_id checkpoint !choices
       )
       in
@@ -218,9 +217,11 @@ let display_user_input exo_id answer_id checkpoint context submission =
         fun _ -> Lwt.async (fun () -> %submit ())
       }}
       in
-      return (div ~a:[a_class ["user_answer"]] [editor_div;
-                                                p [pcdata ""];
-                                                submit_button])
+      return (div ~a:[a_class ["user_answer"]] [
+        editor_div;
+        p [pcdata ""];
+        submit_button
+      ])
 
     | Some (`ChooseProperty cs) ->
       let previous =
@@ -236,7 +237,6 @@ let display_user_input exo_id answer_id checkpoint context submission =
       let select = {{ fun _ ->
         let e = Id.get_element %id in
         let e = To_dom.of_select e in
-        Firebug.console##log (e##value);
         Lwt.async (fun () -> %submit (Js.to_string e##value))
       }}
       in
@@ -251,7 +251,6 @@ let display_user_input exo_id answer_id checkpoint context submission =
       in
       return (div ~a:[a_class ["user_answer"]] [property_selector])
 
-
 let extract_previous_submission checkpoint evaluation =
   CORE_evaluation.(observe evaluation (fun s ->
     let d = content s in
@@ -261,8 +260,7 @@ let extract_previous_submission checkpoint evaluation =
       | Some (BeingEvaluated (_, s, _, _))
       | Some (Evaluated (_, s, _, _)) ->
         return (Some s)
-  )
-  )
+  ))
 
 let display_context exo_id answer_id checkpoint context evaluation =
   lwt submission = extract_previous_submission checkpoint evaluation in
@@ -275,6 +273,8 @@ let display_context exo_id answer_id checkpoint context evaluation =
     div [ score ];
   ]
 
+(* FIXME: Some parts of the following function should be moved to
+   FIXME: CORE_context.  *)
 let display_master_view master exo checkpoint context =
   let get () =
     lwt all_answers = CORE_answer.answers_of_exercise exo in
@@ -342,7 +342,8 @@ let display_master_view master exo checkpoint context =
                 )
           in
           lwt evaluation =
-            CORE_evaluation.evaluation_of_exercise_from_authors exo answer authors
+            CORE_evaluation.evaluation_of_exercise_from_authors
+              exo answer authors
             >>= function
               | `KO _ -> return None
               | `OK evaluation -> return (Some evaluation)
@@ -412,19 +413,23 @@ let display_master_view master exo checkpoint context =
       )
     in
     let replace l =
-      Ocsigen_messages.errlog (Printf.sprintf "replace: %s" (String.concat " " (List.map (String.concat ",") l)));
       match master_grade with
         | None -> return ()
         | Some (criteria, _) ->
           Lwt_list.iter_s (function
             | [name; surname; _; _; mgrade] ->
-              begin try_lwt
-                      let evaluation = Hashtbl.find evaluations (name, surname) in
-                      let grade = ref 0 in
-                      let over = ref 0 in
-                      (* FIXME: Do more flexible parsing! *)
-                      Scanf.sscanf mgrade "%d/%d" (fun g o -> grade := o; over := o);
-                      CORE_evaluation.new_score criteria !grade !over evaluation checkpoint
+              begin
+                try_lwt
+                  let evaluation = Hashtbl.find evaluations (name, surname) in
+                  let grade = ref 0 in
+                  let over = ref 0 in
+                  (* FIXME: Do more flexible parsing! *)
+                  Scanf.sscanf mgrade "%d/%d" (fun g o ->
+                    grade := g;
+                    over := o
+                  );
+                  CORE_evaluation.new_score criteria
+                    !grade !over evaluation checkpoint
                 with _ -> (* FIXME *)
                   return ()
               end
