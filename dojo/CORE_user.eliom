@@ -238,12 +238,12 @@ let rec authenticate u password =
       return e
 
 let logged_user =
-  let first_time = ref true in
+  let first_time = ref 10 in
   fun () ->
   Eliom_reference.get username >>= function
     | `NotLogged ->
-      if CORE_config.development_mode () && !first_time then (
-        first_time := false;
+      if CORE_config.development_mode () && !first_time > 0 then (
+        decr first_time;
         authenticate "donald" "no_password_for_me" >>= function
           | `OK u -> return (`Logged u)
           | `KO _ -> return `NotLogged
