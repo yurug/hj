@@ -544,3 +544,7 @@ div.user_input_file:hover, div.user_input_file:focus {
     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     box-shadow: 0 0 1px rgba(1, 1, 1, .75);
 }
+
+div.context {
+    margin-bottom: 1em;
+}

@@ -268,10 +268,10 @@ let display_context exo_id answer_id checkpoint context evaluation =
     display_user_input exo_id answer_id checkpoint context submission
   in
   lwt score = display_score checkpoint evaluation in
-  return [
+  return [div ~a:[a_class ["context"]] [
     user_input;
     div [ score ];
-  ]
+  ]]
 
 (* FIXME: Some parts of the following function should be moved to
    FIXME: CORE_context.  *)
