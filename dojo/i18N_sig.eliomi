@@ -74,6 +74,7 @@ sig
 
   (** Sentences. *)
   val download_all: string
+  val download_pdf: string
   val last_connection: string
   val sorry_autotesting_is_disabled : string
   val the_following_operation_is_broken : string -> string -> string
@@ -111,6 +112,8 @@ sig
   val runtime_error : string
   val to_be_provided : string
   val last_submitted_file : string
+  val evaluation_needed_for_exercise : string -> string
+  val wait_for_master_evaluation : string
 end
 
 }}

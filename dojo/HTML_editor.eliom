@@ -58,11 +58,16 @@ let message msg =
     class type editor = object
       method on : js_string t -> ('a, 'b) meth_callback -> unit meth
       method getValue : js_string t meth
+      method setBooleanOption : js_string t -> boolean -> unit meth
     end
 
     let make ta =
-      let codemirror = variable "CodeMirror" in
-      (coerce codemirror)##fromTextArea (ta)
+      (* FIXME: Define a cleaner binding. *)
+      eval_string (
+        Printf.sprintf
+          "CodeMirror.fromTextArea(document.getElementById(\"%s\"), {
+           lineNumbers: true
+           });" ta)
 
   end
 
@@ -207,13 +212,7 @@ let create
          Js._false
       )
       in
-      let e = Js.Opt.get (
-        Dom_html.document##getElementById (Js.string %editor_id)
-      ) (fun _ -> To_dom.of_div (div [
-        pcdata "getElementById failed for textarea editor."
-      ]))
-      in
-      let i = CodeMirror.make e in
+      let i = CodeMirror.make %editor_id in
       i##on (Js.string "change", hi i)
   }}
   in

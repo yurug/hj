@@ -162,12 +162,14 @@ else
   SED_ARGS += -e "s|%%DEBUGMODE%%||g"
 endif
 
-LOCAL_SED_ARGS := -e "s|%%PORT%%|$(TEST_PORT)|g"
+LOCAL_SED_ARGS := -e "s|%%UPORT%%|$(TEST_UPORT)|g"
+LOCAL_SED_ARGS += -e "s|%%PORT%%|$(TEST_PORT)|g"
 LOCAL_SED_ARGS += -e "s|%%STATICDIR%%|$(LOCAL_STATIC)|g"
 LOCAL_SED_ARGS += -e "s|%%SSLKEY%%|$(TEST_SSLKEY)|g"
 LOCAL_SED_ARGS += -e "s|%%SSLCERT%%|$(TEST_SSLCERT)|g"
 LOCAL_SED_ARGS += -e "s|%%USERGROUP%%||g"
-GLOBAL_SED_ARGS := -e "s|%%PORT%%|$(PORT)|g"
+GLOBAL_SED_ARGS := -e "s|%%UPORT%%|$(UPORT)|g"
+GLOBAL_SED_ARGS += -e "s|%%PORT%%|$(PORT)|g"
 GLOBAL_SED_ARGS += -e "s|%%STATICDIR%%|%%PREFIX%%$(STATICDIR)|g"
 GLOBAL_SED_ARGS += -e "s|%%SSLKEY%%|$(SSLKEY)|g"
 GLOBAL_SED_ARGS += -e "s|%%SSLCERT%%|$(SSLCERT)|g"

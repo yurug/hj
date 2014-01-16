@@ -71,11 +71,6 @@ type grade = int * int deriving (Json)
 
 type score = (criteria * grade) list deriving (Json)
 
-let string_of_score score =
-  String.concat " " (List.map (fun (criteria, (n, o)) ->
-    Printf.sprintf "%s [%d/%d]" criteria n o
-  ) score)
-
 let empty = Empty
 
 let push r c = Compose (r, c)
@@ -157,6 +152,23 @@ type submission =
   | SubmittedPropertyChoice of string
 deriving (Json)
 
+let string_of_score ctx score =
+  let sscore =
+    String.concat " " (List.map (fun (criteria, (n, o)) ->
+      Printf.sprintf "%s [%d/%d]" criteria n o
+    ) score)
+  in
+  let wait_for_master =
+    match get_master_grade ctx with
+      | None -> ""
+      | Some (criteria, _) ->
+        if List.mem_assoc criteria score then
+          ""
+        else
+          " (" ^ I18N.String.wait_for_master_evaluation ^ ")"
+  in
+  sscore ^ wait_for_master
+
 }}
 
 let submission_files = function
@@ -175,7 +187,7 @@ let equivalent_context c1 c2 =
 
 let string_of_submission = function
   | SubmittedFile (f, digest) ->
-    Printf.sprintf "file(%s[%s])" f digest
+    Printf.sprintf "file(%s[%s])" f (Digest.to_hex digest)
   | SubmittedValues vs ->
     Printf.sprintf "values(%s)" (String.concat "," vs)
   | SubmittedChoices vs ->
@@ -279,3 +291,52 @@ let except criteria score =
 
 let grade_for_criteria criteria score =
   COMMON_pervasives.opt_assoc criteria score
+
+module LaTeX = struct
+
+  type latex = string list
+  open List
+
+  let all_escaped_characters =
+    [
+      (** The order matters. *)
+      "\\\\", "\\textbackslash ";
+      "{", "\\{";
+      "}", "\\}";
+      "_", "\\_";
+      "\\$", "\\$";
+      "%", "\\%";
+      "#", "\\#";
+      "&", "\\&";
+      "~", "{\\textasciitilde}";
+      "\\^", "{\\textasciicircum}";
+    ]
+
+  let verb_escaped_characters =
+    [
+      "_", "\\_";
+    ]
+
+  let escape_wrt cs s = Str.(
+    List.fold_left
+      (fun s (c, w) -> global_replace (regexp c) w s)
+      s
+  ) cs
+
+  let escape = escape_wrt all_escaped_characters
+
+
+  let to_latex c =
+    match get_answer_form c with
+      | Some (`KeyValues cs) ->
+        let row k = Printf.sprintf "%s &:& \\hspace{5cm} \\\\" (escape k) in
+        Printf.sprintf
+          "\n\\begin{tabular}{|ccc|}\n\\hline %s\n\\hline \\end{tabular}\n\n"
+          (String.concat "\n" (List.map row cs))
+      | Some (`Choices cs) ->
+        let row k = Printf.sprintf "\\item[$\\square$] %s " (escape k) in
+        Printf.sprintf "\\begin{itemize}\n%s\n\\end{itemize}"
+          (String.concat "\n" (List.map row cs))
+      | None | Some _ -> ""
+
+end

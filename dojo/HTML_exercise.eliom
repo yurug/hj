@@ -115,6 +115,12 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
     )
   in
   let elements = {string list ref{ ref [] }} in
+  let export_as_pdf = server_function Json.t<unit> (fun () ->
+    CORE_exercise.export_as_pdf exo authors >>= function
+      | Some filename -> return (Some (COMMON_file.send filename))
+      | None -> return None
+  )
+  in
   let display_exercise =
     (* FIXME: For the moment, we redisplay the entire exercise
        FIXME: description each time it is updated. We should
@@ -137,11 +143,10 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
             | `OK v ->
               let display_atomic = CORE_questions.(function
                 | Statement s ->
-                  let d = div [] in
-                  let d = To_dom.of_element d in
-                  d##innerHTML <- Js.string s;
-                  %elements := (Js.to_string d##id) :: !(%elements);
-                  return [(Of_dom.of_div d :> [Html5_types.flow5] elt)]
+                  let d = div [HTML_statement.to_html s] in
+                  let dom = To_dom.of_div d in
+                  %elements := (Js.to_string dom##id) :: !(%elements);
+                  return [d]
 
                 | CheckpointContext (cp, context) ->
                   %display_context (cp, context)
@@ -151,7 +156,17 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
               lwt all = Lwt_list.map_s display_atomic v in
               return (List.flatten all)
           in
-          return (h1 [pcdata title] :: d)
+          let download_as_pdf =
+            HTML_widget.small_button [I18N.(String.(cap download_pdf))] (
+              fun _ -> Lwt.async (fun () ->
+                %export_as_pdf () >>= function
+                  | None ->
+                    return ()
+                  | Some url ->
+                    return (Dom_html.window##location##assign (Js.string url)))
+            )
+          in
+          return (h1 [pcdata title] :: download_as_pdf :: d)
     }}
   in
   let display_math = {{ fun () ->

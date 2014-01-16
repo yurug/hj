@@ -35,6 +35,7 @@ val assign : set -> t -> set
 (** [unassign s p] is the set [s] without the property [p]. *)
 val unassign : set -> t -> set
 
+val string_of_set : set -> string
 
 (** {1 Rules}
 
@@ -48,6 +49,7 @@ type unop = Not deriving (Json)
 
 type rule =
   | True
+  | False
   | Is    of t
   | BinOp of binop * rule * rule
   | UnOp  of unop * rule

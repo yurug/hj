@@ -17,6 +17,7 @@ type description = {
   surname         : string;
   email           : string;
   teacher         : bool;
+  mbox            : CORE_message.mbox
 } deriving (Json)
 
 include CORE_entity.Make (CORE_entity.Passive (struct
@@ -46,6 +47,9 @@ let change_properties e f =
 
 let has_property e s =
   observe e (fun u -> return (CORE_property.is s (properties u)))
+
+let properties e =
+  observe e (fun u -> return (properties u))
 
 (** By convention, users are stored in the "users" folder. *)
 
@@ -98,6 +102,7 @@ let subscribe out_by firstname surname email login password teacher =
   let id = user_id login in
   let password_digest = make_password_digest login password in
   let last_connection = I18N.String.never_connected_before in
+  let mbox = CORE_message.empty_mbox () in
   let dependencies =
     let deps = empty_dependencies in
     (** A user depends on the assigner entity. *)
@@ -106,7 +111,7 @@ let subscribe out_by firstname surname email login password teacher =
   in
   let init =
     ({ login; password_digest; last_connection;
-       firstname; surname; teacher; email },
+       firstname; surname; teacher; email; mbox },
      dependencies,
      CORE_property.empty,
      [])
@@ -232,14 +237,17 @@ let rec authenticate u password =
     | (`KO (`MaximalNumberOfLoginAttemptsReached | `SystemError _)) as e ->
       return e
 
-let logged_user () =
+let logged_user =
+  let first_time = ref 10 in
+  fun () ->
   Eliom_reference.get username >>= function
     | `NotLogged ->
-      if CORE_config.development_mode () then
+      if CORE_config.development_mode () && !first_time > 0 then (
+        decr first_time;
         authenticate "donald" "no_password_for_me" >>= function
           | `OK u -> return (`Logged u)
           | `KO _ -> return `NotLogged
-      else
+      ) else
         return `NotLogged
     | `FailedLogin -> return `FailedLogin
     | `Logged id ->
@@ -316,3 +324,21 @@ let register_subscribe out_by ~service =
 
 (** [is_teacher u] returns [true] if [u] is a teacher. *)
 let is_teacher u = observe u (fun d -> return (content d).teacher)
+
+(** [send u msg] pushes a new message [msg] in the mailbox of [u]. *)
+let send u msg =
+  Ocsigen_messages.errlog (CORE_message.string_of_message msg);
+  lwt c = observe u (fun c -> return (content c)) in
+  change u (UpdateContent { c with mbox = CORE_message.push msg c.mbox })
+
+let unread u =
+  observe u (fun c -> return (CORE_message.unread (content c).mbox))
+
+let read u =
+  observe u (fun c -> return (CORE_message.read (content c).mbox))
+
+let mark_as_read u msg =
+  lwt c = observe u (fun c -> return (content c)) in
+  change u (UpdateContent {
+    c with mbox = CORE_message.mark_as_read msg c.mbox
+  })

@@ -141,3 +141,29 @@ let scp ?timeout username private_key addr port srcs observer =
     in
     observer p >>= fun _ -> return (fun () -> p#terminate)
   ) (fun () -> ())
+
+let pdflatex content outputfile = Filename.(
+  let source = temp_file "hjd" ".tex" in
+  let write =
+    let cout = open_out source in
+    output_string cout content;
+    close_out cout
+  in
+  let base = chop_extension source in
+  let pdflatex lraise =
+    success ~lraise (
+      !% ((get_temp_dir_name ())
+          @@ (Printf.sprintf
+                "pdflatex -interaction nonstopmode %s"
+                source
+          )))
+  in
+  let cleanup lraise =
+    success ~lraise (
+      !% ((get_temp_dir_name ()) @@ (Printf.sprintf "rm %s.*" base))
+    )
+  in
+  !>> pdflatex
+  >>> cp (base ^ ".pdf") outputfile
+  >>> cleanup
+)

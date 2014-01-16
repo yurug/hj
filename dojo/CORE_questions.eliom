@@ -119,7 +119,7 @@ and questions_result = [
 
 and atomic_value =
   | CheckpointContext of checkpoint * CORE_context.t
-  | Statement of string
+  | Statement of CORE_statement.t
   | Source of string * string
   | Title of string
 deriving (Json)
@@ -322,6 +322,7 @@ module Eval = struct
   open Eliom_content
   open Html5.D
   open Html5
+  open CORE_statement
 
   type state = CORE_context.t
 
@@ -330,12 +331,13 @@ module Eval = struct
     | VInt of int
     | VFloat of float
     | VString of string
-    | VStatement of string (* FIXME: Should be replaced by TyXML.elt *)
+    | VStatement of CORE_statement.t
     | VUnit
     | VClosure of environment * label * term
     | VPrimitive of (environment -> state -> value -> (state * value) Lwt.t)
     | VSource of string * string
     | VModule of environment
+    | VPropertyRule of CORE_property.rule
 
   and environment = (label * value) list
 
@@ -362,9 +364,15 @@ module Eval = struct
       string_of_float f
     | VUnit ->
       ""
+    | _ -> ""
+
+  let rec as_statement = function
+    | (VModule t) as v ->
+      sequence (List.map as_statement (as_list v))
     | VStatement s ->
       s
-    | _ -> ""
+    | v ->
+      text (as_string v)
 
   let as_int = function
     | VInt s -> s
@@ -414,35 +422,25 @@ module Eval = struct
       in
       enclose ("<" ^ b ^ c ^ ">") ("</" ^ b ^ ">") s
     in
-    let html_constructor (s, b, c) =
+    let statement_constructor (s, make) =
       functional s (fun _ v -> return (
-        VStatement (html_of_string b c (as_string v))
+        VStatement (make [as_statement v])
       ))
     in
-    let _html_constructor2 (s, b1, c1, b2, c2) =
-      functional s (fun _ v ->
-        let s1 = as_string v in
-        return (VPrimitive (fun _ s v ->
-          let s2 = as_string v in
-          return (s, VStatement (html_of_string b2 c2 (
-            html_of_string b1 c1 s1 ^ s2
-          ))
-        ))
-        ))
-    in
-    List.iter html_constructor [
-      "statement", "div", None;
-      "paragraph", "p", None;
-      "bold", "span", Some "class='bold'";
-      "italic", "span", Some "class='italic'";
-      "list", "ul", None;
-      "enumerate", "ol", None;
-      "item", "li", None;
-      "section", "h1", None;
-      "subsection", "h2", None;
-      "question", "h3", None;
+    List.iter statement_constructor [
+      "statement", paragraph;
+      "paragraph", paragraph;
+      "bold", bold;
+      "italic", italic;
+      "list", list;
+      "enumerate", enumerate;
+      "item", item;
+      "section", section;
+      "subsection", subsection;
+      "question", question;
+      "latex", latex;
+      "ilatex", ilatex
     ];
-
 
     functional "code" (fun _ v ->
       let s = as_string v in
@@ -450,16 +448,14 @@ module Eval = struct
       let s = Str.(global_replace (regexp "<") "&lt;" s) in
       let s = Str.(global_replace (regexp ">") "&gt;" s) in
       let s = Str.(global_replace (regexp "\"") "&quot;" s) in
-      return (VStatement (html_of_string "pre" None s))
+      return (VStatement (code [text s]))
     );
 
     functional "link" (fun _ v ->
-      let s1 = as_string v in
+      let caption = as_string v in
       return (VPrimitive (fun _ s v ->
-        let s2 = as_string v in
-        (* FIXME: Escape. *)
-        let h = Printf.sprintf "href='%s'" s2 in
-        return (s, VStatement (html_of_string "a" (Some h) s1))
+        let url = as_string v in
+        return (s, VStatement (link url caption))
       )));
 
     functional "source_link" (fun e v ->
@@ -468,22 +464,11 @@ module Eval = struct
           | VString path ->
             let s = as_string v in
             let url = COMMON_file.send (Filename.concat path s) in
-            let h = Printf.sprintf "href='%s'" url in
-            return (VStatement (html_of_string "a" (Some h) s))
+            return (VStatement (link url s))
           | _ ->
             assert false
       with _ -> assert false
     );
-
-    let marker (s, start, stop) =
-      functional s (fun _ v ->
-        let s = as_string v in
-        return (VStatement (enclose start stop s)))
-    in
-    List.iter marker [
-      "ilatex", "\\(", "\\)";
-      "latex", "\\[", "\\]";
-    ];
 
     stateful "choose_property" (fun _ v ->
       let s = as_string_list v in
@@ -550,6 +535,10 @@ module Eval = struct
       return (CORE_context.source fname)
     );
 
+    functional "is" (fun _ v ->
+      let what = as_string v in
+      return (VPropertyRule (CORE_property.(Is (atom what))))
+    )
 
   and variable s (e : environment) = function
     | PSub (PThis, l) ->
@@ -622,25 +611,42 @@ module Eval = struct
     lwt _, v = term' CORE_context.empty e p in
     let sources = ref [] in
     let title = ref "Sans titre" (* FIXME *) in
+    let must = ref CORE_property.False in
+    let can = ref CORE_property.False in
+    let should = ref CORE_property.False in
     let v = (filter_map (fun x -> function
       | VStatement s ->
         Some (Statement s)
+
+      | VPropertyRule r as v when x = CORE_identifier.label "must" ->
+        must := r;
+        None
+
+      | VPropertyRule r as v when x = CORE_identifier.label "should" ->
+        should := r;
+        None
+
+      | VPropertyRule r as v when x = CORE_identifier.label "can" ->
+        can := r;
+        None
+
       | (VString _ | VModule _) as v when x = CORE_identifier.label "title" ->
         title := as_string v;
         None
-(*      | (VModule _) as v ->
-        Some (Statement ("<p>" ^ as_string v ^ "</p>"))*)
+
       | VContext c ->
         Some (CheckpointContext (label_to_string x, c))
+
       | VSource (s, c) ->
         sources := (s, c) :: !sources;
         None
+
       | _ ->
         None
       ) (values_of_module v)
     )
     in
-    return (!title, v, !sources)
+    return (!title, v, !sources, !must, !can, !should)
 
 end
 
@@ -667,13 +673,14 @@ let convert_to_string_error
 
 (** A well-typed exercise description evaluates into a value. *)
 let eval authors this p =
+  let nil = CORE_property.False in
   try_lwt
 (*    lwt tenv = TypeCheck.program this p in*)
-    lwt title, v, sources = Eval.program this p in
-    return (title, `OK v, sources)
+    lwt title, v, sources, must, can, should = Eval.program this p in
+    return (title, `OK v, sources, must, can, should)
   with
     | Error e ->
-      return ("", `KO (convert_to_string_error e), [])
+      return ("", `KO (convert_to_string_error e), [], nil, nil, nil)
     | _ ->
       Ocsigen_messages.errlog "Unexpected error during evaluation.";
-      return ("", `KO `EvalError, [])
+      return ("", `KO `EvalError, [], nil, nil, nil)

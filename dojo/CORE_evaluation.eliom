@@ -46,9 +46,9 @@ deriving (Json)
 let string_of_evaluation_state = function
   | Unevaluated ->
     "Not evaluated"
-  | Evaluated (score, _, _, _) ->
+  | Evaluated (score, _, _, ctx) ->
     Printf.sprintf "Evaluated with score %s"
-      (CORE_context.string_of_score score)
+      (CORE_context.string_of_score ctx score)
   | BeingEvaluated (job, _, _, _) ->
     Printf.sprintf "Being evaluated by job %s" (string_of_job job)
 
@@ -110,8 +110,9 @@ let new_evaluation_state_of_checkpoint c s d =
   return { d with jobs = update_assoc c s d.jobs }
 
 let create_job
-    exo_id answer_id checkpoint context submission change_later authors
+    exercise answer_id checkpoint context submission change_later authors
     =
+  let exo_id = CORE_exercise.identifier exercise in
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s =
@@ -123,15 +124,50 @@ let create_job
     )
   in
   let mark () =
-    change_state (
+    let send_notification_to_master () = CORE_context.(
+      match (get_master_grade context, get_master_focus context) with
+        | None, _ | _, None -> return ()
+        | Some _, Some groups ->
+          (** Look for authors that are teachers and that are in the same
+              groups as the answer's authors. *)
+          lwt authors_groups =
+            Lwt_list.(filter_s (fun g ->
+              exists_s
+                (fun a -> CORE_user.has_property a (CORE_property.atom g))
+                authors
+            )) groups
+          in
+          lwt masters =
+            lwt all_answers = CORE_answer.answers_of_exercise exercise in
+            let all_authors = List.(flatten (fst (split all_answers))) in
+            Lwt_list.(filter_s (fun a ->
+              CORE_user.(make a >>= function
+                | `KO _ -> return false (* FIXME: handle error. *)
+                | `OK a ->
+                  is_teacher a >>= function
+                    | true ->
+                      exists_s
+                        (fun g -> CORE_user.has_property a (CORE_property.atom g))
+                        authors_groups
+                    | false -> return false
+              )) all_authors)
+          in
+          Lwt_list.iter_s (fun a ->
+            CORE_user.(make a >>= function
+              | `OK a -> send a (CORE_message.evaluation_needed exo_id)
+              | `KO _ -> return () (* FIXME: should never happen. *)
+          )) masters
+    )
+    in
+    send_notification_to_master ()
+    >> change_state (
       Evaluated (!score, submission, CORE_diagnostic.Empty, context)
     )
   in
   let init () =
     change_state Unevaluated
   in
-  init ()
-  >>
+  init () >>
     let process_stdio job line =
       match CORE_context.marker_io_interpretation seed line with
         | Some s ->
@@ -151,7 +187,7 @@ let create_job
       | _ -> return ()
     ) in
     CORE_context.(
-    (* FIXME: Should be moved to CORE_context. *)
+    (* FIXME: All the following should be moved to CORE_context. *)
     match get_command context with
       | None ->
         return None (* FIXME: is it sound? *)
@@ -207,7 +243,7 @@ let evaluate change_later exercise answer cps data authors =
   let authors_ids = List.map CORE_user.identifier authors in
   let evaluate checkpoint current_state =
     let run_submission_evaluation c s =
-      create_job exo_id answer_id checkpoint c s change_later authors
+      create_job exercise answer_id checkpoint c s change_later authors
       >>= function
         | Some job ->
           Ocsigen_messages.errlog "Executable job created.";
@@ -315,22 +351,21 @@ include CORE_entity.Make (struct
           (** Only the state of the evaluation changed. *)
           return (UpdateContent content)
 
-      | ldeps ->
-        (
-          CORE_answer.make content.answer >>>= fun answer ->
-          CORE_exercise.make content.exercise >>>= fun exercise ->
-          lwt authors =
-            Lwt_list.fold_left_s (fun authors a ->
-              CORE_user.make a >>= function
-                | `OK a -> return (a :: authors)
-                | `KO _ -> return authors
-            ) [] content.authors
-          in
-          lwt cps = CORE_exercise.all_checkpoints exercise content.authors in
-          lwt change = evaluate change_later exercise answer cps content authors
-          in
-          return (`OK change)
-        ) >>= function
+      | ldeps -> (
+        CORE_answer.make content.answer >>>= fun answer ->
+        CORE_exercise.make content.exercise >>>= fun exercise ->
+        lwt authors =
+          Lwt_list.fold_left_s (fun authors a ->
+            CORE_user.make a >>= function
+              | `OK a -> return (a :: authors)
+              | `KO _ -> return authors
+          ) [] content.authors
+        in
+        lwt cps = CORE_exercise.all_checkpoints exercise content.authors in
+        lwt change = evaluate change_later exercise answer cps content authors
+        in
+        return (`OK change)
+      ) >>= function
           | `OK e -> return e
           | `KO e -> warn e; return NoUpdate
     in

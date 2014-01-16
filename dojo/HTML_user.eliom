@@ -16,13 +16,21 @@ open CORE_identifier
 open I18N
 
 let notifications_scrolls u =
-  let create_subscroll (kind, label) =
+  let create_subscroll (kind, label, reader) =
     let title = p [pcdata (cap label)] in
-    hackojo_scroll (div []) (div [title]) []
+    lwt msgs = reader u in
+    let mark_as_read = server_function Json.t<CORE_message.t> (fun msg ->
+      CORE_user.mark_as_read u msg
+    )
+    in
+    let display = HTML_message.as_html mark_as_read in
+    let msgs = List.map display msgs in
+    let nbm = string_of_int (List.length msgs) in
+    hackojo_scroll (div [pcdata nbm]) (div [title]) msgs
   in
   let kinds = String.([
-    `Read, many (read `Female);
-    `Unread, many (not_ (read `Female))
+    `Unread, many (not_ (read `Female)), CORE_user.unread;
+    `Read, many (read `Female), CORE_user.read
   ]) in
   lwt subs = Lwt_list.map_s create_subscroll kinds in
   return (List.map elt_of_hackojo_scroll subs)
@@ -32,7 +40,14 @@ let exercises_scrolls u =
       that itself contains one subscroll per assignment. *)
   let create_subscroll (kind, label) =
     let title = p [pcdata (cap label)] in
-    hackojo_scroll (div []) (div [title]) []
+    lwt user_properties = CORE_user.properties u in
+    lwt assignments = CORE_assignments.assignments kind user_properties in
+    let display id =
+      p [a ~service:HTTP_services.page_of [
+        pcdata (string_of_identifier id)
+      ] (string_list_of_identifier id)]
+    in
+    hackojo_scroll (div []) (div [title]) (List.map display assignments)
   in
   let kinds = String.([ `Must, must_do; `Should, should_do; `Can, can_do ]) in
   lwt subs = Lwt_list.map_s create_subscroll kinds in

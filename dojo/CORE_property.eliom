@@ -27,6 +27,8 @@ let assign s p = p :: s
 
 let unassign s p = List.filter (( <> ) p) s
 
+let string_of_set s = "{" ^ String.concat ", " s ^ "}"
+
 {shared{
 
 type binop = And | Or deriving (Json)
@@ -35,6 +37,7 @@ type unop = Not deriving (Json)
 
 type rule =
   | True
+  | False
   | Is    of t
   | BinOp of binop * rule * rule
   | UnOp  of unop * rule
@@ -44,6 +47,7 @@ deriving (Json)
 
 let conj a b =
   match a, b with
+    | False, _ | False, _ -> False
     | True, a | a, True -> a
     | a, b -> BinOp (And, a, b)
 
@@ -51,6 +55,7 @@ let conjs = List.fold_left conj True
 
 let rec evaluate s = function
   | True -> true
+  | False -> false
   | Is x -> is x s
   | BinOp (And, r1, r2) -> evaluate s r1 && evaluate s r2
   | BinOp (Or, r1, r2) -> evaluate s r1 || evaluate s r2
@@ -59,7 +64,8 @@ let rec evaluate s = function
 (* FIXME: use ocamllex/menhir instead. *)
 
 (* r := true | a | ( op r r ) *)
-type token = LPAREN | RPAREN | BINOP of binop | UNOP of unop | IS of t | TRUE
+type token = LPAREN | RPAREN | BINOP of binop | UNOP of unop
+             | IS of t | TRUE | FALSE
 
 exception PropertyRuleSyntaxError of string
 
@@ -74,6 +80,7 @@ let rule_of_string s =
     | "or" -> BINOP Or
     | "not" -> UNOP Not
     | "true" -> TRUE
+    | "false" -> FALSE
     | x -> try IS (atom x) with Failure _ -> error ()
   ) atoms
   in
@@ -90,6 +97,8 @@ let rule_of_string s =
     match current tokens with
       | TRUE ->
         (accept TRUE tokens, True)
+      | FALSE ->
+        (accept FALSE tokens, False)
       | (IS x) as tok ->
         (accept tok tokens, Is x)
       | LPAREN as tok ->
@@ -125,6 +134,8 @@ let unop_to_string = function
 let rec rule_to_string = function
   | True ->
     "true"
+  | False ->
+    "false"
   | Is x ->
     x
   | BinOp (b, r1, r2) ->

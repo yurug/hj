@@ -35,6 +35,7 @@ UPORT := 80
 
 # Port for testing (make test.*)
 TEST_PORT := 8080
+TEST_UPORT := 8081
 TEST_SSLCERT := cert.pem
 TEST_SSLKEY := privkey.pem
 SSLCERT := /home/yann/hj/dojo/cert.pem

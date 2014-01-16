@@ -69,3 +69,7 @@ val scp :
   -> (Lwt_process.process_full -> unit Lwt.t)
   -> ('a, 'b) raiser
   -> (unit -> unit) Lwt.t
+
+val pdflatex
+  : string -> string
+  -> ([> `SystemError of string ], 'b) raiser -> bool Lwt.t
