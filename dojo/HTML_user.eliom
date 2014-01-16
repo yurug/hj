@@ -74,8 +74,14 @@ let homepage u =
               ))
             )
           | `KO _ ->
-            let u =
-              "http://farm4.staticflickr.com/3381/3661799343_e551f5a52b_z.jpg"
+            lwt u =
+              CORE_user.is_teacher u >>= function
+                | true ->
+                  return "http://farm4.staticflickr.com\
+                          /3381/3661799343_e551f5a52b_z.jpg"
+                | false ->
+                  return "http://awsimx.fathermag.com\
+                          /sports/karate_151266_XS_293x409.jpg"
             in
             return (X.uri_of_string u)
     in
