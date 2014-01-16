@@ -143,7 +143,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
             | `OK v ->
               let display_atomic = CORE_questions.(function
                 | Statement s ->
-                  let d = div [HTML_statement.to_html s] in
+                  let d = div (HTML_statement.to_html s) in
                   let dom = To_dom.of_div d in
                   %elements := (Js.to_string dom##id) :: !(%elements);
                   return [d]
