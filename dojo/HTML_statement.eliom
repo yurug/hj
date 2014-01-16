@@ -11,11 +11,11 @@ open CORE_statement
 
 type any = Xml.elt
 
-let weaken f = fun cs -> f (List.map tot cs)
+let weaken f = fun cs -> [f (List.map tot cs)]
 
-let constructor_of_tag : tag -> any list -> 'a elt = function
+let constructor_of_tag : tag -> any list -> 'a elt list = function
   | Paragraph -> weaken p
-  | Sequence  -> weaken div
+  | Sequence  -> List.map tot
   | Bold -> weaken (fun cs -> span ~a:[a_class ["bold"]] cs)
   | Italic -> weaken (fun cs -> span ~a:[a_class ["italic"]] cs)
   | List -> weaken ul
@@ -30,18 +30,18 @@ let constructor_of_tag : tag -> any list -> 'a elt = function
 
 let rec to_html' = function
   | Element (Link, [Data url; Data caption]) ->
-    Raw.a ~a:[a_href (Xml.uri_of_string url)] [pcdata caption]
+    [Raw.a ~a:[a_href (Xml.uri_of_string url)] [pcdata caption]]
   | Element (LaTeX, [Data text]) ->
-    span [pcdata ("\\[" ^ text ^ "\\]")]
+    [span [pcdata ("\\[" ^ text ^ "\\]")]]
   | Element (ILaTeX, [Data text]) ->
-    span [pcdata ("\\(" ^ text ^ "\\)")]
+    [span [pcdata ("\\(" ^ text ^ "\\)")]]
   | Element (tag, cs) ->
-    constructor_of_tag tag (List.map to_html cs)
+    constructor_of_tag tag (List.(flatten (map to_html cs)))
   | Data s ->
-    pcdata s
+    [pcdata s]
 
-and to_html d = toelt (to_html' d)
+and to_html d = List.map toelt (to_html' d)
 
-let to_html d = tot (to_html d)
+let to_html d = List.map tot (to_html d)
 
 }}
