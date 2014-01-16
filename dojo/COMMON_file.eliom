@@ -33,9 +33,12 @@ let send =
           information should escape the server... So I prefer a more
           low-level URL passing style here. *)
       let url =
-        Printf.sprintf "https://%s:%d/sendfile/%s/%s"
+        (* FIXME: We should move to https for security reason. *)
+        (* FIXME: Yet, some browser like chrome do not accept to *)
+        (* FIXME: load PDF files from untrusted https... *)
+        Printf.sprintf "http://%s:%d/sendfile/%s/%s"
           (Eliom_config.get_default_hostname ())
-          (Eliom_config.get_default_sslport ())
+          (Eliom_config.get_default_port ())
           hash
           bname
       in

@@ -291,3 +291,52 @@ let except criteria score =
 
 let grade_for_criteria criteria score =
   COMMON_pervasives.opt_assoc criteria score
+
+module LaTeX = struct
+
+  type latex = string list
+  open List
+
+  let all_escaped_characters =
+    [
+      (** The order matters. *)
+      "\\\\", "\\textbackslash ";
+      "{", "\\{";
+      "}", "\\}";
+      "_", "\\_";
+      "\\$", "\\$";
+      "%", "\\%";
+      "#", "\\#";
+      "&", "\\&";
+      "~", "{\\textasciitilde}";
+      "\\^", "{\\textasciicircum}";
+    ]
+
+  let verb_escaped_characters =
+    [
+      "_", "\\_";
+    ]
+
+  let escape_wrt cs s = Str.(
+    List.fold_left
+      (fun s (c, w) -> global_replace (regexp c) w s)
+      s
+  ) cs
+
+  let escape = escape_wrt all_escaped_characters
+
+
+  let to_latex c =
+    match get_answer_form c with
+      | Some (`KeyValues cs) ->
+        let row k = Printf.sprintf "%s &:& \\hspace{5cm} \\\\" (escape k) in
+        Printf.sprintf
+          "\n\\begin{tabular}{|ccc|}\n\\hline %s\n\\hline \\end{tabular}\n\n"
+          (String.concat "\n" (List.map row cs))
+      | Some (`Choices cs) ->
+        let row k = Printf.sprintf "\\item[$\\square$] %s " (escape k) in
+        Printf.sprintf "\\begin{itemize}\n%s\n\\end{itemize}"
+          (String.concat "\n" (List.map row cs))
+      | None | Some _ -> ""
+
+end

@@ -68,6 +68,8 @@ val eval_if_needed
 
 val raw_user_description_source: CORE_identifier.t -> CORE_source.t Lwt.t
 
+val export_as_pdf : t -> CORE_identifier.t list -> string option Lwt.t
+
 type patch =
     CORE_errors.position * CORE_errors.position * string
 

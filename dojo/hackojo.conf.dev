@@ -4,6 +4,7 @@
 <!-- %%WARNING%% -->
 <ocsigen>
   <server>
+    <port protocol="HTTP">%%UPORT%%</port>
     <port protocol="HTTPS">%%PORT%%</port>
     <ssl>
        <certificate>%%SSLCERT%%</certificate>
