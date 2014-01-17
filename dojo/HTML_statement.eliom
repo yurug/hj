@@ -26,9 +26,10 @@ let constructor_of_tag : tag -> any list -> 'a elt list = function
   | Question -> weaken h3
   | Text -> weaken span
   | Code -> weaken pre
+  | Verb -> weaken Html5.D.code
   | LaTeX -> weaken (fun cs -> span (pcdata "\\[" :: cs @ [pcdata "\\]"]))
   | ILaTeX -> weaken (fun cs -> span (pcdata "\\(" :: cs @ [pcdata "\\)"]))
-  | _ -> assert false
+  | _ -> weaken pre
 
 let rec to_html' = function
   | Element (Link, [Data url; Data caption]) ->

@@ -430,6 +430,7 @@ module Eval = struct
     List.iter statement_constructor [
       "statement", paragraph;
       "paragraph", paragraph;
+      "verb", verb;
       "bold", bold;
       "italic", italic;
       "list", list;
