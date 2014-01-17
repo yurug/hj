@@ -160,7 +160,9 @@ let ldap_search login server_config = CORE_config.(
                  server_config.host
              );
            let lookup field =
-             try
+             if field = "uid" then
+               login
+             else try
                let a =
                  List.find (fun a -> a.attr_type = field) e.sr_attributes
                in
