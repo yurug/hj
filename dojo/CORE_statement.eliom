@@ -100,7 +100,7 @@ module LaTeX = struct
 
   let rec to_latex escape_flag = function
     | Element (Code, [Data text]) ->
-      code [env "verbatim" [[text]]]
+      code [env "verbatim" [[escape_verb text]]]
     | Element (Link, [Data url; Data caption]) ->
       [Printf.sprintf "\\href{%s}{%s}" url (escape caption)]
     | Element (tag, cs) ->
