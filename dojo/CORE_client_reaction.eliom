@@ -6,7 +6,7 @@
 open Lwt
 
 {shared{
-type 'a c = 'a Eliom_comet.Channel.t
+type 'a c = 'a Lwt_stream.t
 type reaction = unit
 }}
 
@@ -29,8 +29,9 @@ type reaction = unit
 
 let channel () : 'a c * ('a -> unit) =
   let stream, push = Lwt_stream.create () in
-  let channel = Eliom_comet.Channel.create ~scope:`Site stream in
-  (channel, (fun x -> push (Some x)))
+  (stream, (fun x -> push (Some x)))
+
+let clone = Lwt_stream.clone
 
 let listening
     (reaction    : 'a c -> unit Eliom_pervasives.client_value)

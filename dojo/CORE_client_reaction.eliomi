@@ -7,7 +7,7 @@
     implement the reactive pattern described in {!HTML_reactive}. *)
 
 {shared{
-type 'a c
+type 'a c = 'a Lwt_stream.t
 type reaction
 }}
 
@@ -17,6 +17,8 @@ val react_on_background : 'a c list -> ('a -> unit Lwt.t) -> unit
 }}
 
 val channel : unit -> 'a c * ('a -> unit)
+
+val clone : 'a c -> 'a c
 
 val listening :
   ('a c -> reaction Eliom_pervasives.client_value) ->

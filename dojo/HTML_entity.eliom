@@ -95,7 +95,7 @@ let reactive_div es after_display get display  =
             | None -> ()
         )
       with e -> Lwt.return (
-        Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e))
+        Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
       )
     in
     let config = Eliom_comet.Configuration.new_configuration () in
@@ -114,7 +114,7 @@ let reactive_div es after_display get display  =
              process data
            )
          with e -> Lwt.return (
-           Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e)))
+           Firebug.console##log (Js.string ("Exn1..." ^ Printexc.to_string e)))
         )
       | CORE_entity.MayChange ->
         Lwt.return ()
