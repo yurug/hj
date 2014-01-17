@@ -44,9 +44,13 @@ let current_language () = French
 type ldap_configuration = {
   mutable host : string;
   mutable port : int;
+  mutable domain : string;
+  mutable username : string;
+  mutable password : string;
   mutable base : string;
   mutable firstname_field: string;
   mutable name_field: string;
+  mutable fullname_field: string;
   mutable login_field: string;
   mutable email_field: string;
   mutable status_field: string;
@@ -61,7 +65,11 @@ let ldap_configuration = Ocsigen_extensions.Configuration.(
     host = "";
     port = 339;
     base = "";
+    domain = "";
+    password = "";
+    username = "";
     firstname_field = "";
+    fullname_field = "";
     name_field = "";
     login_field = "";
     email_field = "";
@@ -87,12 +95,16 @@ let ldap_configuration = Ocsigen_extensions.Configuration.(
       Ocsigen_messages.errlog ("Found LDAP server at " ^ h);
       (current ()).host <- h
     );
+    req_attr "domain" (fun p -> (current ()).domain <- p);
     opt_attr "port" (fun p -> (current ()).port <- int_of_string p);
+    opt_attr "password" (fun p -> (current ()).password <- p);
+    opt_attr "username" (fun p -> (current ()).username <- p);
     req_attr "base" (fun h -> (current ()).base <- h);
     req_attr "firstname" (fun h -> (current ()).firstname_field <- h);
-    req_attr "name" (fun h -> (current ()).name_field <- h);
+    opt_attr "name" (fun h -> (current ()).name_field <- h);
+    opt_attr "fullname" (fun h -> (current ()).fullname_field <- h);
     req_attr "login" (fun h -> (current ()).login_field <- h);
-    req_attr "email" (fun h -> (current ()).email_field <- h);
+    opt_attr "email" (fun h -> (current ()).email_field <- h);
     req_attr "status" (fun h -> (current ()).status_field <- h);
     req_attr "teacher_status_value" (fun h ->
       (current ()).teacher_status_value <- h
