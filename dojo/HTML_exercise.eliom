@@ -18,12 +18,13 @@ open CORE_identifier
 open CORE_inmemory_entity
 open CORE_entity
 open CORE_error_messages
-open COMMON_pervasives
 open I18N
 
 {shared{
 open CORE_client_reaction
 open CORE_description_CST
+open COMMON_pervasives
+open COMMON_pervasives.LocalCache
 }}
 
 exception LoadingError
@@ -98,6 +99,17 @@ type role =
   | Evaluator of CORE_user.t
   | NoRole
 
+{shared{
+
+type display_values =
+  [
+    `OK of CORE_questions.atomic_value cached list
+  | `KO of [ CORE_errors.all ]
+]
+deriving (Json)
+
+}}
+
 let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
   let e_id = CORE_exercise.identifier exo in
   let answer_id = CORE_answer.identifier answer in
@@ -126,48 +138,49 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
        FIXME: description each time it is updated. We should
        FIXME: check if this is reasonable or if we should
        FIXME: have finer notion of changes... *)
-    {CORE_questions.questions_result option * string
-     -> [Html5_types.flow5] elt list Lwt.t{
-      fun (current_value, title) ->
-        match current_value with
-        | None -> return [p [pcdata "Displaying exercise..."]]
-        | Some v ->
-          lwt d = match v with
-            | `KO e ->
-              (* FIXME: For the moment, the error is display
+    {display_values option * string
+      -> [Html5_types.flow5] elt list Lwt.t{
+        let cache = make_cache () in
+        fun (current_value, title) ->
+          match current_value with
+            | None -> return [p [pcdata "Displaying exercise..."]]
+            | Some v ->
+              lwt d = match v with
+                | `KO e ->
+              (* FIXME: For the moment, the error is displayed
                  FIXME: in the exercise div. It may be more handy
                  FIXME: to display it in the editor message bar.
                  FIXME: (Yet, what if there is no editor because
                  FIXME: the user is a student?) *)
-              return [p [pcdata (string_of_error e)]]
-            | `OK v ->
-              let display_atomic = CORE_questions.(function
-                | Statement s ->
-                  let d = div (HTML_statement.to_html s) in
-                  let dom = To_dom.of_div d in
-                  %elements := (Js.to_string dom##id) :: !(%elements);
-                  return [d]
+                  return [p [pcdata (string_of_error e)]]
+                | `OK v ->
+                  let display_atomic a = CORE_questions.(
+                    match get cache a with
+                      | Statement s ->
+                        let d = div (HTML_statement.to_html s) in
+                        let dom = To_dom.of_div d in
+                        %elements := (Js.to_string dom##id) :: !(%elements);
+                        return [d]
 
-                | CheckpointContext (cp, context) ->
-                  %display_context (cp, context)
-              )
+                      | CheckpointContext (cp, context) ->
+                        %display_context (cp, context)
+                  )
+                  in
+                  lwt all = Lwt_list.map_s display_atomic v in
+                  return (List.flatten all)
               in
-              Firebug.console##log (Js.string "Redisplay");
-              lwt all = Lwt_list.map_s display_atomic v in
-              return (List.flatten all)
-          in
-          let download_as_pdf =
-            HTML_widget.small_button [I18N.(String.(cap download_pdf))] (
-              fun _ -> Lwt.async (fun () ->
-                %export_as_pdf () >>= function
-                  | None ->
-                    return ()
-                  | Some url ->
-                    return (Dom_html.window##location##assign (Js.string url)))
-            )
-          in
-          return (h1 [pcdata title] :: download_as_pdf :: d)
-    }}
+              let download_as_pdf =
+                HTML_widget.small_button [I18N.(String.(cap download_pdf))] (
+                  fun _ -> Lwt.async (fun () ->
+                    %export_as_pdf () >>= function
+                      | None ->
+                        return ()
+                      | Some url ->
+                        return (Dom_html.window##location##assign (Js.string url)))
+                )
+              in
+              return (h1 [pcdata title] :: download_as_pdf :: d)
+      }}
   in
   let display_math = {{ fun () ->
     Lwt.async (fun () ->
@@ -177,21 +190,29 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
           (String.concat "," !(%elements))
       ))
     );
-   }}
+                      }}
   in
-  let get () =
-    CORE_exercise.eval_if_needed exo authors >>= fun _ ->
-    CORE_exercise.(observe exo (fun d ->
-      let c = content d in
-      return (current_value c, title c))
-    )
+  let get =
+    let cache = make_cache () in
+    fun () ->
+      CORE_exercise.eval_if_needed exo authors >>= fun _ ->
+      CORE_exercise.(observe exo (fun d ->
+        let c = content d in
+        let cvs =
+          match current_value c with
+            | Some (`OK vs) -> Some (`OK (List.map (cached cache) vs))
+            | Some (`KO e) -> Some (`KO e)
+            | None -> None
+        in
+        return (cvs, title c))
+      )
   in
 
   CORE_exercise.eval exo authors >>= fun _ ->
   lwt rdiv =
     HTML_entity.reactive_div exo (Some display_math) get display_exercise
   in
-    return (div ~a:[a_id "exercise"] [rdiv])
+  return (div ~a:[a_id "exercise"] [rdiv])
 
 let role e =
 (* FIXME: Determine the role of the user wrt to this exercise.

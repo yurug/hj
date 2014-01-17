@@ -94,6 +94,8 @@ module LaTeX = struct
     | SubSection -> subsection
     | Question -> question
     | Text -> fun cs -> [text cs]
+    | LaTeX -> fun cs -> ["$$"; text cs; "$$" ]
+    | ILaTeX -> fun cs -> ["$"; text cs; "$" ]
     | _ -> assert false
 
   let rec to_latex = function

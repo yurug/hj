@@ -92,23 +92,30 @@ let reactive_div e after_display get display  =
             | Some f -> f ()
             | None -> ()
         )
-      with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e)))
+      with e -> Lwt.return (
+        Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e))
+      )
     in
     let config = Eliom_comet.Configuration.new_configuration () in
     Eliom_comet.Configuration.set_always_active config true;
-    CORE_client_reaction.react_on_background %e_channel (function
+    CORE_client_reaction.react_on_background %e_channel (
+      let last = ref None in
+      function
       | CORE_entity.HasChanged ->
-(*        Firebug.console##log (Js.string (Printf.sprintf "Entity %s has changed" %sid));*)
         (** Update the entity view. *)
         (try_lwt
            lwt data = %remote_get () in
-           process data
-         with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e))))
+           if Some data = !last then
+             Lwt.return ()
+           else (
+             last := Some data;
+             process data
+           )
+         with e -> Lwt.return (
+           Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e)))
+        )
       | CORE_entity.MayChange ->
-(*        Firebug.console##log (Js.string (Printf.sprintf "Entity %s may change" %sid));*)
-        (** Force the change as we are observing the entity. *)
-        try_lwt %update ()
-        with e -> Lwt.return (Firebug.console##log (Js.string ("Exn..." ^ Printexc.to_string e)))
+        Lwt.return ()
     );
     Lwt.async (fun () -> process %initial)
   }};

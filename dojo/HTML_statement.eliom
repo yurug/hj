@@ -26,15 +26,13 @@ let constructor_of_tag : tag -> any list -> 'a elt list = function
   | Question -> weaken h3
   | Text -> weaken span
   | Code -> weaken pre
+  | LaTeX -> weaken (fun cs -> span (pcdata "\\[" :: cs @ [pcdata "\\]"]))
+  | ILaTeX -> weaken (fun cs -> span (pcdata "\\(" :: cs @ [pcdata "\\)"]))
   | _ -> assert false
 
 let rec to_html' = function
   | Element (Link, [Data url; Data caption]) ->
     [Raw.a ~a:[a_href (Xml.uri_of_string url)] [pcdata caption]]
-  | Element (LaTeX, [Data text]) ->
-    [span [pcdata ("\\[" ^ text ^ "\\]")]]
-  | Element (ILaTeX, [Data text]) ->
-    [span [pcdata ("\\(" ^ text ^ "\\)")]]
   | Element (tag, cs) ->
     constructor_of_tag tag (List.(flatten (map to_html cs)))
   | Data s ->
