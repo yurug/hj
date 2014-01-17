@@ -82,36 +82,33 @@ module LaTeX = struct
   let question = macro "subsubsection*"
   let code = env "code"
 
-  let constructor_of_tag : tag -> latex list -> latex = function
-    | Paragraph -> paragraph
-    | Sequence -> sequence
-    | Bold -> bold
-    | Italic -> italic
-    | List -> list
-    | Enumerate -> enumerate
-    | Item -> item
-    | Section -> section
-    | SubSection -> subsection
-    | Question -> question
-    | Text -> fun cs -> [text cs]
-    | LaTeX -> fun cs -> ["$$"; text cs; "$$" ]
-    | ILaTeX -> fun cs -> ["$"; text cs; "$" ]
+  let rec constructor_of_tag : tag -> bool * (latex list -> latex) = function
+    | Paragraph -> true, paragraph
+    | Sequence -> true, sequence
+    | Bold -> true, bold
+    | Italic -> true, italic
+    | List -> true, list
+    | Enumerate -> true, enumerate
+    | Item -> true, item
+    | Section -> true, section
+    | SubSection -> true, subsection
+    | Question -> true, question
+    | Text -> true, fun cs -> [text cs]
+    | LaTeX -> false, fun cs -> ["$$"; text cs; "$$" ]
+    | ILaTeX -> false, fun cs -> ["$"; text cs; "$" ]
     | _ -> assert false
 
-  let rec to_latex = function
+  let rec to_latex escape_flag = function
     | Element (Code, [Data text]) ->
       code [env "verbatim" [[text]]]
     | Element (Link, [Data url; Data caption]) ->
       [Printf.sprintf "\\href{%s}{%s}" url (escape caption)]
-    | Element (LaTeX, [Data text]) ->
-      ["$$" ^ escape text ^ "$$"]
-    | Element (ILaTeX, [Data text]) ->
-      ["$" ^ escape text ^ "$"]
     | Element (tag, cs) ->
-      constructor_of_tag tag (List.map to_latex cs)
+      let escape, make = constructor_of_tag tag in
+      make (List.map (to_latex (escape && escape_flag)) cs)
     | Data s ->
-      [escape s]
+      [if escape_flag then escape s else s]
 
-  let to_latex d = String.concat "\n" (to_latex d)
+  let to_latex d = String.concat "\n" (to_latex true d)
 
 end
