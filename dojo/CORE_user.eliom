@@ -174,6 +174,7 @@ let ldap_search login server_config = CORE_config.(
            in
            try_lwt
              let pretty s = String.(capitalize (lowercase s)) in
+             let firstname = lookup server_config.firstname_field in
              let is_teacher s = Str.(
                string_match (regexp server_config.teacher_status_value) s 0
              )
@@ -183,7 +184,8 @@ let ldap_search login server_config = CORE_config.(
                  lookup server_config.name_field
                with Not_found ->
                  try
-                   lookup server_config.fullname_field
+                   let fullname = lookup server_config.fullname_field in
+                   Str.(global_replace (regexp firstname) "" fullname)
                  with Not_found -> ""
              in
              let email =
@@ -193,7 +195,7 @@ let ldap_search login server_config = CORE_config.(
                  login ^ "@" ^ server_config.domain
              in
              return (`OK (
-               pretty (lookup server_config.firstname_field),
+               pretty firstname,
                name,
                email,
                is_teacher (lookup server_config.status_field)
