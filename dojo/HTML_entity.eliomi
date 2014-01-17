@@ -41,7 +41,7 @@ val offer_creation :
   CORE_identifier.identifier -> 'h Eliom_content.Html5.D.elt Lwt.t
 
 val reactive_div :
-  ('e, _) CORE_entity.t
+  CORE_entity.some_t list
   -> (unit -> unit) client_value option
   -> (unit -> 'a Lwt.t)
   -> ('a -> [ body_content ] elt list Lwt.t) client_value

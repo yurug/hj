@@ -238,7 +238,6 @@ let cancel_job_if_present job =
   return ()
 
 let evaluate change_later exercise answer cps data authors =
-  let exo_id = CORE_exercise.identifier exercise in
   let answer_id = CORE_answer.identifier answer in
   let authors_ids = List.map CORE_user.identifier authors in
   let evaluate checkpoint current_state =

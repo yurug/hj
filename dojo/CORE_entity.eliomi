@@ -83,6 +83,11 @@ type event =
 
 }}
 
+(** Some data structures contain entities with heterogeneous
+    content types. In that case, this type is hidden behind
+    an existential quantification. *)
+type some_t = SomeEntity : ('a, 'c) t -> some_t
+
 (** On the client side, we can react to every change. *)
 val channel: ('a, 'c) t -> event CORE_client_reaction.c
 

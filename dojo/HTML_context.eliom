@@ -26,7 +26,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
   in
   let diagnostic = div [] in
   lwt d =
-    HTML_entity.reactive_div evaluation None get {{
+    HTML_entity.reactive_div [CORE_entity.SomeEntity evaluation] None get {{
       let rec interpret_diagnostic_command = CORE_diagnostic.(function
         | Empty ->
           ()
@@ -276,6 +276,7 @@ let display_context exo_id answer_id checkpoint context evaluation =
 (* FIXME: Some parts of the following function should be moved to
    FIXME: CORE_context.  *)
 let display_master_view master exo checkpoint context =
+  lwt all_answers = CORE_answer.answers_of_exercise exo in
   let get () =
     lwt all_answers = CORE_answer.answers_of_exercise exo in
     lwt all_answers =
@@ -465,9 +466,11 @@ let display_master_view master exo checkpoint context =
       in
       HTML_widget.small_button [I18N.(String.(cap download_all))] {{
         fun _ -> Lwt.async (fun () ->
-%all_files () >>= function
-  | None -> return ()
-  | Some u -> return (Dom_html.window##location##assign (Js.string u))
+                 %all_files () >>= function
+                   | None ->
+                     return ()
+                   | Some u ->
+                     return (Dom_html.window##location##assign (Js.string u))
         )}}
     in
     return (
@@ -476,7 +479,21 @@ let display_master_view master exo checkpoint context =
         div [ download_all_files ]
       ]))
   in
-  lwt rdiv =
-    HTML_entity.reactive_div exo None get {{ fun d -> return d }}
+  lwt answers =
+    Lwt_list.fold_left_s (fun all (authors, aid) ->
+      CORE_answer.make aid >>= function
+        | `OK answer ->
+          lwt evaluation = CORE_evaluation.(
+            evaluation_of_exercise_from_authors exo answer authors
+            >>= function
+              | `OK e -> return [CORE_entity.SomeEntity e]
+              | `KO _ -> return []
+          )
+          in
+          return CORE_entity.(SomeEntity answer :: evaluation @ all)
+        | `KO _ -> return all
+    ) [] all_answers
   in
+  let ws = (CORE_entity.SomeEntity exo) :: answers in
+  lwt rdiv = HTML_entity.reactive_div ws None get {{ fun d -> return d }} in
   return [rdiv]
