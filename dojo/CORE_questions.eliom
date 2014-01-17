@@ -444,10 +444,6 @@ module Eval = struct
 
     functional "code" (fun _ v ->
       let s = as_string v in
-      (* FIXME: Use an eliom function to do that... *)
-      let s = Str.(global_replace (regexp "<") "&lt;" s) in
-      let s = Str.(global_replace (regexp ">") "&gt;" s) in
-      let s = Str.(global_replace (regexp "\"") "&quot;" s) in
       return (VStatement (code [text s]))
     );
 

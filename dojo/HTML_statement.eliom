@@ -36,6 +36,9 @@ let rec to_html' = function
   | Element (tag, cs) ->
     constructor_of_tag tag (List.(flatten (map to_html cs)))
   | Data s ->
+    let s = Str.(global_replace (regexp "<") "&lt;" s) in
+    let s = Str.(global_replace (regexp ">") "&gt;" s) in
+    let s = Str.(global_replace (regexp "\"") "&quot;" s) in
     [pcdata s]
 
 and to_html d = List.map toelt (to_html' d)
