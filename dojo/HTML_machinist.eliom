@@ -32,7 +32,7 @@ let edit_list label fields get set column_status =
   }}
 
 let machinist_page mc =
-  let react_to_mc = HTML_entity.reactive_div mc None in
+  let react_to_mc = HTML_entity.reactive_div [CORE_entity.SomeEntity mc] None in
   let get () = observe mc (fun d -> return (content d)) in
   let logins_div =
     edit_list I18N.String.logins ["username"; "ssh key"]
@@ -56,7 +56,7 @@ let machinist_page mc =
     let d = div [] in
     lwt (_, sender) =
       CORE_client_reaction.(listening (fun c ->
-        {reaction{ CORE_client_reaction.react %c (fun s ->
+        {reaction{ CORE_client_reaction.react [%c] (fun s ->
           return (Eliom_content.Html5.Manip.appendChild %d (p [pcdata s]))
         )}}))
     in

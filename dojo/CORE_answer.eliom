@@ -171,9 +171,11 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
       let init = (data, dependencies, CORE_property.empty, []) in
       lwt path = path_of_exercise_answers exo_id in
       lwt ids_from_authors = Lwt_list.map_s (fun a ->
+        lwt l = CORE_user.login a in
         lwt f = CORE_user.firstname a in
         lwt s = CORE_user.surname a in
-        return (f ^ "_" ^ s)
+        let canon x = Str.(global_replace (regexp " \\|/") "" x) in
+        return (canon (l ^ "_" ^ f ^ "_" ^ s))
       ) authors
       in
       let id = identifier_of_path (

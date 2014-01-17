@@ -422,7 +422,6 @@ let fileuploader_wrapper width height import (constructor : (_, _, _) c) body =
   in
   Id.create_named_elt form_id (
     post_form ~a:[a_class ["inlined"]]
-      ~xhr:true
       ~service:(file_upload_service import) (fun f -> [
         constructor ~a:[a_class ["fileContainer"; "inlined"]; a_style style] [
           file_input

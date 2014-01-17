@@ -72,15 +72,17 @@ let offer_creation emake creation_service page id =
     | `KO e ->
       return (error_page (CORE_error_messages.string_of_error e))
 
-let reactive_div e after_display get display  =
-  let sid = string_of_identifier (CORE_entity.identifier e) in
+let reactive_div es after_display get display  =
   let elt = div [pcdata "Loading..."] in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
     get () >>= return
   )
   in
-  let e_channel = CORE_entity.channel e in
+  let e_channels = CORE_entity.(
+    List.map (function (SomeEntity e) -> CORE_entity.channel e) es
+  )
+  in
   let remote_get = server_function Json.t<unit> (fun () -> get ()) in
   ignore {unit{
     let process data =
@@ -98,7 +100,7 @@ let reactive_div e after_display get display  =
     in
     let config = Eliom_comet.Configuration.new_configuration () in
     Eliom_comet.Configuration.set_always_active config true;
-    CORE_client_reaction.react_on_background %e_channel (
+    CORE_client_reaction.react_on_background %e_channels (
       let last = ref None in
       function
       | CORE_entity.HasChanged ->

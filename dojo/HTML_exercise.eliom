@@ -210,7 +210,9 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
 
   CORE_exercise.eval exo authors >>= fun _ ->
   lwt rdiv =
-    HTML_entity.reactive_div exo (Some display_math) get display_exercise
+    HTML_entity.reactive_div
+      [CORE_entity.SomeEntity exo]
+      (Some display_math) get display_exercise
   in
   return (div ~a:[a_id "exercise"] [rdiv])
 

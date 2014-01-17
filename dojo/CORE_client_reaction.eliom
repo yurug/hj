@@ -16,10 +16,11 @@ type reaction = unit
     using a serializable type of data. *)
 
 {client{
-  let react channel reaction =
-    let channel' = Lwt_stream.clone channel in
+  let react channels reaction =
+    let channels' = List.map Lwt_stream.clone channels in
+    let all = Lwt_stream.choose channels' in
     Eliom_client.onload (fun () ->
-      Lwt.async (fun () -> Lwt_stream.iter_s reaction channel')
+      Lwt.async (fun () -> Lwt_stream.iter_s reaction all)
     )
 
   let react_on_background = react
