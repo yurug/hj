@@ -229,3 +229,15 @@ module MRef : sig
   val read : 'a t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
   val write : 'a t -> 'a -> unit Lwt.t
 end
+
+{shared{
+
+module LocalCache : sig
+  type 'a cache
+  type 'a cached deriving (Json)
+  val make_cache : unit -> 'a cache
+  val get : 'a cache -> 'a cached -> 'a
+  val cached : 'a cache -> 'a -> 'a cached
+end
+
+}}

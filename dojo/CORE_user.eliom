@@ -140,6 +140,11 @@ let ldap_search login server_config = CORE_config.(
     init [Printf.sprintf "ldap://%s:%d" server_config.host server_config.port]
    ) >>>= (fun connection ->
      try_ (fun () ->
+       let authenticate =
+         let who = server_config.username in
+         let cred = server_config.password in
+         if who <> "" then bind_s ~who ~cred connection
+       in
        search_s ~base:server_config.base connection filter
      ) >>>= fun l ->
        let rec aux = function
@@ -167,13 +172,30 @@ let ldap_search login server_config = CORE_config.(
            in
            try_lwt
              let pretty s = String.(capitalize (lowercase s)) in
+             let is_teacher s = Str.(
+               string_match (regexp server_config.teacher_status_value) s 0
+             )
+             in
+             let name =
+               try
+                 lookup server_config.name_field
+               with Not_found ->
+                 try
+                   lookup server_config.fullname_field
+                 with Not_found -> ""
+             in
+             let email =
+               try
+                 lookup server_config.email_field
+               with Not_found ->
+                 login ^ "@" ^ server_config.domain
+             in
              return (`OK (
                pretty (lookup server_config.firstname_field),
-               lookup server_config.name_field,
-               lookup server_config.email_field,
-               lookup server_config.status_field
-               = server_config.teacher_status_value)
-             )
+               name,
+               email,
+               is_teacher (lookup server_config.status_field)
+             ))
            with Not_found ->
              Ocsigen_messages.errlog (
                Printf.sprintf

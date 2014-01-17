@@ -385,7 +385,22 @@ let export_as_pdf e authors =
         \\usepackage{fancybox}
         \\usepackage{fullpage}
         \\title{%s}
-        \\newenvironment{code}{
+
+        \\hypersetup{
+            bookmarks=true,
+            unicode=false,
+            pdftoolbar=true,
+            pdfmenubar=true,
+            pdffitwindow=false,
+            pdfstartview={FitH},
+            pdfnewwindow=true,
+            colorlinks=yes,
+            linkcolor=blue,
+            citecolor=green,
+            filecolor=magenta,
+            urlcolor=cyan
+        }
+       \\newenvironment{code}{
         \\begin{center}
         \\Sbox
         \\hspace{0.3cm}\\minipage{14.7cm}

@@ -392,3 +392,51 @@ module MRef = struct
   let read x f = with_lock x.mutex (fun () -> f x.content)
   let write x v = with_lock x.mutex (fun () -> return (x.content <- v))
 end
+
+{shared{
+
+module LocalCache : sig
+  type 'a cache
+  type 'a cached deriving (Json)
+  val make_cache : unit -> 'a cache
+  val get : 'a cache -> 'a cached -> 'a
+  val cached : 'a cache -> 'a -> 'a cached
+end = struct
+
+  type 'a cached =
+    | Declare of int * 'a
+    | Reference of int
+  deriving (Json)
+
+  (* FIXME: A more efficient representation ? *)
+  type 'a cache = (int, 'a) Hashtbl.t * ('a, int) Hashtbl.t
+
+  let make_cache () : 'a cache = (Hashtbl.create 13, Hashtbl.create 13)
+
+  exception CacheMiss
+
+  let get (cache, _) = function
+    | Declare (key, a) ->
+      Hashtbl.add cache key a;
+      a
+    | Reference key ->
+      try Hashtbl.find cache key with Not_found -> raise CacheMiss
+
+  let cached (cache, all) v =
+    try
+      Reference (Hashtbl.find all v)
+    with Not_found ->
+      let rec get_key () =
+        let key = Random.bits () in
+        if Hashtbl.mem cache key then
+          get_key ()
+        else (
+          Hashtbl.add all v key;
+          Declare (key, v)
+        )
+      in
+      get_key ()
+
+end
+
+}}

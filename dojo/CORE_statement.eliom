@@ -3,7 +3,7 @@
 {shared{
 
 type tag =
-    Sequence | Paragraph | Bold | Italic | List
+    Sequence | Paragraph | Bold | Italic | Verb | List
   | Enumerate | Item | Section | SubSection | Question
   | Text | Code | Link | LaTeX | ILaTeX
 deriving (Json)
@@ -18,6 +18,7 @@ let sequence = make Sequence
 let paragraph = make Paragraph
 let bold = make Bold
 let italic = make Italic
+let verb = make Verb
 let list = make List
 let enumerate = make Enumerate
 let item = make Item
@@ -66,7 +67,7 @@ module LaTeX = struct
   let escape = escape_wrt all_escaped_characters
   let escape_verb = escape_wrt verb_escaped_characters
 
-  let text cs = String.concat " " (flatten cs)
+  let text cs = String.concat "" (flatten cs)
   let paragraph cs = ["\\noindent"; text cs; "\n"; "\n"]
   let sequence cs = flatten cs
   let macro m cs = ["\\" ^ m ^ "{"; text cs; "}" ]
@@ -82,34 +83,48 @@ module LaTeX = struct
   let question = macro "subsubsection*"
   let code = env "code"
 
-  let constructor_of_tag : tag -> latex list -> latex = function
-    | Paragraph -> paragraph
-    | Sequence -> sequence
-    | Bold -> bold
-    | Italic -> italic
-    | List -> list
-    | Enumerate -> enumerate
-    | Item -> item
-    | Section -> section
-    | SubSection -> subsection
-    | Question -> question
-    | Text -> fun cs -> [text cs]
+  let rec constructor_of_tag : tag -> bool * (latex list -> latex) = function
+    | Paragraph -> true, paragraph
+    | Sequence -> true, sequence
+    | Bold -> true, bold
+    | Italic -> true, italic
+    | List -> true, list
+    | Enumerate -> true, enumerate
+    | Item -> true, item
+    | Section -> true, section
+    | SubSection -> true, subsection
+    | Question -> true, question
+    | Text -> true, fun cs -> [text cs]
+    | LaTeX -> false, fun cs -> ["$$"; text cs; "$$" ]
+    | ILaTeX -> false, fun cs -> ["$"; text cs; "$" ]
+    | Verb ->
+      (* FIXME: check ! in cs. *)
+      false, fun cs -> ["\\verb!"; text cs; "!" ]
     | _ -> assert false
 
-  let rec to_latex = function
+  let rec to_latex escape_flag = function
     | Element (Code, [Data text]) ->
       code [env "verbatim" [[text]]]
     | Element (Link, [Data url; Data caption]) ->
-      [Printf.sprintf "\\href{%s}{%s}" url (escape caption)]
-    | Element (LaTeX, [Data text]) ->
-      ["$$" ^ escape text ^ "$$"]
-    | Element (ILaTeX, [Data text]) ->
-      ["$" ^ escape text ^ "$"]
+      let url =
+        let server =
+          Printf.sprintf "http://%s:%d"
+            (Eliom_config.get_default_hostname ())
+            (Eliom_config.get_default_port ())
+        in
+        if Str.(string_match (regexp server) url 0) then
+          server
+        else
+          url
+      in
+      [Printf.sprintf "\\href{%s}{%s\\footnote{\\verb!%s!}}"
+          url (escape caption) (escape url)]
     | Element (tag, cs) ->
-      constructor_of_tag tag (List.map to_latex cs)
+      let escape, make = constructor_of_tag tag in
+      make (List.map (to_latex (escape && escape_flag)) cs)
     | Data s ->
-      [escape s]
+      [if escape_flag then escape s else s]
 
-  let to_latex d = String.concat "\n" (to_latex d)
+  let to_latex d = String.concat "\n" (to_latex true d)
 
 end

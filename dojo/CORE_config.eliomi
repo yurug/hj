@@ -43,9 +43,13 @@ val current_language : unit -> language
 type ldap_configuration = {
   mutable host : string;
   mutable port : int;
+  mutable domain : string;
+  mutable username : string;
+  mutable password : string;
   mutable base : string;
   mutable firstname_field: string;
   mutable name_field: string;
+  mutable fullname_field: string;
   mutable login_field: string;
   mutable email_field: string;
   mutable status_field: string;
