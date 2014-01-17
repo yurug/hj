@@ -388,8 +388,12 @@ open Ocsigen_extensions
 *)
 
 let file_upload_service import =
-  Eliom_registration.Action.register_post_coservice'
-    ~post_params:(Eliom_parameter.(file "file"))
+  let service =
+    Eliom_service.post_coservice'
+      ~post_params:(Eliom_parameter.(file "file"))
+      ()
+  in
+  Eliom_registration.Action.register ~options:`NoReload ~service
     (fun () file ->
       Ocsigen_messages.errlog
         (Printf.sprintf "Received a file (%Ld):\n %s\n%s\n%s"
@@ -400,8 +404,9 @@ let file_upload_service import =
         (* FIXME: Handle error. *)
       lwt dest, commit = import file.original_basename in
       ltry COMMON_unix.(cp file.tmp_filename dest)
-      >>= fun _ -> commit ()
-    )
+      >>= fun _ -> commit () >> return ()
+    );
+  service
 
 type ('a, 'b, 'c) c =
     ?a:'a Eliom_content.Html5.D.attrib list ->
