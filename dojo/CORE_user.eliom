@@ -194,10 +194,11 @@ let ldap_search login server_config = CORE_config.(
                with Not_found ->
                  login ^ "@" ^ server_config.domain
              in
+             let cleanspace s = Str.(global_replace (regexp " ") "" s) in
              return (`OK (
-               pretty firstname,
-               name,
-               email,
+               cleanspace (pretty firstname),
+               cleanspace name,
+               cleanspace email,
                is_teacher (lookup server_config.status_field)
              ))
            with Not_found ->
