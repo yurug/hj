@@ -150,7 +150,8 @@ let propagate_change id =
 
 (** [channel e] gives a device for client-side code to be notified
     each time [e] is changed. *)
-let channel e = e.channel
+let channel e =
+  Eliom_comet.Channel.create ~scope:`Site (CORE_client_reaction.clone e.channel)
 
 (* *********************** *)
 (*  Instantiation functor  *)
