@@ -75,16 +75,14 @@ let offer_creation emake creation_service page id =
       return (error_page (CORE_error_messages.string_of_error e))
 
 let progress () =
-  span ~a:[a_class ["inlined"]] [
-    HTML_app.get_img
-      ~a:[a_id "loader"; a_class ["inlined"]]
-      ~alt:"loading" "ajax-loader.gif"
-  ]
+  HTML_app.get_img
+    ~a:[a_id "loader"; a_class ["inlined"]]
+    ~alt:"loading" "ajax-loader.gif"
 
 let get_progress = server_function Json.t<unit> (fun () -> return (progress ()))
 
 let reactive_div es after_display get display  =
-  let elt = div [progress ()] in
+  let elt = div ~a:[a_class ["reactive"]] [progress ()] in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
     get () >>= return
@@ -101,8 +99,8 @@ let reactive_div es after_display get display  =
       | Some data ->
         try_lwt
           lwt p = %get_progress () in
-          Eliom_content.Html5.Manip.replaceAllChild %elt [p];
-          lwt cs = %display data in
+          return (Eliom_content.Html5.Manip.replaceAllChild %elt [p])
+          >> lwt cs = %display data in
           Eliom_content.Html5.Manip.replaceAllChild %elt cs;
           Lwt.return (
             match %after_display with
