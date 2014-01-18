@@ -34,8 +34,15 @@ body {
 }
 
 #logo {
-    width: 64x;
+    width: 64px;
     height: 48px;
+}
+
+#loader {
+    width: 1em;
+    height: 1em;
+    display: inline;
+    float: right;
 }
 
 #bar {
