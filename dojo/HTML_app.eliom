@@ -17,15 +17,12 @@ module Hackojo_app =
       let application_name = "hackojo"
     end)
 
-let get_img fname =
-  img
-    ~a:[a_id "logo"]
+let get_img ~a ~alt fname =
+  img ~a ~alt
     ~src:(make_uri ~service:(Eliom_service.static_dir ()) ["img"; fname])
-    ~alt:("logo")
     ()
 
-let logo =
-  get_img "logo.png"
+let logo = get_img  ~alt:("logo") ~a:[a_id "logo"] "logo.png"
 
 let menu_button ?(xa =[]) service label x =
   a ~a:(xa @ [a_class ["menu_button"]]) ~service [pcdata label] x

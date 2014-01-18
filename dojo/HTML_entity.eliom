@@ -1,12 +1,14 @@
 (* -*- tuareg -*- *)
 
 (** Entities HTML pages indexed by entities identifiers. *)
-
+{shared{
 open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
 open Html5_types
 open Eliom_service
+}}
+
 
 open HTML_widget
 open HTML_app
@@ -72,8 +74,17 @@ let offer_creation emake creation_service page id =
     | `KO e ->
       return (error_page (CORE_error_messages.string_of_error e))
 
+let progress () =
+  span ~a:[a_class ["inlined"]] [
+    HTML_app.get_img
+      ~a:[a_id "loader"; a_class ["inlined"]]
+      ~alt:"loading" "ajax-loader.gif"
+  ]
+
+let get_progress = server_function Json.t<unit> (fun () -> return (progress ()))
+
 let reactive_div es after_display get display  =
-  let elt = div [pcdata "Loading..."] in
+  let elt = div [progress ()] in
   lwt initial = get () in
   let update = server_function Json.t<unit> (fun () ->
     get () >>= return
@@ -89,6 +100,8 @@ let reactive_div es after_display get display  =
       | None -> Lwt.return ()
       | Some data ->
         try_lwt
+          lwt p = %get_progress () in
+          Eliom_content.Html5.Manip.replaceAllChild %elt [p];
           lwt cs = %display data in
           Eliom_content.Html5.Manip.replaceAllChild %elt cs;
           Lwt.return (
@@ -105,22 +118,17 @@ let reactive_div es after_display get display  =
     CORE_client_reaction.react_on_background (
       List.map Lwt_stream.clone %e_channels
     ) (
-      let last = ref None in
       function
         | CORE_entity.HasChanged ->
-          Firebug.console##log (Js.string ("Change!"));
-        (** Update the entity view. *)
-          (try_lwt
+          lwt p = %get_progress () in
+          return (Eliom_content.Html5.Manip.appendChild %elt p)
+          (** Update the entity view. *)
+          >> (try_lwt
              lwt data = %remote_get () in
-             if Some data = !last then
-               Lwt.return ()
-             else (
-               last := Some data;
-               process data
-             )
+             process data
            with e -> Lwt.return (
              Firebug.console##log (Js.string ("Exn1..." ^ Printexc.to_string e)))
-          )
+          ) >> return (Eliom_content.Html5.Manip.removeChild %elt p)
         | CORE_entity.MayChange ->
           Lwt.return ()
     );
