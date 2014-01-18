@@ -105,7 +105,11 @@ let entity_sources_div
             ])
           (fun _ _ -> `RO)
       in
-      reactive_div [CORE_entity.SomeEntity e] None get_sources
+      let get_sources' = fun x ->
+        lwt s = get_sources x in
+        return (Some s)
+      in
+      reactive_div [CORE_entity.SomeEntity e] None get_sources'
         {CORE_source.filename list list -> [> Html5_types.div ] elt list Lwt.t{
           fun _ ->
             lwt e = %get_editor () in

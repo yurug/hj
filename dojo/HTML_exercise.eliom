@@ -204,7 +204,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
             | Some (`KO e) -> Some (`KO e)
             | None -> None
         in
-        return (cvs, title c))
+        return (Some (cvs, title c)))
       )
   in
 

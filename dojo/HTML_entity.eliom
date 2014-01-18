@@ -80,45 +80,50 @@ let reactive_div es after_display get display  =
   )
   in
   let e_channels = CORE_entity.(
-    List.map (function (SomeEntity e) -> CORE_entity.channel e) es
+    List.map (function (SomeEntity e) -> channel e) es
   )
   in
   let remote_get = server_function Json.t<unit> (fun () -> get ()) in
   ignore {unit{
-    let process data =
-      try_lwt
-        lwt cs = %display data in
-        Eliom_content.Html5.Manip.replaceAllChild %elt cs;
-        Lwt.return (
-          match %after_display with
-            | Some f -> f ()
-            | None -> ()
+    let process = function
+      | None -> Lwt.return ()
+      | Some data ->
+        try_lwt
+          lwt cs = %display data in
+          Eliom_content.Html5.Manip.replaceAllChild %elt cs;
+          Lwt.return (
+            match %after_display with
+              | Some f -> f ()
+              | None -> ()
+          )
+        with e -> Lwt.return (
+          Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
         )
-      with e -> Lwt.return (
-        Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
-      )
     in
     let config = Eliom_comet.Configuration.new_configuration () in
-    Eliom_comet.Configuration.set_always_active config true;
-    CORE_client_reaction.react_on_background %e_channels (
+    Eliom_comet.Configuration.set_time_between_request config 2.;
+    CORE_client_reaction.react_on_background (
+      List.map Lwt_stream.clone %e_channels
+    ) (
       let last = ref None in
       function
-      | CORE_entity.HasChanged ->
+        | CORE_entity.HasChanged ->
+          Firebug.console##log (Js.string ("Change!"));
         (** Update the entity view. *)
-        (try_lwt
-           lwt data = %remote_get () in
-           if Some data = !last then
-             Lwt.return ()
-           else (
-             last := Some data;
-             process data
-           )
-         with e -> Lwt.return (
-           Firebug.console##log (Js.string ("Exn1..." ^ Printexc.to_string e)))
-        )
-      | CORE_entity.MayChange ->
-        Lwt.return ()
+          (try_lwt
+             lwt data = %remote_get () in
+             if Some data = !last then
+               Lwt.return ()
+             else (
+               last := Some data;
+               process data
+             )
+           with e -> Lwt.return (
+             Firebug.console##log (Js.string ("Exn1..." ^ Printexc.to_string e)))
+          )
+        | CORE_entity.MayChange ->
+          Lwt.return ()
     );
     Lwt.async (fun () -> process %initial)
   }};
- return elt
+  return elt
