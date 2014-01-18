@@ -3,9 +3,8 @@
 
 (** Low-level reactions on the client side. *)
 
-open Lwt
-
 {shared{
+open Lwt
 type 'a c = 'a Lwt_stream.t
 type reaction = unit
 }}
@@ -19,6 +18,7 @@ type reaction = unit
   let react channels reaction =
     let channels' = List.map Lwt_stream.clone channels in
     let all = Lwt_stream.choose channels' in
+    let reaction x = try_lwt reaction x with _ -> return () in
     Eliom_client.onload (fun () ->
       Lwt.async (fun () -> Lwt_stream.iter_s reaction all)
     )
