@@ -33,7 +33,7 @@ let edit_list label fields get set column_status =
 
 let machinist_page mc =
   let react_to_mc = HTML_entity.reactive_div [CORE_entity.SomeEntity mc] None in
-  let get () = observe mc (fun d -> return (content d)) in
+  let get () = observe mc (fun d -> return (Some (content d))) in
   let logins_div =
     edit_list I18N.String.logins ["username"; "ssh key"]
       (fun () -> get_logins mc)

@@ -132,7 +132,6 @@ let propagate_change id =
       reaction to the change of [id] by marking them as being
       modified. *)
   let wake_up (SomeEntity e) (l, xs) =
-    e.push MayChange;
     let (dependencies, queue) =
       match e.state with
         | UpToDate ->
@@ -150,8 +149,17 @@ let propagate_change id =
 
 (** [channel e] gives a device for client-side code to be notified
     each time [e] is changed. *)
+let table = Hashtbl.create 13
 let channel e =
-  Eliom_comet.Channel.create ~scope:`Site (CORE_client_reaction.clone e.channel)
+  let eid = identifier e in
+  try
+    Hashtbl.find table eid
+  with Not_found ->
+    let c =
+      Eliom_comet.Channel.create_newest e.channel
+    in
+    Hashtbl.add table eid c;
+    c
 
 (* *********************** *)
 (*  Instantiation functor  *)
