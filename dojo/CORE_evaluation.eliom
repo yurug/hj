@@ -259,7 +259,7 @@ let evaluate change_later exercise answer cps data authors =
         (** The student has not submitted an answer yet. *)
         return Unevaluated
 
-      | Some (Submission s) ->
+      | Some (Submission (_, s)) ->
         begin
           let job, submission, context =
             match current_state with

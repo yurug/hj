@@ -336,7 +336,7 @@ let display_master_view master exo checkpoint context =
               CORE_answer.submission_of_checkpoint answer checkpoint
               >>= function
                 | None | Some NoSubmission -> return "?"
-                | Some (Submission submission) ->
+                | Some (Submission (_, submission)) ->
                   return (match submission with
                     | SubmittedFile (f, digest) ->
                       let file =

@@ -12,7 +12,7 @@ open COMMON_pervasives
 
 type submission_state =
   | NoSubmission
-  | Submission of CORE_context.submission
+  | Submission of int * CORE_context.submission
 
 deriving (Json)
 
@@ -63,7 +63,17 @@ include CORE_entity.Make (struct
       match change with
       | NewSubmissionData (c, s, sources) ->
         Lwt_list.iter_s update_source sources
-        >> return (update_assoc c (Submission s) ss, sources @ source_updates)
+        >> (
+          let count =
+            try
+              match List.assoc c ss with
+                | NoSubmission -> 0
+                | Submission (c, _) -> c
+            with Not_found -> 0
+          in
+          let ss = update_assoc c (Submission (count + 1, s)) ss in
+          return (ss, sources @ source_updates)
+        )
     in
     try
       lwt submissions, source_updates =
