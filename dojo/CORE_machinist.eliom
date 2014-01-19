@@ -85,14 +85,19 @@ let execute_using_ssh login_information addr =
 
 type copy =
     ?timeout:float
+    -> clean:bool
     -> string list
     -> (execution_observer -> unit Lwt.t)
     -> (unit -> unit) Lwt.t
 
 let copy_using_scp login_information addr =
-  fun ?(timeout = default_timeout) srcs observer ->
+  fun ?(timeout = default_timeout) ~clean srcs observer ->
     ltry (fun lraise ->
-      COMMON_unix.scp
+      (if clean then
+          execute_using_ssh login_information addr "cleanup" observer
+       else
+          return (fun () -> ()))
+      >> COMMON_unix.scp
         ~timeout
         login_information.username login_information.ssh_key
         (fst addr) (snd addr)
