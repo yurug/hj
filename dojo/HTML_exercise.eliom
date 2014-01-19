@@ -273,8 +273,18 @@ let exercise_page exo =
          return (div [pcdata "Error when generating exercise page"])
   )
 
-let exercise_page =
-  HTML_entity.offer_creation CORE_exercise.make create_service exercise_page
+let exercise_page id =
+  let denied = return (div [pcdata I18N.String.access_denied]) in
+  CORE_user.(logged_user () >>= function
+    | `Logged u -> (
+      is_teacher u >>= (function
+        | false -> denied
+        | true ->
+          HTML_entity.offer_creation
+            CORE_exercise.make create_service exercise_page id
+      ))
+    | _ -> denied
+  )
 
 let () =
   HTML_entity.register_page_maker
