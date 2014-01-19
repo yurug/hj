@@ -90,17 +90,8 @@ let machinist_page mc =
   lwt source_div = HTML_source.entity_sources_div (module CORE_machinist) mc in
   return (div (divs @ [source_div; execution_div]))
 
-let machinist_page id =
-  let denied = return (div [pcdata I18N.String.access_denied]) in
-  CORE_user.(logged_user () >>= function
-    | `Logged u -> (
-      is_teacher u >>= (function
-        | false -> denied
-        | true ->
-          HTML_entity.offer_creation
-            CORE_machinist.make create_service machinist_page id
-      ))
-    | _ -> denied)
+let machinist_page =
+  HTML_entity.offer_creation CORE_machinist.make create_service machinist_page
 
 let () =
   HTML_entity.register_page_maker
