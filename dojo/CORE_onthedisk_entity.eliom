@@ -83,13 +83,36 @@ let log id what =
   let path = path_of_identifier id in
   CORE_vfs.append who (file path ".log") what
 
-module Make (D : sig type data deriving (Json) end)
+module type Converter = sig
+  val version : string
+  type source deriving (Json)
+  type destination
+  val convert : source -> destination
+end
+
+module Make (D : sig
+  type data deriving (Json)
+  val current_version : string
+  val converters : (module Converter with type destination = data) list
+end)
 : S with type data = D.data = struct
 
   type data = D.data
 
+  type versioned_data = {
+    version : string;
+    content : string;
+  } deriving (Json)
+
+  (* FIXME: the following functions are not exception-proof. *)
+
   let save (m : D.data meta) =
-    let raw = to_string Json.t<D.data meta> m in
+    let versioned = {
+      version = D.current_version;
+      content = to_string Json.t<D.data meta> m
+    }
+    in
+    let raw = to_string Json.t<versioned_data> versioned in
     let id = identifier m in
     let path = root true (path_of_identifier id) in
     (if not (Sys.file_exists (string_of_path path)) then
@@ -113,8 +136,32 @@ module Make (D : sig type data deriving (Json) end)
     >>>= (fun () -> CORE_vfs.latest (metafile path))
     >>>= fun latest_version -> CORE_vfs.read latest_version
     >>>= fun raw ->
-    let meta = from_string Json.t<D.data meta> raw in
-    let meta = CORE_inmemory_entity.refresh meta in
-    return (`OK meta)
+    let vd = from_string Json.t<versioned_data> raw in
+    if vd.version = D.current_version then (
+      let meta = from_string Json.t<D.data meta> vd.content in
+      return (`OK (CORE_inmemory_entity.refresh meta))
+    )
+    else (
+        (** The stored file does not contain data of the current version.
+            We convert it on-the-fly. *)
+      let rec convert = function
+        | [] ->
+          return (`KO (`SystemError ("no converter for version " ^ vd.version)))
+        | (module M : Converter with type destination = D.data) :: ms ->
+          if M.version = vd.version then (
+            let meta = from_string Json.t<M.source meta> vd.content in
+            let meta = CORE_inmemory_entity.map M.convert meta in
+            Ocsigen_messages.errlog (
+              Printf.sprintf "Converting %s : %s -> %s."
+                (CORE_identifier.string_of_identifier id)
+                vd.version
+                D.current_version
+            );
+            return (`OK (CORE_inmemory_entity.refresh meta))
+          )
+          else convert ms
+      in
+      convert D.converters
+    )
 
 end

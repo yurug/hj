@@ -103,7 +103,7 @@ type role =
 
 type display_values =
   [
-    `OK of CORE_questions.atomic_value cached list
+    `OK of CORE_questions.atomic_value list
   | `KO of [ CORE_errors.all ]
 ]
 deriving (Json)
@@ -140,7 +140,6 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
        FIXME: have finer notion of changes... *)
     {display_values option * string
       -> [Html5_types.flow5] elt list Lwt.t{
-        let cache = make_cache () in
         fun (current_value, title) ->
           match current_value with
             | None -> return [p [pcdata "Displaying exercise..."]]
@@ -155,7 +154,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
                   return [p [pcdata (string_of_error e)]]
                 | `OK v ->
                   let display_atomic a = CORE_questions.(
-                    match get cache a with
+                    match a with
                       | Statement s ->
                         let d = div (HTML_statement.to_html s) in
                         let dom = To_dom.of_div d in
@@ -193,14 +192,13 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
                       }}
   in
   let get =
-    let cache = make_cache () in
     fun () ->
       CORE_exercise.eval_if_needed exo authors >>= fun _ ->
       CORE_exercise.(observe exo (fun d ->
         let c = content d in
         let cvs =
           match current_value c with
-            | Some (`OK vs) -> Some (`OK (List.map (cached cache) vs))
+            | Some (`OK vs) -> Some (`OK vs)
             | Some (`KO e) -> Some (`KO e)
             | None -> None
         in
@@ -235,23 +233,45 @@ let group_of_user e =
     | Student (_, g) -> return g
     | NoRole -> return []
 
+let denied = return (`OK (div [pcdata I18N.String.access_denied]))
+
+let assignment_rules_satisfied exo g =
+  Lwt_list.for_all_s (fun u ->
+    try_lwt
+      lwt props = CORE_user.properties u in
+      lwt can = CORE_exercise.assignment_rule exo `Can in
+      return (CORE_property.evaluate props can)
+    with _ -> return false
+  ) g
+
+let access_control exo proceed =
+  role exo >>= function
+    | Evaluator _ -> proceed ()
+    | NoRole -> denied
+    | Student (_, g) ->
+      assignment_rules_satisfied exo g >>= function
+        | true -> proceed ()
+        | _ -> denied
+
 let exercise_page exo =
   (lwt group = group_of_user exo in
-   let gids = List.map CORE_user.identifier group in
-   CORE_answer.answer_of_exercise_from_authors exo group >>>= fun a ->
-   CORE_evaluation.evaluation_of_exercise_from_authors exo a gids >>>= fun e ->
-   (lwt r = role exo in
-    (lwt_list_join (
-      (match r with Evaluator _ -> [editor_div exo gids] | _ -> [])
-      @ [exercise_div r exo a e gids]
-     ) >>= fun es -> return (`OK (div es)))))
-  >>= function
-    | `OK d ->
-      return d
-    | `KO e ->
+   access_control exo (fun () ->
+     let ids = List.map CORE_user.identifier group in
+     CORE_answer.answer_of_exercise_from_authors exo group >>>= fun a ->
+     CORE_evaluation.evaluation_of_exercise_from_authors exo a ids >>>= fun e ->
+     (lwt r = role exo in
+      (lwt_list_join (
+        (match r with Evaluator _ -> [editor_div exo ids] | _ -> [])
+        @ [exercise_div r exo a e ids]
+       ) >>= fun es -> return (`OK (div es)))))
+     >>= function
+       | `OK d ->
+         return d
+       | `KO e ->
       (* FIXME: Handle error properly. *)
-      warn e;
-      return (div [pcdata "Error when generating exercise page"])
+         warn e;
+         return (div [pcdata "Error when generating exercise page"])
+  )
 
 let exercise_page =
   HTML_entity.offer_creation CORE_exercise.make create_service exercise_page

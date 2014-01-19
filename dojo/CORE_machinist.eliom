@@ -43,6 +43,7 @@ type description = {
   available_logins    : login_information list;
   available_addresses : (address * login_information waiting_list) list;
   machine_kind        : machine_kind;
+  extra_fields        : (string * string) list;
 } deriving (Json)
 
 }}
@@ -84,14 +85,19 @@ let execute_using_ssh login_information addr =
 
 type copy =
     ?timeout:float
+    -> clean:bool
     -> string list
     -> (execution_observer -> unit Lwt.t)
     -> (unit -> unit) Lwt.t
 
 let copy_using_scp login_information addr =
-  fun ?(timeout = default_timeout) srcs observer ->
+  fun ?(timeout = default_timeout) ~clean srcs observer ->
     ltry (fun lraise ->
-      COMMON_unix.scp
+      (if clean then
+          execute_using_ssh login_information addr "cleanup" observer
+       else
+          return (fun () -> ()))
+      >> COMMON_unix.scp
         ~timeout
         login_information.username login_information.ssh_key
         (fst addr) (snd addr)
@@ -130,6 +136,9 @@ type public_change =
 
 include CORE_entity.Make (struct
   type data = description deriving (Json)
+
+  let current_version = "1.0"
+  let converters = []
 
   type change = public_change
 
@@ -350,7 +359,8 @@ let make_default id =
   let default = {
     available_logins = [];
     available_addresses = [];
-    machine_kind = Unknown
+    machine_kind = Unknown;
+    extra_fields = []
   }
   in
   let init = (

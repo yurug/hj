@@ -53,10 +53,11 @@ let string_of_evaluation_state = function
     Printf.sprintf "Being evaluated by job %s" (string_of_job job)
 
 type description = {
-  answer   : CORE_identifier.t;
-  exercise : CORE_identifier.t;
-  authors  : CORE_identifier.t list;
-  jobs     : (CORE_exercise.checkpoint * evaluation_state) list;
+  answer       : CORE_identifier.t;
+  exercise     : CORE_identifier.t;
+  authors      : CORE_identifier.t list;
+  jobs         : (CORE_exercise.checkpoint * evaluation_state) list;
+  extra_fields : (string * string) list;
 } deriving (Json)
 
 }}
@@ -207,7 +208,7 @@ let create_job
       | Some (`Command cmd) ->
         let timeout =
           match get_timeout context with
-            | None -> 120. (* FIXME: Make it a parameter. *)
+            | None -> 5. (* FIXME: Make it a parameter. *)
             | Some t -> float_of_int t
         in
         let cmd = CORE_context.substitute_seed seed cmd in
@@ -311,6 +312,9 @@ include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
+  let current_version = "1.0"
+  let converters = []
+
   type change = public_change
 
   let string_of_change = function
@@ -387,6 +391,7 @@ let initial_evaluation exercise answer authors = {
   answer = CORE_answer.identifier answer;
   authors;
   jobs = [];
+  extra_fields = []
 }
 
 let evaluation_dependencies exercise answer =

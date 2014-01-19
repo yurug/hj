@@ -132,3 +132,5 @@ let rec string_of_state_change string_of_replacement = function
     ^ string_of_state_change string_of_replacement c2
   | NoUpdate ->
     "No update"
+
+let map f m = { m with content = f m.content }

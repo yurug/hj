@@ -202,12 +202,16 @@ module type U = sig
   type change
   val react : (data, change) reaction
   val string_of_change : change -> string
+  val current_version : string
+  val converters : (module CORE_onthedisk_entity.Converter with type destination = data) list
 end
 
 module type D =
 sig
   type data deriving (Json)
   val string_of_replacement : data -> string
+  val current_version : string
+  val converters : (module CORE_onthedisk_entity.Converter with type destination = data) list
 end
 
 module Passive (I : D) : U
@@ -222,6 +226,9 @@ module Passive (I : D) : U
 
   let string_of_change =
     CORE_inmemory_entity.string_of_state_change I.string_of_replacement
+
+  let current_version = I.current_version
+  let converters = I.converters
 end
 
 (** The implementation of the operations over entities. *)
@@ -584,6 +591,9 @@ module Tests = struct
   module DummyEntity = Make (struct
 
     type data = t deriving (Json)
+
+    let current_version = "test"
+    let converters = []
 
     type change = public_change
 

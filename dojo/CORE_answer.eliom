@@ -17,7 +17,8 @@ type submission_state =
 deriving (Json)
 
 type description = {
-  submissions : (CORE_exercise.checkpoint * submission_state) list;
+  submissions  : (CORE_exercise.checkpoint * submission_state) list;
+  extra_fields : (string * string) list;
 } deriving (Json)
 
 let answer_to_dependency_kind = "answer_to"
@@ -31,6 +32,9 @@ type public_change =
 include CORE_entity.Make (struct
 
   type data = description deriving (Json)
+
+  let current_version = "1.0"
+  let converters = []
 
   type change = public_change
 
@@ -69,7 +73,7 @@ include CORE_entity.Make (struct
       return (state_changes [
         if (submissions == (content state).submissions) then
           NoUpdate
-        else UpdateContent { submissions };
+        else UpdateContent { (content state) with submissions };
         if source_updates = [] then
           NoUpdate
         else
@@ -163,7 +167,7 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
 
   let initialize () =
     let rec aux salt () =
-      let data = { submissions = [] } in
+      let data = { submissions = []; extra_fields = [] } in
       let dependencies =
         of_list [(answer_to_dependency_kind, [
           ([], CORE_exercise.identifier exo)])]

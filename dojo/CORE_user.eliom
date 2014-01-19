@@ -17,12 +17,16 @@ type description = {
   surname         : string;
   email           : string;
   teacher         : bool;
-  mbox            : CORE_message.mbox
+  mbox            : CORE_message.mbox;
+  extra_fields    : (string * string) list;
 } deriving (Json)
 
 include CORE_entity.Make (CORE_entity.Passive (struct
 
   type data = description deriving (Json)
+
+  let current_version = "1.0"
+  let converters = []
 
   let string_of_replacement _ = "Update"
 
@@ -102,6 +106,7 @@ let subscribe out_by firstname surname email login password teacher =
   let id = user_id login in
   let password_digest = make_password_digest login password in
   let last_connection = I18N.String.never_connected_before in
+  let extra_fields = [] in
   let mbox = CORE_message.empty_mbox () in
   let dependencies =
     let deps = empty_dependencies in
@@ -111,7 +116,7 @@ let subscribe out_by firstname surname email login password teacher =
   in
   let init =
     ({ login; password_digest; last_connection;
-       firstname; surname; teacher; email; mbox },
+       firstname; surname; teacher; email; mbox; extra_fields },
      dependencies,
      CORE_property.empty,
      [])

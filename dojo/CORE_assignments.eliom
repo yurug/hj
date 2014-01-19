@@ -34,6 +34,7 @@ type assignment_kind = [ `Must | `Should | `Can | `Cannot ] deriving (Json)
 
 type description = {
   rules   : (assignment_kind * rules) list;
+  extra_fields : (string * string) list;
 } deriving (Json)
 
 include CORE_entity.Make (CORE_entity.Passive (struct
@@ -42,12 +43,16 @@ include CORE_entity.Make (CORE_entity.Passive (struct
 
   let string_of_replacement _ = "Update assignment rules."
 
+  let current_version = "1.0"
+  let converters = []
+
 end))
 
 let assigner () =
   let initialize () =
     make
-      ~init:({ rules = [] }, empty_dependencies, CORE_property.empty, [])
+      ~init:({ rules = []; extra_fields = [] },
+             empty_dependencies, CORE_property.empty, [])
       CORE_standard_identifiers.assigner
   in
   make CORE_standard_identifiers.assigner >>= function
@@ -72,7 +77,8 @@ let rules k =
 
 let register_rule e new_rules =
   lwt a = assigner () in
-  lwt rules = observe a (fun s -> return (content s).rules) in
+  lwt content = observe a (fun s -> return (content s)) in
+  let rules = content.rules in
   let refresh rules = List.(
     filter (fun (_, ids) -> ids <> []) (
       map (fun (r, ids) -> (r, filter (fun e' -> e <> e') ids)) rules
@@ -88,7 +94,9 @@ let register_rule e new_rules =
     in
     aux rules
   in
-  change a (UpdateContent { rules = List.fold_left register rules new_rules })
+  change a (UpdateContent {
+    content with rules = List.fold_left register rules new_rules
+  })
 
 let assignments k ps =
   List.(

@@ -47,11 +47,19 @@ deriving (Json)
 
 let conj a b =
   match a, b with
-    | False, _ | False, _ -> False
+    | False, _ | _, False -> False
     | True, a | a, True -> a
     | a, b -> BinOp (And, a, b)
 
 let conjs = List.fold_left conj True
+
+let disj a b =
+  match a, b with
+    | True, _ | _, True -> True
+    | False, a | a, False -> a
+    | a, b -> BinOp (Or, a, b)
+
+let disjs = List.fold_left disj False
 
 let rec evaluate s = function
   | True -> true

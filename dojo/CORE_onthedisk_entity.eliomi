@@ -37,7 +37,18 @@ module type S = sig
 
 end
 
-module Make (D : sig type data deriving (Json) end)
+module type Converter = sig
+  val version : string
+  type source deriving (Json)
+  type destination
+  val convert : source -> destination
+end
+
+module Make (D : sig
+  type data deriving (Json)
+  val current_version : string
+  val converters : (module Converter with type destination = data) list
+end)
 : S with type data = D.data
 
 val log : CORE_identifier.t -> string ->

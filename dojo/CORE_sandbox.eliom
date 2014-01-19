@@ -137,9 +137,10 @@ let exec_on_sandbox cmd =
   )
 
 (** [copy_on_sandbox files sandbox] imports the files into the sandbox. *)
-let copy_on_sandbox files =
+let copy_on_sandbox files persistence =
   sandboxing (fun ?timeout observer s ->
-    s.CORE_machinist.copy ?timeout files observer
+    let clean = (persistence = Ephemeral) in
+    s.CORE_machinist.copy ~clean ?timeout files observer
   )
 
 (** [exec ?persistent ?limitations files command observer] first
@@ -173,7 +174,7 @@ let exec
 
     (** Process command. *)
     (if files <> [] then
-        copy_on_sandbox files false sandbox limitations observer
+        copy_on_sandbox files persistence false sandbox limitations observer
      else
         return 0
     ) >> exec_on_sandbox cmd release_when_finished sandbox limitations observer
