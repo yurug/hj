@@ -170,7 +170,7 @@ let display_user_input exo_id answer_id checkpoint context submission =
       in
       let choices = ref initial_choices in
       let add x = return (choices := x :: !choices) in
-      let del x = return (choices := List.filter (( = ) x) !choices) in
+      let del x = return (choices := List.filter (( <> ) x) !choices) in
       let choices_editor =
         HTML_widget.get_choices_editor initial_choices cs add del
       in
