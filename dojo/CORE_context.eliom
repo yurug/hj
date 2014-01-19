@@ -227,7 +227,7 @@ let check_expected_choices xs = function
   | SubmittedChoices cs ->
     let score =
       if List.length cs <> List.length xs then
-        (0, 0)
+        (0, 1)
       else
         if List.(for_all (fun x -> mem x xs) cs) then
           (1, 1)
