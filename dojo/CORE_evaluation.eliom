@@ -53,10 +53,11 @@ let string_of_evaluation_state = function
     Printf.sprintf "Being evaluated by job %s" (string_of_job job)
 
 type description = {
-  answer   : CORE_identifier.t;
-  exercise : CORE_identifier.t;
-  authors  : CORE_identifier.t list;
-  jobs     : (CORE_exercise.checkpoint * evaluation_state) list;
+  answer       : CORE_identifier.t;
+  exercise     : CORE_identifier.t;
+  authors      : CORE_identifier.t list;
+  jobs         : (CORE_exercise.checkpoint * evaluation_state) list;
+  extra_fields : (string * string) list;
 } deriving (Json)
 
 }}
@@ -390,6 +391,7 @@ let initial_evaluation exercise answer authors = {
   answer = CORE_answer.identifier answer;
   authors;
   jobs = [];
+  extra_fields = []
 }
 
 let evaluation_dependencies exercise answer =

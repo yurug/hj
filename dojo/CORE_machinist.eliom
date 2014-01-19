@@ -43,6 +43,7 @@ type description = {
   available_logins    : login_information list;
   available_addresses : (address * login_information waiting_list) list;
   machine_kind        : machine_kind;
+  extra_fields        : (string * string) list;
 } deriving (Json)
 
 }}
@@ -353,7 +354,8 @@ let make_default id =
   let default = {
     available_logins = [];
     available_addresses = [];
-    machine_kind = Unknown
+    machine_kind = Unknown;
+    extra_fields = []
   }
   in
   let init = (

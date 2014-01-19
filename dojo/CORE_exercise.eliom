@@ -38,6 +38,7 @@ type description = {
   questions        : questions;
   questions_value  : questions_value;
   cst              : C.exercise;
+  extra_fields     : (string * string) list;
 } deriving (Json)
 
 type patch = CORE_errors.position * CORE_errors.position * string
@@ -435,7 +436,8 @@ let make_blank id =
       assignment_rules;
       questions;
       questions_value = None;
-      cst = C.blank'
+      cst = C.blank';
+      extra_fields = []
     },
     CORE_inmemory_entity.empty_dependencies,
     CORE_property.empty,
