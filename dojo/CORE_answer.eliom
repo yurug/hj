@@ -32,6 +32,9 @@ include CORE_entity.Make (struct
 
   type data = description deriving (Json)
 
+  let current_version = "1.0"
+  let converters = []
+
   type change = public_change
 
   let string_of_change = function

@@ -42,6 +42,9 @@ include CORE_entity.Make (CORE_entity.Passive (struct
 
   let string_of_replacement _ = "Update assignment rules."
 
+  let current_version = "1.0"
+  let converters = []
+
 end))
 
 let assigner () =

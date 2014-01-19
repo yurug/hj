@@ -117,3 +117,5 @@ val make :
 val update : 'a meta -> 'a state_change -> 'a meta
 
 val string_of_state_change : ('a -> string) -> 'a state_change -> string
+
+val map : ('a -> 'b) -> 'a meta -> 'b meta

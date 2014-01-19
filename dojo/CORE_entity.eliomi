@@ -192,6 +192,10 @@ module type U = sig
       be showable in a (one line long) string. *)
   val string_of_change : change -> string
 
+  val current_version : string
+  val converters
+    : (module CORE_onthedisk_entity.Converter with type destination = data) list
+
 end
 
 (** Instantiate a set of operations over a specific type of entity. *)
@@ -202,6 +206,9 @@ module Make (I : U)
 module type D = sig
   type data deriving (Json)
   val string_of_replacement : data -> string
+  val current_version : string
+  val converters
+    : (module CORE_onthedisk_entity.Converter with type destination = data) list
 end
 
 (** Instantiate a set of operations over a specific type of entity
