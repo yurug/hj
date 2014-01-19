@@ -300,6 +300,9 @@ module Fr : I18N_sig.Text = struct
   let wait_for_master_evaluation =
     "En attente d'une évaluation du maître."
 
+  let access_denied =
+    "Accès interdit."
+
 end
 
 module String = (val

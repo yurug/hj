@@ -535,6 +535,19 @@ module Eval = struct
     functional "is" (fun _ v ->
       let what = as_string v in
       return (VPropertyRule (CORE_property.(Is (atom what))))
+    );
+
+    functional "in_list" (fun _ v ->
+      let what = as_string_list v in
+      let rule = CORE_property.(
+        disjs (List.map (fun v -> Is (atom v)) what)
+      )
+      in
+      return (VPropertyRule rule)
+    );
+
+    functional "all" (fun _ v ->
+      return (VPropertyRule (CORE_property.True))
     )
 
   and variable s (e : environment) = function
@@ -674,6 +687,8 @@ let eval authors this p =
   try_lwt
 (*    lwt tenv = TypeCheck.program this p in*)
     lwt title, v, sources, must, can, should = Eval.program this p in
+    (** "must" or "should" imply "can". *)
+    let can = CORE_property.disjs [can; must; should] in
     return (title, `OK v, sources, must, can, should)
   with
     | Error e ->

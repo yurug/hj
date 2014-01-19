@@ -59,6 +59,9 @@ deriving (Json)
 (** [conjs rs] returns the conjunction of rules [rs]. *)
 val conjs : rule list -> rule
 
+(** [disjs rs] returns the disjunction of rules [rs]. *)
+val disjs : rule list -> rule
+
 (** [rule_of_string s] parses [s] as a formula expressed as an (S-exp). *)
 val rule_of_string : string -> rule
 

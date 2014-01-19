@@ -33,7 +33,7 @@ type questions_value =
 deriving (Json)
 
 type description = {
-  assignment_rules : (assignment_kind * CORE_property.rule list) list;
+  assignment_rules : (assignment_kind * CORE_property.rule) list;
   title            : string;
   questions        : questions;
   questions_value  : questions_value;
@@ -112,15 +112,24 @@ include CORE_entity.Make (struct
         )
 
       | EvalQuestions authors ->
+        (* FIXME: Critical: What prevents other authors from reading this
+           FIXME: evaluation? Maybe we should index the question_value
+           FIXME: field by the authors that were used to produce it...
+           FIXME: Yet, this may represent a huge number of evaluation.
+           FIXME: In the meantime, if there actually is a variant of
+           FIXME: an exercise per author, is it really avoidable? *)
         let exo_id = CORE_inmemory_entity.identifier state in
         lwt content, xsources, must, can, should =
           eval_questions authors exo_id content
         in
-        CORE_assignments.register_rule exo_id [
+        let assignment_rules = [
           `Must, must;
           `Can, can;
           `Should, should
-        ] >>
+        ]
+        in
+        let content = { content with assignment_rules } in
+        CORE_assignments.register_rule exo_id assignment_rules >>
           let source (sources, dependencies, content) (f, c) =
           let s = CORE_source.make f c in
           save_source (CORE_inmemory_entity.identifier state) s
@@ -340,7 +349,7 @@ let eval e authors = change e (EvalQuestions authors)
 let assignment_rule e k =
   observe e (fun c -> return (
     try
-      CORE_property.conjs (List.assoc k (content c).assignment_rules)
+      List.assoc k (content c).assignment_rules
     with Not_found -> CORE_property.True
   ))
 
