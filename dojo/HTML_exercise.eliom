@@ -101,11 +101,11 @@ type role =
 
 {shared{
 
-type display_values =
-  [
-    `OK of CORE_questions.atomic_value list
-  | `KO of [ CORE_errors.all ]
-]
+type display_command =
+  | ShowPrelude of string
+  | ShowValue of CORE_questions.atomic_value
+  | ShowError of [ CORE_errors.all ]
+
 deriving (Json)
 
 }}
@@ -138,49 +138,38 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
        FIXME: description each time it is updated. We should
        FIXME: check if this is reasonable or if we should
        FIXME: have finer notion of changes... *)
-    {display_values option * string
+    {display_command
       -> [Html5_types.flow5] elt list Lwt.t{
-        fun (current_value, title) ->
-          match current_value with
-            | None -> return [p [pcdata "Displaying exercise..."]]
-            | Some v ->
-              lwt d = match v with
-                | `KO e ->
-              (* FIXME: For the moment, the error is displayed
-                 FIXME: in the exercise div. It may be more handy
-                 FIXME: to display it in the editor message bar.
-                 FIXME: (Yet, what if there is no editor because
-                 FIXME: the user is a student?) *)
-                  return [p [pcdata (string_of_error e)]]
-                | `OK v ->
-                  let display_atomic a = CORE_questions.(
-                    match a with
-                      | Statement s ->
-                        let d = div (HTML_statement.to_html s) in
-                        let dom = To_dom.of_div d in
-                        %elements := (Js.to_string dom##id) :: !(%elements);
-                        return [d]
-
-                      | CheckpointContext (cp, context) ->
-                        %display_context (cp, context)
-                  )
-                  in
-                  lwt all = Lwt_list.map_s display_atomic v in
-                  return (List.flatten all)
-              in
-              let download_as_pdf =
-                HTML_widget.small_button [I18N.(String.(cap download_pdf))] (
-                  fun _ -> Lwt.async (fun () ->
-                    %export_as_pdf () >>= function
-                      | None ->
-                        return ()
-                      | Some url ->
-                        return (
-                          Dom_html.window##location##assign (Js.string url))
-                  )
+        function
+          | ShowPrelude title ->
+            let download_as_pdf =
+              HTML_widget.small_button [I18N.(String.(cap download_pdf))] (
+                fun _ -> Lwt.async (fun () ->
+                  %export_as_pdf () >>= function
+                 | None ->
+                   return ()
+                 | Some url ->
+                   return (
+                     Dom_html.window##location##assign (Js.string url))
                 )
-              in
-              return (h1 [pcdata title] :: download_as_pdf :: d)
+              )
+            in
+            return [h1 [pcdata title]; download_as_pdf]
+
+          | ShowValue a -> CORE_questions.(
+            match a with
+              | Statement s ->
+                let d = div (HTML_statement.to_html s) in
+                let dom = To_dom.of_div d in
+                %elements := (Js.to_string dom##id) :: !(%elements);
+                return [d]
+
+              | CheckpointContext (cp, context) ->
+                %display_context (cp, context)
+          )
+
+          | ShowError e ->
+            return [div [pcdata (string_of_error e)]]
       }}
   in
   let display_math = {{ fun () ->
@@ -200,12 +189,12 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
         let c = content d in
         let cvs =
           match current_value c with
-            | Some (`OK vs) -> Some (`OK vs)
-            | Some (`KO e) -> Some (`KO e)
-            | None -> None
+            | Some (`OK vs) -> List.map (fun v -> ShowValue v) vs
+            | Some (`KO e) -> [ShowError e]
+            | None -> []
         in
-        return (Some (cvs, title c)))
-      )
+        return (ShowPrelude (title c) :: cvs)
+      ))
   in
 
   CORE_exercise.eval exo authors >>= fun _ ->

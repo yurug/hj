@@ -24,10 +24,10 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
     lwt d = observe ~who evaluation (fun d -> return (content d))
     in
     if !cache = Some d then
-      return None
+      return []
     else (
       cache := Some d;
-      return (Some d)
+      return [d]
     )
     )
   (*  FIXME: Should we do the following thing at some point?
@@ -491,9 +491,9 @@ let display_master_view master exo checkpoint context =
           div [ download_all_files ]
         ]))
       in
-      if !cache = Some result then return None else (
+      if !cache = Some result then return [] else (
         cache := Some result;
-        return (Some result)
+        return [result]
       )
   in
   lwt answers =

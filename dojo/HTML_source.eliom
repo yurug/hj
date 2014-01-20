@@ -107,7 +107,7 @@ let entity_sources_div
       in
       let get_sources' = fun x ->
         lwt s = get_sources x in
-        return (Some s)
+        return [s]
       in
       reactive_div [CORE_entity.SomeEntity e] None get_sources'
         {CORE_source.filename list list -> [> Html5_types.div ] elt list Lwt.t{
