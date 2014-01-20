@@ -239,10 +239,16 @@ let assignment_rules_satisfied exo g =
   ) g
 
 let access_control exo proceed =
+  Ocsigen_messages.errlog "Access control";
   role exo >>= function
-    | Evaluator _ -> proceed ()
-    | NoRole -> denied
+    | Evaluator _ ->
+      Ocsigen_messages.errlog "Evaluator";
+      proceed ()
+    | NoRole ->
+      Ocsigen_messages.errlog "No role";
+      denied
     | Student (_, g) ->
+      Ocsigen_messages.errlog "Student";
       assignment_rules_satisfied exo g >>= function
         | true -> proceed ()
         | _ -> denied
