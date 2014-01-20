@@ -120,6 +120,7 @@ let reactive_div es after_display get display  =
   )
   in
   ignore {unit{
+    Lwt.async (fun () ->
     let process data =
       try_lwt
         lwt cs = %display data in
@@ -151,7 +152,7 @@ let reactive_div es after_display get display  =
           Js.string ("Exn1..." ^ Printexc.to_string e))
       )
     in
-
+    refresh () >>
     let bench label f =
       lwt start = return (Js.to_float (jsnew Js.date_now ())##getTime ()) in
       lwt y = f () in
@@ -163,7 +164,7 @@ let reactive_div es after_display get display  =
         y
       )
     in
-    CORE_client_reaction.react_on_background (
+    return (CORE_client_reaction.react_on_background (
       List.map Lwt_stream.clone %e_channels
     ) (
       function
@@ -175,6 +176,7 @@ let reactive_div es after_display get display  =
           >> return (Eliom_content.Html5.Manip.removeChild %elt p)
         | CORE_entity.MayChange ->
           Lwt.return ()
+    ))
     )
   }};
   return elt
