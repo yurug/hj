@@ -57,12 +57,12 @@ let creation_page lid sid creation_service =
         | true ->
           let goto_page_of _ = preapply HTTP_services.page_of lid in
           let yes_service = creation_service goto_page_of goto_page_of in
-          return (
+          return HTTP_services.(
             div ~a:[a_class ["message_box"]] I18N.(String.([
               p [ pcdata (does_not_exist sid) ];
               p [ pcdata do_you_want_to_create_it ];
               menu_button ~xa:[a_class ["left_side"]] yes_service (cap yes) lid;
-              menu_button ~xa:[a_class ["right_side"]] HTTP_services.root (cap no) ()
+              menu_button ~xa:[a_class ["right_side"]] root (cap no) ()
             ])))))
     | _ -> return denied)
 
@@ -119,6 +119,15 @@ let reactive_div es after_display get display  =
           Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
         )
     in
+    let bench label f =
+      let start = Js.to_float (jsnew Js.date_now ())##getTime () in
+      let y = f () in
+      let stop = Js.to_float (jsnew Js.date_now ())##getTime () in
+      Firebug.console##log (Js.string (Printf.sprintf "%s in %f ms."
+                                         label
+                                         (stop -. start)));
+      y
+    in
     let config = Eliom_comet.Configuration.new_configuration () in
     Eliom_comet.Configuration.set_time_between_request config 2.;
     CORE_client_reaction.react_on_background (
@@ -130,8 +139,8 @@ let reactive_div es after_display get display  =
           return (Eliom_content.Html5.Manip.appendChild %elt p)
           (** Update the entity view. *)
           >> (try_lwt
-             lwt data = %remote_get () in
-             process data
+             lwt data = bench "remote_get" (fun () -> %remote_get ()) in
+             bench "process data" (fun () -> process data)
            with e -> Lwt.return (
              Firebug.console##log (Js.string ("Exn1..." ^ Printexc.to_string e)))
           ) >> return (Eliom_content.Html5.Manip.removeChild %elt p)

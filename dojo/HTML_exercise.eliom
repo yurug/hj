@@ -175,7 +175,9 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
                       | None ->
                         return ()
                       | Some url ->
-                        return (Dom_html.window##location##assign (Js.string url)))
+                        return (
+                          Dom_html.window##location##assign (Js.string url))
+                  )
                 )
               in
               return (h1 [pcdata title] :: download_as_pdf :: d)
@@ -189,7 +191,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
           (String.concat "," !(%elements))
       ))
     );
-                      }}
+  }}
   in
   let get =
     fun () ->
