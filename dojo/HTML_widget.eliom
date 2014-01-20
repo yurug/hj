@@ -264,9 +264,10 @@ let get_list_editor
 
 let get_choices_editor initial_choices choices add del =
   let choice_item idx c =
+    let idx_selected = List.mem idx initial_choices in
     let idx = succ idx in
     let change_choice =
-      let choice = ref false in
+      let choice = ref idx_selected in
       fun _ ->
         if !choice then del idx else add idx;
         choice := not !choice
@@ -276,7 +277,7 @@ let get_choices_editor initial_choices choices add del =
     )
     in
     let checked =
-      if List.mem idx initial_choices then [a_checked `Checked] else []
+      if idx_selected then [a_checked `Checked] else []
     in
     p [input
           ~a:(a_onclick {{ fun _ -> Lwt.async (fun () ->
