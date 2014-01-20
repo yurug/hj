@@ -78,7 +78,7 @@ let offer_creation emake creation_service page id =
     | `OK e ->
       page e
     | `KO (`UndefinedEntity e) ->
-      creation_page lid sid creation_service
+      return (creation_page lid sid creation_service)
     | `KO e ->
       return (error_page (CORE_error_messages.string_of_error e))
 

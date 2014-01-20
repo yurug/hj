@@ -29,7 +29,36 @@
       <static dir="%%STATICDIR%%" />
       <static dir="%%ELIOMSTATICDIR%%" />
       <eliommodule module="%%LIBDIR%%/%%PROJECT_NAME%%.cma">
-      <development />
+
+	<!-- UFR Informatique -->
+
+        <LDAP
+      	  host="194.254.199.85"
+          port="389"
+	  domain="informatique.univ-paris-diderot.fr"
+	  base="dc=ufr-info-p7,dc=jussieu,dc=fr"
+          firstname="sn"
+	  name="givenName"
+	  login="uid"
+	  email="mail"
+	  status="description"
+	  teacher_status_value="ENS"
+	  />
+
+        <LDAP
+      	  host="ldap.script.univ-paris-diderot.fr"
+	  domain="univ-paris-diderot.fr"
+	  username="cn=didascalie,dc=script,dc=jussieu,dc=fr"
+          port="389"
+	  base="ou=People,dc=script,dc=jussieu,dc=fr"
+          firstname="displayName"
+	  fullname="gecos"
+	  password="nepElvofgecIlCec"
+	  login="uid"
+	  status="uid"
+	  teacher_status_value=".*[^0-9]+$"
+	  />
+
       </eliommodule>
       <eliom/>
     </host>
