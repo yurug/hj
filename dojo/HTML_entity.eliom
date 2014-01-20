@@ -132,15 +132,17 @@ let reactive_div es after_display get display  =
 
     let refresh () =
       try_lwt
+        lwt p = %get_progress () in
         let rec flush flag =
           %remote_get () >>= function
             | Some x ->
-              if flag then Eliom_content.Html5.Manip.replaceAllChild %elt [];
+              if flag then Eliom_content.Html5.Manip.replaceAllChild %elt [p];
               process x >> flush false
             | None ->
               (** [flag] and [None] means NoChange. *)
               if flag then Lwt.return () else
               Lwt.return (
+                Eliom_content.Html5.Manip.removeChild %elt p;
                 match %after_display with
                   | Some f -> f ()
                   | None -> ()
