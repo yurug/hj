@@ -122,29 +122,46 @@ let reactive_div es after_display get display  =
   ignore {unit{
     let process data =
       try_lwt
-        lwt p = %get_progress () in
-        return (Eliom_content.Html5.Manip.replaceAllChild %elt [p])
-        >> lwt cs = Lwt_list.map_s %display data in
-           let cs = List.flatten cs in
-           Eliom_content.Html5.Manip.replaceAllChild %elt cs;
-           Lwt.return (
-             match %after_display with
-               | Some f -> f ()
-               | None -> ()
-           )
+        lwt cs = %display data in
+        return (List.iter (Eliom_content.Html5.Manip.appendChild %elt) cs);
       with e -> Lwt.return (
         Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
       )
     in
 
+    let refresh () =
+      lwt p = %get_progress () in
+      Eliom_content.Html5.Manip.replaceAllChild %elt [p];
+      try_lwt
+        let rec flush flag =
+          %remote_get () >>= function
+            | Some x ->
+              if flag then Eliom_content.Html5.Manip.replaceAllChild %elt [];
+              process x >> flush false
+            | None ->
+              Lwt.return (
+                match %after_display with
+                  | Some f -> f ()
+                  | None -> ()
+              )
+        in
+        flush true
+      with e -> Lwt.return (
+        Firebug.console##log (
+          Js.string ("Exn1..." ^ Printexc.to_string e))
+      )
+    in
+
     let bench label f =
-      let start = Js.to_float (jsnew Js.date_now ())##getTime () in
-      let y = f () in
-      let stop = Js.to_float (jsnew Js.date_now ())##getTime () in
-      Firebug.console##log (Js.string (Printf.sprintf "%s in %f ms."
-                                         label
-                                         (stop -. start)));
-      y
+      lwt start = return (Js.to_float (jsnew Js.date_now ())##getTime ()) in
+      lwt y = f () in
+      return (
+        let stop = Js.to_float (jsnew Js.date_now ())##getTime () in
+        Firebug.console##log (Js.string (Printf.sprintf "%s in %f ms."
+                                           label
+                                           (stop -. start)));
+        y
+      )
     in
     CORE_client_reaction.react_on_background (
       List.map Lwt_stream.clone %e_channels
@@ -154,20 +171,8 @@ let reactive_div es after_display get display  =
           lwt p = %get_progress () in
           return (Eliom_content.Html5.Manip.appendChild %elt p)
           (** Update the entity view. *)
-          >> (
-            try_lwt
-              let rec read data =
-                %remote_get () >>= function
-                  | Some x -> read (x :: data)
-                  | None -> return (List.rev data)
-              in
-              lwt data = bench "remote_get" (fun () -> read []) in
-              bench "process data" (fun () -> process data)
-            with e -> Lwt.return (
-              Firebug.console##log (
-                Js.string ("Exn1..." ^ Printexc.to_string e))
-            )
-          ) >> return (Eliom_content.Html5.Manip.removeChild %elt p)
+          >> refresh ()
+          >> return (Eliom_content.Html5.Manip.removeChild %elt p)
         | CORE_entity.MayChange ->
           Lwt.return ()
     )
