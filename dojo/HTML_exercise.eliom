@@ -231,6 +231,9 @@ let assignment_rules_satisfied exo g =
     try_lwt
       lwt props = CORE_user.properties u in
       lwt can = CORE_exercise.assignment_rule exo `Can in
+      Ocsigen_messages.errlog (Printf.sprintf "Checking %s in %s"
+                                 (CORE_property.rule_to_string can)
+                                 (CORE_property.string_of_set props));
       return (CORE_property.evaluate props can)
     with _ -> return false
   ) g
