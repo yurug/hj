@@ -176,32 +176,29 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
   in
 
   let initialize () =
-    let rec aux salt () =
-      let data = { submissions = []; extra_fields = [] } in
-      let dependencies =
-        of_list [(answer_to_dependency_kind, [
-          ([], CORE_exercise.identifier exo)])]
-      in
-      let init = (data, dependencies, CORE_property.empty, []) in
-      lwt path = path_of_exercise_answers exo_id in
-      lwt ids_from_authors = Lwt_list.map_s (fun a ->
-        lwt l = CORE_user.login a in
-        lwt f = CORE_user.firstname a in
-        lwt s = CORE_user.surname a in
-        let canon x = Str.(global_replace (regexp " \\|/") "" x) in
-        return (canon (l ^ "_" ^ f ^ "_" ^ s))
-      ) authors
-      in
-      let id = identifier_of_path (
-        concat path (from_strings [ String.concat "-" ids_from_authors ^ salt ])
-      )
-      in
-      make ~init id >>= function
-        | `OK a                  -> return (`OK a)
-        | `KO (`AlreadyExists _) -> aux (salt ^ "_") ()
-        | `KO e                  -> warn e; return (`KO e)
+    let data = { submissions = []; extra_fields = [] } in
+    let dependencies =
+      of_list [(answer_to_dependency_kind, [
+        ([], CORE_exercise.identifier exo)])]
     in
-    aux "" ()
+    let init = (data, dependencies, CORE_property.empty, []) in
+    lwt path = path_of_exercise_answers exo_id in
+    lwt ids_from_authors = Lwt_list.map_s (fun a ->
+      lwt l = CORE_user.login a in
+      lwt f = CORE_user.firstname a in
+      lwt s = CORE_user.surname a in
+      let canon x = Str.(global_replace (regexp " \\|/") "" x) in
+      return (canon (l ^ "_" ^ f ^ "_" ^ s))
+    ) authors
+    in
+    let id = identifier_of_path (
+      concat path (from_strings [ String.concat "-" ids_from_authors ])
+      )
+    in
+    make ~init id >>= function
+      | `OK a                  -> return (`OK a)
+      | `KO (`AlreadyExists _) -> make id
+      | `KO e                  -> warn e; return (`KO e)
   in
 
   (match discriminate None authors_answers with
@@ -212,6 +209,9 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
   ) >>>= fun a ->
   Lwt_list.iter_s (assign_answer exo a) authors
   >>= fun _ -> return (`OK a)
+
+let submit answer checkpoint submission =
+  change answer (NewSubmissionData (checkpoint, submission, []))
 
 let submit_file answer checkpoint tmp_filename filename =
   ltry (fun lraise ->
