@@ -436,7 +436,7 @@ let display_master_view master exo checkpoint context =
                     let evaluation = Hashtbl.find evaluations (name, surname) in
                     let grade = ref 0 in
                     let over = ref 0 in
-                  (* FIXME: Do more flexible parsing! *)
+                    (* FIXME: Do more flexible parsing! *)
                     Scanf.sscanf mgrade "%d/%d" (fun g o ->
                       grade := g;
                       over := o
@@ -477,12 +477,11 @@ let display_master_view master exo checkpoint context =
         )
         in
         HTML_widget.small_button [I18N.(String.(cap download_all))] {{
-          fun _ -> Lwt.async (fun () ->
-               %all_files () >>= function
-             | None ->
-               return ()
-             | Some u ->
-               return (Dom_html.window##location##assign (Js.string u))
+          fun _ -> Lwt.async (fun () -> %all_files () >>= function
+            | None ->
+              return ()
+            | Some u ->
+              return (Dom_html.window##location##assign (Js.string u))
           )}}
       in
       let result = (
@@ -496,23 +495,23 @@ let display_master_view master exo checkpoint context =
         return [result]
       )
   in
-  lwt answers =
-    Lwt_list.fold_left_s (fun all (authors, aid) ->
-      CORE_answer.make aid >>= function
-        | `OK answer ->
-          lwt evaluation = CORE_evaluation.(
-            evaluation_of_exercise_from_authors exo answer authors
-            >>= function
-              | `OK e -> return [CORE_entity.SomeEntity e]
-              | `KO _ -> return []
-          )
-          in
-          return CORE_entity.(SomeEntity answer :: evaluation @ all)
-        | `KO _ -> return all
-    ) [] all_answers
-  in
-  let ws = (CORE_entity.SomeEntity exo) :: answers in
   let rdiv = server_function Json.t<unit> (fun () ->
+    lwt answers =
+      Lwt_list.fold_left_s (fun all (authors, aid) ->
+        CORE_answer.make aid >>= function
+          | `OK answer ->
+            lwt evaluation = CORE_evaluation.(
+              evaluation_of_exercise_from_authors exo answer authors
+              >>= function
+                | `OK e -> return [CORE_entity.SomeEntity e]
+                | `KO _ -> return []
+            )
+            in
+            return CORE_entity.(SomeEntity answer :: evaluation @ all)
+          | `KO _ -> return all
+      ) [] all_answers
+    in
+    let ws = (CORE_entity.SomeEntity exo) :: answers in
     HTML_entity.reactive_div ws None get {{ fun d -> return d }}
   )
   in
