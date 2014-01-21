@@ -254,7 +254,7 @@ let evaluate change_later exercise answer cps data authors =
           return (Evaluated ([], s, CORE_diagnostic.Empty, c))
     in
     begin CORE_answer.submission_of_checkpoint answer checkpoint >>= function
-      | None | Some NoSubmission ->
+      | None ->
         (** If the checkpoint name has changed during evaluation (this
             can happen to anonymous checkpoints), we may have an evaluation
             in a [Evaluated _] or [BeingEvaluated _] state. In that case,
@@ -265,6 +265,9 @@ let evaluate change_later exercise answer cps data authors =
             Otherwise, his hopes are dreams...
         *)
         CORE_answer.submission_from_checkpoint_index answer idx
+
+      | Some NoSubmission ->
+        return None
 
       | Some (Submission (_, s)) ->
         return (Some s)
