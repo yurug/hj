@@ -53,9 +53,12 @@ let hackojo_scroll
     match description with
       | None -> (div [], commands)
       | Some description ->
-        let d = div ~a:[ a_class [ "scroll_description" ]] [ description ] in
+        let d = server_function Json.t<unit> (fun () ->
+          return (div ~a:[ a_class [ "scroll_description" ]] [ description ])
+        )
+        in
         let (expand_button, description) =
-          HTML_widget.show_or_hide ~start_shown d
+          HTML_widget.show_or_hide ~start_shown:true d
         in
         (description, expand_button :: commands)
   in

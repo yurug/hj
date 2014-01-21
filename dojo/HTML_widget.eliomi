@@ -21,14 +21,14 @@ val small_button: string list -> onclick_cb -> [> div ] elt
 (** [icon onclick_cb].  *)
 val icon : [ flow5 ] elt list -> onclick_cb -> [> div ] elt
 
+}}
+
 (** [show_or_hide ?start_shown e] returns an element with a button to
     toggle its visibility. By default, [start_shown] is [true]. *)
 val show_or_hide:
   ?start_shown:bool ->
-  [ body_content_fun ] elt
+  (unit, [ body_content_fun ] elt) server_function
   -> [ body_content_fun ] elt * [ body_content_fun ] elt
-
-}}
 
 type editable_list = {
   fields    : string list;

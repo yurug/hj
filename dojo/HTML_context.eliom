@@ -512,5 +512,9 @@ let display_master_view master exo checkpoint context =
     ) [] all_answers
   in
   let ws = (CORE_entity.SomeEntity exo) :: answers in
-  lwt rdiv = HTML_entity.reactive_div ws None get {{ fun d -> return d }} in
-  return [rdiv]
+  let rdiv = server_function Json.t<unit> (fun () ->
+    HTML_entity.reactive_div ws None get {{ fun d -> return d }}
+  )
+  in
+  let (see, div) = HTML_widget.show_or_hide rdiv in
+  return [see; div]

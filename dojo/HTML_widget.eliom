@@ -37,11 +37,15 @@
   let button ls = generic_button ["button"] (List.map (fun l -> pcdata l) ls)
   let icon = generic_button ["icon"]
 
-  type show_state =
-    | Hidden of string
-    | Shown
-
 }}
+
+{client{
+type show_state =
+  | Hidden of string * [ body_content_fun ] elt
+  | Shown  of [ body_content_fun ] elt
+  | Create of (unit, [ body_content_fun ] elt) server_function
+}}
+
 
 (* FIXME: Maybe we should define an abstraction for editable
    objects. *)
@@ -291,32 +295,40 @@ let get_choices_editor initial_choices choices add del =
   )
 
 {client{
-  let toggle s e =
-    match !s with
-      | Shown ->
-        s := Hidden (Html5.Manip.Css.display e);
-        Manip.SetCss.display e "none"
-      | Hidden d ->
-        Manip.SetCss.display e d;
-        s := Shown
+let toggle s e =
+  match !s with
+    | Create maker ->
+      lwt son = maker () in
+      return (
+        Manip.replaceAllChild e [son];
+        s := Shown son
+      )
+    | Shown son ->
+      return (
+        s := Hidden (Html5.Manip.Css.display son, son);
+        Manip.SetCss.display son "none"
+      )
+    | Hidden (d, son) ->
+      return (
+        Manip.SetCss.display son d;
+        s := Shown son
+      )
 }}
 
-{shared{
-
-  let show_or_hide ?(start_shown=true) (e : [ body_content_fun ] elt) =
-    let e = Id.create_global_elt e in
-    let see : [ body_content_fun ] elt =
-      let labels = [I18N.cap I18N.String.hide; I18N.cap I18N.String.see] in
-      let labels = if start_shown then labels else List.rev labels in
-      button labels {unit -> unit{
-        let s = ref Shown in
-        if not %start_shown then toggle s %e;
-        fun () -> toggle s %e
-      }}
-    in
-    (see, e)
-
-}}
+let show_or_hide
+    ?(start_shown=false)
+    (maker : (unit, [ body_content_fun ] elt) server_function) =
+  let e = div [] in
+  let see : [ body_content_fun ] elt =
+    let labels = [I18N.cap I18N.String.hide; I18N.cap I18N.String.see] in
+    let labels = if start_shown then labels else List.rev labels in
+    button labels {unit -> unit{
+      let s = ref (Create %maker) in
+      Lwt.async (fun () -> if %start_shown then toggle s %e else return ());
+      fun () -> Lwt.async (fun () -> toggle s %e)
+    }}
+  in
+  (see, e)
 
 let always_valid : (string -> string option) client_value =
   {{ fun (_ : string) -> (None : string option) }}
