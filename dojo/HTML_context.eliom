@@ -31,7 +31,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
     )
     )
   (*  FIXME: Should we do the following thing at some point?
-      flush_diagnostic_commands_of_checkpoint evaluation checkpoint
+
       >> *)
   in
   let diagnostic = div [] in
@@ -56,6 +56,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
               interpret_diagnostic_command dcmd;
               return [p [pcdata "▹ En cours..."]]
             | Some (Evaluated (score, _, dcmd, ctx)) ->
+              Eliom_content.Html5.Manip.replaceAllChild %diagnostic [];
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
               return [p [pcdata ("▹ " ^ string_of_score ctx score)]]

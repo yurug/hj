@@ -46,7 +46,12 @@ let success ?(lraise=small_jump) c =
   | Unix.WEXITED 0 ->
     return_true
   | s ->
-    let s = string_of_process_status s in
+    let string_of_process_command c =
+      fst c ^ " " ^ String.concat " " (Array.to_list (snd c))
+    in
+    let s =
+      string_of_process_command (fst c) ^ ":" ^ string_of_process_status s
+    in
     (lraise @* (`SystemError s))
     @| (fun () -> return_false)
 
