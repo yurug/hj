@@ -253,13 +253,32 @@ let evaluate change_later exercise answer cps data authors =
           Ocsigen_messages.errlog "Transmission error";
           return (Evaluated ([], s, CORE_diagnostic.Empty, c))
     in
-
-    CORE_answer.submission_of_checkpoint answer checkpoint >>= function
+    begin CORE_answer.submission_of_checkpoint answer checkpoint >>= function
       | None | Some NoSubmission ->
+        (** If the checkpoint name has changed during evaluation (this
+            can happen to anonymous checkpoints), we may have an evaluation
+            in a [Evaluated _] or [BeingEvaluated _] state. In that case,
+            we recover the submission and add it to the answer. *)
+        begin
+          match current_state with
+            | Evaluated (_, s, _, _) | BeingEvaluated (_, s, _, _) ->
+              Ocsigen_messages.errlog (
+                Printf.sprintf "Recovering a submission for %s for %s"
+                  checkpoint
+                  (CORE_identifier.string_of_identifier answer_id));
+              CORE_answer.submit answer checkpoint s
+              >> return (Some s)
+            | _ ->
+              return None
+        end
+      | Some (Submission (_, s)) ->
+        return (Some s)
+    end >>= function
+      | None ->
         (** The student has not submitted an answer yet. *)
         return Unevaluated
 
-      | Some (Submission (_, s)) ->
+      | Some s ->
         begin
           let job, submission, context =
             match current_state with
