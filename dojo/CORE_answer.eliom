@@ -252,3 +252,19 @@ let submit_property_choice answer checkpoint choice =
 
 let submission_of_checkpoint answer cp =
   observe answer (fun a -> return (opt_assoc cp (content a).submissions))
+
+let submission_from_checkpoint_index answer idx =
+  let cp_as_int s =
+    try
+      Scanf.sscanf s "_%d" (fun x -> x)
+    with _ -> max_int
+  in
+  observe answer (fun a ->
+    let ss = (content a).submissions in
+    let ss = List.map (fun (cp, s) -> cp_as_int cp, s) ss in
+    let ss = List.sort (fun (c1, _) (c2, _) -> Pervasives.compare c1 c2) ss in
+    try_lwt
+      match (snd (List.nth ss idx)) with
+        | NoSubmission -> return None
+        | Submission (_, s) -> return (Some s)
+    with _ -> return None)

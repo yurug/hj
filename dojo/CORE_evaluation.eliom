@@ -241,7 +241,7 @@ let cancel_job_if_present job =
 let evaluate change_later exercise answer cps data authors =
   let answer_id = CORE_answer.identifier answer in
   let authors_ids = List.map CORE_user.identifier authors in
-  let evaluate checkpoint current_state =
+  let evaluate idx checkpoint current_state =
     let run_submission_evaluation c s =
       create_job exercise answer_id checkpoint c s change_later authors
       >>= function
@@ -258,19 +258,14 @@ let evaluate change_later exercise answer cps data authors =
         (** If the checkpoint name has changed during evaluation (this
             can happen to anonymous checkpoints), we may have an evaluation
             in a [Evaluated _] or [BeingEvaluated _] state. In that case,
-            we recover the submission and add it to the answer. *)
-        begin
-          match current_state with
-            | Evaluated (_, s, _, _) | BeingEvaluated (_, s, _, _) ->
-              Ocsigen_messages.errlog (
-                Printf.sprintf "Recovering a submission for %s for %s"
-                  checkpoint
-                  (CORE_identifier.string_of_identifier answer_id));
-              CORE_answer.submit answer checkpoint s
-              >> return (Some s)
-            | _ ->
-              return None
-        end
+            we try to recover the submission and add it to the answer.
+
+            If the user is expecting us to recover the previous submissions,
+            we assume he has not changed the order of the questions.
+            Otherwise, his hopes are dreams...
+        *)
+        CORE_answer.submission_from_checkpoint_index answer idx
+
       | Some (Submission (_, s)) ->
         return (Some s)
     end >>= function
@@ -318,11 +313,11 @@ let evaluate change_later exercise answer cps data authors =
                 return current_state
         end
   in
-  lwt jobs = Lwt_list.fold_left_s (fun jobs cp ->
+  lwt _, jobs = Lwt_list.fold_left_s (fun (idx, jobs) cp ->
     let e = try List.assoc cp data.jobs with Not_found -> Unevaluated in
-    lwt e = evaluate cp e in
-    return ((cp, e) :: jobs)
-  ) [] cps
+    lwt e = evaluate idx cp e in
+    return (idx + 1, (cp, e) :: jobs)
+  ) (0, []) cps
   in
   Ocsigen_messages.errlog ("Updating jobs of evaluation");
   return (UpdateContent { data with jobs })
