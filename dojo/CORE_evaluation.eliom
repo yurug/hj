@@ -254,19 +254,7 @@ let evaluate change_later exercise answer cps data authors =
           return (Evaluated ([], s, CORE_diagnostic.Empty, c))
     in
     begin CORE_answer.submission_of_checkpoint answer checkpoint >>= function
-      | None ->
-        (** If the checkpoint name has changed during evaluation (this
-            can happen to anonymous checkpoints), we may have an evaluation
-            in a [Evaluated _] or [BeingEvaluated _] state. In that case,
-            we try to recover the submission and add it to the answer.
-
-            If the user is expecting us to recover the previous submissions,
-            we assume he has not changed the order of the questions.
-            Otherwise, his hopes are dreams...
-        *)
-        CORE_answer.submission_from_checkpoint_index answer idx
-
-      | Some NoSubmission ->
+      | None | Some NoSubmission ->
         return None
 
       | Some (Submission (_, s)) ->
