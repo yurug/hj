@@ -176,11 +176,7 @@ let reactive_div ?condition es after_display get display  =
     ) (
       function
         | CORE_entity.HasChanged ->
-          lwt p = %get_progress () in
-          return (Eliom_content.Html5.Manip.appendChild %elt p)
-          (** Update the entity view. *)
-          >> refresh ()
-          >> return (Eliom_content.Html5.Manip.removeChild %elt p)
+          refresh ()
         | CORE_entity.MayChange ->
           Lwt.return ()
     ))

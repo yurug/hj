@@ -33,7 +33,14 @@ let display_score checkpoint context (evaluation : CORE_evaluation.t) =
   in
   let condition, trigger =
     (** If the context contains master grade, it must always be active. *)
-    None, None
+    match CORE_context.get_master_grade context with
+      | Some _ ->
+        None, None
+      | None ->
+        let condition = {unit Lwt_condition.t{ Lwt_condition.create () }} in
+        Some condition, Some {{ fun () ->
+          return (Lwt_condition.signal %condition ())
+        }}
   in
   let diagnostic = div [] in
   lwt d =
@@ -158,13 +165,16 @@ let display_user_input exo_id answer_id checkpoint context submission trigger =
       let msg = filename ^ I18N.String.to_be_provided in
       let width = float_of_int (String.length msg) in
       let style = Printf.sprintf "height:1em; width:%fem;" width in
-
+      let onchange = {unit -> unit{fun () ->
+        Lwt.async (fun () -> %trigger ())
+      }}
+      in
       return (div (
         (div ~a:[a_style style; a_class ["user_input_file"]] [
           HTML_widget.fileuploader_wrapper width 1. (fun user_filename ->
           (* FIXME: Check user_filename = filename. *)
             return (tmp_filename, commit)
-          ) span (pcdata msg)
+          ) span onchange (pcdata msg)
         ]
         ) :: previous_file
       ))
@@ -262,7 +272,9 @@ let display_user_input exo_id answer_id checkpoint context submission trigger =
       let select = {{ fun _ ->
         let e = Id.get_element %id in
         let e = To_dom.of_select e in
-        Lwt.async (fun () -> %submit (Js.to_string e##value))
+        Lwt.async (fun () ->
+          %submit (Js.to_string e##value) >> %trigger ()
+        )
       }}
       in
       let property_selector =

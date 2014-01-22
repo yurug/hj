@@ -425,11 +425,14 @@ type ('a, 'b, 'c) c =
     ?a:'a Eliom_content.Html5.D.attrib list ->
     'b Eliom_content.Html5.D.elt list -> 'c Eliom_content.Html5.D.elt
 
-let fileuploader_wrapper width height import (constructor : (_, _, _) c) body =
+let fileuploader_wrapper width height import (constructor : (_, _, _) c)
+    (onchange_cb : (unit -> unit) client_value) body
+  =
   let form_id = Id.new_elt_id ~global:false () in
   let onchange = {{ fun _ ->
     let f = Id.get_element %form_id in
     let f = To_dom.of_form f in
+    %onchange_cb ();
     f##submit ()
   }}
   in
@@ -453,4 +456,5 @@ let fileuploader_wrapper width height import (constructor : (_, _, _) c) body =
 let fileuploader width height import =
   fileuploader_wrapper width height import
     (label : _ :> (_, _, _) c)
+    {{ fun () -> () }}
     (pcdata "↑")

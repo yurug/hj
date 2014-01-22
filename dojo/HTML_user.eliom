@@ -91,7 +91,7 @@ let homepage u =
          to a programmatically defined CSS? *)
       HTML_widget.fileuploader_wrapper 20. 20. (
         HTML_source.import (module CORE_user) u photo_filename
-      ) div (img
+      ) div {{ fun () -> () }} (img
         ~a:[a_class ["homepage_photo"]]
         ~src:(Xml.uri_of_string img_uri)
         ~alt:"Homepage photo" ());

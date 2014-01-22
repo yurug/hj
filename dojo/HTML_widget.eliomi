@@ -98,6 +98,7 @@ val fileuploader_wrapper :
   float -> float ->
   (string -> (string * (unit -> unit Lwt.t)) Lwt.t) ->
   ([> `Class | `Style_Attr ], [> Html5_types.input ] as 'a, Html5_types.form_content) c ->
+  (unit -> unit) client_value ->
   'a Eliom_content.Html5.D.elt ->
     [> Html5_types.form ] Eliom_content_core.Html5.elt
 

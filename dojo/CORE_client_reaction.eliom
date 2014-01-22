@@ -9,6 +9,14 @@ type 'a c = 'a Lwt_stream.t
 type reaction = unit
 }}
 
+(** Some reactions must be triggered by a user event because
+    the client cannot reallistically react to every event on
+    the server. Once a background reaction has been triggered,
+    it is active during the following time. *)
+
+(* FIXME: This should probably be a global or local parameter... *)
+let reaction_window = 20. *. 1000.
+
 (** Given a process [p] being executed on the server side, we want to
     get a process on the client side that reacts to every signal
     emitted by [p] to denote its update. This update is described
@@ -18,14 +26,34 @@ type reaction = unit
   let react ?condition channels reaction =
     let channels' = List.map Lwt_stream.clone channels in
     let all = Lwt_stream.choose channels' in
-    let reaction x =
-      try_lwt
-        begin match condition with
-          | None -> return ()
-          | Some c -> Lwt_condition.wait c
-        end
-        >> reaction x
-      with _ -> return ()
+
+    let reaction =
+      let now () = Js.to_float (jsnew Js.date_now ())##getTime () in
+      let last_trigger = ref None in
+      fun x -> try_lwt
+        let watch_condition () =
+          match condition with
+            | None ->
+              return ()
+            | Some c ->
+              Lwt_condition.wait c >> (
+                last_trigger := Some (now ());
+                return ()
+              )
+        in
+        let continue () =
+          match !last_trigger with
+            | None -> watch_condition ()
+            | Some date ->
+              if now () -. date < %reaction_window then
+                return ()
+              else
+                watch_condition ()
+        in
+        reaction x >> continue ()
+      with e ->
+        Firebug.console##log (Js.string ("react:" ^ Printexc.to_string e));
+        return ()
     in
     Eliom_client.onload (fun () ->
       Lwt.async (fun () -> Lwt_stream.iter_s reaction all)
