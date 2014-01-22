@@ -134,9 +134,9 @@ let reactive_div es after_display get display  =
       try_lwt
         lwt p = %get_progress () in
         let rec flush flag =
+          if flag then Eliom_content.Html5.Manip.replaceAllChild %elt [p];
           %remote_get () >>= function
             | Some x ->
-              if flag then Eliom_content.Html5.Manip.replaceAllChild %elt [p];
               process x >> flush false
             | None ->
               (** [flag] and [None] means NoChange. *)
