@@ -39,6 +39,7 @@ let display_score checkpoint context (evaluation : CORE_evaluation.t) =
       | None ->
         let condition = {unit Lwt_condition.t{ Lwt_condition.create () }} in
         Some condition, Some {{ fun () ->
+          Firebug.console##log (Js.string "Trigger!");
           return (Lwt_condition.signal %condition ())
         }}
   in
