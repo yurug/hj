@@ -79,9 +79,13 @@ let register_rule e new_rules =
   lwt a = assigner () in
   lwt content = observe a (fun s -> return (content s)) in
   let rules = content.rules in
+  let cleanup ids =
+    (** By the way, garbage collect identifiers. *)
+    List.filter CORE_entity.exists ids
+  in
   let refresh rules = List.(
     filter (fun (_, ids) -> ids <> []) (
-      map (fun (r, ids) -> (r, filter (fun e' -> e <> e') ids)) rules
+      map (fun (r, ids) -> (r, cleanup (filter (fun e' -> e <> e') ids))) rules
     )
   )
   in
@@ -98,14 +102,12 @@ let register_rule e new_rules =
     content with rules = List.fold_left register rules new_rules
   })
 
-let assignments k ps =
-  List.(
-    lwt rules = rules k in
-    let assignments = filter (fun (r, _) ->
-      CORE_property.evaluate ps r
-    ) rules
-    in
-    return (flatten (snd (split assignments)))
-  )
+let assignments k ps = List.(CORE_property.(
+  lwt rules = rules k in
+  let assignments = filter (fun (r, _) -> evaluate ps r) rules in
+  let assignments = flatten (snd (split assignments)) in
+  let assignments = filter CORE_entity.exists assignments in
+  return assignments
+))
 
 let all_assignment_kinds = [ `Must; `Should; `Can; `Cannot ]

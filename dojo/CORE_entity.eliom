@@ -85,6 +85,9 @@ type some_t = SomeEntity : ('a, 'c) t -> some_t
 (** Accessor to the unique identifier of the entity. *)
 let identifier e = CORE_inmemory_entity.identifier e.description
 
+(** Check the existence of an entity. *)
+let exists id = CORE_onthedisk_entity.exists id
+
 (* ********************** *)
 (*  Reverse dependencies  *)
 (* ********************** *)

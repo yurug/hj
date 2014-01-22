@@ -93,6 +93,8 @@ val channel: ('a, 'c) t -> event Eliom_comet.Channel.t
 
 val identifier: ('a, 'c) t -> CORE_identifier.t
 
+val exists : CORE_identifier.t -> bool
+
 (** The following module signature specifies the general operations
     over entities of content type [data] and high-level changes of
     type [change]. *)
