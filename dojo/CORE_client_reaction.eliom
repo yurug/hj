@@ -15,7 +15,7 @@ type reaction = unit
     it is active during the following time. *)
 
 (* FIXME: This should probably be a global or local parameter... *)
-let reaction_window = 20. *. 1000.
+let reaction_window = 60. *. 1000.
 
 (** Given a process [p] being executed on the server side, we want to
     get a process on the client side that reacts to every signal
@@ -47,8 +47,10 @@ let reaction_window = 20. *. 1000.
             | Some date ->
               if now () -. date < %reaction_window then
                 return ()
-              else
+              else (
+                last_trigger := None;
                 watch_condition ()
+              )
         in
         reaction x >> continue ()
       with e ->
