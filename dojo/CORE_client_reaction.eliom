@@ -37,7 +37,7 @@ let reaction_window = 60. *. 1000.
               return ()
             | Some c ->
               Firebug.console##log (Js.string "Wait...");
-              Lwt_condition.wait c >> (
+              Lwt_mvar.take c >> (
                 last_trigger := Some (now ());
                 Firebug.console##log (Js.string "Open reaction window.");
                 return ()

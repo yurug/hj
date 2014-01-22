@@ -37,10 +37,10 @@ let display_score checkpoint context (evaluation : CORE_evaluation.t) =
       | Some _ ->
         None, None
       | None ->
-        let condition = {unit Lwt_condition.t{ Lwt_condition.create () }} in
+        let condition = {unit Lwt_mvar.t{ Lwt_mvar.create_empty () }} in
         Some condition, Some {{ fun () ->
           Firebug.console##log (Js.string "Trigger!");
-          return (Lwt_condition.signal %condition ())
+          Lwt_mvar.put %condition ()
         }}
   in
   let diagnostic = div [] in
