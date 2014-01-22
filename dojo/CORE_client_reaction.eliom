@@ -55,9 +55,15 @@ let reaction_window = 60. *. 1000.
                 watch_condition ()
               )
         in
-        reaction x >> continue ()
+        (try_lwt
+           reaction x
+         with e ->
+           return (
+             Firebug.console##log (Js.string ("react:" ^ Printexc.to_string e))
+           )
+        ) >> continue ()
       with e ->
-        Firebug.console##log (Js.string ("react:" ^ Printexc.to_string e));
+        Firebug.console##log (Js.string ("react':" ^ Printexc.to_string e));
         return ()
     in
     Eliom_client.onload (fun () ->
