@@ -16,7 +16,7 @@ open CORE_inmemory_entity
 open COMMON_pervasives
 }}
 
-let display_score checkpoint (evaluation : CORE_evaluation.t) =
+let display_score checkpoint context (evaluation : CORE_evaluation.t) =
   let get =
     let cache = ref None in
     fun () -> CORE_evaluation.(
@@ -30,13 +30,15 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
       return [d]
     )
     )
-  (*  FIXME: Should we do the following thing at some point?
-
-      >> *)
+  in
+  let condition, trigger =
+    (** If the context contains master grade, it must always be active. *)
+    None, None
   in
   let diagnostic = div [] in
   lwt d =
-    HTML_entity.reactive_div [CORE_entity.SomeEntity evaluation] None get {{
+    HTML_entity.reactive_div
+      ?condition [CORE_entity.SomeEntity evaluation] None get {{
       let rec interpret_diagnostic_command = CORE_diagnostic.(function
         | Empty ->
           ()
@@ -65,7 +67,7 @@ let display_score checkpoint (evaluation : CORE_evaluation.t) =
         )
     }}
   in
-  return (div [d; diagnostic])
+  return (div [d; diagnostic], trigger)
 
 (* FIXME: Factorize the following three functions. *)
 
@@ -125,7 +127,11 @@ let submit_property_choice exo_id cp vs =
     | _ ->
       return (`OK ())
 
-let display_user_input exo_id answer_id checkpoint context submission =
+let display_user_input exo_id answer_id checkpoint context submission trigger =
+  let trigger = match trigger with
+    | None -> {unit -> unit Lwt.t{ fun () -> return () }}
+    | Some trigger -> trigger
+  in
   match CORE_context.get_answer_form context with
     | None ->
       return (p [pcdata "..."])
@@ -169,9 +175,14 @@ let display_user_input exo_id answer_id checkpoint context submission =
           | Some (SubmittedChoices cs) -> cs
           | _ -> []
       in
+      (* FIXME: Use a set... *)
       let choices = ref initial_choices in
-      let add x = return (choices := x :: !choices) in
-      let del x = return (choices := List.filter (( <> ) x) !choices) in
+      let add x =
+        return (if not (List.mem x !choices) then choices := x :: !choices)
+      in
+      let del x =
+        return (choices := List.filter (( <> ) x) !choices)
+      in
       let choices_editor =
         HTML_widget.get_choices_editor initial_choices cs add del
       in
@@ -187,7 +198,10 @@ let display_user_input exo_id answer_id checkpoint context submission =
       in
       let submit_button = HTML_widget.small_button ["OK"] {{
         fun _ ->
-          Lwt.async (fun () -> %submit ())
+          Lwt.async (fun () ->
+             %submit ()
+             >> %trigger ()
+          )
       }}
       in
       return (div ~a:[a_class ["user_answer"]] [choices_div; submit_button])
@@ -225,7 +239,7 @@ let display_user_input exo_id answer_id checkpoint context submission =
       )
       in
       let submit_button = HTML_widget.small_button ["OK"] {{
-        fun _ -> Lwt.async (fun () -> %submit ())
+        fun _ -> Lwt.async (fun () -> %submit () >> %trigger ())
       }}
       in
       return (div ~a:[a_class ["user_answer"]] [
@@ -275,10 +289,10 @@ let extract_previous_submission checkpoint evaluation =
 
 let display_context exo_id answer_id checkpoint context evaluation =
   lwt submission = extract_previous_submission checkpoint evaluation in
+  lwt score, trigger = display_score checkpoint context evaluation in
   lwt user_input =
-    display_user_input exo_id answer_id checkpoint context submission
+    display_user_input exo_id answer_id checkpoint context submission trigger
   in
-  lwt score = display_score checkpoint evaluation in
   return [div ~a:[a_class ["context"]] [
     user_input;
     div [ score ];

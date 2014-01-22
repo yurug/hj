@@ -94,7 +94,7 @@ let get_progress = server_function Json.t<unit> (fun () -> return (progress ()))
   Eliom_comet.Configuration.set_always_active config
 }}
 
-let reactive_div es after_display get display  =
+let reactive_div ?condition es after_display get display  =
   let elt = div ~a:[a_class ["reactive"]] [progress ()] in
   let e_channels = CORE_entity.(
     List.map (function (SomeEntity e) -> channel e) es
@@ -167,7 +167,7 @@ let reactive_div es after_display get display  =
         y
       )
     in
-    return (CORE_client_reaction.react_on_background (
+    return (CORE_client_reaction.react_on_background ?condition:%condition (
       List.map Lwt_stream.clone %e_channels
     ) (
       function

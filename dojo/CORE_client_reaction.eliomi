@@ -12,8 +12,12 @@ type reaction
 }}
 
 {client{
-val react : 'a c list -> ('a -> unit Lwt.t) -> reaction
-val react_on_background : 'a c list -> ('a -> unit Lwt.t) -> unit
+val react
+  : ?condition:unit Lwt_condition.t
+  -> 'a c list -> ('a -> unit Lwt.t) -> reaction
+val react_on_background
+  : ?condition:unit Lwt_condition.t
+  -> 'a c list -> ('a -> unit Lwt.t) -> reaction
 }}
 
 val channel : unit -> 'a c * ('a -> unit)
