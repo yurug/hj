@@ -295,21 +295,6 @@ let extract_previous_submission checkpoint answer_id =
     | `OK a -> submission_of_checkpoint a checkpoint >>= function
         | None | Some NoSubmission -> return None
         | Some (Submission (_, s)) -> return (Some s)
-(*
-  FIXME: The following should work but it does not!
-  FIXME: This is probably due to an inconsistent submission
-  FIXME: attached to the evaluation! Critical!
-
-  CORE_evaluation.(observe evaluation (fun s ->
-    let d = content s in
-    match COMMON_pervasives.opt_assoc checkpoint d.jobs with
-      | Some Unevaluated | None ->
-        return None
-      | Some (BeingEvaluated (_, s, _, _))
-      | Some (Evaluated (_, s, _, _)) ->
-        return (Some s)
-  ))
-*)
 
 let display_context exo_id answer_id checkpoint context evaluation =
   lwt submission = extract_previous_submission checkpoint answer_id in

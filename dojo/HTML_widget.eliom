@@ -268,8 +268,8 @@ let get_list_editor
 
 let get_choices_editor initial_choices choices add del =
   let choice_item idx c =
-    let idx_selected = List.mem idx initial_choices in
     let idx = succ idx in
+    let idx_selected = List.mem idx initial_choices in
     let change_choice =
       let choice = ref idx_selected in
       fun _ ->
