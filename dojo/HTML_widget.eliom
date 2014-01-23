@@ -428,12 +428,18 @@ type ('a, 'b, 'c) c =
 let fileuploader_wrapper width height import (constructor : (_, _, _) c)
     (onchange_cb : (unit -> unit) client_value) body
   =
+  let input_id = Id.new_elt_id () in
   let form_id = Id.new_elt_id ~global:false () in
   let onchange = {{ fun _ ->
     let f = Id.get_element %form_id in
     let f = To_dom.of_form f in
-    %onchange_cb ();
     f##submit ()
+  }}
+  in
+  let onclick = {{ fun _ ->
+    let self = Id.get_element %input_id in
+    let self = To_dom.of_input self in
+    self##value <- Js.string "";
   }}
   in
   let style =
@@ -445,11 +451,14 @@ let fileuploader_wrapper width height import (constructor : (_, _, _) c)
     post_form ~a:[a_class ["inlined"]]
       ~service:(file_upload_service import) (fun f -> [
         constructor ~a:[a_class ["fileContainer"; "inlined"]; a_style style] [
-          file_input
-            ~a:[a_onchange onchange; a_class ["inlined"]; a_style style]
-            ~name:f ();
+          Id.create_named_elt ~id:input_id (
+            file_input
+              ~a:[a_onchange onchange; a_onclick onclick;
+                  a_class ["inlined"]; a_style style]
+              ~name:f ()
+          );
           body
-        ];
+      ];
       ]) ()
   )
 
