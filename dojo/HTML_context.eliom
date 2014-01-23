@@ -289,7 +289,17 @@ let display_user_input exo_id answer_id checkpoint context submission trigger =
       in
       return (div ~a:[a_class ["user_answer"]] [property_selector])
 
-let extract_previous_submission checkpoint evaluation =
+let extract_previous_submission checkpoint answer_id =
+  CORE_answer.make answer_id >>= function
+    | `KO _ -> return None
+    | `OK a -> submission_of_checkpoint a checkpoint >>= function
+        | None | Some NoSubmission -> return None
+        | Some (Submission (_, s)) -> return (Some s)
+(*
+  FIXME: The following should work but it does not!
+  FIXME: This is probably due to an inconsistent submission
+  FIXME: attached to the evaluation! Critical!
+
   CORE_evaluation.(observe evaluation (fun s ->
     let d = content s in
     match COMMON_pervasives.opt_assoc checkpoint d.jobs with
@@ -299,9 +309,10 @@ let extract_previous_submission checkpoint evaluation =
       | Some (Evaluated (_, s, _, _)) ->
         return (Some s)
   ))
+*)
 
 let display_context exo_id answer_id checkpoint context evaluation =
-  lwt submission = extract_previous_submission checkpoint evaluation in
+  lwt submission = extract_previous_submission checkpoint answer_id in
   lwt score, trigger = display_score checkpoint context evaluation in
   lwt user_input =
     display_user_input exo_id answer_id checkpoint context submission trigger
