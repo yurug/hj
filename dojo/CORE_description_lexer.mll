@@ -84,6 +84,14 @@ rule main = parse
   token
 }
 
+| "\"" | "\"\n" {
+ let p = lexbuf.Lexing.lex_curr_p in
+  let token = flatstring (Buffer.create 13) 0 lexbuf in
+  lexbuf.lex_start_p <- p;
+  token
+}
+
+
 | "[" | "[\n"                           {
   let p = lexbuf.Lexing.lex_curr_p in
   let token = raw (Buffer.create 13) [] 0 lexbuf in
@@ -245,6 +253,26 @@ and flatraw chunk level = parse
   | _ as c {
     Buffer.add_char chunk c;
     flatraw chunk level lexbuf
+  }
+
+and flatstring chunk level = parse
+  | ("\"" | "\n\"") as s {
+    RAW [Raw (raw_string lexbuf chunk)]
+  }
+  | "\\\"" {
+    Buffer.add_string chunk "\"";
+    flatstring chunk level lexbuf
+  }
+  | eof {
+    error lexbuf I18N.String.lexing_eof_in_raw
+  }
+  | newline as c {
+    Buffer.add_string chunk c;
+    next_line_and (flatstring chunk level) lexbuf
+  }
+  | _ as c {
+    Buffer.add_char chunk c;
+    flatstring chunk level lexbuf
   }
 
 and comment level = parse
