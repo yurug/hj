@@ -303,6 +303,9 @@ module Fr : I18N_sig.Text = struct
   let access_denied =
     "Accès interdit."
 
+  let provided_file =
+    "Fichier fourni avec le sujet."
+
 end
 
 module String = (val

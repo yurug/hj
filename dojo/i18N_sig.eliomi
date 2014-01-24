@@ -115,6 +115,7 @@ sig
   val evaluation_needed_for_exercise : string -> string
   val wait_for_master_evaluation : string
   val access_denied : string
+  val provided_file : string
 end
 
 }}

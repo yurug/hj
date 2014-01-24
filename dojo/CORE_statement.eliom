@@ -106,16 +106,16 @@ module LaTeX = struct
     | Element (Code, [Data text]) ->
       code [env "verbatim" [[text]]]
     | Element (Link, [Data url; Data caption]) ->
-      let url =
+      let url, caption =
         let server =
           Printf.sprintf "http://%s:%d"
             (Eliom_config.get_default_hostname ())
             (Eliom_config.get_default_port ())
         in
         if Str.(string_match (regexp server) url 0) then
-          server
+          I18N.(String.(provided_file, cap (see ^ " " ^ caption ^ ".")))
         else
-          url
+          url, caption
       in
       [Printf.sprintf "\\href{%s}{%s\\footnote{\\verb!%s!}}"
           url (escape caption) (escape url)]
