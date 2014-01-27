@@ -356,12 +356,13 @@ let display_master_view master exo checkpoint context =
           | `KO _ -> return [] (* FIXME: handle error. *)
           | `OK answer ->
             incr answer_idx;
-            lwt answer_descr =
+            lwt answer_descr, submission =
               CORE_answer.submission_of_checkpoint answer checkpoint
               >>= function
-                | None | Some NoSubmission -> return "?"
+                | None | Some NoSubmission ->
+                  return ("?", None)
                 | Some (Submission (_, submission)) ->
-                  return (match submission with
+                  return ((match submission with
                     | SubmittedFile (f, digest) ->
                       let file =
                         CORE_standard_identifiers.source_filename answer_id f
@@ -376,14 +377,25 @@ let display_master_view master exo checkpoint context =
                       String.concat "," (List.map string_of_int vs)
                     | SubmittedPropertyChoice s ->
                       s
-                  )
+                  ), Some submission)
             in
             lwt evaluation =
               CORE_evaluation.evaluation_of_exercise_from_authors
                 exo answer authors
               >>= function
-                | `KO _ -> return None
-                | `OK evaluation -> return (Some evaluation)
+                | `KO _ ->
+                  begin match submission with
+                    | None ->
+                      return ()
+                    | Some submission ->
+                      (** We've got an answer that is not evaluated.
+                          Maybe an evaluation was avorted because of
+                          an unexpected problem. We resubmit the answer
+                          to trigger the reevaluation. *)
+                      CORE_answer.submit answer checkpoint submission
+                  end >> return None
+                | `OK evaluation ->
+                  return (Some evaluation)
             in
 
             let master_score = ref None in
