@@ -1,4 +1,4 @@
-The Hacking Dojo
+The HackDojo
 ==
 
 ## Description
