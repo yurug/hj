@@ -384,22 +384,14 @@ let display_master_view master exo checkpoint context =
                 exo answer authors
               >>= function
                 | `KO _ ->
-                  begin match submission with
-                    | None ->
-                      return ()
-                    | Some submission ->
-                      (** We've got an answer that is not evaluated.
-                          Maybe an evaluation was avorted because of
-                          an unexpected problem. We resubmit the answer
-                          to trigger the reevaluation. *)
-                      CORE_answer.submit answer checkpoint submission
-                  end >> return None
+                  return None
                 | `OK evaluation ->
                   return (Some evaluation)
             in
 
             let master_score = ref None in
             lwt evaluation_descr = CORE_evaluation.(
+              (* FIXME: Do that more elegantly! *)
               match evaluation with
                 | None -> return "error"
                 | Some evaluation ->
@@ -409,7 +401,16 @@ let display_master_view master exo checkpoint context =
                         | Some (_, over) ->
                           master_score := Some ("?/" ^ string_of_int over)
                         | _ -> ());
-                      return "?"
+                      begin match submission with
+                        | None ->
+                          return ()
+                        | Some submission ->
+                          (** We've got an answer that is not evaluated.
+                              Maybe an evaluation was avorted because of
+                              an unexpected problem. We resubmit the answer
+                              to trigger the reevaluation. *)
+                          CORE_answer.submit answer checkpoint submission
+                      end >> return "?"
                     | Some (Evaluated (s, _, _, ctx)) ->
                       let s = match master_grade with
                         | None -> s
