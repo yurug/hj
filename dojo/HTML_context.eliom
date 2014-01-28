@@ -450,7 +450,7 @@ let display_master_view master exo checkpoint context =
       lwt list = Lwt_list.map_s (display_answer master_grade) all_answers in
       let list = List.flatten list in
       let header =
-        I18N.String.([firstname; surname; answer; score])
+        I18N.(String.(List.map cap [firstname; surname; answer; score]))
         @ (match master_grade with
           | None -> []
           | Some (criteria, _) -> [criteria]
