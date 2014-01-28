@@ -134,7 +134,7 @@ open Ldap_types
 
 let ldap_search login server_config = CORE_config.(
   let filter =
-    (* FIXME: Watch for user injection. *)
+    (* FIXME: Watch out for user injection. *)
     server_config.login_field ^"="^ login
   in
   let try_ f =
@@ -269,13 +269,17 @@ let rec authenticate u password =
     | (`KO (`MaximalNumberOfLoginAttemptsReached | `SystemError _)) as e ->
       return e
 
+let logout_count = ref 0
+let logout () =
+  incr logout_count;
+  Eliom_state.discard ~scope:Eliom_common.default_session_scope ()
+  >>= fun _ -> Eliom_reference.set username `NotLogged
+
 let logged_user =
-  let first_time = ref 10 in
   fun () ->
   Eliom_reference.get username >>= function
     | `NotLogged ->
-      if CORE_config.development_mode () && !first_time > 0 then (
-        decr first_time;
+      if CORE_config.development_mode () && !logout_count = 0 then (
         authenticate "donald" "" >>= function
           | `OK u -> return (`Logged u)
           | `KO _ -> return `NotLogged
@@ -328,8 +332,7 @@ let register_logout ~service =
   Eliom_registration.Action.register
     ~service
     (fun () () ->
-      Eliom_state.discard ~scope:Eliom_common.default_session_scope ()
-      >>= fun _ -> Eliom_reference.set username `NotLogged
+      logout ()
     )
 
 (** Subscription. *)
