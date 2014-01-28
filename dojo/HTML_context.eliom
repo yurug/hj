@@ -302,6 +302,7 @@ let display_master_view master exo checkpoint context =
   lwt all_answers = CORE_answer.answers_of_exercise exo in
   let get =
     let cache = ref None in
+    let relaunched = Hashtbl.create 13 in
     fun () ->
       lwt all_answers = CORE_answer.answers_of_exercise exo in
       lwt all_answers =
@@ -340,8 +341,6 @@ let display_master_view master exo checkpoint context =
           Some (Hashtbl.find links i)
         with Not_found -> None
       in
-
-      let relaunched = Hashtbl.create 13 in
 
       let display_answer master_grade (authors, answer_id) =
         CORE_answer.make answer_id >>= function

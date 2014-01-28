@@ -67,7 +67,6 @@ let reaction_window = 60. *. 1000.
         return ()
     in
     Lwt.async (fun () ->
-      Firebug.console##log (Js.string ("Event listener established said " ^ msg));
       Lwt_stream.iter_s reaction all
     )
 

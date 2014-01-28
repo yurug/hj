@@ -137,7 +137,6 @@ let reactive_div ?condition es after_display get display  =
 
     let refresh () =
       try_lwt
-        Firebug.console##log (Js.string ("Refresh " ^ %ids));
         let p1 = get_progress () in
         let p2 = get_progress () in
         let rec flush flag =
