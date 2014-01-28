@@ -63,19 +63,21 @@ val mark_as_read
 
 val login_service :
   fallback:('a, unit,
-            [ `Attached of
-                ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
+              [ `Attached of
+                  ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
                   Eliom_service.a_s ],
-            [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ], 'd)
-  Eliom_service.service ->
-  ('a, string * string,
-   [> `Attached of
-       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
-         Eliom_service.a_s ],
-   'b, 'c,
-   [ `One of string ] Eliom_parameter.param_name *
+              [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ],
+              [< Eliom_service.non_ocaml_service ])
+             Eliom_service.service ->
+    ('a, string * string,
+     [> `Attached of
+          ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+          Eliom_service.a_s ],
+     'b, 'c,
+     [ `One of string ] Eliom_parameter.param_name *
      [ `One of string ] Eliom_parameter.param_name,
-   [< Eliom_service.registrable > `Registrable ], 'e)
+     [< Eliom_service.registrable > `Registrable ],
+     [> Eliom_service.http_service ])
     Eliom_service.service
 
 val register_login :
@@ -90,13 +92,14 @@ val logout_service :
             [ `Attached of
                 ([ `Internal of [ `Service ] ], [ `Get ]) Eliom_service.a_s ],
             [ `WithoutSuffix ], unit, unit, [< Eliom_service.registrable ],
-            'a)
+            [< Eliom_service.non_ocaml_service ])
   Eliom_service.service ->
   (unit, unit,
    [> `Attached of
        ([> `Internal of [> `Coservice ] ], [> `Get ]) Eliom_service.a_s ],
    [ `WithoutSuffix ], unit, unit,
-   [< Eliom_service.registrable > `Registrable ], 'b)
+   [< Eliom_service.registrable > `Registrable ],
+   [> Eliom_service.http_service ])
     Eliom_service.service
 
 val register_logout :
@@ -107,23 +110,25 @@ val register_logout :
   unit
 
 val subscribe_service :
-  fallback:('a, unit,
-            [ `Attached of
-                ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
+    fallback:('a, unit,
+              [ `Attached of
+                  ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
                   Eliom_service.a_s ],
-            [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ], 'd)
-  Eliom_service.service ->
-  ('a, string * (string * (string * (string * string))),
-   [> `Attached of
-       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
-         Eliom_service.a_s ],
-   'b, 'c,
-   [ `One of string ] Eliom_parameter.param_name *
+              [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ],
+              [< Eliom_service.non_ocaml_service ])
+             Eliom_service.service ->
+    ('a, string * (string * (string * (string * string))),
+     [> `Attached of
+          ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+          Eliom_service.a_s ],
+     'b, 'c,
+     [ `One of string ] Eliom_parameter.param_name *
      ([ `One of string ] Eliom_parameter.param_name *
-         ([ `One of string ] Eliom_parameter.param_name *
-             ([ `One of string ] Eliom_parameter.param_name *
-                 [ `One of string ] Eliom_parameter.param_name))),
-   [< Eliom_service.registrable > `Registrable ], 'e)
+      ([ `One of string ] Eliom_parameter.param_name *
+       ([ `One of string ] Eliom_parameter.param_name *
+        [ `One of string ] Eliom_parameter.param_name))),
+     [< Eliom_service.registrable > `Registrable ],
+     [> Eliom_service.http_service ])
     Eliom_service.service
 
 

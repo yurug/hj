@@ -47,6 +47,7 @@ sig
   val subscribe : string
   val firstname : string
   val surname : string
+  val score : string
   val about : string
   val home : string
   val student: string

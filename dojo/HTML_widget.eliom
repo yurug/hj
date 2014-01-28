@@ -402,7 +402,7 @@ open Ocsigen_extensions
 
 let file_upload_service import =
   let service =
-    Eliom_service.post_coservice'
+    Eliom_service.Http.post_coservice'
       ~post_params:(Eliom_parameter.(file "file"))
       ()
   in
@@ -433,6 +433,7 @@ let fileuploader_wrapper width height import (constructor : (_, _, _) c)
   let onchange = {{ fun _ ->
     let f = Id.get_element %form_id in
     let f = To_dom.of_form f in
+    %onchange_cb ();
     f##submit ()
   }}
   in

@@ -16,20 +16,9 @@ open CORE_inmemory_entity
 open COMMON_pervasives
 }}
 
-let display_score checkpoint context (evaluation : CORE_evaluation.t) =
-  let get =
-    let cache = ref None in
-    fun () -> CORE_evaluation.(
-    let who = identifier_of_string "HTML_context" in
-    lwt d = observe ~who evaluation (fun d -> return (content d))
-    in
-    if !cache = Some d then
-      return []
-    else (
-      cache := Some d;
-      return [d]
-    )
-    )
+let display_score checkpoint context evaluation =
+  let get () =
+    CORE_evaluation.observe evaluation (fun d -> return [content d])
   in
   let condition, trigger =
     (** If the context contains master grade, it must always be active. *)
@@ -462,7 +451,7 @@ let display_master_view master exo checkpoint context =
       lwt list = Lwt_list.map_s (display_answer master_grade) all_answers in
       let list = List.flatten list in
       let header =
-        ["Name"; "Surname"; "Answer"; "Score"]
+        I18N.String.([firstname; surname; answer; score])
         @ (match master_grade with
           | None -> []
           | Some (criteria, _) -> [criteria]

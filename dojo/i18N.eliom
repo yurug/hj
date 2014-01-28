@@ -52,6 +52,8 @@ module Fr : I18N_sig.Text = struct
 
   let answer = "réponse"
 
+  let score = "score"
+
   let state = "état"
 
   let waiting_state = "en attente"

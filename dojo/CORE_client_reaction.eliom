@@ -14,7 +14,8 @@ type reaction = unit
     the server. Once a background reaction has been triggered,
     it is active during the following time. *)
 
-(* FIXME: This should probably be a global or local parameter... *)
+(* FIXME: This should probably be a configuration parameter
+   FIXME: or a function parameter... *)
 let reaction_window = 60. *. 1000.
 
 (** Given a process [p] being executed on the server side, we want to
@@ -23,14 +24,15 @@ let reaction_window = 60. *. 1000.
     using a serializable type of data. *)
 
 {client{
-  let react ?condition channels reaction =
+  let react ?condition msg channels reaction =
     let channels' = List.map Lwt_stream.clone channels in
     let all = Lwt_stream.choose channels' in
 
     let reaction =
       let now () = Js.to_float (jsnew Js.date_now ())##getTime () in
       let last_trigger = ref None in
-      fun x -> try_lwt
+      fun x ->
+        try_lwt
         let watch_condition () =
           match condition with
             | None ->
@@ -43,7 +45,8 @@ let reaction_window = 60. *. 1000.
         in
         let continue () =
           match !last_trigger with
-            | None -> watch_condition ()
+            | None ->
+              watch_condition ()
             | Some date ->
               if now () -. date < %reaction_window then
                 return ()
@@ -63,8 +66,9 @@ let reaction_window = 60. *. 1000.
         Firebug.console##log (Js.string ("react':" ^ Printexc.to_string e));
         return ()
     in
-    Eliom_client.onload (fun () ->
-      Lwt.async (fun () -> Lwt_stream.iter_s reaction all)
+    Lwt.async (fun () ->
+      Firebug.console##log (Js.string ("Event listener established said " ^ msg));
+      Lwt_stream.iter_s reaction all
     )
 
   let react_on_background = react

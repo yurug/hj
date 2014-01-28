@@ -80,7 +80,7 @@ let exists id =
   Sys.file_exists (string_of_path (metafile path))
 
 let log id what =
-  let path = path_of_identifier id in
+  let path = root true (path_of_identifier id) in
   CORE_vfs.append who (file path ".log") what
 
 module type Converter = sig

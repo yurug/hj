@@ -23,12 +23,13 @@ val set_menu : [ div_content_fun ] elt list -> unit Lwt.t
 (** [menu_button service label x] produces a button that applies [service]
     to [x] when clicked. *)
 val menu_button :
-  ?xa:Html5_types.a_attrib Eliom_content.Html5.D.attrib list ->
-  ('a, unit, [< Eliom_service.get_service_kind ], [< Eliom_service.suff ],
-   'b, unit, [< Eliom_service.registrable ], 'c)
+    ?xa:Html5_types.a_attrib Eliom_content.Html5.D.attrib list ->
+    ('a, unit, [< Eliom_service.get_service_kind ], [< Eliom_service.suff ],
+     'b, unit, [< Eliom_service.registrable ],
+     [< Eliom_service.non_ocaml_service ])
     Eliom_service.service ->
-  string ->
-  'a -> [> [> `PCDATA ] Html5_types.a ] Eliom_content_core.Html5.elt
+    string Eliom_content.Html5.D.wrap ->
+    'a -> [> [> `PCDATA ] Html5_types.a ] Eliom_content_core.Html5.elt
 
 {shared{
 val get_img :

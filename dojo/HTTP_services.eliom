@@ -45,15 +45,15 @@ let conditional_redirect_service default ls rs lparams =
    (fun () -> Eliom_reference.get r))
 
 (** The root service. *)
-let root = service ~path:[] ~get_params:unit ()
+let root = Http.service ~path:[] ~get_params:unit ()
 
 (** The autotest service. *)
-let autotest = service ~path:["autotest"] ~get_params:unit ()
+let autotest = Http.service ~path:["autotest"] ~get_params:unit ()
 
 let login     = CORE_user.login_service ~fallback:root
 let logout    = CORE_user.logout_service ~fallback:root
 
-let subscribe_form = service ~path:["subscribe"] ~get_params:unit ()
+let subscribe_form = Http.service ~path:["subscribe"] ~get_params:unit ()
 
 let subscribe and_then =
   let fallback, decide, result =
@@ -66,6 +66,6 @@ let subscribe and_then =
     URL.  For  instance,  the  page  of  "users/luke"  is  located  at
     [users/luke]. *)
 let page_of =
-  service ~path:[] ~get_params:(suffix (all_suffix "id")) ()
+  Http.service ~path:[] ~get_params:(suffix (all_suffix "id")) ()
 
-let about = service ~path:["about"] ~get_params:unit ()
+let about = Http.service ~path:["about"] ~get_params:unit ()

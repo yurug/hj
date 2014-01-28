@@ -72,6 +72,7 @@ and ('a, 'c) entity = {
   (*   *) commit_cond : unit Lwt_condition.t;
   mutable mode        : [ `Commit | `Observe of int ];
   mutable log         : ('c * timestamp) list;
+  mutable last_save   : timestamp
 }
 
 (** Shortcut for the type of entities. *)
@@ -256,9 +257,9 @@ and type change = I.change
 
   (** There must be at most one instance of an entity.  We use a pool
       to maintain the set of alive entities. *)
-  let (loaded, load) =
+  let (loaded, load, iter_on_pool) =
     let pool = IdHashtbl.create 13 in
-    (IdHashtbl.get pool, IdHashtbl.add pool)
+    (IdHashtbl.get pool, IdHashtbl.add pool, fun f -> IdHashtbl.iter f pool)
 
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
@@ -275,7 +276,8 @@ and type change = I.change
       channel; push; react_cond;
       commit_lock; commit_cond;
       mode = `Observe 0;
-      log = []
+      log = [];
+      last_save = 0.
     } in
     load id e;
     List.iter (register_dependency e)
@@ -292,7 +294,7 @@ and type change = I.change
            FIXME: not satisfactory... *)
         (*        >> Lwt_condition.wait e.react_cond *)
         >> Lwt_unix.yield ()
-        >> Lwt_unix.sleep 3.
+        >> Lwt_unix.sleep 1.
         >>= tick
       in
       tick ()
@@ -379,11 +381,23 @@ and type change = I.change
           wait_to_be_observer_free e (fun () ->
             let old = e.description in
             e.description <- CORE_inmemory_entity.update e.description llc;
-            OTD.save e.description
-            >>= function
-              | `KO error -> warn error; return (e.description <- old)
-              | `OK _ -> savelog e cs >>= fun _ -> return (e.push HasChanged)
+            (* FIXME: The following optimization is unsafe: we must ensure *)
+            (* FIXME: that every entity is finally saved. *)
+            save_on_disk e >>= function
+              | `KO error ->
+                warn error;
+                return (e.description <- old)
+              | `OK _ -> savelog e cs >>= fun _ ->
+                e.push HasChanged;
+                return ()
           ) >>= fun () -> return (propagate_change (identifier e))
+
+  and save_on_disk e =
+    if (timestamp e.description) -. e.last_save >= 1000. then begin
+      e.last_save <- timestamp e.description;
+      OTD.save e.description
+    end
+    else return (`OK ())
 
   and savelog e cs =
     let ts = CORE_inmemory_entity.timestamp e.description in
@@ -575,6 +589,19 @@ and type change = I.change
 
   let source_filename x =
     CORE_standard_identifiers.source_filename (identifier x)
+
+  let _ =
+    Lwt.async (fun () ->
+      let rec forever () =
+        return (
+          iter_on_pool (fun id e ->
+            Lwt.async (fun () -> save_on_disk e >>= fun _ -> return ()))
+        )
+        >> Lwt_unix.sleep 60.
+        >> forever ()
+      in
+      forever ()
+    )
 
 end
 

@@ -300,7 +300,7 @@ let logged_user =
 (** [login] is in the public API, login information
     is passed using the POST method. *)
 let login_service ~fallback =
-  Eliom_service.post_service
+  Eliom_service.Http.post_service
     ~fallback
     ~post_params:Eliom_parameter.(string "login" ** string "password")
     ()
@@ -320,7 +320,7 @@ let register_login ~service =
 (** Disconnection *)
 
 let logout_service ~fallback =
-  Eliom_service.coservice
+  Eliom_service.Http.coservice
     ~fallback
     ~get_params:Eliom_parameter.unit
     ()
@@ -340,7 +340,7 @@ let register_logout ~service =
 (** [subscribe] is in the public API, registration information
     is passed using the POST method. *)
 let subscribe_service ~fallback =
-  Eliom_service.post_service
+  Eliom_service.Http.post_service
     ~fallback
     ~post_params:Eliom_parameter.(
       string "firstname" ** string "surname"

@@ -100,6 +100,11 @@ let reactive_div ?condition es after_display get display  =
     List.map (function (SomeEntity e) -> channel e) es
   )
   in
+  let ids = CORE_entity.(
+    List.map (function (SomeEntity e) -> string_of_identifier (identifier e)) es
+  )
+  in
+  let ids = String.concat " " ids in
   let remote_get = server_function Json.t<unit> (
     let buffer = ref None in
     fun () ->
@@ -119,8 +124,8 @@ let reactive_div ?condition es after_display get display  =
           return (Some x)
   )
   in
-  ignore {unit{
-    Lwt.async (fun () ->
+  ignore {unit{Lwt.async (fun () ->
+
     let process data =
       try_lwt
         lwt cs = %display data in
@@ -132,10 +137,13 @@ let reactive_div ?condition es after_display get display  =
 
     let refresh () =
       try_lwt
+        Firebug.console##log (Js.string ("Refresh " ^ %ids));
         let p1 = get_progress () in
         let p2 = get_progress () in
         let rec flush flag =
-          if flag then Eliom_content.Html5.Manip.appendChild %elt p1;
+          if flag then (
+            Eliom_content.Html5.Manip.appendChild %elt p1;
+          );
           %remote_get () >>= function
             | Some x ->
               if flag then Eliom_content.Html5.Manip.replaceAllChild %elt [p2];
@@ -159,7 +167,9 @@ let reactive_div ?condition es after_display get display  =
           Js.string ("Exn1..." ^ Printexc.to_string e))
       )
     in
+
     refresh () >>
+
     let bench label f =
       lwt start = return (Js.to_float (jsnew Js.date_now ())##getTime ()) in
       lwt y = f () in
@@ -171,9 +181,10 @@ let reactive_div ?condition es after_display get display  =
         y
       )
     in
-    return (CORE_client_reaction.react_on_background ?condition:%condition (
-      List.map Lwt_stream.clone %e_channels
-    ) (
+    return (
+      CORE_client_reaction.react_on_background ?condition:%condition
+              %ids
+              %e_channels (
       function
         | CORE_entity.HasChanged ->
           refresh ()
