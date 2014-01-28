@@ -351,6 +351,9 @@ let display_master_view master exo checkpoint context =
           Some (Hashtbl.find links i)
         with Not_found -> None
       in
+
+      let relaunched = Hashtbl.create 13 in
+
       let display_answer master_grade (authors, answer_id) =
         CORE_answer.make answer_id >>= function
           | `KO _ -> return [] (* FIXME: handle error. *)
@@ -409,7 +412,10 @@ let display_master_view master exo checkpoint context =
                               Maybe an evaluation was avorted because of
                               an unexpected problem. We resubmit the answer
                               to trigger the reevaluation. *)
-                          CORE_answer.submit answer checkpoint submission
+                          if not (Hashtbl.mem relaunched (checkpoint, answer_id)) then (
+                            Hashtbl.add relaunched (checkpoint, answer_id) ();
+                            CORE_answer.submit answer checkpoint submission
+                          ) else return ()
                       end >> return "?"
                     | Some (Evaluated (s, _, _, ctx)) ->
                       let s = match master_grade with
