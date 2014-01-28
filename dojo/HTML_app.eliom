@@ -6,10 +6,12 @@
     common definitions  shared between all  the HTML pages of  the web
     interface. *)
 
+{shared{
 open Lwt
 open Eliom_content.Html5.D
 open Eliom_content.Html5.Id
 open Eliom_lib
+}}
 
 module Hackojo_app =
   Eliom_registration.App (
@@ -17,10 +19,12 @@ module Hackojo_app =
       let application_name = "hackojo"
     end)
 
+{shared{
 let get_img ~a ~alt fname =
   img ~a ~alt
     ~src:(make_uri ~service:(Eliom_service.static_dir ()) ["img"; fname])
     ()
+}}
 
 let logo = get_img  ~alt:("logo") ~a:[a_id "logo"] "logo.png"
 

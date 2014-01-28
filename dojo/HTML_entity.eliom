@@ -82,12 +82,12 @@ let offer_creation emake creation_service page id =
     | `KO e ->
       return (error_page (CORE_error_messages.string_of_error e))
 
-let progress () =
+{shared{
+let get_progress () =
   HTML_app.get_img
     ~a:[a_id "loader"; a_class ["inlined"]]
     ~alt:"loading" "ajax-loader.gif"
-
-let get_progress = server_function Json.t<unit> (fun () -> return (progress ()))
+}}
 
 {client{
   let config = Eliom_comet.Configuration.new_configuration () in
@@ -95,7 +95,7 @@ let get_progress = server_function Json.t<unit> (fun () -> return (progress ()))
 }}
 
 let reactive_div ?condition es after_display get display  =
-  let elt = div ~a:[a_class ["reactive"]] [progress ()] in
+  let elt = div ~a:[a_class ["reactive"]] [get_progress ()] in
   let e_channels = CORE_entity.(
     List.map (function (SomeEntity e) -> channel e) es
   )
@@ -132,8 +132,8 @@ let reactive_div ?condition es after_display get display  =
 
     let refresh () =
       try_lwt
-        lwt p1 = %get_progress () in
-        lwt p2 = %get_progress () in
+        let p1 = get_progress () in
+        let p2 = get_progress () in
         let rec flush flag =
           if flag then Eliom_content.Html5.Manip.appendChild %elt p1;
           %remote_get () >>= function

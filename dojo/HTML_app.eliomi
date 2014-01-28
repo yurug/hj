@@ -30,6 +30,7 @@ val menu_button :
   string ->
   'a -> [> [> `PCDATA ] Html5_types.a ] Eliom_content_core.Html5.elt
 
+{shared{
 val get_img :
   a:[< `Accesskey
        | `Class
@@ -105,3 +106,4 @@ val get_img :
        | `XMLns ]
       Eliom_content.Html5.D.attrib list ->
     alt:Html5_types.text -> string -> [> `Img ] Eliom_content.Html5.D.elt
+}}
