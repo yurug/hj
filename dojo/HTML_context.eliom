@@ -16,7 +16,7 @@ open CORE_inmemory_entity
 open COMMON_pervasives
 }}
 
-let display_score checkpoint context evaluation =
+let display_score answer_id checkpoint context evaluation =
   let get () =
     CORE_evaluation.observe evaluation (fun d -> return [content d])
   in
@@ -31,6 +31,21 @@ let display_score checkpoint context evaluation =
           Firebug.console##log (Js.string "Trigger!");
           Lwt_mvar.put %condition ()
         }}
+  in
+  lwt answer =
+    CORE_answer.make answer_id >>= function
+      | `OK a -> return (Some a)
+      | `KO _ -> return None
+  in
+  let update_if_necessary =
+    server_function Json.t<float * submission> (fun (d, s) ->
+      if Unix.gettimeofday () -. d > 120000. then
+        match answer with
+          | Some answer -> CORE_answer.submit answer checkpoint s
+          | None -> return ()
+      else
+        return ()
+    )
   in
   let diagnostic = div [] in
   lwt d =
@@ -51,9 +66,10 @@ let display_score checkpoint context evaluation =
           match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
             | Some Unevaluated ->
               return [p [pcdata "▹ Pas évalué"]]
-            | Some (BeingEvaluated (_, _, dcmd, _)) ->
+            | Some (BeingEvaluated (_, date, submission, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
-              return [p [pcdata "▹ En cours..."]]
+              %update_if_necessary (date, submission)
+              >> return [p [pcdata "▹ En cours..."]]
             | Some (Evaluated (score, _, dcmd, ctx)) ->
               Eliom_content.Html5.Manip.replaceAllChild %diagnostic [];
               interpret_diagnostic_command dcmd;
@@ -287,7 +303,7 @@ let extract_previous_submission checkpoint answer_id =
 
 let display_context exo_id answer_id checkpoint context evaluation =
   lwt submission = extract_previous_submission checkpoint answer_id in
-  lwt score, trigger = display_score checkpoint context evaluation in
+  lwt score, trigger = display_score answer_id checkpoint context evaluation in
   lwt user_input =
     display_user_input exo_id answer_id checkpoint context submission trigger
   in
@@ -342,6 +358,8 @@ let display_master_view master exo checkpoint context =
         with Not_found -> None
       in
 
+
+
       let display_answer master_grade (authors, answer_id) =
         CORE_answer.make answer_id >>= function
           | `KO _ -> return [] (* FIXME: handle error. *)
@@ -379,32 +397,36 @@ let display_master_view master exo checkpoint context =
                 | `OK evaluation ->
                   return (Some evaluation)
             in
-
             let master_score = ref None in
             lwt evaluation_descr = CORE_evaluation.(
               (* FIXME: Do that more elegantly! *)
               match evaluation with
                 | None -> return "error"
                 | Some evaluation ->
+                  let relaunch () =
+                    begin match submission with
+                      | None ->
+                        return ()
+                      | Some submission ->
+                        (** We've got an answer that is not evaluated.
+                            Maybe an evaluation was avorted because of
+                            an unexpected problem. We resubmit the answer
+                            to trigger the reevaluation. *)
+                        if not (Hashtbl.mem relaunched (checkpoint, answer_id)) then (
+                          Hashtbl.add relaunched (checkpoint, answer_id) ();
+                          CORE_answer.submit answer checkpoint submission
+                        )
+                        else
+                          return ()
+                    end
+                  in
                   state_of_checkpoint evaluation checkpoint >>= function
                     | None | Some Unevaluated ->
                       (match master_grade with
                         | Some (_, over) ->
                           master_score := Some ("?/" ^ string_of_int over)
                         | _ -> ());
-                      begin match submission with
-                        | None ->
-                          return ()
-                        | Some submission ->
-                          (** We've got an answer that is not evaluated.
-                              Maybe an evaluation was avorted because of
-                              an unexpected problem. We resubmit the answer
-                              to trigger the reevaluation. *)
-                          if not (Hashtbl.mem relaunched (checkpoint, answer_id)) then (
-                            Hashtbl.add relaunched (checkpoint, answer_id) ();
-                            CORE_answer.submit answer checkpoint submission
-                          ) else return ()
-                      end >> return "?"
+                      return "?"
                     | Some (Evaluated (s, _, _, ctx)) ->
                       let s = match master_grade with
                         | None -> s

@@ -15,6 +15,8 @@ open COMMON_pervasives
 
 {shared{
 
+type timestamp = float deriving (Json)
+
 type job =
   | ExecutableJob of CORE_sandbox.job
   | ImmediateEvaluation
@@ -37,20 +39,12 @@ type evaluation_state =
 
   | BeingEvaluated of
       job
+    * timestamp
     * CORE_context.submission
     * CORE_diagnostic.command
     * CORE_context.t
 
 deriving (Json)
-
-let string_of_evaluation_state = function
-  | Unevaluated ->
-    "Not evaluated"
-  | Evaluated (score, _, _, ctx) ->
-    Printf.sprintf "Evaluated with score %s"
-      (CORE_context.string_of_score ctx score)
-  | BeingEvaluated (job, _, _, _) ->
-    Printf.sprintf "Being evaluated by job %s" (string_of_job job)
 
 type description = {
   answer       : CORE_identifier.t;
@@ -62,9 +56,26 @@ type description = {
 
 }}
 
+let string_of_evaluation_state = function
+  | Unevaluated ->
+    "Not evaluated"
+  | Evaluated (score, _, _, ctx) ->
+    Printf.sprintf "Evaluated with score %s"
+      (CORE_context.string_of_score ctx score)
+  | BeingEvaluated (job, start, _, _, _) -> Unix.(
+    let d = localtime start in
+    let date = Printf.sprintf "%04d/%02d/%02d %02d:%02d:%02d"
+      d.tm_year d.tm_mon d.tm_mday
+      d.tm_hour d.tm_min d.tm_sec
+    in
+    Printf.sprintf "Being evaluated by job %s since %s" (string_of_job job) date
+  )
+
 {client{
 type data = description
 }}
+
+let now () = Unix.gettimeofday ()
 
 type public_change =
   | FlushDiagnosticCommandsOfCheckpoint of CORE_exercise.checkpoint
@@ -81,31 +92,45 @@ let new_evaluation_state_of_checkpoint c s d =
       | Some s' ->
         match s', s with
           (* FIXME: Some of these cases do not make sense. *)
-          | BeingEvaluated (_, s, cmd, c), BeingEvaluated (job, s', cmd', c')
+          | (BeingEvaluated (_, d, s, cmd, c),
+             BeingEvaluated (job, d', s', cmd', c'))
             when CORE_context.(
-              equivalent_submission s s' && equivalent_context c c'
+              equivalent_submission s s' && equivalent_context c c' && d = d'
             ) ->
-            BeingEvaluated (job, s, CORE_diagnostic.merge cmd cmd', c)
+            (** A new intermediate state in an on-going evaluation.
+                We merge the diagnostic. *)
+            BeingEvaluated (job, d, s, CORE_diagnostic.merge cmd cmd', c)
 
-          | Evaluated (score, s, cmd, c), BeingEvaluated (_, s', cmd', c')
+          | (Evaluated (score, s, cmd, c),
+             BeingEvaluated (_, _, s', cmd', c'))
             when CORE_context.(
               equivalent_submission s s' && equivalent_context c c'
             ) ->
+            (** The answer and the evaluation did not change. We keep
+                the current evaluation. *)
+            (* FIXME: We may provide a way for the user to force the
+               FIXME: evaluation in that case.*)
             Evaluated (score, s, CORE_diagnostic.merge cmd cmd', c)
 
-          | BeingEvaluated (job, s, cmd, c), Evaluated (score, s', cmd', c')
+          | (BeingEvaluated (job, _, s, cmd, c),
+             Evaluated (score, s', cmd', c'))
             when CORE_context.(
               equivalent_submission s s' && equivalent_context c c'
             ) ->
-            Evaluated (score, s, CORE_diagnostic.merge cmd cmd', c)
+            (** We are done with the evaluation. *)
+            Evaluated (score, s', CORE_diagnostic.merge cmd cmd', c)
 
-          | Evaluated (_, s, cmd, c), Evaluated (score, s', cmd', c')
+          | (Evaluated (_, s, cmd, c), Evaluated (score, s', cmd', c'))
             when CORE_context.(
               equivalent_submission s s' && equivalent_context c c'
             ) ->
+            (** This is the case of an instantaneous evaluation. *)
             Evaluated (score, s', CORE_diagnostic.merge cmd cmd', c)
 
           | _, s ->
+            (* FIXME: We should integrate here a notion of inherited score:
+               FIXME: for instance, if an answer has not changed, the
+               FIXME: grade assigned by a master should be inherited. *)
             s
   in
   return { d with jobs = update_assoc c s d.jobs }
@@ -116,13 +141,11 @@ let create_job
   let exo_id = CORE_exercise.identifier exercise in
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
-  let change_state s =
-    change_later (NewEvaluationState (checkpoint, s))
-  in
-  let message job msg =
-    change_state (
-      BeingEvaluated (job, submission, CORE_diagnostic.PushLine msg, context)
-    )
+  let change_state s = change_later (NewEvaluationState (checkpoint, s)) in
+  let message job msg = change_state (
+    BeingEvaluated (job, now (), submission,
+                    CORE_diagnostic.PushLine msg, context)
+  )
   in
   let mark () =
     let send_notification_to_master () = CORE_context.(
@@ -148,7 +171,7 @@ let create_job
                   is_teacher a >>= function
                     | true ->
                       exists_s
-                        (fun g -> CORE_user.has_property a (CORE_property.atom g))
+                        (fun g -> has_property a (CORE_property.atom g))
                         authors_groups
                     | false -> return false
               )) all_authors)
@@ -165,9 +188,7 @@ let create_job
       Evaluated (!score, submission, CORE_diagnostic.Empty, context)
     )
   in
-  let init () =
-    change_state Unevaluated
-  in
+  let init () = change_state Unevaluated in
   init () >>
     let process_stdio job line =
       match CORE_context.marker_io_interpretation seed line with
@@ -247,7 +268,7 @@ let evaluate change_later exercise answer cps data authors =
       >>= function
         | Some job ->
           Ocsigen_messages.errlog "Executable job created.";
-          return (BeingEvaluated (job, s, CORE_diagnostic.Empty, c))
+          return (BeingEvaluated (job, now (), s, CORE_diagnostic.Empty, c))
         | None ->
            (* FIXME: transmission error. *)
           Ocsigen_messages.errlog "Transmission error";
@@ -271,7 +292,7 @@ let evaluate change_later exercise answer cps data authors =
               | Evaluated (_, submission, _, context) ->
                 None, Some submission, Some context
 
-              | BeingEvaluated (job, submission, _, context) ->
+              | BeingEvaluated (job, _, submission, _, context) ->
                 Some job, Some submission, Some context
 
               | Unevaluated ->
@@ -339,8 +360,8 @@ include CORE_entity.Make (struct
           COMMON_pervasives.map_assoc checkpoint (function
             | Evaluated (score, s, dcmd, c) ->
               Evaluated (score, s, CORE_diagnostic.Empty, c)
-            | BeingEvaluated (j, s, dcmd, c) ->
-              BeingEvaluated (j, s, CORE_diagnostic.Empty, c)
+            | BeingEvaluated (j, d, s, dcmd, c) ->
+              BeingEvaluated (j, d, s, CORE_diagnostic.Empty, c)
             | x -> x
           ) content.jobs }
     in
