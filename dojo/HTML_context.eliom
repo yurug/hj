@@ -16,13 +16,26 @@ open CORE_inmemory_entity
 open COMMON_pervasives
 }}
 
-let update_if_necessary answer checkpoint (d, s) =
-  if Unix.gettimeofday () -. d > 120000. then
-    match answer with
-      | Some answer -> CORE_answer.submit answer checkpoint s
-      | None -> return ()
-  else
-    return ()
+let update_if_necessary =
+  let relaunched = Hashtbl.create 13 in
+  fun answer_id checkpoint (d, s) ->
+    let now = Unix.gettimeofday () in
+    (* FIXME: Make this literal a parameter! *)
+    let relaunch answer =
+      Hashtbl.add relaunched (answer_id, checkpoint) now;
+      CORE_answer.submit answer checkpoint s
+    in
+    if now -. d > 120000. then
+      CORE_answer.make answer_id >>= function
+        | `OK answer -> (
+          try_lwt
+            let time = Hashtbl.find relaunched (answer_id, checkpoint) in
+            if now -. time > 120000. then relaunch answer else return ()
+          with Not_found -> relaunch answer
+        )
+        | `KO _ -> (* FIXME: handle error. *) return ()
+    else
+      return ()
 
 let update_if_necessary_rpc answer checkpoint =
   server_function Json.t<float * submission> (
@@ -45,12 +58,7 @@ let display_score answer_id checkpoint context evaluation =
           Lwt_mvar.put %condition ()
         }}
   in
-  lwt answer =
-    CORE_answer.make answer_id >>= function
-      | `OK a -> return (Some a)
-      | `KO _ -> return None
-  in
-  let update_if_necessary = update_if_necessary_rpc answer checkpoint in
+  let update_if_necessary = update_if_necessary_rpc answer_id checkpoint in
   let diagnostic = div [] in
   lwt d =
     HTML_entity.reactive_div
@@ -399,10 +407,18 @@ let display_master_view master exo checkpoint context =
                   return (Some evaluation)
             in
             let master_score = ref None in
+
+            let relaunch () =
+              match submission with
+                | None -> return ()
+                | Some s -> update_if_necessary answer_id checkpoint (0., s)
+            in
+
             lwt evaluation_descr = CORE_evaluation.(
               (* FIXME: Do that more elegantly! *)
               match evaluation with
-                | None -> return "error"
+                | None ->
+                  relaunch () >> return "error"
                 | Some evaluation ->
                   state_of_checkpoint evaluation checkpoint >>= function
                     | None | Some Unevaluated ->
@@ -410,7 +426,7 @@ let display_master_view master exo checkpoint context =
                         | Some (_, over) ->
                           master_score := Some ("?/" ^ string_of_int over)
                         | _ -> ());
-                      return "?"
+                      relaunch () >> return "?"
                     | Some (Evaluated (s, _, _, ctx)) ->
                       let s = match master_grade with
                         | None -> s
@@ -426,7 +442,7 @@ let display_master_view master exo checkpoint context =
                       in
                       return (CORE_context.string_of_score ctx s)
                     | Some (BeingEvaluated (_, d, s, _, _)) ->
-                      update_if_necessary (Some answer) checkpoint (d, s)
+                      update_if_necessary answer_id checkpoint (d, s)
                       >> return "..."
             )
             in
