@@ -99,6 +99,7 @@ type cookie_state =
 let username =
   Eliom_reference.eref
     ~scope:Eliom_common.default_session_scope
+    ~persistent:"username"
     (`NotLogged : cookie_state)
 
 (** Subscribing is an action on the state of the server. *)
