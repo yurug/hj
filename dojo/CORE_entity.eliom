@@ -393,6 +393,7 @@ and type change = I.change
           ) >>= fun () -> return (propagate_change (identifier e))
 
   and save_on_disk e =
+    (* FIXME: 60. must be a parameter. *)
     if (timestamp e.description) -. e.last_save >= 60. then begin
       e.last_save <- timestamp e.description;
       OTD.save e.description
