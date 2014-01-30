@@ -31,12 +31,14 @@ let update_if_necessary =
     if now -. d > old then
       CORE_answer.make answer_id >>= function
         | `OK answer -> (
+          Ocsigen_messages.errlog "Got an answer!";
           try_lwt
             let time = Hashtbl.find relaunched (answer_id, checkpoint) in
+            Ocsigen_messages.errlog (Printf.sprintf "Update bis %f?" (now -. time));
             if now -. time > old then relaunch answer else return ()
           with Not_found -> relaunch answer
         )
-        | `KO _ -> (* FIXME: handle error. *) return ()
+        | `KO e -> warn e; (* FIXME: handle error. *) return ()
     else
       return ()
 
