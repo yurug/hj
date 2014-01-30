@@ -21,20 +21,16 @@ let update_if_necessary =
   fun answer_id checkpoint (d, s) ->
     let now = Unix.gettimeofday () in
     let relaunch answer =
-      Ocsigen_messages.errlog (Printf.sprintf "Relaunching " ^ string_of_identifier answer_id);
       Hashtbl.replace relaunched (answer_id, checkpoint) now;
       CORE_answer.submit answer checkpoint s
     in
     (* FIXME: Make this literal a parameter! *)
     let old = 1200. in
-    Ocsigen_messages.errlog (Printf.sprintf "Update %f?" (now -. d));
     if now -. d > old then
       CORE_answer.make answer_id >>= function
         | `OK answer -> (
-          Ocsigen_messages.errlog "Got an answer!";
           try_lwt
             let time = Hashtbl.find relaunched (answer_id, checkpoint) in
-            Ocsigen_messages.errlog (Printf.sprintf "Update bis %f?" (now -. time));
             if now -. time > old then relaunch answer else return ()
           with Not_found -> relaunch answer
         )
