@@ -271,7 +271,7 @@ let substitute_seed seed cmd = Str.(
 
 let marker_io_interpretation seed line = Str.(
   if string_match
-    (regexp "SCORE \\([0-9]+\\) \\([^:]+\\):\\([0-9]+\\)/\\([0-9+]\\)")
+    (regexp "SCORE \\([0-9]+\\) \\([^:]+\\):\\([0-9]+\\)/\\([0-9]+\\)")
     line 0
   then
     let seed' = int_of_string (matched_group 1 line) in
