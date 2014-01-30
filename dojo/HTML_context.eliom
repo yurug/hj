@@ -388,7 +388,13 @@ let display_master_view master exo checkpoint context =
 
       let get_score_statistics, count_score = Hashtbl.(
         let table = create 13 in
-        let get ctx = return (fold (fun k s l -> [string_of_score ctx k; string_of_int s] :: l) table []) in
+        let get ctx =
+          let e =
+            fold (fun k s l -> [string_of_score ctx k; string_of_int s] :: l)
+              table []
+          in
+          return (List.sort Pervasives.compare e)
+        in
         let count s = replace table s (succ (try find table s with _ -> 0)) in
         get, count
       ) in
