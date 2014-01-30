@@ -166,11 +166,11 @@ let list_editor
 
   and fresh_row_if_needed table elt =
     server_function Json.t<bool> (fun on_last_idx ->
-      if on_last_idx then
+      if on_last_idx then (
         lwt e = list.index_end () in
         lwt tr = row_of_idx table e in
         return (Some tr)
-      else
+      ) else
         return None
     )
 
@@ -213,7 +213,8 @@ let list_editor
   in
   let tableid = Id.new_elt_id ~global:false () in
   lwt e = list.index_end () in
-  let r = range 0 (if no_insertion then e else e + 1) in
+  let e = if no_insertion then e else e + 1 in
+  let r = range 0 e in
   lwt rows = Lwt_list.map_s (row_of_idx tableid) r in
   let table =
     if no_header then

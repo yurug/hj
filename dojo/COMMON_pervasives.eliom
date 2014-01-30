@@ -238,23 +238,28 @@ let natural_indices () =
   let indices = Hashtbl.create 13 in
   let invariant () =
     let max = Hashtbl.fold (fun _ v v' -> max v v') indices (-1) in
-    let a = Array.create (max + 1) false in
+    let a = Array.create (max + 1) 0 in
     let marked_exactly_once = ref true and marks = ref (-1) in
     let mark_exactly_once i =
-      if a.(i) then marked_exactly_once := false else (
-        incr marks; a.(i) <- true
-      )
+      if a.(i) <> 0 then
+        marked_exactly_once := false
+      else
+        incr marks
+      ;
+      a.(i) <- a.(i) + 1
     in
     Hashtbl.iter (fun _ i -> mark_exactly_once i) indices;
     if not (!marked_exactly_once && !marks = max) then (
       let string_of_marks a =
         let s = ref "" in
-        Array.iteri (fun i b -> if b then s := !s ^ " " ^ string_of_int i) a;
+        Array.iteri (fun i c ->
+          s := !s ^ " " ^ string_of_int i ^ " " ^ string_of_int c)
+          a;
         !s
       in
       Ocsigen_messages.errlog (
-        Printf.sprintf "Broken invariant: %d <> %d or [%s] is not complete."
-          !marks max (string_of_marks a)
+        Printf.sprintf "Broken invariant: %d <> %d or [%s] is wrong (%B)."
+          !marks max (string_of_marks a) !marked_exactly_once
       );
       assert false
     )

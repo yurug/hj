@@ -31,7 +31,7 @@ type dependencies
     the following form. *)
 type 'a state_change =
   | UpdateDependencies of dependencies
-  | UpdateSources      of CORE_source.t list
+  | UpdateSources      of CORE_source.filename list
   | UpdateProperties   of CORE_property.set
   | UpdateContent      of 'a
   | UpdateSequence     of 'a state_change * 'a state_change

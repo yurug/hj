@@ -72,6 +72,7 @@ include CORE_entity.Make (struct
             with Not_found -> 0
           in
           let ss = update_assoc c (Submission (count + 1, s)) ss in
+          let sources = List.map CORE_source.filename sources in
           return (ss, sources @ source_updates)
         )
     in

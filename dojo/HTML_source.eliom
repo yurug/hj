@@ -38,7 +38,7 @@ let commit
         | `KO e -> warn e; return (CORE_source.make id "")
       in
       save_source (identifier e) s >>= function
-        | `OK _ -> return ()
+        | `OK _ -> return (import_source e id)
         | `KO e -> warn e; return () (* FIXME: handle error *)
      )
 

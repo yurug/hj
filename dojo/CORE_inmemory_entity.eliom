@@ -89,7 +89,7 @@ let update_sources e s =
 
 type 'a state_change =
   | UpdateDependencies of dependencies
-  | UpdateSources      of CORE_source.t list
+  | UpdateSources      of CORE_source.filename list
   | UpdateProperties   of CORE_property.set
   | UpdateContent      of 'a
   | UpdateSequence     of 'a state_change * 'a state_change
@@ -109,7 +109,7 @@ let rec state_changes = function
 
 let rec update e = function
   | UpdateDependencies d -> update_dependencies e d
-  | UpdateSources s -> update_sources e (List.map CORE_source.filename s)
+  | UpdateSources s -> update_sources e s
   | UpdateProperties s -> update_properties e s
   | UpdateContent c -> update_content e c
   | UpdateSequence (c1, c2) -> update (update e c1) c2
@@ -119,8 +119,7 @@ let rec string_of_state_change string_of_replacement = function
   | UpdateDependencies _ ->
     "Update dependencies"
   | UpdateSources s ->
-    Printf.sprintf "Update sources (%s)"
-      (String.concat " " (List.map CORE_source.filename s))
+    Printf.sprintf "Update sources (%s)" (String.concat " " s)
   | UpdateProperties s ->
     "Update properties"
   | UpdateContent young ->

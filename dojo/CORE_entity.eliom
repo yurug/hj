@@ -197,6 +197,8 @@ module type S = sig
   val log : t -> int -> (change * timestamp) list
 
   val source_filename : t -> string -> string
+
+  val import_source : t -> string -> unit
 end
 
 (** The client must provide the following information
@@ -591,6 +593,11 @@ and type change = I.change
 
   let source_filename x =
     CORE_standard_identifiers.source_filename (identifier x)
+
+  let import_source e s =
+    e.description <- CORE_inmemory_entity.(
+      update e.description (UpdateSources [s])
+    )
 
   let _ =
     Lwt.async (fun () ->

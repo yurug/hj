@@ -135,7 +135,7 @@ include CORE_entity.Make (struct
           save_source (CORE_inmemory_entity.identifier state) s
           >>= function
             | `OK true ->
-              return (s :: sources, dependencies, content)
+              return (f :: sources, dependencies, content)
             | `OK false ->
               return (sources, dependencies, content)
             | `KO e ->
