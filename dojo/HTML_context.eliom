@@ -55,7 +55,6 @@ let display_score answer_id checkpoint context evaluation =
       | None ->
         let condition = {unit Lwt_mvar.t{ Lwt_mvar.create_empty () }} in
         Some condition, Some {{ fun () ->
-          Firebug.console##log (Js.string "Trigger!");
           Lwt_mvar.put %condition ()
         }}
   in
@@ -75,19 +74,20 @@ let display_score answer_id checkpoint context evaluation =
       )
       in
       fun d ->
+        let cs = checkpoint ^ " " in
         CORE_evaluation.(
           match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
             | Some Unevaluated ->
-              return [p [pcdata "▹ Pas évalué"]]
+              return [p [pcdata (cs ^ "▹ Pas évalué")]]
             | Some (BeingEvaluated (_, date, submission, dcmd, _)) ->
               interpret_diagnostic_command dcmd;
               %update_if_necessary (date, submission)
-              >> return [p [pcdata "▹ En cours..."]]
+              >> return [p [pcdata (cs ^ "▹ En cours...")]]
             | Some (Evaluated (score, _, dcmd, ctx)) ->
               Eliom_content.Html5.Manip.replaceAllChild %diagnostic [];
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
-              return [p [pcdata ("▹ " ^ string_of_score ctx score)]]
+              return [p [pcdata (cs ^ "▹ " ^ string_of_score ctx score)]]
             | None ->
               return [p [pcdata "?"]]
         )
