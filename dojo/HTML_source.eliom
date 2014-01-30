@@ -103,7 +103,7 @@ let entity_sources_div
               icon [pcdata "↓"] {{ fun _ -> %download %i }};
               upload_form
             ])
-          (fun _ _ -> `RO)
+          (fun _ _ -> `RW)
       in
       let get_sources' = fun x ->
         lwt s = get_sources x in
