@@ -346,16 +346,32 @@ let display_master_view master exo checkpoint context =
                 (fun g -> CORE_user.has_property a (CORE_property.atom g))
                 master_groups
             in
-            Lwt_list.filter_s
-              (fun (authors, _) ->
-                lwt authors = Lwt_list.fold_left_s (fun authors a ->
-                  CORE_user.make a >>= function
-                    | `OK a -> return (a :: authors)
-                    | `KO _ -> return authors
+            lwt all_answers =
+              Lwt_list.filter_s
+                (fun (authors, _) ->
+                  lwt authors = Lwt_list.fold_left_s (fun authors a ->
+                    CORE_user.make a >>= function
+                      | `OK a -> return (a :: authors)
+                      | `KO _ -> return authors
+                  ) [] authors
+                  in
+                  Lwt_list.exists_s interest_master authors)
+                all_answers
+            in
+            lwt all_answers =
+              CORE_user.(Lwt_list.(map_s (fun (authors, a) ->
+                lwt surnames = fold_left_s (fun s u -> make u >>= function
+                    | `OK a -> lwt sn = surname a in return (sn :: s)
+                    | `KO _ -> return s
                 ) [] authors
                 in
-                Lwt_list.exists_s interest_master authors)
-              all_answers
+                return (surnames, (authors, a))
+              ) all_answers))
+            in
+            return (snd (List.(
+              split (sort (fun (s1, _) (s2, _) -> Pervasives.compare s1 s2)
+                       all_answers
+              ))))
 
           | _ ->
             return all_answers
