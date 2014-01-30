@@ -283,16 +283,17 @@ let evaluate change_later exercise answer cps data authors =
 
       | Some s ->
         begin
-          let job, submission, context =
+          let job, submission, context, too_old =
             match current_state with
               | Evaluated (_, submission, _, context) ->
-                None, Some submission, Some context
+                None, Some submission, Some context, false
 
-              | BeingEvaluated (job, _, submission, _, context) ->
-                Some job, Some submission, Some context
+              | BeingEvaluated (job, date, submission, _, context) ->
+                (* FIXME: Make 1200. a parameter. *)
+                Some job, Some submission, Some context, (now () -. date > 1200.)
 
               | Unevaluated ->
-                None, None, None
+                None, None, None, false
           in
 
           (** Is it a new submission? *)
@@ -314,7 +315,7 @@ let evaluate change_later exercise answer cps data authors =
                   | None, _ -> true
                   | Some c', c -> not (CORE_context.equivalent_context c' c)
               in
-              if is_new_context || is_new_submission then
+              if is_new_context || is_new_submission || too_old then
                 cancel_job_if_present job
                 >>= fun _ -> run_submission_evaluation c s
               else
