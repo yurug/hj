@@ -26,6 +26,7 @@ let update_if_necessary =
       CORE_answer.submit answer checkpoint s
     in
     (* FIXME: Make this literal a parameter! *)
+    Ocsigen_messages.errlog (Printf.sprintf "Update %f?" (now -. d));
     if now -. d > 120000. then
       CORE_answer.make answer_id >>= function
         | `OK answer -> (

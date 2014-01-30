@@ -444,6 +444,6 @@ end
 let string_of_date d = Unix.(
   let d = localtime d in
   Printf.sprintf "%04d/%02d/%02d %02d:%02d:%02d"
-    d.tm_year d.tm_mon d.tm_mday
+    (1900 + d.tm_year) (1 + d.tm_mon) d.tm_mday
     d.tm_hour d.tm_min d.tm_sec
 )
