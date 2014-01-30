@@ -20,11 +20,12 @@ let update_if_necessary =
   let relaunched = Hashtbl.create 13 in
   fun answer_id checkpoint (d, s) ->
     let now = Unix.gettimeofday () in
-    (* FIXME: Make this literal a parameter! *)
     let relaunch answer =
-      Hashtbl.add relaunched (answer_id, checkpoint) now;
+      Ocsigen_messages.errlog (Printf.sprintf "Relaunching " ^ string_of_identifier answer_id);
+      Hashtbl.replace relaunched (answer_id, checkpoint) now;
       CORE_answer.submit answer checkpoint s
     in
+    (* FIXME: Make this literal a parameter! *)
     if now -. d > 120000. then
       CORE_answer.make answer_id >>= function
         | `OK answer -> (
@@ -432,7 +433,7 @@ let display_master_view master exo checkpoint context =
                         | None -> s
                         | Some (criteria, over) ->
                           master_score := Some (
-                            match CORE_context.grade_for_criteria criteria s with
+                           match CORE_context.grade_for_criteria criteria s with
                               | None ->
                                 ("?/" ^ string_of_int over)
                               | Some (g, _) ->
