@@ -386,6 +386,14 @@ let display_master_view master exo checkpoint context =
         with Not_found -> None
       in
 
+      let get_score_statistics, count_score = Hashtbl.(
+        let table = create 13 in
+        let get ctx = return (fold (fun k s l -> [string_of_score ctx k; string_of_int s] :: l) table []) in
+        let count s = replace table s (succ (try find table s with _ -> 0)) in
+        get, count
+      ) in
+
+
       let display_answer master_grade (authors, answer_id) =
         CORE_answer.make answer_id >>= function
           | `KO _ -> return [] (* FIXME: handle error. *)
@@ -457,6 +465,7 @@ let display_master_view master exo checkpoint context =
                           );
                           CORE_context.except criteria s
                       in
+                      count_score s;
                       return (CORE_context.string_of_score ctx s)
                     | Some (BeingEvaluated (_, d, s, _, _)) ->
                       update_if_necessary answer_id checkpoint (d, s)
@@ -535,6 +544,16 @@ let display_master_view master exo checkpoint context =
         )
         (fun _ -> function 4 -> `RW | _ -> `RO)
       in
+      lwt statistics =
+        HTML_widget.server_get_list_editor
+          ~no_insertion:true ~no_action:true ~no_header:true
+          I18N.(String.([cap score; cap total]))
+          (fun () -> get_score_statistics context)
+          None
+          (fun _ -> [])
+          (fun _ _ -> `RO)
+      in
+
       let download_all_files =
         let all_files = server_function Json.t<unit> (fun () ->
           if !files = [] then
@@ -556,10 +575,10 @@ let display_master_view master exo checkpoint context =
           )}}
       in
       let result = (
-        e :: (if !files = [] then [] else [
-          p [pcdata ""]; (* FIXME: Ugly! *)
-          div [ download_all_files ]
-        ]))
+        e :: [p [pcdata ""]; statistics; p [pcdata ""]] @ (
+          if !files = [] then [] else [
+            div [ download_all_files ]
+          ]))
       in
       if !cache = Some result then return [] else (
         cache := Some result;
