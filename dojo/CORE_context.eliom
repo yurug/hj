@@ -215,7 +215,7 @@ let check_expected_values xs = function
         (0, List.length xs)
       else
         List.fold_left2 (fun (m, o) v x ->
-          let canon x = Str.(global_replace (regexp " ") "" x) in
+          let canon x = Str.(global_replace (regexp " +") "" x) in
           Ocsigen_messages.errlog (Printf.sprintf "%s =?= %s" (canon v) (canon x));
           if canon v = canon x then (succ m, succ o) else (m, succ o)
         ) (0, 0) xs vs
