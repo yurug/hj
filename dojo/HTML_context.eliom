@@ -26,13 +26,14 @@ let update_if_necessary =
       CORE_answer.submit answer checkpoint s
     in
     (* FIXME: Make this literal a parameter! *)
+    let old = 1200. in
     Ocsigen_messages.errlog (Printf.sprintf "Update %f?" (now -. d));
-    if now -. d > 120000. then
+    if now -. d > old then
       CORE_answer.make answer_id >>= function
         | `OK answer -> (
           try_lwt
             let time = Hashtbl.find relaunched (answer_id, checkpoint) in
-            if now -. time > 120000. then relaunch answer else return ()
+            if now -. time > old then relaunch answer else return ()
           with Not_found -> relaunch answer
         )
         | `KO _ -> (* FIXME: handle error. *) return ()
