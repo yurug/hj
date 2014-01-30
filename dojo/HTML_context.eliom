@@ -74,7 +74,7 @@ let display_score answer_id checkpoint context evaluation =
       )
       in
       fun d ->
-        let cs = checkpoint ^ " " in
+        let cs = %checkpoint ^ " " in
         CORE_evaluation.(
           match COMMON_pervasives.opt_assoc %checkpoint d.jobs with
             | Some Unevaluated ->
