@@ -241,3 +241,5 @@ module LocalCache : sig
 end
 
 }}
+
+val string_of_date : float -> string

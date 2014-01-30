@@ -444,7 +444,7 @@ let display_master_view master exo checkpoint context =
                       return (CORE_context.string_of_score ctx s)
                     | Some (BeingEvaluated (_, d, s, _, _)) ->
                       update_if_necessary answer_id checkpoint (d, s)
-                      >> return "..."
+                      >> return ("En cours depuis " ^ string_of_date d)
             )
             in
             let display author =

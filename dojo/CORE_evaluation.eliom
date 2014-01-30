@@ -63,12 +63,8 @@ let string_of_evaluation_state = function
     Printf.sprintf "Evaluated with score %s"
       (CORE_context.string_of_score ctx score)
   | BeingEvaluated (job, start, _, _, _) -> Unix.(
-    let d = localtime start in
-    let date = Printf.sprintf "%04d/%02d/%02d %02d:%02d:%02d"
-      d.tm_year d.tm_mon d.tm_mday
-      d.tm_hour d.tm_min d.tm_sec
-    in
-    Printf.sprintf "Being evaluated by job %s since %s" (string_of_job job) date
+    Printf.sprintf "Being evaluated by job %s since %s"
+      (string_of_job job) (string_of_date start)
   )
 
 {client{
