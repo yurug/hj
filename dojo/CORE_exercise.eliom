@@ -386,7 +386,7 @@ let export_as_pdf e authors =
     | Some (`OK v) -> (
       let atomic_to_latex = function
         | Statement s -> CORE_statement.LaTeX.to_latex s
-        | CheckpointContext (_, c) -> CORE_context.LaTeX.to_latex c
+        | CheckpointContext (cp, c) -> CORE_context.LaTeX.to_latex cp c
       in
       let body = String.concat "\n" (List.map atomic_to_latex v) in
       let document = Printf.sprintf "

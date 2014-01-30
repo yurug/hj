@@ -327,8 +327,9 @@ module LaTeX = struct
   let escape = escape_wrt all_escaped_characters
 
 
-  let to_latex c =
-    match get_answer_form c with
+  let to_latex checkpoint c =
+    checkpoint ^ ":\n\n\\noindent" ^
+      match get_answer_form c with
       | Some (`KeyValues cs) ->
         let row k = Printf.sprintf "%s &:& \\hspace{5cm} \\\\" (escape k) in
         Printf.sprintf
