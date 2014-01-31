@@ -136,6 +136,7 @@ end)
     >>>= (fun () -> CORE_vfs.latest (metafile path))
     >>>= fun latest_version -> CORE_vfs.read latest_version
     >>>= fun raw ->
+    Ocsigen_messages.errlog ("Loading metafile for " ^ string_of_identifier id);
     let vd = from_string Json.t<versioned_data> raw in
     if vd.version = D.current_version then (
       let meta = from_string Json.t<D.data meta> vd.content in
