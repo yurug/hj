@@ -135,7 +135,9 @@ let reactive_div ?condition es after_display get display  =
       )
     in
 
-    let refresh () =
+    let retry_count = ref 10 in
+
+    let rec refresh () =
       try_lwt
         let p1 = get_progress () in
         let p2 = get_progress () in
@@ -161,10 +163,18 @@ let reactive_div ?condition es after_display get display  =
               )
         in
         flush true
-      with e -> Lwt.return (
-        Firebug.console##log (
-          Js.string ("Exn1..." ^ Printexc.to_string e))
-      )
+      with
+        | e ->
+          if !retry_count = 0 then (
+            Firebug.console##log (
+              "Sorry. Too many networking problem :" ^ Printexc.to_string e
+            );
+            Lwt.return ()
+          )
+          else (
+            decr retry_count;
+            refresh ()
+          )
     in
 
     refresh () >>
