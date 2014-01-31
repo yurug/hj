@@ -69,7 +69,8 @@ let reaction_window = 60. *. 1000.
         return ()
     in
     Lwt.async (fun () ->
-      Lwt_stream.iter_s reaction all
+      Lwt_stream.iter_s reaction all >>
+        return (Firebug.console##log (Js.string "You should never see this (CCR)."))
     )
 
   let react_on_background = react
