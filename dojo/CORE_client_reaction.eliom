@@ -38,6 +38,7 @@ let reaction_window = 60. *. 1000.
             | None ->
               return ()
             | Some c ->
+              Firebug.console##log (Js.string "Waiting for trigger.");
               Lwt_mvar.take c >> (
                 last_trigger := Some (now ());
                 return ()
