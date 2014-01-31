@@ -32,6 +32,7 @@ let reaction_window = 60. *. 1000.
       let now () = Js.to_float (jsnew Js.date_now ())##getTime () in
       let last_trigger = ref None in
       fun x ->
+        Firebug.console##log (Js.string "Get a push.");
         try_lwt
         let watch_condition () =
           match condition with
