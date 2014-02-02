@@ -99,7 +99,10 @@ module LaTeX = struct
     | ILaTeX -> false, fun cs -> ["$"; text cs; "$" ]
     | Verb ->
       (* FIXME: check ! in cs. *)
-      false, fun cs -> ["\\verb!"; text cs; "!" ]
+      false, fun cs ->
+        let text = text cs in
+        let text = Str.(global_replace (regexp "\n") " " text) in
+        ["\\verb!"; text; "!" ]
     | _ -> assert false
 
   let rec to_latex escape_flag = function
