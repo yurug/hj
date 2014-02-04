@@ -396,7 +396,7 @@ and type change = I.change
 
   and save_on_disk e =
     (* FIXME: 60. must be a parameter. *)
-    if (timestamp e.description) -. e.last_save >= 0.
+    if (timestamp e.description) <> e.last_save
       && Unix.gettimeofday () -. e.last_save >= 60. then begin
       e.last_save <- timestamp e.description;
       OTD.save e.description
