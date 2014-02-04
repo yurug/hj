@@ -25,7 +25,7 @@ let update_if_necessary =
       CORE_answer.submit answer checkpoint s
     in
     (* FIXME: Make this literal a parameter! *)
-    let old = 1200. in
+    let old = 180. in
     if now -. d > old then
       CORE_answer.make answer_id >>= function
         | `OK answer -> (
