@@ -210,13 +210,15 @@ include CORE_entity.Make (struct
 
           match ticket_turn wl ticket with
             | Expired ->
-            (** This ticket has expired. *)
+              (** This ticket has expired. *)
               Ocsigen_messages.errlog ("Expired ticket");
               no_sandbox ();
               return (set_wl addr (delete_ticket wl ticket) content)
 
             | Waiting rank ->
-              Ocsigen_messages.errlog ("Waiting...");
+              Ocsigen_messages.errlog (
+                Printf.sprintf "Waiting (rank %d) (%s)" rank (string_of_wl wl)
+              );
               (** We still have to wait. Publish the rank... *)
               put_on_wait addr rank ticket;
               return content
