@@ -100,7 +100,7 @@ let ticket_turn wl t =
     if idx < capacity wl then
       Active (allocate_resource wl t)
     else
-      Waiting (capacity wl - idx + 1)
+      Waiting (idx - capacity wl + 1)
   with Not_found ->
     Expired
 
