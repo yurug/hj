@@ -247,8 +247,7 @@ let create_job
         ) >>= function
           | `OK (job, _) ->
             return (Some (ExecutableJob job))
-          | `KO e ->
-     (* FIXME *) warn e; return None
+          | `KO e -> (* FIXME *) warn e; return None
   )
 
 let cancel_job_if_present job =
@@ -259,16 +258,18 @@ let evaluate change_later exercise answer cps data authors =
   let answer_id = CORE_answer.identifier answer in
   let authors_ids = List.map CORE_user.identifier authors in
   let evaluate idx checkpoint current_state =
-    let run_submission_evaluation c s =
+    let rec run_submission_evaluation retry c s =
       create_job exercise answer_id checkpoint c s change_later authors
       >>= function
         | Some job ->
           Ocsigen_messages.errlog "Executable job created.";
           return (BeingEvaluated (job, now (), s, CORE_diagnostic.Empty, c))
         | None ->
-           (* FIXME: transmission error. *)
-          Ocsigen_messages.errlog "Transmission error";
-          return (Evaluated ([], s, CORE_diagnostic.Empty, c))
+          if retry = 0 then (
+            Ocsigen_messages.errlog "Error during evaluation.";
+            return (Evaluated ([], s, CORE_diagnostic.Empty, c))
+          ) else
+            run_submission_evaluation (pred retry) c s
     in
     begin CORE_answer.submission_of_checkpoint answer checkpoint >>= function
       | None | Some NoSubmission ->
@@ -317,7 +318,7 @@ let evaluate change_later exercise answer cps data authors =
               in
               if is_new_context || is_new_submission || too_old then
                 cancel_job_if_present job
-                >>= fun _ -> run_submission_evaluation c s
+                >>= fun _ -> (* FIXME: 3 must be a parameter. *) run_submission_evaluation 3 c s
               else
                 return current_state
         end
