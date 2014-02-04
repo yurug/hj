@@ -125,6 +125,7 @@ let sandboxing command release_flag s limitations (observer : _ -> unit Lwt.t) =
 
     | CORE_machinist.ObserveMessage msg ->
       observer (WriteStderr (job, msg))
+      >> (if release_flag then s.CORE_machinist.release () else return ())
       >>= fun _ -> observer (Exited (Unix.WEXITED (-1)))
   in
   lwt canceler = command ?timeout observer s in
