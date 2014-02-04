@@ -8,6 +8,8 @@ open Lwt_process
 open COMMON_log
 open COMMON_pervasives
 
+let default_timeout = 700.
+
 let ( @@ ) at c = Printf.sprintf "(cd %s && %s)" at c
 
 type command = Lwt_process.command * string
@@ -25,20 +27,28 @@ let string_of_process_status = function
 
 let pread ?(lraise=small_jump) c =
   try_lwt
-    strace (pread ~stdin:`Dev_null ~stderr:`Dev_null) c
+    strace (pread ~timeout:default_timeout ~stdin:`Dev_null ~stderr:`Dev_null) c
   with _ ->
     (lraise @* (`SystemError "pread"))
     @| (fun () -> return "(null)")
 
 let pread_lines ?(lraise=small_jump) c =
   try_lwt
-    return (strace (pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c)
+    return (strace (
+      pread_lines ~timeout:default_timeout ~stdin:`Dev_null ~stderr:`Dev_null) c
+    )
   with _ ->
     (lraise @* (`SystemError "pread_lines"))
     @| (fun () -> return (Lwt_stream.of_list []))
 
 let blind_exec c =
-  strace (exec ~stdin:`Dev_null ~stdout:`Dev_null ~stderr:`Dev_null) c
+  strace (
+    exec
+      ~timeout:default_timeout
+      ~stdin:`Dev_null
+      ~stdout:`Dev_null
+      ~stderr:`Dev_null
+  ) c
 
 let success ?(lraise=small_jump) c =
   blind_exec c

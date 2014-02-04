@@ -118,7 +118,8 @@ let sandboxing command release_flag s limitations (observer : _ -> unit Lwt.t) =
       on_line p#stdout (fun l -> observer (WriteStdout (job, l)));
       on_line p#stderr (fun l -> observer (WriteStderr (job, l)));
       lwt status = p#status in
-      (if release_flag then s.CORE_machinist.release () else return ())
+      p#close
+      >> (if release_flag then s.CORE_machinist.release () else return ())
       >>= fun _ -> (
         observer (Exited status)
       )
