@@ -327,7 +327,6 @@ let display_context exo_id answer_id checkpoint context evaluation =
 let display_master_view master exo checkpoint context =
   lwt all_answers = CORE_answer.answers_of_exercise exo in
   let get =
-    let cache = ref None in
     fun () ->
       lwt all_answers = CORE_answer.answers_of_exercise exo in
       lwt all_answers =
@@ -577,16 +576,12 @@ let display_master_view master exo checkpoint context =
               return (Dom_html.window##location##assign (Js.string u))
           )}}
       in
-      let result = (
+      return [
         e :: [p [pcdata ""]; statistics; p [pcdata ""]] @ (
           if !files = [] then [] else [
             div [ download_all_files ]
-          ]))
-      in
-      if !cache = Some result then return [] else (
-        cache := Some result;
-        return [result]
-      )
+          ])
+      ]
   in
   let rdiv = server_function Json.t<unit> (fun () ->
     lwt answers =

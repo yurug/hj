@@ -145,8 +145,9 @@ let reactive_div
   let ids = String.concat " " ids in
 
   (** Producer. *)
+  let sget = streamed get in
   let remote_get : (unit, 'a p) server_function =
-    server_function Json.t<unit> (streamed get)
+    server_function Json.t<unit> sget
   in
   let onload = {{ fun _ ->
     Lwt.async (fun () ->
