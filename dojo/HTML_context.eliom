@@ -53,10 +53,7 @@ let display_score answer_id checkpoint context evaluation =
       | Some _ ->
         None, None
       | None ->
-        let condition = {unit Lwt_mvar.t{ Lwt_mvar.create_empty () }} in
-        Some condition, Some {{ fun () ->
-          Lwt_mvar.put %condition ()
-        }}
+        None, None
   in
   let update_if_necessary = update_if_necessary_rpc answer_id checkpoint in
   let diagnostic = div [] in

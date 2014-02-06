@@ -94,8 +94,46 @@ let get_progress () =
   Eliom_comet.Configuration.set_always_active config
 }}
 
-let reactive_div ?condition es after_display get display  =
-  let elt = div ~a:[a_class ["reactive"]] [get_progress ()] in
+{shared{
+type 'a p =
+  | NoChange
+  | BOS
+  | EOS
+  | Data of 'a
+deriving (Json)
+}}
+
+let streamed get =
+  let cache = ref None in
+  let buffer = ref `Closed in
+  fun () ->
+    try_lwt
+      lwt result = match !buffer with
+        | `Closed ->
+          lwt data = get () in
+          if !cache = Some data then
+            return NoChange
+          else (
+            buffer := `Producing data;
+            cache := Some data;
+            return BOS
+          )
+        | `Producing [] ->
+          buffer := `Closed;
+          return EOS
+        | `Producing (x :: xs) ->
+          buffer := `Producing xs;
+          return (Data x)
+      in
+      return result
+    with e ->
+      Ocsigen_messages.errlog (("Exn2..." ^ Printexc.to_string e));
+      return EOS
+
+let reactive_div
+    ?condition es after_display (get : unit -> 'a list Lwt.t) display
+=
+  let eid = Id.new_elt_id () in
   let e_channels = CORE_entity.(
     List.map (function (SomeEntity e) -> channel e) es
   )
@@ -105,102 +143,122 @@ let reactive_div ?condition es after_display get display  =
   )
   in
   let ids = String.concat " " ids in
-  let remote_get = server_function Json.t<unit> (
-    let buffer = ref None in
-    fun () ->
-      match !buffer with
-        | None ->
-          (get () >>= function
-            | [] ->
-              return None
-            | x :: xs ->
-              buffer := Some xs;
-              return (Some x))
-        | Some [] ->
-          buffer := None;
-          return None
-        | Some (x :: xs) ->
-          buffer := Some xs;
-          return (Some x)
+
+  (** Producer. *)
+  let remote_get : (unit, 'a p) server_function =
+    server_function Json.t<unit> (streamed get)
+  in
+  let onload = {{ fun _ ->
+    Lwt.async (fun () ->
+      let process data =
+        try_lwt
+          lwt cs = %display data in
+          List.iter (Eliom_content.Html5.Manip.Named.appendChild %eid) cs;
+          return ()
+        with e -> Lwt.return (
+          Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
+        )
+      in
+
+      let retry_count = ref 10 in
+
+      let rec refresh () =
+        try_lwt
+          let p = get_progress () in
+          let rec flush () =
+            %remote_get () >>= function
+              | NoChange ->
+                return ()
+
+              | BOS ->
+                Eliom_content.Html5.Manip.Named.replaceAllChild %eid [p];
+                flush ()
+
+              | Data x ->
+                process x >> flush ()
+
+              | EOS ->
+                Eliom_content.Html5.Manip.Named.removeChild %eid p;
+                Lwt.return (
+                  match %after_display with
+                    | Some f -> f ()
+                    | None -> ()
+                )
+          in
+          flush ()
+        with
+          | e ->
+            if !retry_count = 0 then (
+              Firebug.console##log (
+                "Sorry. Too many networking problem :" ^ Printexc.to_string e
+              );
+              Lwt.return ()
+            )
+            else (
+              Firebug.console##log (
+                "Retrying because of :" ^ Printexc.to_string e
+              );
+              decr retry_count;
+              refresh ()
+            )
+      in
+
+      let visible = ref false in
+
+      let get_visible () =
+        visible := true;
+        refresh ()
+      in
+
+      (* FIXME: Move this to HTML_widget. *)
+      let is_visible () =
+        let elt = Id.get_element %eid in
+        let delt = To_dom.of_element elt in
+        let b = delt##getBoundingClientRect () in
+        let wh = Js.Optdef.case (Dom_html.window##innerHeight)
+          (fun () -> Dom_html.document##documentElement##clientHeight)
+          (fun x -> x)
+        in
+        let ww = Js.Optdef.case (Dom_html.window##innerWidth)
+          (fun () -> Dom_html.document##documentElement##clientWidth)
+          (fun x -> x)
+        in
+           b##top    >= Js.float 0.
+        && b##left   >= Js.float 0.
+        && b##bottom <= Js.float (float_of_int wh)
+        && b##top    <= Js.float (float_of_int ww)
+      in
+      let visibility_may_change = Dom.handler (fun _ ->
+        if is_visible () then (
+          if not !visible then Lwt.async get_visible
+        )
+        else (
+          if !visible then visible := false
+        );
+        Js._true
+      ) in
+
+      Lwt.async (fun () ->
+        return (List.iter (fun e -> ignore (
+          Dom.addEventListener Dom_html.window (Dom.Event.make e)
+            visibility_may_change Js._false
+        )) [ "scroll"; "resize"; "DOMContentLoaded" ])
+      );
+
+      refresh () >> return (
+        CORE_client_reaction.react_on_background ?condition:%condition
+          (%ids ^ " " ^ Js.to_string (Obj.magic %eid))
+          %e_channels (
+          function
+             | CORE_entity.HasChanged ->
+               if is_visible () then refresh () else return ()
+             | CORE_entity.MayChange ->
+               Lwt.return ()
+             )))
+        }}
+  in
+  let elt = Id.create_named_elt ~id:eid (
+    div ~a:[a_class ["reactive"]; a_onload onload] [get_progress ()]
   )
   in
-  ignore {unit{Lwt.async (fun () ->
-
-    let process data =
-      try_lwt
-        lwt cs = %display data in
-        return (List.iter (Eliom_content.Html5.Manip.appendChild %elt) cs);
-      with e -> Lwt.return (
-        Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
-      )
-    in
-
-    let retry_count = ref 10 in
-
-    let rec refresh () =
-      try_lwt
-        Firebug.console##log (Js.string ("Refresh " ^ %ids));
-        let p1 = get_progress () in
-        let p2 = get_progress () in
-        let rec flush flag =
-          if flag then (
-            Eliom_content.Html5.Manip.appendChild %elt p1;
-          );
-          %remote_get () >>= function
-            | Some x ->
-              if flag then Eliom_content.Html5.Manip.replaceAllChild %elt [p2];
-              process x >> flush false
-            | None ->
-              (** [flag] and [None] means NoChange. *)
-              if flag then
-                Eliom_content.Html5.Manip.removeChild %elt p1
-              else
-                Eliom_content.Html5.Manip.removeChild %elt p2;
-              if flag then Lwt.return () else
-              Lwt.return (
-                match %after_display with
-                  | Some f -> f ()
-                  | None -> ()
-              )
-        in
-        flush true
-      with
-        | e ->
-          if !retry_count = 0 then (
-            Firebug.console##log (
-              "Sorry. Too many networking problem :" ^ Printexc.to_string e
-            );
-            Lwt.return ()
-          )
-          else (
-            decr retry_count;
-            refresh ()
-          )
-    in
-
-    refresh () >>
-
-    let bench label f =
-      lwt start = return (Js.to_float (jsnew Js.date_now ())##getTime ()) in
-      lwt y = f () in
-      return (
-        let stop = Js.to_float (jsnew Js.date_now ())##getTime () in
-        Firebug.console##log (Js.string (Printf.sprintf "%s in %f ms."
-                                           label
-                                           (stop -. start)));
-        y
-      )
-    in
-    return (
-      CORE_client_reaction.react_on_background ?condition:%condition
-              %ids
-              %e_channels (
-      function
-        | CORE_entity.HasChanged ->
-          refresh ()
-        | CORE_entity.MayChange ->
-          Lwt.return ()
-    ))
-    )
-  }};
   return elt

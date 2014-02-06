@@ -13,11 +13,11 @@ type reaction
 
 {client{
 val react
-  : ?condition:unit Lwt_mvar.t
+  : ?condition:(unit -> unit Lwt.t)
   -> string
   -> 'a c list -> ('a -> unit Lwt.t) -> reaction
 val react_on_background
-  : ?condition:unit Lwt_mvar.t
+  : ?condition:(unit -> unit Lwt.t)
   -> string
   -> 'a c list -> ('a -> unit Lwt.t) -> reaction
 }}

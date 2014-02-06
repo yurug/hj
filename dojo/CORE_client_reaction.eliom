@@ -30,29 +30,30 @@ let reaction_window = 60. *. 1000.
 
     let reaction =
       let now () = Js.to_float (jsnew Js.date_now ())##getTime () in
+      (** We store the last time the user made this reaction active. *)
       let last_trigger = ref None in
+
       fun x ->
-        Firebug.console##log (Js.string "Get a push.");
         try_lwt
-        let watch_condition () =
-          match condition with
-            | None ->
-              return ()
-            | Some c ->
-              Firebug.console##log (Js.string "Waiting for trigger.");
-              Lwt_mvar.take c >> (
-                last_trigger := Some (now ());
+          let watch_condition () =
+            match condition with
+              | None ->
+                (** No condition means that the reaction must always be
+                    active. *)
                 return ()
-              )
+              | Some c ->
+                (** There is a condition to be active. *)
+                c () >> return (last_trigger := Some (now ()))
         in
         let continue () =
           match !last_trigger with
             | None ->
               watch_condition ()
             | Some date ->
-              if now () -. date < %reaction_window then
+              (** The reaction stays active during %reaction_window seconds. *)
+              if now () -. date < %reaction_window then (
                 return ()
-              else (
+              ) else (
                 last_trigger := None;
                 watch_condition ()
               )
@@ -70,7 +71,7 @@ let reaction_window = 60. *. 1000.
     in
     Lwt.async (fun () ->
       Lwt_stream.iter_s reaction all >>
-        return (Firebug.console##log (Js.string "You should never see this (CCR)."))
+        return (Firebug.console##log (Js.string "You should never see this."))
     )
 
   let react_on_background = react
