@@ -10,6 +10,9 @@ open CORE_errors
 let string_of_position p =
   Printf.sprintf "line %d, characters %d" p.line p.character
 
+let string_of_position' p1 p2 =
+  Printf.sprintf "line %d, characters %d-%d" p1.line p1.character p2.character
+
 let string_of_error : [< CORE_errors.all ] -> string = function
   | `SystemError e ->
     "System: " ^ e
@@ -28,8 +31,7 @@ let string_of_error : [< CORE_errors.all ] -> string = function
   | `NoSuchSandbox ->
     I18N.String.no_such_sandbox
   | `SyntaxError (start, stop, msg) ->
-    string_of_position start ^ ", "
-    ^ string_of_position stop ^ ": " ^ msg
+    string_of_position' start stop ^ ": " ^ msg
   | `TypeError (p, msg) ->
     I18N.String.type_error (string_of_position p) msg
   | `NeedAnnotation p ->

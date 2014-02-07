@@ -498,10 +498,8 @@ let register_update result_eref ~service =
     (fun () (id, content) ->
       lwt result = make (identifier_of_string id) >>= function
         | `OK e ->
-          Ocsigen_messages.errlog ("Received update for " ^ id);
           update e content
         | `KO e ->
-          Ocsigen_messages.errlog ("Failed update for " ^ id);
           return (`KO e)
       in
       Eliom_reference.set result_eref result
