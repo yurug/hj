@@ -14,10 +14,6 @@ type reaction = unit
     the server. Once a background reaction has been triggered,
     it is active during the following time. *)
 
-(* FIXME: This should probably be a configuration parameter
-   FIXME: or a function parameter... *)
-let reaction_window = 60. *. 1000.
-
 (** Given a process [p] being executed on the server side, we want to
     get a process on the client side that reacts to every signal
     emitted by [p] to denote its update. This update is described
@@ -29,45 +25,13 @@ let reaction_window = 60. *. 1000.
     let all = Lwt_stream.choose channels' in
 
     let reaction =
-      let now () = Js.to_float (jsnew Js.date_now ())##getTime () in
-      (** We store the last time the user made this reaction active. *)
-      let last_trigger = ref None in
-
       fun x ->
         try_lwt
-          let watch_condition () =
-            match condition with
-              | None ->
-                (** No condition means that the reaction must always be
-                    active. *)
-                return ()
-              | Some c ->
-                (** There is a condition to be active. *)
-                c () >> return (last_trigger := Some (now ()))
-        in
-        let continue () =
-          match !last_trigger with
-            | None ->
-              watch_condition ()
-            | Some date ->
-              (** The reaction stays active during %reaction_window seconds. *)
-              if now () -. date < %reaction_window then (
-                return ()
-              ) else (
-                last_trigger := None;
-                watch_condition ()
-              )
-        in
-        (try_lwt
-           reaction x
-         with e ->
-           return (
-             Firebug.console##log (Js.string ("react:" ^ Printexc.to_string e))
-           )
-        ) >> continue ()
-      with e ->
-        Firebug.console##log (Js.string ("react':" ^ Printexc.to_string e));
-        return ()
+          reaction x
+        with e ->
+          return (
+            Firebug.console##log (Js.string ("react:" ^ Printexc.to_string e))
+          )
     in
     Lwt.async (fun () ->
       Lwt_stream.iter_s reaction all >>

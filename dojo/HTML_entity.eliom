@@ -134,8 +134,8 @@ let reactive_div
     ?condition es after_display (get : unit -> 'a list Lwt.t) display
 =
   let eid = Id.new_elt_id () in
-  let e_channels = CORE_entity.(
-    List.map (function (SomeEntity e) -> channel e) es
+  lwt e_channels = CORE_entity.(
+    Lwt_list.map_s (function (SomeEntity e) -> channel e) es
   )
   in
   let ids = CORE_entity.(
@@ -165,11 +165,9 @@ let reactive_div
 
       let rec refresh () =
         try_lwt
-          Firebug.console##log (Js.string ("Refresh " ^ %ids));
           let p = get_progress () in
           let rec flush () =
-            Firebug.console##log (Js.string ("Remote get " ^ %ids));
-            %remote_get () >>= functionclear ()
+            %remote_get () >>= function
 
               | NoChange ->
                 return ()
@@ -255,7 +253,6 @@ let reactive_div
           %e_channels (
           function
              | CORE_entity.HasChanged ->
-               Firebug.console##log (Js.string ("Haschanged " ^ %ids));
                if is_visible () then refresh () else return ()
              | CORE_entity.MayChange ->
                Lwt.return ()

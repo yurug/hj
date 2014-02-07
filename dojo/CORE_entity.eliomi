@@ -89,7 +89,7 @@ type event =
 type some_t = SomeEntity : ('a, 'c) t -> some_t
 
 (** On the client side, we can react to every change. *)
-val channel: ('a, 'c) t -> event Eliom_comet.Channel.t
+val channel: ('a, 'c) t -> event Eliom_comet.Channel.t Lwt.t
 
 val identifier: ('a, 'c) t -> CORE_identifier.t
 

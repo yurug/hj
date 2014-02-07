@@ -32,8 +32,6 @@ let rec normalize = function
   | "" :: "" :: ls -> normalize ("" :: ls)
   | x :: ls -> x :: normalize ls
 
-let pcompare x y = compare x y
-
 type identifier = path deriving (Json)
 
 type t = identifier deriving (Json)
@@ -79,6 +77,8 @@ let ( /// ) p ps = List.fold_left ( // ) p ps
 
 let string_of_path p = "" /// p
 
+let pcompare x y = compare (string_of_path x) (string_of_path y)
+
 let identifier_of_path path = path
 
 let path_of_identifier path = path
@@ -100,7 +100,7 @@ module Compare = struct
   let compare = compare
 end
 
-let hash = Hashtbl.hash
+let hash k = Hashtbl.hash (string_of_path k)
 
 module Set = Set.Make (Compare)
 

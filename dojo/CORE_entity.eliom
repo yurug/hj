@@ -107,7 +107,8 @@ end)
 
 module IdHashtbl = struct
   include Hashtbl.Make (CORE_identifier)
-  let get h k = try Some (find h k) with Not_found -> None
+  let get h k =
+    try Some (find h k) with Not_found -> None
 end
 
 module Watchers = IdHashtbl
@@ -154,16 +155,17 @@ let propagate_change id =
 (** [channel e] gives a device for client-side code to be notified
     each time [e] is changed. *)
 let table = Hashtbl.create 13
+
 let channel e =
   let eid = identifier e in
-  try
-    Hashtbl.find table eid
+  try_lwt
+    return (Hashtbl.find table eid)
   with Not_found ->
     let c =
-      Eliom_comet.Channel.create_newest e.channel
+      Eliom_comet.Channel.create ~scope:Eliom_common.site_scope e.channel
     in
     Hashtbl.add table eid c;
-    c
+    return c
 
 (* *********************** *)
 (*  Instantiation functor  *)
@@ -262,6 +264,18 @@ and type change = I.change
   let (loaded, load, iter_on_pool) =
     let pool = IdHashtbl.create 13 in
     (IdHashtbl.get pool, IdHashtbl.add pool, fun f -> IdHashtbl.iter f pool)
+
+  let loaded id =
+    let r = loaded id in
+    Ocsigen_messages.errlog (Printf.sprintf "Loaded %s? %B %d"
+                               (string_of_identifier id)
+                               (r <> None) (Unix.getpid ()));
+    r
+
+  let load id e =
+    Ocsigen_messages.errlog (Printf.sprintf "Mark as loaded %s (%d)"
+                               (string_of_identifier id) (Unix.getpid ()));
+    load id e
 
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
@@ -390,6 +404,7 @@ and type change = I.change
                 warn error;
                 return (e.description <- old)
               | `OK _ -> savelog e cs >>= fun _ ->
+                Ocsigen_messages.errlog ("Push " ^ string_of_identifier (identifier e));
                 e.push HasChanged;
                 return ()
           ) >>= fun () -> return (propagate_change (identifier e))
