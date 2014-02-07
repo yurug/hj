@@ -40,6 +40,7 @@ let editor_div (e : CORE_exercise.t) authors =
 
   let id = CORE_exercise.identifier e in
   lwt init = raw_user_description_source id in
+  let state = ref (CORE_source.content init) in
 
   let client_change =
     {{ fun echo (s : string) ->
@@ -61,14 +62,22 @@ let editor_div (e : CORE_exercise.t) authors =
   in
   let server_change =
     (server_function Json.t<editor_intermediate_result> (
+      let check_write_in_between () =
+        lwt current = raw_user_description_source id in
+        return (CORE_source.content current <> !state)
+      in
       let change cst =
-        change_from_user_description e cst
-        >>= fun _ -> observe e (fun d -> return d)
-        >>= fun _ -> return []
+        check_write_in_between () >>= function
+          | true ->
+            return [HTML_editor.Message I18N.String.please_reload_the_page]
+          | false ->
+            state := fst cst;
+            change_from_user_description e cst
+            >>= fun _ -> observe e (fun d -> return d)
+            >>= fun _ -> return []
       in
       function
       | RCst cst ->
-        Ocsigen_messages.errlog "Change user description";
         change cst
       | RStr s ->
         match CORE_description_format.exercise_of_string s with

@@ -265,18 +265,6 @@ and type change = I.change
     let pool = IdHashtbl.create 13 in
     (IdHashtbl.get pool, IdHashtbl.add pool, fun f -> IdHashtbl.iter f pool)
 
-  let loaded id =
-    let r = loaded id in
-    Ocsigen_messages.errlog (Printf.sprintf "Loaded %s? %B %d"
-                               (string_of_identifier id)
-                               (r <> None) (Unix.getpid ()));
-    r
-
-  let load id e =
-    Ocsigen_messages.errlog (Printf.sprintf "Mark as loaded %s (%d)"
-                               (string_of_identifier id) (Unix.getpid ()));
-    load id e
-
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
   let rec wakeup id reaction =

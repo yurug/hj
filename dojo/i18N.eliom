@@ -308,6 +308,9 @@ module Fr : I18N_sig.Text = struct
   let provided_file =
     "Fichier fourni avec le sujet."
 
+  let please_reload_the_page =
+    "Veuillez recharger la page, s'il vous plait."
+
 end
 
 module String = (val

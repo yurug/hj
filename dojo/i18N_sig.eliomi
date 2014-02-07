@@ -117,6 +117,7 @@ sig
   val wait_for_master_evaluation : string
   val access_denied : string
   val provided_file : string
+  val please_reload_the_page : string
 end
 
 }}
