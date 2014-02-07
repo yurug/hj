@@ -3,9 +3,7 @@
 (** Errors. *)
 {shared{
 
-type position =
-    { filename : string; line : int; character : int }
-deriving (Json)
+type position = { line : int; character : int } deriving (Json)
 
 val from_lexing_position : Lexing.position -> position
 

@@ -3,22 +3,15 @@
 (** Errors. *)
 {shared{
 
-type position = {
-  filename : string;
-  line : int;
-  character : int
-} deriving (Json)
+type position = { line : int; character : int } deriving (Json)
 
 let from_lexing_position p =
-  {
-    filename  = p.Lexing.pos_fname;
-    line      = p.Lexing.pos_lnum;
+  { line      = p.Lexing.pos_lnum;
     character = p.Lexing.pos_cnum - p.Lexing.pos_bol;
   }
 
 let to_lexing_position p = Lexing.(
   { dummy_pos with
-    pos_fname = p.filename;
     pos_lnum = p.line;
     pos_cnum = 0;
     pos_bol = p.character
