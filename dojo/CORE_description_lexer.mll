@@ -17,6 +17,12 @@
     Lexing.new_line lexbuf;
     f lexbuf
 
+  let count_next_line_and s f lexbuf =
+    if String.contains s '\n' then
+      next_line_and f lexbuf
+    else
+      f lexbuf
+
   let raw_string lexbuf chunk =
     Lexing.(CORE_description_CST.lexing_locate
               lexbuf.lex_start_p lexbuf.lex_curr_p (
@@ -77,24 +83,23 @@ rule main = parse
   INT (int_of_string x)
 }
 
-| "[[" | "[[\n" {
+| ("[[" | "[[\n") as s {
  let p = lexbuf.Lexing.lex_curr_p in
-  let token = flatraw (Buffer.create 13) 0 lexbuf in
-  lexbuf.lex_start_p <- p;
-  token
+ let token = count_next_line_and s (flatraw (Buffer.create 13) 0) lexbuf in
+ lexbuf.lex_start_p <- p;
+ token
 }
 
-| "\"" | "\"\n" {
- let p = lexbuf.Lexing.lex_curr_p in
-  let token = flatstring (Buffer.create 13) 0 lexbuf in
-  lexbuf.lex_start_p <- p;
-  token
-}
-
-
-| "[" | "[\n"                           {
+| ("\"" | "\"\n") as s {
   let p = lexbuf.Lexing.lex_curr_p in
-  let token = raw (Buffer.create 13) [] 0 lexbuf in
+  let token = count_next_line_and s (flatstring (Buffer.create 13) 0) lexbuf in
+  lexbuf.lex_start_p <- p;
+  token
+}
+
+| ("[" | "[\n") as s {
+  let p = lexbuf.Lexing.lex_curr_p in
+  let token = count_next_line_and s (raw (Buffer.create 13) [] 0) lexbuf in
   lexbuf.lex_start_p <- p;
   token
 }
@@ -115,7 +120,7 @@ rule main = parse
 }
 
 and raw chunk template level = parse
-  | "]" | "\n]" {
+  | ("]" | "\n]") as s {
     if level = 0 then
       RAW (List.rev (Raw (raw_string lexbuf chunk) :: template))
     else (
@@ -129,10 +134,10 @@ and raw chunk template level = parse
             template
           )
       in
-      raw chunk template (level - 1) lexbuf
+      count_next_line_and s (raw chunk template (level - 1)) lexbuf
     )
   }
-  | "[" | "[\n" {
+  | ("[" | "[\n") as s {
     let template =
       if level = 0 then
         let atom = Raw (raw_string lexbuf chunk) in (
@@ -144,7 +149,7 @@ and raw chunk template level = parse
         template
       )
     in
-    raw chunk template (level + 1) lexbuf
+    count_next_line_and s (raw chunk template (level + 1)) lexbuf
   }
   | "\\[" {
     Buffer.add_char chunk '[';
@@ -186,7 +191,7 @@ and textblock chunk template templates level = parse
     in
     textblock chunk template templates (level - 1) lexbuf
   }
-  | "[" | "[\n" {
+  | ("[" | "[\n") as s {
     let template =
       if level = 0 then
         let atom = Raw (raw_string lexbuf chunk) in (
@@ -198,7 +203,9 @@ and textblock chunk template templates level = parse
         template
       )
     in
-    textblock chunk template templates (level + 1) lexbuf
+    count_next_line_and s (
+      textblock chunk template templates (level + 1)
+    ) lexbuf
   }
   | "\\[" {
     Buffer.add_char chunk '[';
@@ -236,7 +243,7 @@ and flatraw chunk level = parse
       RAW [Raw (raw_string lexbuf chunk)]
     else (
       Buffer.add_string chunk s;
-      flatraw chunk (level - 1) lexbuf
+      count_next_line_and s (flatraw chunk (level - 1)) lexbuf
     )
   }
   | "[[" {
