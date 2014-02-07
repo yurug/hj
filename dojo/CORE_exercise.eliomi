@@ -122,25 +122,27 @@ val create_service :
 val update_service :
   fallback:('a, unit,
             [ `Attached of
-                ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
+                ([ `Internal of [ `Coservice | `Service ] ],
+                 [ `Get ])
                   Eliom_service.a_s ],
-            [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ],
-            [< Eliom_service.non_ocaml_service ])
+            [< Eliom_service.suff ] as 'b, 'c, unit,
+            [< `Registrable ], [< Eliom_service.non_ocaml_service ])
   Eliom_service.service ->
-  ('a, string * string,
+  ('a, string * Eliom_lib.file_info,
    [> `Attached of
        ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
          Eliom_service.a_s ],
    'b, 'c,
    [ `One of string ] Eliom_parameter.param_name *
-     [ `One of string ] Eliom_parameter.param_name,
+     [ `One of Eliom_lib.file_info ] Eliom_parameter.param_name,
    [< Eliom_service.registrable > `Registrable ],
    [> Eliom_service.http_service ])
     Eliom_service.service
 
 val register_update :
   [> `KO of CORE_errors.all | `OK of unit ] Eliom_reference.eref ->
-  service:(unit, string * string, [< Eliom_service.internal_service_kind ],
+  service:(unit, string * Eliom_lib.file_info,
+           [< Eliom_service.internal_service_kind ],
            [< Eliom_service.suff ], 'a, 'b, [ `Registrable ],
            [< Eliom_service.non_ocaml_service ])
     Eliom_service.service ->

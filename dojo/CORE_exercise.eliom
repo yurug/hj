@@ -489,7 +489,7 @@ let create_service ok_page ko_page =
 let update_service ~fallback =
   Eliom_service.Http.post_service
     ~fallback
-    ~post_params:Eliom_parameter.(string "id" ** string "content")
+    ~post_params:Eliom_parameter.(string "id" ** file "content")
     ()
 
 let register_update result_eref ~service =
@@ -498,7 +498,11 @@ let register_update result_eref ~service =
     (fun () (id, content) ->
       lwt result = make (identifier_of_string id) >>= function
         | `OK e ->
-          update e content
+          (ltry (
+            COMMON_unix.cat content.Ocsigen_extensions.tmp_filename
+           ) >>= function
+            | `OK content -> update e content
+            | `KO e -> return (`KO e))
         | `KO e ->
           return (`KO e)
       in
