@@ -36,7 +36,7 @@ let string_of_error : [< CORE_errors.all ] -> string = function
   | `TypeError (p, msg) ->
     I18N.String.type_error (string_of_position p) msg
   | `NeedAnnotation p ->
-    I18N.String.need_annotation (string_of_position p)``
+    I18N.String.need_annotation (string_of_position p)
   | `UnboundVariable (p, v) ->
     I18N.String.unbound_variable (string_of_position p) v
   | `BadApplication p ->
