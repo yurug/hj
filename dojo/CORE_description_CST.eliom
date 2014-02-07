@@ -110,7 +110,7 @@ and equivalent_terms t1 t2 =
 
 and equivalent_terms' t1 t2 = equivalent_terms t1.node t2.node
 
-let dummy_position = { line = -1; character = -1 }
+let dummy_position = { filename = "this"; line = -1; character = -1 }
 
 let dummy_loc x = { node = x; start = dummy_position; stop = dummy_position }
 
