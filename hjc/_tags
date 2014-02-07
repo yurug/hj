@@ -1,0 +1,2 @@
+<*> : package(threads), package(ocsigenserver), thread
+<*.native> : package(threads), package(ocsigenserver), thread
