@@ -609,7 +609,7 @@ and type change = I.change
           iter_on_pool (fun id e ->
             Lwt.async (fun () -> save_on_disk e >>= fun _ -> return ()))
         )
-        >> Lwt_unix.sleep 60.
+        >> Lwt_unix.sleep 10.
         >> forever ()
       in
       forever ()
