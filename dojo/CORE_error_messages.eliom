@@ -8,10 +8,11 @@ open CORE_identifier
 open CORE_errors
 
 let string_of_position p =
-  Printf.sprintf "line %d, characters %d" p.line p.character
+  Printf.sprintf "File \"\", line %d, characters %d" p.line p.character
 
 let string_of_position' p1 p2 =
-  Printf.sprintf "line %d, characters %d-%d" p1.line p1.character p2.character
+  Printf.sprintf "File \"\", line %d, characters %d-%d"
+    p1.line p1.character p2.character
 
 let string_of_error : [< CORE_errors.all ] -> string = function
   | `SystemError e ->
