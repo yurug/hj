@@ -81,11 +81,28 @@ val login_service :
     Eliom_service.service
 
 val register_login :
+  _ ->
   service:(unit, string * string, [< Eliom_service.internal_service_kind ],
            [< Eliom_service.suff ], 'a, 'b, [ `Registrable ],
            Eliom_registration.http_service)
   Eliom_service.service ->
   unit
+
+val logout_service' :
+    fallback:('a, unit,
+              [ `Attached of
+                  ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
+                  Eliom_service.a_s ],
+              [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ],
+              [< Eliom_service.non_ocaml_service ])
+             Eliom_service.service ->
+    ('a, unit,
+     [> `Attached of
+          ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+          Eliom_service.a_s ],
+     'b, 'c, unit, [< Eliom_service.registrable > `Registrable ],
+     [> Eliom_service.http_service ])
+    Eliom_service.service
 
 val logout_service :
   fallback:(unit, unit,
@@ -103,6 +120,7 @@ val logout_service :
     Eliom_service.service
 
 val register_logout :
+  _ ->
   service:(unit, unit, [< Eliom_service.internal_service_kind ],
            [< Eliom_service.suff ], 'a, 'b, [ `Registrable ],
            Eliom_registration.http_service)

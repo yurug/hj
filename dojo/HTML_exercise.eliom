@@ -184,6 +184,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
   in
   let get =
     fun () ->
+      Ocsigen_messages.errlog "Get exercise for display";
       CORE_exercise.eval_if_needed exo authors >>= fun _ ->
       CORE_exercise.(observe exo (fun d ->
         let c = content d in

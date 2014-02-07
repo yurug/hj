@@ -272,6 +272,7 @@ let rec authenticate u password =
 
 let logout_count = ref 0
 let logout () =
+  Ocsigen_messages.errlog "Logout.";
   incr logout_count;
   Eliom_state.discard ~scope:Eliom_common.default_session_scope ()
   >>= fun _ -> Eliom_reference.set username `NotLogged
@@ -307,7 +308,7 @@ let login_service ~fallback =
     ()
 
 (** Login is an action on the state of the server. *)
-let register_login ~service =
+let register_login _ ~service =
   Eliom_registration.Action.register
     ~service
     (fun () (login, password) ->
@@ -320,6 +321,12 @@ let register_login ~service =
 
 (** Disconnection *)
 
+let logout_service' ~fallback =
+  Eliom_service.Http.post_service
+    ~fallback
+    ~post_params:Eliom_parameter.unit
+    ()
+
 let logout_service ~fallback =
   Eliom_service.Http.coservice
     ~fallback
@@ -329,7 +336,7 @@ let logout_service ~fallback =
 (** [disconnect] is an action on the state of the server
     which also removes the status of being connected
     in the client's state. *)
-let register_logout ~service =
+let register_logout _ ~service =
   Eliom_registration.Action.register
     ~service
     (fun () () ->

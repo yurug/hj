@@ -150,8 +150,9 @@ include CORE_entity.Make (struct
             | Some (qv, _) when qv <> questions ->
               true
             | _ ->
-              false
+              true
         in
+        Ocsigen_messages.errlog (Printf.sprintf "reset value : %B\n" must_reset_value);
         if (not must_reset_value) && questions = content.questions
         then
           return (sources, dependencies, content)
@@ -184,6 +185,7 @@ include CORE_entity.Make (struct
     let cs = push s [] (UpdateSources s) cs in
     let cs = push c (content state) (UpdateContent c) cs in
     let cs = push d (dependencies state) (UpdateDependencies d) cs in
+    if cs = NoUpdate then Ocsigen_messages.errlog "No change in exo";
     return cs
 
 end)
@@ -334,17 +336,29 @@ and change_from_user_description x cr =
     return (CORE_source.content s <> C.raw cr)
   in
   if source_changed then (
+    Ocsigen_messages.errlog "Source changed!";
     change x (UpdateSource cr) >>= fun _ ->
       let cst = C.data cr in
       let questions = questions_from_cst (C.raw cr) x cst in
+      (* FIXME: We should call CORE_questions.TypeCheck here. *)
       lwt changed = changed x questions cst in
-      if changed then
+      if changed then (
+        Ocsigen_messages.errlog "AST changed!";
         change x (Update questions)
-      else
+      ) else
         return ()
   ) else return ()
 
 let eval e authors = change e (EvalQuestions authors)
+
+let update e s =
+  match CORE_description_format.exercise_of_string s with
+    | `OK cst ->
+      change_from_user_description e cst
+      >>= fun _ -> observe e (fun d -> return d) >>
+      return (`OK ())
+    | `KO e ->
+      return (`KO e)
 
 let assignment_rule e k =
   observe e (fun c -> return (
@@ -367,7 +381,9 @@ let _ =
 
 let eval_if_needed e authors =
   observe e (fun d -> return (content d).questions_value) >>= function
-    | None -> eval e authors >>= fun _ -> return None
+    | None ->
+      Ocsigen_messages.errlog "Push exo eval";
+      eval e authors >>= fun _ -> return None
     | Some (_, v) -> return (Some v)
 
 let context_of_checkpoint e c authors =
@@ -468,4 +484,25 @@ let create_service ok_page ko_page =
             return (ko_page (string_of_error e))
       with InvalidLabel _ ->
        return (ko_page (string_of_error (`InvalidLabel (String.concat "/" id))))
+    )
+
+let update_service ~fallback =
+  Eliom_service.Http.post_service
+    ~fallback
+    ~post_params:Eliom_parameter.(string "id" ** string "content")
+    ()
+
+let register_update result_eref ~service =
+    Eliom_registration.Action.register
+    ~service
+    (fun () (id, content) ->
+      lwt result = make (identifier_of_string id) >>= function
+        | `OK e ->
+          Ocsigen_messages.errlog ("Received update for " ^ id);
+          update e content
+        | `KO e ->
+          Ocsigen_messages.errlog ("Failed update for " ^ id);
+          return (`KO e)
+      in
+      Eliom_reference.set result_eref result
     )

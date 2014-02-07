@@ -172,8 +172,8 @@ let subscribe_then_root, subscribe_out, subscribe_result =
   HTTP_services.subscribe HTTP_services.root
 
 let _ =
-  register_login     ~service:HTTP_services.login;
-  register_logout    ~service:HTTP_services.logout;
+  register_login   ()  ~service:HTTP_services.login;
+  register_logout  ()  ~service:HTTP_services.logout;
   register_subscribe subscribe_out ~service:subscribe_then_root
 
 (** Subscription form. *)

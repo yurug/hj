@@ -74,31 +74,33 @@ type patch =
     CORE_errors.position * CORE_errors.position * string
 
 val make_blank
-: CORE_identifier.t -> [ `OK of t
-                       | `KO of [>
-                                | `UndefinedEntity of CORE_identifier.t
-                                | `AlreadyExists   of CORE_identifier.path
-                                | `SystemError     of string
-                                ]] Lwt.t
+  : CORE_identifier.t -> [ `OK of t
+                         | `KO of [>
+                                  | `UndefinedEntity of CORE_identifier.t
+                                  | `AlreadyExists   of CORE_identifier.path
+                                  | `SystemError     of string
+                                  ]] Lwt.t
 
 val change_from_user_description
   : t -> CORE_description_CST.exercise CORE_description_CST.with_raw ->
   unit Lwt.t
 
-(* FIXME: recover this old rich return type [
-  | `OK of (CORE_identifier.t
-            * CORE_description_CST.exercise CORE_description_CST.with_raw) list
-  | `KO of [
-    | `UndefinedEntity of CORE_identifier.t
-    | `NeedPatch       of patch
-    | `AlreadyExists   of CORE_identifier.path
-    | `SystemError     of string
-  ]] Lwt.t
-*)
+val update : t -> string -> [ `OK of unit | `KO of CORE_errors.all ] Lwt.t
 
-{client{
-val raw_user_description : CORE_identifier.t -> string Lwt.t
-}}
+  (* FIXME: recover this old rich return type [
+     | `OK of (CORE_identifier.t
+     * CORE_description_CST.exercise CORE_description_CST.with_raw) list
+     | `KO of [
+     | `UndefinedEntity of CORE_identifier.t
+     | `NeedPatch       of patch
+     | `AlreadyExists   of CORE_identifier.path
+     | `SystemError     of string
+     ]] Lwt.t
+  *)
+
+  {client{
+         val raw_user_description : CORE_identifier.t -> string Lwt.t
+  }}
 
 val create_service :
   (t ->
@@ -116,3 +118,30 @@ val create_service :
    [ `One of string ] Eliom_parameter.param_name Eliom_parameter.listnames,
    unit, [< Eliom_service.registrable > `Registrable ], 'a)
     Eliom_service.service
+
+val update_service :
+  fallback:('a, unit,
+            [ `Attached of
+                ([ `Internal of [ `Coservice | `Service ] ], [ `Get ])
+                  Eliom_service.a_s ],
+            [< Eliom_service.suff ] as 'b, 'c, unit, [< `Registrable ],
+            [< Eliom_service.non_ocaml_service ])
+  Eliom_service.service ->
+  ('a, string * string,
+   [> `Attached of
+       ([> `Internal of [ `Coservice | `Service ] ], [> `Post ])
+         Eliom_service.a_s ],
+   'b, 'c,
+   [ `One of string ] Eliom_parameter.param_name *
+     [ `One of string ] Eliom_parameter.param_name,
+   [< Eliom_service.registrable > `Registrable ],
+   [> Eliom_service.http_service ])
+    Eliom_service.service
+
+val register_update :
+  [> `KO of CORE_errors.all | `OK of unit ] Eliom_reference.eref ->
+  service:(unit, string * string, [< Eliom_service.internal_service_kind ],
+           [< Eliom_service.suff ], 'a, 'b, [ `Registrable ],
+           [< Eliom_service.non_ocaml_service ])
+    Eliom_service.service ->
+  unit

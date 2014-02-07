@@ -165,9 +165,12 @@ let reactive_div
 
       let rec refresh () =
         try_lwt
+          Firebug.console##log (Js.string ("Refresh " ^ %ids));
           let p = get_progress () in
           let rec flush () =
-            %remote_get () >>= function
+            Firebug.console##log (Js.string ("Remote get " ^ %ids));
+            %remote_get () >>= functionclear ()
+
               | NoChange ->
                 return ()
 
@@ -252,6 +255,7 @@ let reactive_div
           %e_channels (
           function
              | CORE_entity.HasChanged ->
+               Firebug.console##log (Js.string ("Haschanged " ^ %ids));
                if is_visible () then refresh () else return ()
              | CORE_entity.MayChange ->
                Lwt.return ()
