@@ -27,7 +27,7 @@ type reaction = unit
     let reaction =
       fun x ->
         try_lwt
-          Ocsigen_messages.errlog ("Reacting " ^ msg);
+          Firebug.console##log (Js.string ("Reacting " ^ msg));
           reaction x
         with e ->
           return (
