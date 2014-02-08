@@ -253,6 +253,7 @@ let reactive_div
           %e_channels (
           function
              | CORE_entity.HasChanged ->
+               Firebug.console##log (Js.string ("Has changed " ^ %ids));
                if is_visible () then refresh () else return ()
              | CORE_entity.MayChange ->
                Lwt.return ()
