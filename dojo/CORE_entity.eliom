@@ -162,7 +162,7 @@ let channel e =
     return (Hashtbl.find table eid)
   with Not_found ->
     let c =
-      Eliom_comet.Channel.create ~scope:Eliom_common.site_scope e.channel
+      Eliom_comet.Channel.create_newest e.channel
     in
     Hashtbl.add table eid c;
     return c
