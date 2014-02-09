@@ -247,6 +247,9 @@ let reactive_div
         )) [ "scroll"; "resize"; "DOMContentLoaded" ])
       );
 
+      let config = Eliom_comet.Configuration.new_configuration () in
+      Eliom_comet.Configuration.set_always_active config;
+
       refresh () >> return (
         CORE_client_reaction.react_on_background ?condition:%condition
           (%ids ^ " " ^ Js.to_string (Obj.magic %eid))
