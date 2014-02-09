@@ -59,7 +59,7 @@ let display_score answer_id checkpoint context evaluation =
   let diagnostic = div [] in
   lwt d =
     HTML_entity.reactive_div
-      ?condition [CORE_entity.SomeEntity evaluation] None get {{
+      [CORE_entity.SomeEntity evaluation] None get {{
       let rec interpret_diagnostic_command = CORE_diagnostic.(function
         | Empty ->
           ()

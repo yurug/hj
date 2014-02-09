@@ -33,7 +33,7 @@ let create_subscroll () =
   let subs = create_named_elt ~id (div ~a:[a_class ["scroll_item_subs"]] []) in
   lwt (reaction, sender) =
     CORE_client_reaction.listening
-    (fun c -> {{ react "subscroll" [%c] (function
+    (fun c -> {{ react "subscroll" %c (function
       | Push idx ->
         lwt elt = HTML_remote_fragment.remote_get idx in
         let open Eliom_content.Html5 in

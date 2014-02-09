@@ -24,7 +24,7 @@ type ('a, 'b) c = 'a EltProduct.prod * 'b CORE_client_reaction.c
     return ()
 
   let react ((elts, bus) : (_, _) c) reaction =
-    CORE_client_reaction.react "anonymous" [bus] (
+    CORE_client_reaction.react "anonymous" bus (
       update_elts elts reaction
     )
 

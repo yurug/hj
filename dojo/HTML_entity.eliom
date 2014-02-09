@@ -130,14 +130,13 @@ let streamed get =
       Ocsigen_messages.errlog (("Exn2..." ^ Printexc.to_string e));
       return EOS
 
-let reactive_div
-    ?condition es after_display (get : unit -> 'a list Lwt.t) display
-=
+let reactive_div es after_display (get : unit -> 'a list Lwt.t) display =
   let eid = Id.new_elt_id () in
   lwt e_channels = CORE_entity.(
     Lwt_list.map_s (function (SomeEntity e) -> channel e) es
   )
   in
+  let e_channel = List.hd e_channels in
   let ids = CORE_entity.(
     List.map (function (SomeEntity e) -> string_of_identifier (identifier e)) es
   )
@@ -248,9 +247,9 @@ let reactive_div
       );
 
       refresh () >> return (
-        CORE_client_reaction.react_on_background ?condition:%condition
+        CORE_client_reaction.react_on_background
           (%ids ^ " " ^ Js.to_string (Obj.magic %eid))
-          %e_channels (
+          %e_channel (
           function
              | CORE_entity.HasChanged ->
                Firebug.console##log (Js.string ("Has changed " ^ %ids));
