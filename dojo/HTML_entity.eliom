@@ -251,9 +251,9 @@ let reactive_div
       refresh () >> (
         (* FIXME: As long as channels are not working... *)
         let rec watch () =
-          if is_visible () then refresh () else return ()
-            >> Lwt_js.sleep 2.
-            >> watch ()
+          (if is_visible () then refresh () else return ())
+          >> Lwt_js.sleep 2.
+          >> watch ()
         in
         watch ()
       ))
