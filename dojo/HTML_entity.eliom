@@ -91,7 +91,8 @@ let get_progress () =
 
 {client{
   let config = Eliom_comet.Configuration.new_configuration () in
-  Eliom_comet.Configuration.set_always_active config
+  Eliom_comet.Configuration.set_always_active config true;
+  Eliom_comet.Configuration.set_time_between_requests config 0.
 }}
 
 {shared{
@@ -246,10 +247,6 @@ let reactive_div
             visibility_may_change Js._false
         )) [ "scroll"; "resize"; "DOMContentLoaded" ])
       );
-
-      let config = Eliom_comet.Configuration.new_configuration () in
-      Eliom_comet.Configuration.set_always_active config true;
-
 
       refresh () >> return (
         CORE_client_reaction.react_on_background %ids %e_channels (
