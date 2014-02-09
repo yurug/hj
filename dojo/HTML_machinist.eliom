@@ -56,7 +56,7 @@ let machinist_page mc =
     let d = div [] in
     lwt (_, sender) =
       CORE_client_reaction.(listening (fun c ->
-        {reaction{ CORE_client_reaction.react "execution_on_vm" %c (fun s ->
+        {reaction{ CORE_client_reaction.react "execution_on_vm" [%c] (fun s ->
           return (Eliom_content.Html5.Manip.appendChild %d (p [pcdata s]))
         )}}))
     in
