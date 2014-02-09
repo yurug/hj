@@ -248,12 +248,11 @@ let reactive_div
       );
 
       let config = Eliom_comet.Configuration.new_configuration () in
-      Eliom_comet.Configuration.set_always_active config;
+      Eliom_comet.Configuration.set_always_active config true;
+
 
       refresh () >> return (
-        CORE_client_reaction.react_on_background ?condition:%condition
-          (%ids ^ " " ^ Js.to_string (Obj.magic %eid))
-          %e_channels (
+        CORE_client_reaction.react_on_background %ids %e_channels (
           function
              | CORE_entity.HasChanged ->
                Firebug.console##log (Js.string ("Has changed " ^ %ids));

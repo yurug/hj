@@ -20,7 +20,7 @@ type reaction = unit
     using a serializable type of data. *)
 
 {client{
-  let react ?condition msg channels reaction =
+  let react msg channels reaction =
     let channels' = List.map Lwt_stream.clone channels in
     let all = Lwt_stream.choose channels' in
 
