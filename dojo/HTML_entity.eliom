@@ -92,7 +92,7 @@ let get_progress () =
 {client{
   let config = Eliom_comet.Configuration.new_configuration () in
   Eliom_comet.Configuration.set_always_active config true;
-  Eliom_comet.Configuration.set_time_between_requests config 0.
+  Eliom_comet.Configuration.set_time_between_requests config 0.5
 }}
 
 {shared{
