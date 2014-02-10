@@ -207,7 +207,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
       ))
   in
 
-  CORE_exercise.eval exo authors >>= fun _ ->
+  CORE_exercise.eval_if_needed exo authors >>= fun _ ->
   lwt rdiv =
     HTML_entity.reactive_div
       [CORE_entity.SomeEntity exo]
