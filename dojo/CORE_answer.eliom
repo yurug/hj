@@ -197,7 +197,9 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
       )
     in
     make ~init id >>= function
-      | `OK a                  -> return (`OK a)
+      | `OK a                  ->
+        Lwt_list.iter_s (assign_answer exo a) authors
+        >> return (`OK a)
       | `KO (`AlreadyExists _) -> make id
       | `KO e                  -> warn e; return (`KO e)
   in
@@ -207,9 +209,7 @@ let answer_of_exercise_from_authors ?(nojoin = true) exo authors =
     | `Standard a -> make a
     (* FIXME: To be implemented. See previous comment. *)
     | `Join a -> assert false
-  ) >>>= fun a ->
-  Lwt_list.iter_s (assign_answer exo a) authors
-  >>= fun _ -> return (`OK a)
+  ) >>>= fun a -> return (`OK a)
 
 let submit answer checkpoint submission =
   change answer (NewSubmissionData (checkpoint, submission, []))
