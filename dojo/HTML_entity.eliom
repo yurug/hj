@@ -249,22 +249,25 @@ let reactive_div
       );
 
       refresh () >> (
-        (* FIXME: As long as channels are not working... *)
-        let rec watch () =
-          (if is_visible () then refresh () else return ())
-          >> Lwt_js.sleep 2.
-          >> watch ()
-        in
-        watch ()
-      ))
-(*        CORE_client_reaction.react_on_background %ids %e_channels (
+      (*   (\* FIXME: As long as channels are not working... *\) *)
+      (*   let rec watch () = *)
+      (*     (if is_visible () then refresh () else return ()) *)
+      (*     >> Lwt_js.sleep 2. *)
+      (*     >> watch () *)
+      (*   in *)
+      (*   watch () *)
+      (* )) *)
+        CORE_client_reaction.react_on_background %ids %e_channels (
           function
              | CORE_entity.HasChanged ->
                Firebug.console##log (Js.string ("Has changed " ^ %ids));
                if is_visible () then refresh () else return ()
              | CORE_entity.MayChange ->
                Lwt.return ()
-             ))) *)
+        );
+        return ();
+        ))
+
         }}
   in
   let elt = Id.create_named_elt ~id:eid (
