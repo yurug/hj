@@ -150,9 +150,8 @@ include CORE_entity.Make (struct
             | Some (qv, _) when qv <> questions ->
               true
             | _ ->
-              true
+              false
         in
-        Ocsigen_messages.errlog (Printf.sprintf "reset value : %B\n" must_reset_value);
         if (not must_reset_value) && questions = content.questions
         then
           return (sources, dependencies, content)

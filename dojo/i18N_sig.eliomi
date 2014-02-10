@@ -74,6 +74,7 @@ sig
   val many : string -> string
 
   (** Sentences. *)
+  val relaunch_all: string
   val download_all: string
   val download_pdf: string
   val last_connection: string

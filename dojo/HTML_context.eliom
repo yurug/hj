@@ -375,13 +375,9 @@ let display_master_view master exo checkpoint context =
       let evaluations = Hashtbl.create 13 in
       let answer_idx = ref (-1) in
       let files = ref [] in
+      let relaunchers = ref [] in
       let links = Hashtbl.create 13 in
-      let get_link i =
-        try
-          Some (Hashtbl.find links i)
-        with Not_found -> None
-      in
-
+      let get_link i = try Some (Hashtbl.find links i) with Not_found -> None in
       let get_score_statistics, count_score = Hashtbl.(
         let table = create 13 in
         let get ctx =
@@ -440,6 +436,7 @@ let display_master_view master exo checkpoint context =
                 | None -> return ()
                 | Some s -> update_if_necessary answer_id checkpoint (0., s)
             in
+            relaunchers := relaunch :: !relaunchers;
 
             lwt evaluation_descr = CORE_evaluation.(
               (* FIXME: Do that more elegantly! *)
@@ -556,6 +553,15 @@ let display_master_view master exo checkpoint context =
           (fun _ _ -> `RO)
       in
 
+      let relaunch_all_evaluation =
+        let relaunch = server_function Json.t<unit> (fun () ->
+          Lwt_list.iter_p (fun f -> f ()) !relaunchers
+        )
+        in
+        HTML_widget.small_button [I18N.(String.(cap relaunch_all))] {{
+          fun _ -> Lwt.async %relaunch
+        }}
+      in
       let download_all_files =
         let all_files = server_function Json.t<unit> (fun () ->
           if !files = [] then
@@ -579,7 +585,7 @@ let display_master_view master exo checkpoint context =
       return [
         e :: [p [pcdata ""]; statistics; p [pcdata ""]] @ (
           if !files = [] then [] else [
-            div [ download_all_files ]
+            div [ download_all_files; relaunch_all_evaluation ]
           ])
       ]
   in
