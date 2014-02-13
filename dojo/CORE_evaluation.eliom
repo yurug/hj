@@ -181,7 +181,10 @@ let create_job
     in
     send_notification_to_master ()
     >> change_state (
-      Evaluated (!score, submission, CORE_diagnostic.Empty, context)
+      if !score = CORE_context.null_score then
+        Unevaluated
+      else
+        Evaluated (!score, submission, CORE_diagnostic.Empty, context)
     )
   in
   let init () = change_state Unevaluated in
@@ -269,7 +272,8 @@ let evaluate change_later exercise answer cps data authors =
             Ocsigen_messages.errlog "Error during evaluation.";
             return Unevaluated
           ) else
-            run_submission_evaluation (pred retry) c s
+            Lwt_unix.sleep 1.
+            >> run_submission_evaluation (pred retry) c s
     in
     begin CORE_answer.submission_of_checkpoint answer checkpoint >>= function
       | None | Some NoSubmission ->
