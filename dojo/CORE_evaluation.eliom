@@ -267,7 +267,7 @@ let evaluate change_later exercise answer cps data authors =
         | None ->
           if retry = 0 then (
             Ocsigen_messages.errlog "Error during evaluation.";
-            return (Evaluated ([], s, CORE_diagnostic.Empty, c))
+            return Unevaluated
           ) else
             run_submission_evaluation (pred retry) c s
     in
