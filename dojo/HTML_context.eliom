@@ -18,11 +18,20 @@ open COMMON_pervasives
 
 let update_if_necessary =
   let relaunched = Hashtbl.create 13 in
-  fun answer_id checkpoint (d, s) ->
+  fun answer_id evaluation_id checkpoint (d, s) ->
     let now = Unix.gettimeofday () in
+    let reset_evaluation () =
+      match evaluation_id with
+        | Some id -> (CORE_evaluation.make id >>= function
+            | `OK e -> CORE_evaluation.reset e checkpoint
+            | `KO e -> warn e; return ()
+        )
+        | None -> return ()
+    in
     let relaunch answer =
       Hashtbl.replace relaunched (answer_id, checkpoint) now;
-      CORE_answer.submit answer checkpoint s
+      reset_evaluation ()
+      >> CORE_answer.submit answer checkpoint s
     in
     (* FIXME: Make this literal a parameter! *)
     let old = 180. in
@@ -38,9 +47,9 @@ let update_if_necessary =
     else
       return ()
 
-let update_if_necessary_rpc answer checkpoint =
+let update_if_necessary_rpc answer evaluation checkpoint =
   server_function Json.t<float * submission> (
-    update_if_necessary answer checkpoint
+    update_if_necessary answer evaluation checkpoint
   )
 
 let display_score answer_id checkpoint context evaluation =
@@ -55,7 +64,10 @@ let display_score answer_id checkpoint context evaluation =
       | None ->
         None, None
   in
-  let update_if_necessary = update_if_necessary_rpc answer_id checkpoint in
+  let evaluation_id = CORE_evaluation.identifier evaluation in
+  let update_if_necessary =
+    update_if_necessary_rpc answer_id (Some evaluation_id) checkpoint
+  in
   let diagnostic = div [] in
   lwt d =
     HTML_entity.reactive_div
@@ -420,21 +432,24 @@ let display_master_view master exo checkpoint context =
                       s
                   ), Some submission)
             in
-            lwt evaluation =
+            lwt evaluation, evaluation_id =
               CORE_evaluation.evaluation_of_exercise_from_authors
                 exo answer authors
               >>= function
                 | `KO _ ->
-                  return None
+                  return (None, None)
                 | `OK evaluation ->
-                  return (Some evaluation)
+                  let evaluation_id = CORE_evaluation.identifier evaluation in
+                  return (Some evaluation, Some evaluation_id)
             in
             let master_score = ref None in
 
             let relaunch () =
               match submission with
-                | None -> return ()
-                | Some s -> update_if_necessary answer_id checkpoint (0., s)
+                | None ->
+                  return ()
+                | Some s ->
+                  update_if_necessary answer_id evaluation_id checkpoint (0., s)
             in
             relaunchers := relaunch :: !relaunchers;
 
@@ -467,7 +482,8 @@ let display_master_view master exo checkpoint context =
                       count_score s;
                       return (CORE_context.string_of_score ctx s)
                     | Some (BeingEvaluated (_, d, s, _, _)) ->
-                      update_if_necessary answer_id checkpoint (d, s)
+                      update_if_necessary answer_id evaluation_id checkpoint
+                        (d, s)
                       >> return ("En cours depuis " ^ string_of_date d)
             )
             in

@@ -466,3 +466,6 @@ let new_score criteria grade over evaluation checkpoint =
       (* FIXME: This should not happen. Manual evaluation can only by
          done on evaluated job. *)
       return ()
+
+let reset evaluation checkpoint =
+  change evaluation (NewEvaluationState (checkpoint, Unevaluated))
