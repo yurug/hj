@@ -225,7 +225,7 @@ let create_job
       | Some (`Command cmd) ->
         let timeout =
           match get_timeout context with
-            | None -> 30. (* FIXME: Make it a parameter. *)
+            | None -> 120. (* FIXME: Make it a parameter. *)
             | Some t -> float_of_int t
         in
         let cmd = CORE_context.substitute_seed seed cmd in
