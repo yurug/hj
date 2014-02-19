@@ -59,12 +59,14 @@ type description = {
 let string_of_evaluation_state = function
   | Unevaluated ->
     "Not evaluated"
-  | Evaluated (score, _, _, ctx) ->
-    Printf.sprintf "Evaluated with score %s"
+  | Evaluated (score, _, d, ctx) ->
+    Printf.sprintf "Evaluated with score %s (%s)"
       (CORE_context.string_of_score ctx score)
-  | BeingEvaluated (job, start, _, _, _) -> Unix.(
-    Printf.sprintf "Being evaluated by job %s since %s"
+      (CORE_diagnostic.string_of_command d)
+  | BeingEvaluated (job, start, _, d, _) -> Unix.(
+    Printf.sprintf "Being evaluated by job %s since %s (%s)"
       (string_of_job job) (string_of_date start)
+      (CORE_diagnostic.string_of_command d)
   )
 
 {client{
@@ -295,7 +297,8 @@ let evaluate change_later exercise answer cps data authors =
 
               | BeingEvaluated (job, date, submission, _, context) ->
                 (* FIXME: Make 1200. a parameter. *)
-                Some job, Some submission, Some context, (now () -. date > 1200.)
+                Some job, Some submission, Some context,
+                (now () -. date > 1200.)
 
               | Unevaluated ->
                 None, None, None, true
@@ -322,7 +325,9 @@ let evaluate change_later exercise answer cps data authors =
               in
               if is_new_context || is_new_submission || too_old then
                 cancel_job_if_present job
-                >>= fun _ -> (* FIXME: 3 must be a parameter. *) run_submission_evaluation 3 c s
+                 >>= fun _ ->
+                 (* FIXME: 3 must be a parameter. *)
+                 run_submission_evaluation 3 c s
               else
                 return current_state
         end
