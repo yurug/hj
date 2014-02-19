@@ -94,6 +94,7 @@ let display_score answer_id checkpoint context evaluation =
               >> return [p [pcdata (cs ^ "▹ En cours...")]]
             | Some (Evaluated (score, _, dcmd, ctx)) ->
               Eliom_content.Html5.Manip.replaceAllChild %diagnostic [];
+              Firebug.console##log (Js.string (CORE_diagnostic.string_of_command dcmd));
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
               return [p [pcdata (cs ^ "▹ " ^ string_of_score ctx score)]]
