@@ -179,17 +179,22 @@ let display_user_input exo_id answer_id checkpoint context submission trigger =
         submit_file exo_id checkpoint tmp_filename filename
         >>= fun _ -> return ()
       in
-      let previous_file =
+      lwt previous_file =
         match submission with
           | Some (SubmittedFile (filename, digest)) ->
-            [
-              span [pcdata (I18N.(String.(cap last_submitted_file) ^ ": "))];
-              Raw.a ~a:[a_href (Xml.uri_of_string (COMMON_file.send (
+            lwt url =
+              COMMON_file.send (
                 CORE_standard_identifiers.source_filename answer_id filename
-              )))] [pcdata (filename ^ "(" ^ Digest.to_hex digest ^ ")")]
+              )
+            in
+            return [
+              span [pcdata (I18N.(String.(cap last_submitted_file) ^ ": "))];
+              Raw.a ~a:[a_href (Xml.uri_of_string url)] [
+                pcdata (filename ^ "(" ^ Digest.to_hex digest ^ ")")
+              ]
             ]
           | None ->
-            []
+            return []
       in
       let msg = filename ^ I18N.String.to_be_provided in
       let width = float_of_int (String.length msg) in
@@ -416,22 +421,24 @@ let display_master_view master exo checkpoint context =
                 | None | Some NoSubmission ->
                   return ("?", None)
                 | Some (Submission (_, submission)) ->
-                  return ((match submission with
-                    | SubmittedFile (f, digest) ->
-                      let file =
-                        CORE_standard_identifiers.source_filename answer_id f
-                      in
-                      let link = COMMON_file.send file in
-                      files := file :: !files;
-                      Hashtbl.add links !answer_idx link;
-                      f ^ "(" ^ Digest.to_hex digest ^ ")"
-                    | SubmittedValues vs ->
-                      String.concat "," vs
-                    | SubmittedChoices vs ->
-                      String.concat "," (List.map string_of_int vs)
-                    | SubmittedPropertyChoice s ->
-                      s
-                  ), Some submission)
+                  lwt s =
+                    match submission with
+                      | SubmittedFile (f, digest) ->
+                        let file =
+                          CORE_standard_identifiers.source_filename answer_id f
+                        in
+                        lwt link = COMMON_file.send file in
+                        files := file :: !files;
+                        Hashtbl.add links !answer_idx link;
+                        return (f ^ "(" ^ Digest.to_hex digest ^ ")")
+                      | SubmittedValues vs ->
+                        return (String.concat "," vs)
+                      | SubmittedChoices vs ->
+                        return (String.concat "," (List.map string_of_int vs))
+                      | SubmittedPropertyChoice s ->
+                        return s
+                  in
+                  return (s, Some submission)
             in
             lwt evaluation, evaluation_id =
               CORE_evaluation.evaluation_of_exercise_from_authors
@@ -587,8 +594,10 @@ let display_master_view master exo checkpoint context =
             let archive = Filename.temp_file "hjarc" ".tar.gz" in
             ltry (COMMON_unix.tar_create archive !files)
                       >>= function
-                        | `KO e -> warn e; return None
-                        | `OK _ -> return (Some (COMMON_file.send archive))
+                        | `KO e ->
+                          warn e; return None
+                        | `OK _ ->
+                          lwt u = COMMON_file.send archive in return (Some u)
         )
         in
         HTML_widget.small_button [I18N.(String.(cap download_all))] {{

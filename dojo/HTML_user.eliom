@@ -68,11 +68,10 @@ let homepage u =
       CORE_onthedisk_entity.load_source uid (photo_filename ()) >>=
         function
           | `OK s ->
-            return (COMMON_file.send (
+            COMMON_file.send (
               HTML_source.source_path (module CORE_user) u (
                 CORE_source.filename s
               ))
-            )
           | `KO _ ->
             lwt u =
               CORE_user.is_teacher u >>= function

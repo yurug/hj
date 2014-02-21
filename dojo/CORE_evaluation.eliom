@@ -84,7 +84,7 @@ let evaluation_of_answer_dependency_kind = "evaluation_of_answer"
 let evaluation_of_exercise_dependency_kind = "evaluation_of_exercise"
 
 let new_evaluation_state_of_checkpoint c s d =
-  let s =
+  let s_out =
     match COMMON_pervasives.opt_assoc c d.jobs with
       | None -> s
       | Some s' ->
@@ -131,7 +131,10 @@ let new_evaluation_state_of_checkpoint c s d =
                FIXME: grade assigned by a master should be inherited. *)
             s
   in
-  return { d with jobs = update_assoc c s d.jobs }
+  Ocsigen_messages.errlog (Printf.sprintf "Push %s, Get: %s\n"
+                             (string_of_evaluation_state s)
+                             (string_of_evaluation_state s_out));
+  return { d with jobs = update_assoc c s_out d.jobs }
 
 let create_job
     exercise answer_id checkpoint context submission change_later authors

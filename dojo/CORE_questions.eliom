@@ -460,7 +460,7 @@ module Eval = struct
         match List.assoc (CORE_identifier.label "_this_path") e with
           | VString path ->
             let s = as_string v in
-            let url = COMMON_file.send (Filename.concat path s) in
+            lwt url = COMMON_file.send (Filename.concat path s) in
             return (VStatement (link url s))
           | _ ->
             assert false

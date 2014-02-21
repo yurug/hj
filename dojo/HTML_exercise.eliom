@@ -138,7 +138,9 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
   let elements = {string list ref{ ref [] }} in
   let export_as_pdf = server_function Json.t<unit> (fun () ->
     CORE_exercise.export_as_pdf exo authors >>= function
-      | Some filename -> return (Some (COMMON_file.send filename))
+      | Some filename ->
+        lwt url = COMMON_file.send filename in
+        return (Some url)
       | None -> return None
   )
   in

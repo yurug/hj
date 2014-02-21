@@ -1,46 +1,65 @@
 (* -*- tuareg -*- *)
 
-let send =
-  let hashes = Hashtbl.create 13 in
-  let rec fresh_hash () =
-    let h = Printf.sprintf "%d%d%d"
-      (Random.bits ()) (Random.bits ()) (Random.bits ())
-    in
-    if Hashtbl.mem hashes h then fresh_hash () else (
-      Hashtbl.add hashes h ();
-      h
+open Lwt
+open Eliom_reference
+open Eliom_common
+
+let hashes =
+  eref ~scope:global_scope ~persistent:"hashes_to_files" (Hashtbl.create 13)
+
+let files =
+  eref ~scope:global_scope ~persistent:"files_to_hashes" (Hashtbl.create 13)
+
+let rec fresh_hash fname =
+  lwt table = get hashes in
+  let h = Random.(Printf.sprintf "%d%d%d" (bits ()) (bits ()) (bits ())) in
+  if Hashtbl.mem table h then
+    fresh_hash fname
+  else (
+    Hashtbl.add table h fname;
+    set hashes table
+    >> return h
+  )
+
+let hash_of_file (fname : string) =
+  lwt table = get files in
+  try
+    return (Hashtbl.find table fname)
+  with Not_found ->
+    lwt h = fresh_hash fname in
+    let bname = Filename.basename fname in
+    Hashtbl.add table fname (h, bname);
+    set files table
+    >> return (h, bname)
+
+let file_sending_service =
+  Eliom_registration.File.register_service
+    ~path:["sendfile"]
+    ~get_params:Eliom_parameter.(suffix (string "hash" ** string "bname"))
+    (fun (hash, bname) () ->
+      lwt table = get hashes in
+      let fname = Hashtbl.find table hash in
+      Lwt.return fname
     )
+
+let send fname =
+  lwt (hash, bname) = hash_of_file fname in
+  (** The following URL manual construction is probably not the
+      idiomatic way of acting in an Eliom application. Yet, it
+      seems to me that the service representation contains too
+      much implementation details when it is transmitted in the
+      client. For instance, it seems to contain the full path of
+      the file on the server. I see no reason why that kind of
+      information should escape the server... So I prefer a more
+      low-level URL passing style here. *)
+  let url =
+    (* FIXME: We should move to https for security reason. *)
+    (* FIXME: Yet, some browser like chrome do not accept to *)
+    (* FIXME: load PDF files from untrusted https... *)
+    Printf.sprintf "http://%s:%d/sendfile/%s/%s"
+      (Eliom_config.get_default_hostname ())
+      (Eliom_config.get_default_port ())
+      hash
+      bname
   in
-  let h = Hashtbl.create 13 in
-  fun fname ->
-    try
-      fst (Hashtbl.find h fname)
-    with Not_found ->
-      let bname = Filename.basename fname in
-      let hash = fresh_hash () in
-      let link =
-        Eliom_registration.File.register_service
-          ~path:("sendfile" :: [hash; bname])
-          ~get_params:Eliom_parameter.unit
-          (fun () () -> Lwt.return fname)
-      in
-      (** The following URL manual construction is probably not the
-          idiomatic way of acting in an Eliom application. Yet, it
-          seems to me that the service representation contains too
-          much implementation details when it is transmitted in the
-          client. For instance, it seems to contain the full path of
-          the file on the server. I see no reason why that kind of
-          information should escape the server... So I prefer a more
-          low-level URL passing style here. *)
-      let url =
-        (* FIXME: We should move to https for security reason. *)
-        (* FIXME: Yet, some browser like chrome do not accept to *)
-        (* FIXME: load PDF files from untrusted https... *)
-        Printf.sprintf "http://%s:%d/sendfile/%s/%s"
-          (Eliom_config.get_default_hostname ())
-          (Eliom_config.get_default_port ())
-          hash
-          bname
-      in
-      Hashtbl.add h fname (url, link);
-      Xml.uri_of_string url
+  return (Xml.uri_of_string url)
