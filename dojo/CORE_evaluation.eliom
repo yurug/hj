@@ -88,9 +88,6 @@ let new_evaluation_state_of_checkpoint c s d =
     match COMMON_pervasives.opt_assoc c d.jobs with
       | None -> s
       | Some s' ->
-        Ocsigen_messages.errlog (Printf.sprintf "Merging state:\n %s\n  %s\n"
-                                   (string_of_evaluation_state s')
-                                   (string_of_evaluation_state s));
         match s', s with
           (* FIXME: Some of these cases do not make sense. *)
           | (BeingEvaluated (_, d, s, cmd, c),
@@ -100,7 +97,6 @@ let new_evaluation_state_of_checkpoint c s d =
             ) ->
             (** A new intermediate state in an on-going evaluation.
                 We merge the diagnostic. *)
-            Ocsigen_messages.errlog "Continue...";
             BeingEvaluated (job, d, s, CORE_diagnostic.merge cmd cmd', c)
 
           | (Evaluated (score, s, cmd, c),
@@ -133,23 +129,19 @@ let new_evaluation_state_of_checkpoint c s d =
             (* FIXME: We should integrate here a notion of inherited score:
                FIXME: for instance, if an answer has not changed, the
                FIXME: grade assigned by a master should be inherited. *)
-            Ocsigen_messages.errlog "Overwriting...";
             s
   in
-  Ocsigen_messages.errlog (Printf.sprintf "Push %s, Get: %s\n"
-                             (string_of_evaluation_state s)
-                             (string_of_evaluation_state s_out));
   return { d with jobs = update_assoc c s_out d.jobs }
 
 let create_job
-    exercise answer_id checkpoint context submission change_later authors
+    exercise answer_id checkpoint context submission change_later date authors
     =
   let exo_id = CORE_exercise.identifier exercise in
   let score = ref CORE_context.null_score in
   let seed = CORE_context.make_seed () in
   let change_state s = change_later (NewEvaluationState (checkpoint, s)) in
   let message job msg = change_state (
-    BeingEvaluated (job, now (), submission,
+    BeingEvaluated (job, date, submission,
                     CORE_diagnostic.PushLine msg, context)
   )
   in
@@ -272,11 +264,12 @@ let evaluate change_later exercise answer cps data authors =
   let authors_ids = List.map CORE_user.identifier authors in
   let evaluate idx checkpoint current_state =
     let rec run_submission_evaluation retry c s =
-      create_job exercise answer_id checkpoint c s change_later authors
+      let date = now () in
+      create_job exercise answer_id checkpoint c s change_later date authors
       >>= function
         | Some job ->
           Ocsigen_messages.errlog "Executable job created.";
-          return (BeingEvaluated (job, now (), s, CORE_diagnostic.Empty, c))
+          return (BeingEvaluated (job, date, s, CORE_diagnostic.Empty, c))
         | None ->
           if retry = 0 then (
             Ocsigen_messages.errlog "Error during evaluation.";
