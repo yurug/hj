@@ -88,6 +88,9 @@ let new_evaluation_state_of_checkpoint c s d =
     match COMMON_pervasives.opt_assoc c d.jobs with
       | None -> s
       | Some s' ->
+        Ocsigen_messages.errlog (Printf.sprintf "Merging state:\n %s\n  %s\n"
+                                   (string_of_evaluation_state s')
+                                   (string_of_evaluation_state s));
         match s', s with
           (* FIXME: Some of these cases do not make sense. *)
           | (BeingEvaluated (_, d, s, cmd, c),
@@ -97,6 +100,7 @@ let new_evaluation_state_of_checkpoint c s d =
             ) ->
             (** A new intermediate state in an on-going evaluation.
                 We merge the diagnostic. *)
+            Ocsigen_messages.errlog "Continue...";
             BeingEvaluated (job, d, s, CORE_diagnostic.merge cmd cmd', c)
 
           | (Evaluated (score, s, cmd, c),
@@ -129,6 +133,7 @@ let new_evaluation_state_of_checkpoint c s d =
             (* FIXME: We should integrate here a notion of inherited score:
                FIXME: for instance, if an answer has not changed, the
                FIXME: grade assigned by a master should be inherited. *)
+            Ocsigen_messages.errlog "Overwriting...";
             s
   in
   Ocsigen_messages.errlog (Printf.sprintf "Push %s, Get: %s\n"
