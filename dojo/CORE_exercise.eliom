@@ -412,6 +412,7 @@ let export_as_pdf e authors =
         \\usepackage{amssymb}
         \\usepackage{fancybox}
         \\usepackage{fullpage}
+        \\usepackage{exercise}
         \\title{%s}
 
         \\hypersetup{
