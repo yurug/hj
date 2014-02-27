@@ -5,7 +5,7 @@
 type tag =
     Sequence | Paragraph | Bold | Italic | Verb | List
   | Enumerate | Item | Section | SubSection | Question
-  | Text | Code | Link | LaTeX | ILaTeX
+  | Text | Code | Link | LaTeX | ILaTeX | Image
 deriving (Json)
 
 type t = Element of tag * t list | Data of string
@@ -30,6 +30,7 @@ let latex = make LaTeX
 let ilatex = make ILaTeX
 let text s = Data s
 let link url caption = make Link [text url; text caption]
+let image url f caption = make Image [text f; text url; text caption]
 
 module LaTeX = struct
 
@@ -105,26 +106,35 @@ module LaTeX = struct
         ["\\verb!"; text; "!" ]
     | _ -> assert false
 
+  let is_local_url url =
+    let server =
+      Printf.sprintf "http://%s:%d"
+        (Eliom_config.get_default_hostname ())
+        (Eliom_config.get_default_port ())
+    in
+    Str.(string_match (regexp server) url 0)
+
   let rec to_latex escape_flag = function
     | Element (Code, [Data text]) ->
       code [env "verbatim" [[text]]]
+
     | Element (Link, [Data url; Data caption]) ->
       let url, caption =
-        let server =
-          Printf.sprintf "http://%s:%d"
-            (Eliom_config.get_default_hostname ())
-            (Eliom_config.get_default_port ())
-        in
-        if Str.(string_match (regexp server) url 0) then
+        if is_local_url url then
           I18N.(String.(provided_file, cap (see ^ " " ^ caption ^ ".")))
         else
           url, caption
       in
       [Printf.sprintf "\\href{%s}{%s\\footnote{\\verb!%s!}}"
           url (escape caption) (escape url)]
+
+    | Element (Image, [Data filename; Data _; Data _]) ->
+      [Printf.sprintf "\\includegraphics{%s}" filename]
+
     | Element (tag, cs) ->
       let escape, make = constructor_of_tag tag in
       make (List.map (to_latex (escape && escape_flag)) cs)
+
     | Data s ->
       [if escape_flag then escape s else s]
 

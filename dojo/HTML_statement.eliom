@@ -34,6 +34,8 @@ let constructor_of_tag : tag -> any list -> 'a elt list = function
 let rec to_html' = function
   | Element (Link, [Data url; Data caption]) ->
     [Raw.a ~a:[a_href (Xml.uri_of_string url)] [pcdata caption]]
+  | Element (Image, [_; Data url; Data caption]) ->
+    [Raw.img ~src:(Xml.uri_of_string url) ~alt:caption ()]
   | Element (tag, cs) ->
     constructor_of_tag tag (List.(flatten (map to_html cs)))
   | Data s ->

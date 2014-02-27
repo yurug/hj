@@ -467,6 +467,19 @@ module Eval = struct
       with _ -> assert false
     );
 
+    functional "source_image" (fun e v ->
+      try
+        match List.assoc (CORE_identifier.label "_this_path") e with
+          | VString path ->
+            let s = as_string v in
+            let filename = Filename.concat path s in
+            lwt url = COMMON_file.send filename in
+            return (VStatement (image url filename s))
+          | _ ->
+            assert false
+      with _ -> assert false
+    );
+
     stateful "choose_property" (fun _ v ->
       let s = as_string_list v in
       return (CORE_context.choose_property s)
