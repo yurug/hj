@@ -438,6 +438,7 @@ let export_as_pdf e authors =
         \\endSbox\\fbox{\\TheSbox}
         \\end{center}
         }
+        \DeclareUnicodeCharacter{00A0}{ }
         \\begin{document}
         \\maketitle
          %s
