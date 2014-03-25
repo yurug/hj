@@ -103,7 +103,7 @@ module LaTeX = struct
       false, fun cs ->
         let text = text cs in
         let text = Str.(global_replace (regexp "\n") " " text) in
-        ["\\verb!"; text; "!" ]
+        ["\\texttt{"; text; "}" ]
     | _ -> assert false
 
   let is_local_url url =
