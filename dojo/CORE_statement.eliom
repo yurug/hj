@@ -103,6 +103,7 @@ module LaTeX = struct
       false, fun cs ->
         let text = text cs in
         let text = Str.(global_replace (regexp "\n") " " text) in
+        let text = Str.(global_replace (regexp "_") "\_" text) in
         ["\\texttt{"; text; "}" ]
     | _ -> assert false
 
