@@ -103,7 +103,6 @@ module LaTeX = struct
       false, fun cs ->
         let text = text cs in
         let text = Str.(global_replace (regexp "\n") " " text) in
-        let text = Str.(global_replace (regexp "\\") "\\textbackslash" text) in
         ["\\verb!"; text; "!" ]
     | _ -> assert false
 
