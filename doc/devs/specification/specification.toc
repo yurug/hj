@@ -6,19 +6,37 @@
 \contentsline {section}{\numberline {1.2}Student}{4}
 \contentsline {subsection}{\numberline {1.2.1}General Use Case}{4}
 \contentsline {subsection}{\numberline {1.2.2}Practise}{4}
+\contentsline {subsubsection}{Be notified}{5}
+\contentsline {subsubsection}{Exercise}{5}
+\contentsline {subsubsection}{Answer Question}{5}
+\contentsline {subsubsection}{Take a break}{5}
+\contentsline {subsubsection}{Corrected Version}{5}
+\contentsline {subsubsection}{Study}{5}
 \contentsline {subsection}{\numberline {1.2.3}Meditate}{5}
 \contentsline {subsubsection}{Suggested Exercises}{5}
-\contentsline {subsubsection}{Grade}{5}
-\contentsline {section}{\numberline {1.3}Teacher}{6}
-\contentsline {subsection}{\numberline {1.3.1}General Use Case}{6}
-\contentsline {subsection}{\numberline {1.3.2}Supervise}{6}
-\contentsline {subsection}{\numberline {1.3.3}Observe}{7}
-\contentsline {section}{\numberline {1.4}Administrator}{8}
-\contentsline {subsection}{\numberline {1.4.1}General Use Case}{8}
-\contentsline {subsection}{\numberline {1.4.2}Configure}{8}
-\contentsline {section}{\numberline {1.5}Common registered user}{9}
-\contentsline {subsection}{\numberline {1.5.1}Communicate}{9}
-\contentsline {subsection}{\numberline {1.5.2}Send Mail}{9}
-\contentsline {subsection}{\numberline {1.5.3}Send Instant Message}{9}
-\contentsline {chapter}{\numberline {2}Dynamic analysis}{10}
-\contentsline {chapter}{\numberline {3}Static analysis}{11}
+\contentsline {subsubsection}{Grade}{6}
+\contentsline {subsubsection}{Rank}{6}
+\contentsline {section}{\numberline {1.3}Teacher}{7}
+\contentsline {subsection}{\numberline {1.3.1}General Use Case}{7}
+\contentsline {subsection}{\numberline {1.3.2}Supervise}{7}
+\contentsline {subsubsection}{Be Notified}{7}
+\contentsline {subsubsection}{Write exercises}{7}
+\contentsline {subsubsection}{Write Corrected Version}{7}
+\contentsline {subsubsection}{Edit}{7}
+\contentsline {subsubsection}{Define Status}{7}
+\contentsline {subsubsection}{Take a break}{8}
+\contentsline {subsubsection}{Submit}{8}
+\contentsline {subsubsection}{Correct}{8}
+\contentsline {subsection}{\numberline {1.3.3}Observe}{9}
+\contentsline {subsubsection}{Rank}{9}
+\contentsline {subsubsection}{Filter}{9}
+\contentsline {subsubsection}{Remediate}{9}
+\contentsline {section}{\numberline {1.4}Administrator}{10}
+\contentsline {subsection}{\numberline {1.4.1}General Use Case}{10}
+\contentsline {subsection}{\numberline {1.4.2}Configure}{10}
+\contentsline {section}{\numberline {1.5}Common registered user}{11}
+\contentsline {subsection}{\numberline {1.5.1}Communicate}{11}
+\contentsline {subsubsection}{Send Mail}{11}
+\contentsline {subsubsection}{Send Instant Message}{11}
+\contentsline {chapter}{\numberline {2}Dynamic analysis}{12}
+\contentsline {chapter}{\numberline {3}Static analysis}{13}

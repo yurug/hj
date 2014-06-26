@@ -10,9 +10,8 @@
 			\end{center}
 		\end{figure}
 		A free user is a user non identified by the platform. He has the following features~:
-	\subsection{Register}Register a free-user to have access to the different features
-		Information needed are 
-	\subsection{Authenticate}Identify free-user and if registered give him access to the different features
+	\subsection{Register}Register a free-user to have access to the different features.
+	\subsection{Authenticate}Identify free-user and if registered give him access to the different features.
 %end free user section
 \newpage
 %begin student section
@@ -26,28 +25,37 @@
 		\end{figure}
 		A user identify as a student has three major action which are Practise, Meditate and Communicate.
 	\subsection{Practise}
-		A student user can train to improve his skills in programming languages. 
-		
 		\begin{figure}[ht]
 			\begin{center}
 				\includegraphics[width=\textwidth,  trim=2cm 10cm 2cm 11cm]{UML_figure/UC/student/UC_Student_Practise.pdf}
 				\caption{Student Use Case : Practise}
 			\end{center}
 		\end{figure}
-		A student exercises to improve himself. He/She answers questions.
-	
+		\subsubsection{Be notified}
+			The student will be notified when he/she has new exercises to do, or to finish.
+		\subsubsection{Exercise}
+			The student can exercises himself by doing exercises written by the teacher.
+		\subsubsection{Answer Question}
+			The student will answer question such as MCQ (Multiple Choice Question)
+		\subsubsection{Take a break}
+			He/she can take a break and resume the exercise later.
+		\subsubsection{Corrected Version}
+			A corrected version of the question will be available if the teacher has checked the option.
+		\subsubsection{Study}
+			The student can study by reviewing corrected exercises.
 	\subsection{Meditate}
-	
-	\begin{figure}[ht]
+		\begin{figure}[ht]
 			\begin{center}
 				\includegraphics[width=\textwidth,  trim=2cm 10cm 2cm 11cm]{UML_figure/UC/student/UC_Student_Meditate.pdf}
 				\caption{Student Use Case : Meditate}
 			\end{center}
 		\end{figure}
 		\subsubsection{Suggested Exercises}
-			The platform will provide exercises depending on student's weaknesses.
+			The platform will provide exercises according to the student grade on each exercises.
 		\subsubsection{Grade}
 			Student can see their grade for each exercises.
+		\subsubsection{Rank}
+			Student can compare himself with other student.
 %end student section
 \newpage
 %begin teacher section
@@ -59,23 +67,46 @@
 				\caption{Teacher Use Case : Overview}
 			\end{center}
 		\end{figure}
+		Main Features for the teacher are Supervise, Observe, Communicate
 	\subsection{Supervise}
-		A teacher writes exercises.
 		\begin{figure}[ht]
 			\begin{center}
 				\includegraphics[width=\textwidth,  trim=2cm 10cm 2cm 9cm]{UML_figure/UC/teacher/UC_Teacher_Supervise.pdf}
 				\caption{Teacher Use Case : Supervise}
 			\end{center}
 		\end{figure}
+		\subsubsection{Be Notified}
+			The teacher will be notified when his exercises are online.\\
+			He also is notified when he has manual correction to do.
+		\subsubsection{Write exercises}
+			The teacher supervises his students by writing exercises.
+		\subsubsection{Write Corrected Version}
+			When a teacher writes exercises he needs to write a corrected version for automatic correction.
+		\subsubsection{Edit}
+			The exercise he writes can be edited at anytime.
+		\subsubsection{Define Status}
+			The exercise will have status, teacher have to define status such as date, deadline, priority.\\
+			Release condition can also be defined. For instance, every student who fail the exercise 1.4 will be notified this exercise. 
+		\subsubsection{Take a break}
+			Teacher can take a break about writing his exercise, to resume it later.
+		\subsubsection{Submit}
+			The teacher submit his exercise which can be viewed by student according to status definition by the teacher.
+		\subsubsection{Correct}
+			The teacher has to correct questions on which he has not define an answer.
 	\newpage
 	\subsection{Observe}
-		A teacher observes his students about how they get through on his/her exercise.
 		\begin{figure}[ht]
 			\begin{center}
 				\includegraphics[width=\textwidth,  trim=2cm 10cm 2cm 11cm]{UML_figure/UC/teacher/UC_Teacher_Observe.pdf}
 				\caption{Teacher Use Case : Observe}
 			\end{center}
 		\end{figure}
+		\subsubsection{Rank}
+			The teacher can see all the grade of students who took his exercises.
+		\subsubsection{Filter}
+			He can filter the grade according to the group, rising order, the one who have more or less than a mark.
+		\subsubsection{Remediate}
+			Then the teacher can provide exercises for a group of students in difficulties according to their grade.
 %end teacher section
 \newpage
 %begin administrator section
@@ -101,10 +132,10 @@
 	\end{figure}
 	\subsection{Communicate}
 		Registered user can communicate each other.
-	\subsection{Send Mail}
-		Communication provide by mail exchange.
-	\subsection{Send Instant Message}
-		Communication provide by instant message exchange.
+		\subsubsection{Send Mail}
+			Communication provide by mail exchange.
+		\subsubsection{Send Instant Message}
+			Communication provide by instant message exchange.
 %end common user section
 
 
