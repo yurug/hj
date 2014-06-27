@@ -16,3 +16,12 @@ Use Case definition of
 Use Case V0.2
 More definition for student : practise, meditate
 Graphic issue : remain.
+
+27/06/14
+Use Case V0.3
+Redraw use case graphic to be more formal.
+Redefinition for some use case.
+Free-user become unidentified user, added inform use case for this actor.
+Administrator use case review.
+Graphic issue seems to be solved.
+List of figures at the end of the document.
