@@ -9,9 +9,9 @@
 				\caption{Unidentified user Use Case : Overview}
 			\end{center}
 		\end{figure}
-	\subsection{Inform}An unidentified user will inform himself about the platform.
-	\subsection{Register}An unidentified user who wants to access to the different features of the platform will have to register first.
-	\subsection{Authenticate}An unidentified user authenticates to have access to the features if he has already passed the register step.
+	\subsection{Get informed}An unidentified user gets inform about the platform.
+	\subsection{Register}An unidentified user who wants to access to the features of the platform has to register first.
+	\subsection{Authenticate}An unidentified user authenticates to have access to the features is already registered.
 %end free user section
 \newpage
 %begin student section
@@ -19,31 +19,33 @@
 	\subsection{Overview}
 		\begin{figure}[ht]
 			\begin{center}
-				\includegraphics[width=\textwidth,  trim=2cm 12cm 2cm 11cm]{UML_figure/UC/student/UC_Student_General.pdf}
+				\includegraphics[width=\textwidth,  trim=2cm 12cm 2cm 12cm]{UML_figure/UC/student/UC_Student_General.pdf}
 				\caption{Student Use Case : Overview}
 			\end{center}
 		\end{figure}
-	\subsection{Practise}
+	\subsection{Practice}
 		\begin{figure}[ht]
 			\begin{center}
-				\includegraphics[width=\textwidth,  trim=2cm 10cm 2cm 10cm]{UML_figure/UC/student/UC_Student_Practise.pdf}
-				\caption{Student Use Case : Practise}
+				\includegraphics[width=\textwidth,  trim=2cm 10cm 2cm 10cm]{UML_figure/UC/student/UC_Student_Practice.pdf}
+				\caption{Student Use Case : Practice}
 			\end{center}
 		\end{figure}
 		\subsubsection{Be notified}
-			The student will be notified for new events.
+			The student is notified for new events.
 		\subsubsection{Study}
-			The student can study by reviewing corrected exercises.
+			The student studies by reviewing corrected exercises.
 		\subsubsection{Exercise}
-			The student can exercise himself by doing exercises written by the teacher.
-		\subsubsection{Answer Question}
-			The student will answer a set of different type of question.
-		\subsubsection{Corrected Version}
-			The student will have optionally access to the corrected version.
+			The student exercises by answering questions
+		\subsubsection{Answer question}
+			The student answers a set of question.
+		\subsubsection{View expected answer}
+			The student has optionally access to the corrected version.
 		\subsubsection{Take a break}
-			The student can take a break and resume the exercise later.
+			The student takes a break and resume the exercise later.
 		\subsubsection{Submit}
-			The student can submit his answer form and be graded by the platform.		
+			The student can submit his answer form.
+		\subsubsection{Be graded}
+			The student is also graded by the platform AFTER he submits his answer form.		
 	\subsection{Meditate}
 		\begin{figure}[ht]
 			\begin{center}
@@ -52,11 +54,11 @@
 			\end{center}
 		\end{figure}
 		\subsubsection{Take suggested exercises}
-			The student can access and take a set of exercises according to their grade.
+			The student access and starts a set of exercises according to their grade.
 		\subsubsection{View Grades}
 			The student can see their grade for each exercises.
 		\subsubsection{View Ranks}
-			The student can compare himself with other student.
+			The student can compare himself with other students.
 %end student section
 \newpage
 %begin teacher section
@@ -68,32 +70,30 @@
 				\caption{Teacher Use Case : Overview}
 			\end{center}
 		\end{figure}
-	\subsection{Supervise}
+	\subsection{Supervise students}
 		\begin{figure}[ht]
 			\begin{center}
 				\includegraphics[width=\textwidth,  trim=2cm 10cm 2cm 10cm]{UML_figure/UC/teacher/UC_Teacher_Supervise.pdf}
-				\caption{Teacher Use Case : Supervise}
+				\caption{Teacher Use Case : Supervise students}
 			\end{center}
 		\end{figure}
 		\subsubsection{Correct}
-			The teacher has to correct questions on which he has not define an answer.
+			The teacher has to grade students answers for questions which have no expected answers.
 		\subsubsection{Be Notified}
-			The teacher will be notified by events.
+			The teacher will be notified of events.
 			For instance the teacher will be notified when one of his exercises is online.
 		\subsubsection{Write exercises}
 			The teacher supervises his students by writing exercises.
 		\subsubsection{Define expected answer}
 			When the teacher writes exercises, he can optionally define an expected answer.
 		\subsubsection{Edit}
-			The teacher can edit an exercise written by him at anytime.
+			The teacher can edit any exercise at anytime.
 		\subsubsection{Define Status}
-			The teacher can define status for his exercise such as date, deadline, priority.\\
-			Release condition can also be defined. For instance, every student who have failed to complete the exercise 1.4 will be notified some other exercises. 
+			The teacher attaches a status to an exercise.
 		\subsubsection{Take a break}
-			The teacher can take a break about writing his exercise, to resume it later.
+			The teacher can resume his exercise later.
 		\subsubsection{Submit}
-			The teacher submit his exercise which can be viewed by student according to the exercise status defined by the teacher.
-		
+			The teacher submits his exercise which can be viewed by student according to the exercise status defined by the teacher.
 	\newpage
 	\subsection{Observe}
 		\begin{figure}[ht]
@@ -103,12 +103,12 @@
 			\end{center}
 		\end{figure}
 		\subsubsection{Rank}
-			The teacher can see all the grades of students who took his exercises.
+			The teacher sees all the grades of students who took his exercises.
 		\subsubsection{Filter}
 			The teacher can filter the grades according to some parameters.
-			The parameters can be the number of a group, the year.
+			The parameters can be the identifier of a group, the year for instance.
 		\subsubsection{Remediate}
-			Then the teacher can provide exercises for a group of students in difficulties according to their grade.
+			The teacher can provide exercises for a group of students in trouble with some specific subject of the course according to their grades.
 %end teacher section
 \newpage
 %begin administrator section
@@ -124,13 +124,15 @@
 		\begin{figure}[ht]
 			\begin{center}
 				\includegraphics[width=\textwidth, trim=2cm 12cm 2cm 12cm]{UML_figure/UC/administrator/UC_Administrator_Supervise.pdf}
-				\caption{Administrator Use Case : Overview}
+				\caption{Administrator Use Case : Supervise the platform}
 			\end{center}
 		\end{figure}
+		\subsubsection{Be notified}
+			The administrator will be notified by events such as critical issue.
 		\subsubsection{Monitor}
-			The administrator can monitor the log.
+			The administrator inspects the log.
 		\subsubsection{Configure}
-			The administrator can configure the platform.
+			The administrator configures the platform.
 %end administrator section
 \newpage
 %begin common user section
