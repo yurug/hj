@@ -1,3 +1,9 @@
+08/07/14
+Diagram Package V0.1
+Diagram package overview and definition of each package.
+Beginning of diagram class.
+TODO : Generate PDF File.
+
 30/06/14
 Use Case V0.31
 Change plain relation between general use case and specific one with extends relation.

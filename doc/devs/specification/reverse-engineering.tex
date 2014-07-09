@@ -35,7 +35,7 @@
 		\subsubsection{Study}
 			The student studies by reviewing corrected exercises.
 		\subsubsection{Exercise}
-			The student exercises by answering questions
+			The student exercises by answering questions.
 		\subsubsection{Answer question}
 			The student answers a set of question.
 		\subsubsection{View expected answer}
@@ -149,16 +149,54 @@
 		\subsubsection{Send Instant Message}
 			Identifed user communicate by instant message exchange.
 %end common user section
+%end chapter useCase
 
+\chapter{Diagram package}
 
+\section{Overview}
+	\begin{figure}[ht]
+			\begin{center}
+				\includegraphics[width=\textwidth,  trim=2cm 6cm 2cm 7cm]{UML_figure/DP/general/DP_General.pdf}
+				\caption{Diagram package : Overview}
+			\end{center}
+	\end{figure}
+	\subsection{User Interface}
+		This package holds every interface for the user.
+		\subsubsection{Web}
+			This package holds units which define the Web Interface
+		\subsubsection{Unix}
+			This package holds units which define a Shell Interface for Unix user.
+	\subsection{HTTP}
+		This package holds the web services which allow the user interface to communicate with the core.
+	\subsection{Core}
+		This package holds the logical platform units.
+		\subsubsection{Exercise}
+			This package holds units which define exercise entities.
+		\subsubsection{Machinist}
+			This package holds units which define machinist entities.
+		\subsubsection{Reactive}
+			This package holds units which define reactive entities.
+		\subsubsection{User}
+			This package holds units which define user entities.
+		\subsubsection{Errors}
+			This package holds units which define errors entities.
+	\subsection{Common}
+		This package holds every units which are used in each package.
 
+\newpage
+\chapter{Diagram class}
 
+\section{User Interface}
+		\subsection{Web}
+		\begin{figure}[ht]
+			\begin{center}
+				\includegraphics[width=\textwidth,  trim=2cm 6cm 2cm 7cm]{UML_figure/DC/common/DC_Common.pdf}
+				\caption{Diagram class : Web Interface}
+			\end{center}
+		\end{figure}
+	
+\section{HTTP}
 
+\section{Core}
 
-
-
-
-
-
-
-
+\section{Common}
