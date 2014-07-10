@@ -1,3 +1,6 @@
+10/07/14
+Chapter 3 : Diagram class core package V0.1
+
 09/07/14
 Chapter 3 : Diagram class in progress.
 tex file reorganization.

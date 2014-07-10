@@ -12,11 +12,15 @@
 \addvspace {10\p@ }
 \contentsline {figure}{\numberline {2.1}{\ignorespaces Diagram package : Overview}}{11}
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {3.1}{\ignorespaces Exercise diagram class : Overview}}{14}
-\contentsline {figure}{\numberline {3.2}{\ignorespaces Machinist diagram class : Overview}}{14}
-\contentsline {figure}{\numberline {3.3}{\ignorespaces Reactive diagram class : Overview}}{15}
-\contentsline {figure}{\numberline {3.4}{\ignorespaces Reactive diagram class : Identifier}}{15}
-\contentsline {figure}{\numberline {3.5}{\ignorespaces Reactive diagram class : Client}}{16}
-\contentsline {figure}{\numberline {3.6}{\ignorespaces User diagram class : Overview}}{16}
-\contentsline {figure}{\numberline {3.7}{\ignorespaces Config diagram class : Overview}}{17}
-\contentsline {figure}{\numberline {3.8}{\ignorespaces Common diagram class : Overview}}{18}
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Core diagram class : Exericse}}{14}
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Core diagram class : Exercise - Description}}{15}
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Core diagram class : Machinist}}{16}
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Core diagram class : Reactive}}{16}
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Core diagram class : Reactive - Identifier}}{17}
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Core diagram class : Reactive - Client}}{18}
+\contentsline {figure}{\numberline {3.7}{\ignorespaces Core diagram class : User}}{18}
+\contentsline {figure}{\numberline {3.8}{\ignorespaces Core diagram class : Config}}{19}
+\contentsline {figure}{\numberline {3.9}{\ignorespaces Core diagram class : VFS}}{19}
+\contentsline {figure}{\numberline {3.10}{\ignorespaces Core diagram class : Common}}{20}
+\contentsline {figure}{\numberline {3.11}{\ignorespaces Core diagram class : Common - Errors}}{20}
+\contentsline {figure}{\numberline {3.12}{\ignorespaces Common diagram class : Overview}}{21}

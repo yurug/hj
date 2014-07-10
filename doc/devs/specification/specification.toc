@@ -64,12 +64,40 @@
 \contentsline {section}{\numberline {3.2}HTTP}{13}
 \contentsline {section}{\numberline {3.3}Core}{14}
 \contentsline {subsection}{\numberline {3.3.1}Exercise}{14}
-\contentsline {subsection}{\numberline {3.3.2}Machinist}{14}
-\contentsline {subsection}{\numberline {3.3.3}Reactive}{15}
-\contentsline {subsection}{\numberline {3.3.4}Reactive : Identifier}{15}
-\contentsline {subsection}{\numberline {3.3.5}Reactive : Client}{16}
-\contentsline {subsection}{\numberline {3.3.6}User}{16}
-\contentsline {subsection}{\numberline {3.3.7}Config}{17}
-\contentsline {subsection}{\numberline {3.3.8}Errors}{17}
-\contentsline {subsection}{\numberline {3.3.9}Common}{17}
-\contentsline {section}{\numberline {3.4}Common}{18}
+\contentsline {subsubsection}{Exercise}{14}
+\contentsline {subsubsection}{Question}{14}
+\contentsline {subsubsection}{Answer}{14}
+\contentsline {subsubsection}{Evaluation}{14}
+\contentsline {subsubsection}{Assignment}{14}
+\contentsline {subsubsection}{Context}{14}
+\contentsline {subsubsection}{Document}{15}
+\contentsline {subsection}{\numberline {3.3.2}Exercise : Description}{15}
+\contentsline {subsubsection}{CST}{15}
+\contentsline {subsubsection}{Lexer}{15}
+\contentsline {subsubsection}{Parser}{15}
+\contentsline {subsubsection}{Format}{15}
+\contentsline {subsubsection}{Statement}{15}
+\contentsline {subsection}{\numberline {3.3.3}Machinist}{16}
+\contentsline {subsubsection}{Machinist}{16}
+\contentsline {subsubsection}{Sandbox}{16}
+\contentsline {subsection}{\numberline {3.3.4}Reactive}{16}
+\contentsline {subsubsection}{Entity}{17}
+\contentsline {subsubsection}{Onthedisk}{17}
+\contentsline {subsubsection}{Source}{17}
+\contentsline {subsection}{\numberline {3.3.5}Reactive : Identifier}{17}
+\contentsline {subsubsection}{Identifier}{17}
+\contentsline {subsubsection}{StandardIdentifier}{17}
+\contentsline {subsection}{\numberline {3.3.6}Reactive : Client}{18}
+\contentsline {subsubsection}{Action}{18}
+\contentsline {subsubsection}{Reaction}{18}
+\contentsline {subsection}{\numberline {3.3.7}User}{18}
+\contentsline {subsubsection}{User}{18}
+\contentsline {subsection}{\numberline {3.3.8}Config}{19}
+\contentsline {subsubsection}{Config}{19}
+\contentsline {subsection}{\numberline {3.3.9}VFS (Versioned File System)}{19}
+\contentsline {subsubsection}{VFS}{19}
+\contentsline {subsubsection}{XML}{19}
+\contentsline {subsection}{\numberline {3.3.10}Common}{20}
+\contentsline {subsection}{\numberline {3.3.11}Common : Errors}{20}
+\contentsline {subsubsection}{Errors}{20}
+\contentsline {section}{\numberline {3.4}Common}{21}
