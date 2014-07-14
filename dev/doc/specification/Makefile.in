@@ -1,0 +1,3352 @@
+# WHAT IS Makefile.in USEFUL FOR
+#
+# The file `Makefile.in' is a pattern for creating a GNU Makefile
+# which automates the build of LaTeX documents. This means first that
+# it will take care for you of calling the proper and minimum number
+# of time LaTeX until it reaches a fix-point or an error. Second, and
+# most importantly, it displays a textual information on the build
+# process, which is both concise and precise. In particular, a great
+# amount of efforts has been devoted to clear warning and error
+# reporting and specific hints to understand and solve the
+# problem. The idea is to discharge almost completely the author of
+# digging into the TeX log file. Nevertheless, since Makefile.in has
+# been created by reverse-engineering and consequently works by means
+# of heuristics, not all cases are covered. We nevertheless expect it
+# to be very helpful, in particular for beginners.
+#
+#
+# HOW TO PROCESS IT
+#
+# The file `Makefile.in' must distributed together with its
+# `configure.ac' file. The latter must be first processed by
+# `autoconf', which produces a `configure' shell script. Then this
+# script processes `Makefile.in' and produces the final `Makefile'. So
+# the first thing to do is to make sure you have `autoconf' and
+# `gmake' (the GNU version of Make) installed on your platform.
+#
+# We recommend to put both `Makefile.in' and `configure.ac', which
+# must come together, in a fixed directory,
+# e.g. ~/Std_makefiles/LaTeX. Then, the usual process is:
+#
+#  1) create the directory where you plan to put your LaTeX document, e.g.
+#
+#     ~$ mkdir My_paper
+#
+#  2) in this directory, make symbolic links to `Makefile.in' and
+#     `configure.ac': 
+#
+#     ~$ cd My_paper
+#     ~/My_paper$ ln -s ~/Std_makefiles/LaTeX/configure.ac
+#     ~/My_paper$ ln -s ~/Std_makefiles/LaTeX/Makefile.in
+#
+#     This way, upgrading these files will be done in just one place.
+#     If you control the versions of your sources under CVS or
+#     Subversion, then write a simple shell script which performs the
+#     above commands (symbolic linking) and check it in.
+#  
+#  3) Run `autoconf', which uses `configure.ac':
+# 
+#     ~/My_paper$ autoconf
+#
+#     This must create some files, among those a shell script `configure'.
+#
+#  4) Execute this script:
+#
+#     ~/My_paper$ ./configure
+#
+#     A possible output is:
+#
+# Autoconfiguration for building LaTeX documents
+# (c) 2003-2005 Christian Rinderknecht
+#                                                                         
+# This is autoconf (GNU Autoconf) 2.57
+# -----------------------------------------------------------------
+# System tools
+# checking for gmake... /usr/bin/gmake
+# checking for perl... /usr/bin/perl
+# checking for expr... /usr/bin/expr
+# checking for sed... /bin/sed
+# checking for awk... /usr/bin/awk
+# checking for psnup... /usr/bin/psnup
+# -----------------------------------------------------------------
+# LaTeX and BibTeX
+# checking for latex... /usr/bin/latex
+# checking for bibtex... /usr/bin/bibtex
+# -----------------------------------------------------------------
+# Tools
+# checking for ocamlweb... /home/rinderkn/bin/ocamlweb
+# checking for dvips... /usr/bin/dvips
+# checking for hevea... /home/rinderkn/bin/hevea
+# checking for hacha... /home/rinderkn/bin/hacha
+# checking for dvipdfm... /usr/bin/dvipdfm
+# checking for dvipdf... /usr/bin/dvipdf
+# checking for ps2pdf... /usr/bin/ps2pdf
+# checking for pdftex... /usr/bin/pdftex
+# -----------------------------------------------------------------
+# Directories and paths
+#   => The source directory is '.'
+# configure: creating ./config.status
+# config.status: creating Makefile
+#
+#     As you can see, this script searches your installation for some
+#     software needed by the `Makefile' you are going to build. If some
+#     listed software is found, it appears with its full path after the
+#     dots, else it will be marked as 'none'. This does not always
+#     imply that the final `Makefile' will not work properly, but that,
+#     at least, some facilities will not work or not completely. In
+#     case of a bug report, it will be important to keep a copy of the
+#     output of `configure'.
+#
+# Then you can use `Makefile'.
+#
+#
+# HOW TO USE THE FINAL MAKEFILE
+#
+# You must always call `make' in silent mode, i.e. with the `-s'
+# option, and preferably with no built-in rules, i.e. with the option
+# '-r', in order to gain performance. For instance, you should invoke
+# `make -rs foo.ps'.
+#
+# The following targets are available (at least if the necessary tools
+# have been found on your platform).
+#
+#   `dvi'
+#
+#   This target can be used only if you have one document in your
+#   working directory. A document is a LaTeX file which contains a
+#   \begin{document} definition. If there is no ambiguity (i.e. only one
+#   document present) the DVI version of the document is created. The
+#   file name will be the document filename whose `.tex' extension is
+#   remplaced by `.dvi'. For example, if the document is `my_doc.tex',
+#   then `make -rs dvi' will produce `my_doc.dvi'.
+#
+#   `ps'
+#
+#    This target is similar to `dvi', except that the PostScript version
+#    of the document is built.
+#
+#   `pdf'
+#
+#    This target is similar to `dvi', except that the PDF version of the
+#    document is built. Note that, depending on the tools available on
+#    your platform, the PDF may be built by different means.
+#
+#   `4up_ps'
+#
+#    This target is similar to `ps', except that a 4up PostScript
+#    version is built. This is useful for slides.
+#
+#   `4up_pdf'
+#
+#    This target is the PDF equivalent to `4up_ps' for PostScript.
+#
+#   `<document>.dvi'
+#
+#    This target is similar to `dvi', except it can be used even if
+#    multiple documents share the same working directory. The document
+#    must be named `<document>.tex'.
+#
+#   `<document>.ps'
+#
+#    This target is similar to `<document>.dvi', except the PostScript
+#    version of `<document>.tex' is built.
+#
+#   `<document>.pdf'
+#
+#    This targer is similar to `<document>.dvi', except the PDF version
+#    of `<document>.tex' is built.
+#
+#   `<document>-4up.ps'
+#
+#    This target is similar to `4up_ps', except it works even if
+#    multiple documents share the same working directory.
+#
+#   `<document>-4up.pdf'
+#
+#    This target is similar to `4up_pdf', except it works even if
+#    multiple documents share the same working directory.
+#
+#   `all'
+#
+#    This target is equivalent to `ps'.
+#
+#   `clean'
+#
+#    This target cleans all the files produced by LaTeX, BibTeX and
+#    special files created by `Makefile' (like `<document>.dvi0' and
+#    `Makefile.bbl', if any). Note that this target do not delete the
+#    files created with the PP option (see OPTIONS section below).
+#
+#   `distclean'
+#
+#    This target do all what `clean' do, plus removes all the
+#    configuration files created by `autoconf' and `./configure' and
+#    possible emacs backups. This target is useful when you want to
+#    distribute your document.
+#
+# Finally, if there is no target (`make -rs'), it is equivalent to 
+# `make -rs all'.
+#
+#
+# SLIDES
+#
+# AutomaTeX promotes the usage of document class `seminar' for creating
+# slides, otherwise you will not get special support.
+#
+# ** Note that slides are built in seascape mode. ** 
+# Use `gv -seascape <document>.ps' to visualize the PostScript.
+#
+#
+# OPTIONS
+#
+#   `PP'
+#
+#    This command-line option allows you to specify the page range 
+#    you want to build. For instance
+#
+#    make -rs pdf PP=5-13
+#
+#    builds the PDF version of your document for page numbers 
+#    ranging from 5 to 13 (included). The resulting file is named
+#    `<document>-5-13.pdf'. 
+#
+#    Open upper bound is allowed:
+#
+#    make -rs pdf PP=6-
+#
+#    produces '<document>-6-.pdf', which includes pages from number 6
+#    to the last.
+#
+#    Open lower bounds are _not_ allowed.
+#
+#    Multiple ranges are allowed:
+#
+#    make -rs pdf PP='2-4 7-11'
+#
+#    produces '<document>-2-4,7-11.pdf'
+#
+#
+# SIMPLE EXAMPLE
+#
+# ~/My_paper$ make -rs
+# Making cj2003.dvi from cj2003.tex... done (20 pages, 198884 bytes).
+# Processing bibliography biblio.bib of cj2003.tex... done (16 entries).
+# Merging document and bibliography... done (21 pages, 203568 bytes).
+# Recompiling document to solve citations... done (21 pages, 203508 bytes).
+#   [W] 23 horizontal overfulls.
+#   [W] 14 horizontal underfulls.
+#   [W] 2 vertical underfulls.
+#       => Rerun make for details or check cj2003.log for transcript.
+# Making cj2003.ps from cj2003.dvi... done (21 pages, 741399 bytes).
+#
+#
+# WARNINGS, ERRORS AND HINTS
+#
+# Warnings are introduced by "[W]" and errors by "[E]". Hints to solve
+# the problems are introduced by "=>". 
+# The recommended way to deal with these informations is to correct
+# errors first, because some warnings may come from previous errors.
+# Note that only the first error is reported.
+#
+#
+# DETAILED STATUS OF THE DOCUMENT
+#
+# In case overfulls and underfulls happened, a summary is printed (see
+# example above). If you want to have the details, re-run the same
+# `make' command on an up-to-date document.
+#
+# ~/My_paper$ make -rs
+# Document cj2003.ps is up-to-date.
+#   [W] Overfull \hbox (4.58812pt) in core_asn1.tex at lines 181--198.
+#       => Check page 4 and line 260 in cj2003.log.
+#   [W] Underfull \hbox (badness 10000) in core_asn1.tex at lines 322--333:
+#       The de-fault val-ues are ex-panded, like
+#       => Check page 4 and line 265 in cj2003.log.
+#
+# etc.
+# TeX font changes in line excerpts are squeezed as well as
+# math environments ($...$) to increase readability.
+#
+# You are also reminded of the other errors and warnings.
+#
+#
+# IT SUPPORTS IN PARTICULAR...
+#
+#   BibTeX bibliographies (\bibliographystyle and \bibliography).
+#   Table of contents (\tableofcontents).
+#   Labels and references (even from bibliographies).
+#   Citations (even inside bibliographies).
+#   Package `chapterbib' (i.e. one BibTeX bibliography per chapter).
+#
+#
+# LIMITATIONS
+#
+#   No support of lists of figures (\listoffigures macro, `.lof' file) 
+#   No support of lists of tables (\listoftables macro, `.lot' file).
+#   No support of indexes.
+#   No support for HTML output.
+#   No support for RTF output.
+#   Long error messages (more than one line) in `.blg' are not handled.
+#
+#
+# IF SOME FILENAME LOOKS STRANGE
+# 
+# In case of warning or error, it may happen that the filename look
+# strange. This is because the run of `make' when the document is not
+# up-to-date uses a (relatively) fast heuristics which can not be
+# accurate in all cases. It is recommended then to re-run `make'
+# (i.e. when the document is up-to-date) because it will use a more
+# accurate, though slower, heuristics.
+#
+#
+# BIBLIOGRAPHIES
+#
+# AutomaTeX promotes the usage of bibliographies specified by means of
+# `.bib' files (to be processed with BibTeX), instead of user-defined
+# \bibitem macro calls. The makefile also supports package
+# `chapterbib', which allows the inclusion of a bibliography per
+# chapter in a book.
+#
+#
+# REMARK
+#
+# If you want `configure' to be quiet, type 
+#
+# ~/My_paper$ ./configure -q > /dev/null
+# 
+#
+# ADVANCED USAGE
+#
+# You may already have your own specialized makefile but you would
+# like to enjoy some useful features offered by this one. This is
+# indeed possible as described in section "Overriding Part of Another
+# Makefile" when you type `info make'. Just rename your makefile as
+# `GNUmakefile' or `makefile' (this makefile must keep its original
+# name `Makefile') and override this one in it. This way your makefile
+# will be called by default by `make'.
+#
+#
+# BUG REPORT
+#
+# Before sending a bug report to Christian.Rinderknecht@devinci.fr,
+# please get
+#
+#   1) the terminal output of `./configure',
+#   2) the smallest document that shows the bug,
+#   3) the output of `make env',
+#   4) the terminal output of `make -rs <your target>',
+#   5) the terminal output of `make -r <your target>',
+#   6) the TeX log file `<document>.log'.
+#
+# [END DOC]
+
+# $Id: Makefile.in 326 2005-04-03 07:58:32Z rinderkn $
+
+# ========================================================================
+# Header
+#
+# We want a POSIX-compliant behaviour (yes, I am pedantic).
+#
+.POSIX:
+
+# Make implementation must be GNU Make (see `configure.ac').
+#
+MAKE := @MAKE@
+
+# We want `bash' for executing commands.
+#
+SHELL := @SHELL@
+
+# XXX
+#
+HREF_PDF ?=#
+
+#
+#
+override DEF +=\listfiles
+PROLOG := "\batchmode${DEF}\input"
+
+PSNUP := @PSNUP@
+FIG2DEV := @FIG2DEV@
+CONVERT := @CONVERT@
+LATEX := @LATEX@
+BIBTEX := @BIBTEX@
+
+DVIPDFM := @DVIPDFM@
+
+DVIPS := @DVIPS@
+
+DVIPDF := @DVIPDF@
+PS2PDF := @PS2PDF@
+PDFTEX := @PDFTEX@
+
+HEVEA := @HEVEA@
+HACHA := @HACHA@
+
+OCAMLWEB := @OCAMLWEB@
+
+UPDATE := no
+FAKE := no
+LOC ?=#
+
+INCL_DEP := no
+KEEP_DEP := no
+INCL_BIBLIO := no
+
+# By default we do not want verbose output (mainly for debug
+# purposes).
+#
+VERB :=#
+DEBUG :=#
+
+ifeq (${MAKELEVEL},0)
+${shell rm --force .errmsg}
+endif
+
+
+# ========================================================================
+
+subset = \
+  sorted_2=$$(echo ${2} \
+              | tr ' ' '\n' \
+              | sort --dictionary-order --unique \
+              | tr '\n' ' '); \
+  merger=$$(echo ${1} ${2} \
+            | tr ' ' '\n' \
+            | sort --dictionary-order --unique \
+            | tr '\n' ' '); \
+  if test "$$merger" = "$$sorted_2"; \
+  then \
+    echo yes; \
+  else \
+    echo no; \
+  fi
+
+sort_string = \
+  $$(echo ${1} \
+     | tr ' ' '\n' \
+     | sort --dictionary-order --unique \
+     | tr '\n' ' '\
+     | tr --squeeze-repeats ' ')
+ 
+# ========================================================================
+
+.PRECIOUS: %.dvi %.dvi0 %.aux %.bbl %.ps %.html %.pdf %.tex
+
+# Note: If you plan to change the prerequisites of target `all', you
+# must change consistently the substitution in sequence
+# `collect_generic_goals'.
+#
+all: ps
+
+%.cls: ;
+%.sty: ;
+%.tex: ;
+%.bib: ;
+
+
+# Needed for %.dep rule.
+%.log: ;
+
+# ========================================================================
+# Sub-makefile updating
+
+sinclude Makefile.cfg
+
+# ========================================================================
+# Directories and Paths
+
+
+# The directory for the compilation and linkage dependences is
+# ${DEPDIR}.
+#
+override DEPDIR := .dep#
+
+# The sequence ${DEPDIR_EXISTS} is a predicate about the existence of
+# the directory containing the dependences, ${DEPDIR}.
+#
+override DEPDIR_EXISTS := \
+  ${shell if test -n "${DEPDIR}" -a -d "${DEPDIR}"; \
+          then echo yes; \
+          else echo no; fi}
+
+# The sequence ${ensure_DEPDIR} creates the directory ${DEPDIR} if it
+# does not exists and does nothing otherwise.
+#
+override ensure_DEPDIR =#
+ifeq (${DEPDIR_EXISTS},no)
+  ifneq (${DEPDIR},)
+override ensure_DEPDIR = mkdir --parents ${DEPDIR}
+  endif
+endif
+
+# The directory for exporting a document together with its sources
+# plus a customized Makefile is ${DISTDIR}
+#
+override DISTDIR := dist#
+
+# Some directory names are reserved for avoiding clashes.
+#
+override RESERVED_NAMES := doc src ${DISTDIR}
+
+# XXX
+#
+override pref_depdir = ${addprefix ${DEPDIR}/,${notdir ${1}}}
+override depdir_qualif = ${notdir ${1}} ${call pref_depdir,${1}}
+
+# XXX
+#
+
+#vpath %.log1 ${SRCDIR}
+
+vpath %.dep ${DEPDIR}
+vpath %.pkg ${DEPDIR}
+vpath %.biblio ${DEPDIR}
+vpath %.tex .
+vpath %.log .
+
+# ========================================================================
+# Master documents
+
+# Variable PHONY_TARGETS lists all the phony targets of this
+# makefile. It is useful to avoid name clashes (with a
+# binary). Display through the phony target updating `env'.
+#
+override PHONY_TARGETS := \
+  ${sort ${shell sed --quiet "s|^\([-_[:alnum:]]\+\):.*|\1|p" Makefile}}
+
+#override PHONY_GOALS := \
+#  ${strip ${filter ${PHONY_TARGETS},${MAKECMDGOALS}}}
+
+# Some filtering is needed to reject some ambiguous or erroneous cases.
+#
+override PERI_GOALS := clean% %clean env info
+
+override FILTERED_PERI_GOALS := \
+  ${strip ${filter ${PERI_GOALS},${MAKECMDGOALS}}}
+
+override FILTERED_MAIN_GOALS := \
+  ${strip ${filter-out ${PERI_GOALS},${MAKECMDGOALS}}}
+
+# Variable PRESENT_TEX holds all the TeX files.
+# XXX
+override PRESENT_TEX := \
+  ${filter-out _whizzy%,${notdir ${wildcard *.tex}}}
+
+# Variable PRESENT_DOC_TEX holds all the master TeX files.
+#
+ifneq (${PRESENT_TEX},)
+override PRESENT_DOC_TEX := \
+  ${strip \
+    ${notdir \
+      ${shell grep --files-with-matches \
+                   '^ *\\begin[{]document[}]' \
+                   ${PRESENT_TEX} \
+                   2> /dev/null}}}
+
+override PRESENT_DOC := ${strip ${basename ${PRESENT_DOC_TEX}}}
+endif
+
+define collect_generic_goals
+${sort \
+    ${if ${filter ${1},${patsubst all,ps,${MAKECMDGOALS}}}, \
+         ${PRESENT_DOC:%=%${2}.${1}}}}
+endef
+
+define collect_defined_goals
+${sort \
+    ${filter %.${1},${MAKECMDGOALS}}}
+endef
+
+define collect_4up
+${sort \
+    ${if ${filter 4up_${1},${MAKECMDGOALS}}, \
+         ${PRESENT_DOC:%=%-4up${2}.${1}}}}
+endef
+
+PP ?=#
+PAGES := ${strip ${shell echo ${if ${PP},-${PP}} | tr ' ' ','}}#
+override DVIPS_OPT += ${if ${PP},${addprefix -pp ,${PP}}}
+override DVIPDFM_OPT += ${if ${PP},-s ${PP}}
+
+DVIPS_COMMON_OPT ?=#
+
+ifneq (${strip ${DVIPS_COMMON_OPT}},)
+override DVIPS_OPT += ${DVIPS_COMMON_OPT}
+override DVIPS_FIG_OPT += ${DVIPS_COMMON_OPT} -E
+endif
+
+# ifneq (${FILTERED_PERI_GOALS},)
+#   ifeq (${FILTERED_MAIN_GOALS},)
+# SILENT := yes
+#   endif
+# else
+#   ifeq (${MAKECMDGOALS},)
+# SILENT := yes
+#   endif
+# endif
+
+# SILENT ?= no
+
+ifeq (${origin DOC},undefined)
+  ifeq (${MAKECMDGOALS},)
+DOC := ${PRESENT_DOC} 
+TEX := ${PRESENT_DOC_TEX}
+DVI := ${PRESENT_DOC:%=%.dvi}
+PS := ${PRESENT_DOC:%=%${PAGES}.ps}
+PDF := ${PRESENT_DOC:%=%${PAGES}.pdf}
+4UPPS := ${PRESENT_DOC:%=%-4up${PAGES}.ps}
+4UPPDF := ${PRESENT_DOC:%=%-4up${PAGES}.pdf}
+  else
+DVI := ${filter-out %-4up.dvi,${call collect_defined_goals,dvi}}
+PS := ${filter-out %-4up.ps,${call collect_defined_goals,ps}}
+PDF := ${filter-out %-4up.pdf,${call collect_defined_goals,pdf}}
+TEX := ${sort ${DVI:.dvi=.tex} ${PS:.ps=.tex} ${PDF:.pdf=.tex}}
+DOC := ${basename ${TEX}}
+
+    ifeq (${FILTERED_PERI_GOALS},)
+${foreach document, ${DOC}, \
+  ${if ${findstring ${document},${PRESENT_DOC}},, \
+       ${error Document ${document}.tex not found}}}
+    endif
+
+4UPPS := ${call collect_4up,ps,${PAGES}}
+4UPPDF := ${call collect_4up,pdf,${PAGES}}
+DVI := ${sort ${DVI} ${call collect_generic_goals,dvi,${PAGES}}}
+PS := ${sort ${PS} ${4UPPS:-4up.ps=.ps} \
+             ${call collect_generic_goals,ps,${PAGES}}}
+PDF := ${sort ${PDF} ${4UPPDF:-4up.pdf=.pdf} \
+              ${call collect_generic_goals,pdf,${PAGES}}}
+TEX := ${sort ${TEX} ${DVI:.dvi=.tex} ${PS:.ps=.tex} ${PDF:.pdf=.tex}}
+    ifeq (${TEX},)
+      ifeq (${words ${PRESENT_DOC}},1)
+TEX := ${PRESENT_DOC_TEX}
+      endif
+    endif
+DOC := ${basename ${TEX}}
+  endif
+else
+  ifneq (${MAKECMDGOALS},)
+DVI := ${filter-out %-4up.dvi,${call collect_defined_goals,dvi}}
+PS := ${filter-out %-4up.ps,${call collect_defined_goals,ps}}
+PDF := ${filter-out %-4up.pdf,${call collect_defined_goals,pdf}}
+TEX := ${sort ${DVI:.dvi=.tex} ${PS:.ps=.tex} ${PDF:.pdf=.tex}}
+
+    ifeq (${FILTERED_PERI_GOALS},)
+${foreach document, ${DOC}, \
+  ${if ${findstring ${document},${PRESENT_DOC}},, \
+       ${error Document ${document}.tex not found}}}
+    endif
+  endif
+TEX := ${DOC:%=%.tex}
+DVI := ${DOC:%=%.dvi}
+PS := ${DOC:%=%${PAGES}.ps}
+PDF := ${DOC:%=%${PAGES}.pdf}
+4UPPS := ${DOC:%=%-4up${PAGES}.ps}
+4UPPDF := ${DOC:%=%-4up${PAGES}.pdf}
+endif
+
+# This is important in order to simplify set inclusion involving DOC.
+#
+DOC := ${sort ${DOC}}
+
+# X
+override SLAVE_TEX := \
+  ${strip ${filter-out ${PRESENT_DOC_TEX}, ${PRESENT_TEX}}}
+
+override DOC_AND_SLAVE_TEX := \
+  ${strip ${DOC:%=%.tex} ${SLAVE_TEX}}
+
+DEP := ${PRESENT_TEX:%.tex=%.dep}
+BIBLIO := ${PRESENT_TEX:%.tex=%.biblio}
+
+AUX := ${DOC:%=%.aux}
+LOG := ${DOC:%=%.log}
+LOG1 := ${DOC:%=%.log1}
+DVI0 := ${DOC:%=%.dvi0}
+TOC := ${DOC:%=%.toc}
+
+EPS := ${notdir ${wildcard *.eps}}
+
+find_opt = \
+  sed --quiet \
+    's/^ *\\usepackage\[\(.*\)\]\([{].*,\|[{]\)${1}\(,.*\|[}]\)/\1/p' \
+    ${TEX} 2> /dev/null \
+ | tr ',' ' '
+
+is_in = \
+  in="false"; \
+  for opt in $$options; do \
+    if test "$$opt" = "$$sought"; then in="true"; break; fi \
+  done
+
+ifeq (${words ${TEX}},1)
+  DOC_CLASS := \
+    ${shell sed --quiet \
+                's|^ *\\documentclass\(\[\(.*\)\]\)\?[{]\(.*\)[}]|\3|p' \
+                ${DOC:%=%.tex} 2> /dev/null}
+  PACKAGES := \
+      ${sort \
+         $(shell sed --quiet \
+             's|^ *\\usepackage\(\[.*\]\)*[{]\(.*\)[}]|\2|p' \
+             ${TEX} 2> /dev/null \
+           | tr ',' ' ' 2> /dev/null)}
+else
+  PACKAGES :=#
+  DOC_CLASS :=#
+endif
+
+OCW := ${filter ocamlweb,${PACKAGES}}
+TIMES := ${filter times,${PACKAGES}}
+AE := ${filter ae,${PACKAGES}}
+FONTENC := ${filter fontenc,${PACKAGES}}
+ifneq (${FONTENC},)
+FONTENC_OPT := ${shell ${call find_opt,fontenc}}
+endif
+
+AMSSYMB := ${filter amssymb,${PACKAGES}}
+AMSMATH := ${filter amsmath,${PACKAGES}}
+AMSFONTS := ${filter amsfonts,${PACKAGES}}
+PSTRICKS := ${filter pstricks,${PACKAGES}}
+GRAPHICS := ${filter graphics,${PACKAGES}}
+GRAPHICX := ${filter graphicx,${PACKAGES}}
+HYPERREF := ${filter hyperref,${PACKAGES}}
+MAKEIDX := ${filter makeidx,${PACKAGES}}
+TOCBIBIND := ${filter tocbibind,${PACKAGES}}
+
+TALK := ${filter seminar beamer prosper,${PACKAGES} ${DOC_CLASS}}
+
+ifeq (${TALK},)
+PAPER ?= a4
+override DVIPS_OPT += -t ${PAPER}
+override DVIPDFM_OPT += -p ${PAPER}
+override PS2PDF_OPT += -sPAPERSIZE=${PAPER}
+else
+PAPER :=#
+endif
+
+override DVIPS_OPT := ${strip ${DVIPS_OPT}}
+override DVIPDFM_OPT := ${strip ${DVIPDFM_OPT}}
+
+# Il faut d'abord mettre en place l'usage de `pdftex', puis prévoir
+# l'analyse des options du paquetage `graphics'.
+# ifeq (${DVIPDFM},none)
+#   ifneq (${PDFTEX},none)
+#     ifneq (${GRAPHICS},)
+#       ifneq (${GRAPHICS_OPT},pdftex)
+#         ${warning Use \usepackage[pdftex]{graphics}.}
+#       endif
+#     endif
+#   endif
+# # Quid des options [dvips] et [xdvi] pour graphics??
+# endif
+
+
+# Il faut d'abord mettre en place l'usage de `pdftex' et `ps2pdf',
+# puis prévoir l'analyse des options du paquetage `hyperref'.
+# 
+#HYPERREF_OPT := ${call shell_find_opt,hyperref}
+#
+# ifneq (${HYPERREF},)
+#   ifeq (${DVIPDFM},none)
+#     ifneq (${PDFTEX},none)
+#       ifneq (${HYPERREF_OPT},pdftex)
+#         ${warning Use \usepackage[pdftex]{hyperref}.}
+#       endif
+#     else
+#       ifneq (${PS2PDF},none)
+#         ifneq (${HYPERREF_OPT},dvips)
+#           ${warning Use \usepackage[dvips]{hyperref}.}
+#         endif
+#       endif
+#     endif
+#   endif
+# endif
+
+ifeq (${TEX},)
+TABLE_OF_CONTENTS :=#
+TOC_WARNING :=#
+else
+TABLE_OF_CONTENTS := \
+  ${shell grep '^ *\\tableofcontents' ${TEX} 2> /dev/null}
+  ifneq (${TABLE_OF_CONTENTS},)
+    ifeq (${TOCBIBIND},)
+TOC_WARNING := "  [W] Use \usepackage[nottoc]{tocbibind} to get the table of contents right."
+    else
+TOC_WARNING :=#
+    endif
+  else
+TOC_WARNING :=#
+  endif
+
+endif
+
+ifneq (${AE},)
+  PRINTER :=-Ppdf
+else
+  PRINTER :=#
+endif
+
+# AMS := $(shell sed --quiet \
+# 's/^ *\\usepackage\(\[.*\]\)*\([{].*,\|[{]\)\(ams\([^,]*\)\).*[}]/\3/p'\
+# ${TEX} 2> /dev/null)
+
+num_of = $$(echo $$${1} | wc --words | tr --delete ' ')
+
+item_series = \
+  case $$(echo ${1} | wc --words | tr --delete ' ') in \
+    0|"") ;; \
+    1) echo ${1};; \
+    2) echo ${1} | sed 's| | and |g';; \
+    *) echo ${1} | sed 's| |,|g';; \
+  esac
+
+GENDOC := gen-doc
+
+ALL_BIB := ${notdir ${wildcard *.bib}}
+ALL_BST := ${notdir ${wildcard *.bst}}
+
+ifeq (${words ${DOC}},1)
+  BST_BASENAME := \
+    ${shell \
+        sed --quiet 's|^ *\\bibliographystyle[{]\(.*\)[}].*|\1|p' \
+                    ${DOC_AND_SLAVE_TEX}}
+
+  BIB_BASENAMES := \
+    ${sort \
+        ${shell \
+            sed --quiet 's|^ *\\bibliography[{]\([^{%} ]\+\)[}].*|\1|p' \
+                        ${DOC_AND_SLAVE_TEX} \
+          | tr ',' ' '}}
+
+  BIB := ${addsuffix .bib, ${BIB_BASENAMES}}
+  PRESENT_BIB := ${sort ${filter ${BIB}, ${ALL_BIB}}}
+  MISSING_BIB := ${sort ${filter-out ${PRESENT_BIB}, ${BIB}}}
+  TEX_WITH_BIB := \
+    ${shell \
+        grep --files-with-matches '^ *\\bibliography[{][^{%} ]\+[}].*' \
+             ${DOC_AND_SLAVE_TEX}}
+  BBL := ${TEX_WITH_BIB:.tex=.bbl}
+  BLG := ${BBL:.bbl=.blg}
+
+  ifneq (${MAKECMDGOALS},clean)
+    ifneq (${MAKECMDGOALS},distclean)
+      ifneq (${MISSING_BIB},)
+        TEX_TO_CHECK := \
+          ${foreach MY_BIB,${MISSING_BIB:.bib=},${shell grep --files-with-matches '^ *\\bibliography[{]\(.*,\|\)${MY_BIB}\(,.*\|[}]\)' ${DOC_AND_SLAVE_TEX}}}
+        ifeq (${words ${MISSING_BIB}},1)
+          ${warning Bibliography ${MISSING_BIB} is missing.}
+          ${error Make it available or check the spelling in \
+                  ${shell ${call item_series,${TEX_TO_CHECK}}}}
+        else
+          ${warning Bibliographies \
+            ${shell ${call item_series,${MISSING_BIB}}} are missing.}
+          ${error Make them available or check the spellings in \
+            ${shell ${call item_series,${TEX_TO_CHECK}}}}
+        endif
+      endif
+    endif
+  endif
+else
+BST_BASENAME :=#
+BIB :=#
+BBL :=#
+BLG :=#
+endif
+
+
+ifneq (${BST_BASENAME},)
+BST := ${addsuffix .bst,${BST_BASENAME}}
+PRESENT_BST := ${filter ${BST},${ALL_BST}}
+else
+BST :=#
+PRESENT_BST :=#
+endif
+
+# ifeq (${words ${DOC}},1)
+# TEX_WITH_IND := \
+#   ${shell grep --files-with-matches '^ *\\printindex[]' }
+# endif
+
+define dvi_data
+  if test -r ${1}; \
+  then \
+    data=$$(sed --quiet 's|.*\(([0-9].*)\)\.|\1|p' ${1}); \
+    if test -n "$$data"; \
+    then \
+      echo " done $$data."; \
+    else \
+      echo $$' FAILED:\n  [W] No pages of output. Is document empty?';\
+    fi; \
+  fi
+endef
+
+loc_of = ${if ${LOC},${LOC}/}${notdir ${1}}
+
+make_sorted_list = \
+  sort --unique --${1} | tr '\n' ' ' \
+| sed --quiet "s|^ *\(.*\) $$|\1|p"
+
+norm_list = \
+  $$(echo $$${1} | sed --quiet "s|^ *\(.*\) *$$|\1|p")
+
+head = $$(echo $$${1} | cut --fields=1 --delimiter=' ')
+tail = $$(echo $$${1} | cut --fields=2- --delimiter=' ')
+
+one_id = "\`$$${1}'"
+two_id = "\`"$$(echo $$${1} | sed "s| |' and \`|g")"'"
+many_id = "\`"$$(echo $$${1} | sed "s| |',\`|g")"'"
+
+two_items = $$(echo $$${1} | sed 's| | and |g')
+many_items = $$(echo $$${1} | sed 's| |,|g')
+
+
+# ========================================================================
+# Encapsulated PostScript from other image formats
+#
+%.fig: ;
+
+ifneq (${FIG2DEV},none)
+%.eps: %.fig
+	echo -n "Making ${call loc_of,$@} from ${call loc_of,$<} using fig2dev..."
+	${strip ${FIG2DEV} -L eps $< $@}
+	echo " done."
+endif
+
+%.gif: ;
+
+ifneq (${CONVERT},none)
+%.eps: %.gif
+	echo -n "Making ${call loc_of,$@} from ${call loc_of,$<} using convert..."
+	${strip ${CONVERT} $< $@}
+	echo " done."
+endif
+
+FIG := ${notdir ${wildcard *.fig}}
+GIF := ${notdir ${wildcard *.gif}}
+override EPS := ${sort ${FIG:.fig=.eps} ${GIF:.gif=.eps}}
+
+# ========================================================================
+# Encapsulated PostScript figures from GIF
+#
+
+# ========================================================================
+# Included graphics
+#
+included_graphics = \
+  sed --quiet \
+    's|^[^%]*\\includegraphics[*]\?\(\[.*\]\)\?[{]\([-_.[:alnum:]]\+\)[}].*|\2|p' \
+    ${1} 2> /dev/null
+
+normalise_graphics = \
+  norm_graphics=; \
+  for graphics in ${1}; do \
+    case $$graphics in \
+      *.eps|*.ps) norm_graphics="$$norm_graphics $$graphics";;\
+      *) norm_graphics="$$norm_graphics $$graphics.ps";; \
+    esac; \
+  done; \
+  norm_graphics=${call sort_string,$${norm_graphics}}
+
+input_tex = \
+  ${strip \
+     sed --quiet \
+         's|^[^%]*\\input[{]\([-_.[:alnum:]]\+\)[}].*|\1|p' \
+         ${1} 2> /dev/null}
+
+included_tex = \
+  ${strip \
+     sed --quiet \
+         's|^[^%]*\\include[{]\([-_.[:alnum:]]\+\)[}].*|\1|p' \
+         ${1} 2> /dev/null}
+
+normalise_tex = \
+  norm_tex=; \
+  for tex_file in ${1}; do \
+    case $$tex_file in \
+      *.*) norm_tex="$$norm_tex $$tex_file";; \
+      *) norm_tex="$$norm_tex $$tex_file.tex";; \
+    esac; \
+  done; \
+  norm_tex=$$(echo $$norm_tex | tr --squeeze-repeats ' ')
+
+get_graphics = \
+  graphics=; \
+  function collect_graphics () { \
+    if (  echo $$visited_files \
+        | grep --word-regexp --invert-match $${1} > /dev/null 2>&1); \
+    then \
+      visited_files="$$visited_files $${1}"; \
+      local input_tex=$$(${call input_tex,$${1}}); \
+      local included_tex=$$(${call included_tex,$${1}}); \
+      ${call normalise_tex,$${input_tex} $${included_tex}}; \
+      local included_graphics=$$(${call included_graphics,$${1}}); \
+      graphics="$$graphics $$included_graphics"; \
+      if test -n "$$norm_tex"; \
+      then \
+        for tex_file in $$norm_tex; do \
+          collect_graphics $$tex_file; \
+        done; \
+      fi; \
+    fi; \
+  }; \
+  collect_graphics ${1}
+
+.PHONY: graphics
+graphics:
+	visited_files=; \
+        for tex_document in ${PRESENT_DOC_TEX}; do \
+          echo ">>> Analysing master document $$tex_document <<<"; \
+          ${call get_graphics,$$tex_document}; \
+          ${call normalise_graphics,$$graphics}; \
+          echo "Included graphics are $$norm_graphics"; \
+        done
+
+# ========================================================================
+# Updating and including dependences
+#
+
+# File List
+#
+# Note: TeX cuts log lines without taking into account any
+# hyphenation, hence some file may be just unduely cut words at the
+# end of the previous line. We bet this is not a problem in practice,
+# since we filter the files present in the source directory (it is
+# unlikely that the wrong cut creates a real file name, but it could
+# be).
+#
+get_used_files = \
+  if test -e ${1}.log -a -e ${1}.aux; \
+  then \
+    starting_line=$$(grep --line-number '*File List*' ${1}.log \
+                     | head --lines=1 \
+                     | sed --quiet 's|^\([0-9]*\):.*|\1|p'); \
+    if test -n "$$starting_line"; \
+    then \
+      total_lines=$$(wc --lines ${1}.log | awk '{ print $$1 }'); \
+      remaining_lines=$$(expr $$total_lines - $$starting_line); \
+      log_suffix=$$(tail --lines=$$remaining_lines ${1}.log); \
+      ending_line=$$(grep --line-number \
+                        "^ [*][*][*][*][*][*][*][*][*][*][*]$$" ${1}.log \
+                     | head --lines=1 \
+                     | sed --quiet 's|^\([0-9]*\):.*|\1|p'); \
+   file_list_section_length=$$(expr $$ending_line - $$starting_line - 1);\
+      file_list_section=$$(echo "$$log_suffix" \
+                           | head --lines=$$file_list_section_length); \
+      used_file_list=$$(echo "$$file_list_section" \
+                        | awk '{ print $$1 }'); \
+      locally_used_files=; \
+      used_packages=; \
+      for FILE in $$used_file_list; do \
+        if test -e $$FILE; \
+        then \
+          locally_used_files="$$locally_used_files $$FILE"; \
+        fi; \
+        case $$FILE in \
+          *.sty) used_packages="$$used_packages $$FILE";; \
+        esac; \
+      done; \
+      locally_used_files="${1}.tex $$locally_used_files"; \
+      locally_used_files=$$(echo $$locally_used_files \
+                            | tr ' ' '\n' \
+                            | sort --dictionary-order --unique \
+                            | tr '\n' ' '\
+                            | tr --squeeze-repeats ' '); \
+      if test -n "$$used_packages"; \
+      then \
+        used_packages=$$(echo $$used_packages \
+                         | tr ' ' '\n' \
+                         | sort --dictionary-order --unique \
+                         | tr '\n' ' ' \
+                         | tr --squeeze-repeats ' '); \
+      fi; \
+    else \
+      locally_used_files=${1}.tex; \
+      used_packages=; \
+    fi; \
+  else \
+    visited_files=; \
+    ${call get_graphics,${1}.tex}; \
+    ${call normalise_graphics,$$graphics}; \
+    locally_used_files=$$(echo "$$visited_files $$norm_graphics" \
+                          | tr '\n' ' ' \
+                          | tr --squeeze-repeats ' '); \
+  fi
+
+ifeq (${INCL_DEP},yes)
+  ifeq (${VERB},yes)
+    ${warning >>> Including ${DEP} <<<}
+  endif
+  sinclude ${call pref_depdir,${DEP}}
+endif
+
+.PRECIOUS: %.log ${call depdir_qualif,%.dep} ${call depdir_qualif,%.pkg}
+
+#         echo "${notdir $*}.dvi0 ${notdir $*}.dvi: $$locally_used_files"\
+#         | tr --squeeze-repeats ' ' \
+#         >| ${call pref_depdir,$@}; \
+
+#${ensure_DEPDIR}; \
+
+make_dep = \
+        mkdir --parents ${DEPDIR}; \
+        if test "${VERB}" = "yes"; \
+        then \
+          if test -e "$^"; \
+          then \
+            echo -n "Making ${notdir $@} from $^..."; \
+          else \
+            echo -n "Making ${notdir $@} from scratch..."; \
+          fi; \
+        fi; \
+        ${call get_used_files,${notdir $*}}; \
+        if echo $$locally_used_files | grep '\.bbl' > /dev/null; \
+        then \
+          echo "${notdir $*}.dvi: $$locally_used_files" \
+          | tr --squeeze-repeats ' ' \
+          >| ${call pref_depdir,$@}; \
+          filtered_used_files=$$(echo $$locally_used_files \
+                                 | sed 's|[-_[:alnum:]]\+\.bbl||g'); \
+          echo "${notdir $*}.dvi0: $$filtered_used_files" \
+          | tr --squeeze-repeats ' ' \
+          >> ${call pref_depdir,$@}; \
+        else \
+          echo "${notdir $*}.dvi0 ${notdir $*}.dvi: $$locally_used_files"\
+          | tr --squeeze-repeats ' ' \
+          >| ${call pref_depdir,$@}; \
+        fi; \
+        if test -n "$$used_packages"; \
+        then \
+          echo $$used_packages >| ${call pref_depdir,$*.pkg}; \
+        else \
+          cat < /dev/null >| ${call pref_depdir,$*.pkg}; \
+        fi; \
+        ${if ${VERB},echo " done.";} \
+        ${if ${DEBUG},echo "[DBG 0] ${notdir $*}.dvi0 ${notdir $*}.dvi: $$locally_used_files"}
+
+# ${DOC:%=%.dep}: %.dep: %.log %.tex
+# 	${make_dep}
+# ${call pref_depdir,${DOC:%=%.dep}}: ${call pref_depdir,%.dep}: %.log %.tex
+# 	${make_dep}
+# ${SLAVE_TEX:%.tex=%.dep}: %.dep: %.tex
+# 	${make_dep}
+# ${call pref_depdir,${SLAVE_TEX:%.tex=%.dep}}: ${call pref_depdir,%.dep}: %.tex
+# 	${make_dep}
+
+
+ifeq (${KEEP_DEP},no)
+${call depdir_qualif,%.dep} ${call depdir_qualif,%.pkg}: %.log
+	${make_dep}
+endif
+
+.PHONY: dep
+dep: 
+	${MAKE} --no-builtin-rules ${DEP} DOC:="${PRESENT_DOC}"
+
+ifeq (${DEPDIR_EXISTS},yes)
+mostlyclean::
+	${if ${VERB},echo -n "Deleting dependences..."}
+	rm --force --recursive ${DEPDIR}
+	${if ${VERB},echo " done."}
+endif
+
+# XXX
+.PHONY: files
+files:
+	for doc in ${PRESENT_DOC}; do \
+          echo ">>> Analysing master document $$doc.tex <<<"; \
+          ${call get_used_files,$${doc}}; \
+          echo "Locally used files are $$locally_used_files"; \
+        done
+
+# ------------------------------------------------------------------------
+
+update_biblio = \
+  empty_bib=$$(grep --files-with-matches \
+                    '^ *\\bibliography[{] *[}].*' ${1}.tex 2> /dev/null);\
+  if test -n "$$empty_bib"; \
+  then \
+    case ${call num_of,empty_bib} in \
+      1) echo "  [W] Empty \\bibliography call in $$empty_bib:";; \
+      *) echo "  [W] Empty \\bibliography calls in ${call many_items,empty_bib}:";; \
+    esac; \
+    echo "      => Add an argument to \\bibliography."; \
+  else \
+    t=$$(grep --with-filename '^ *\\bibliography[{][^{%} ]\+[}].*' ${1}.tex); \
+    if test -n "$$t"; \
+    then \
+      echo "$$t" \
+    | sed --quiet \
+       's|^\(.*\)\.tex:\\bibliography[{]\([^{%} ]\+\)[}].*|\1.bbl: \2|p' \
+    | tr --delete ' ' \
+    | tr ',' ' ' \
+    | sed 's|$$|.bib|g;s| |.bib |g;s|\(.*\)\.bbl:|\1.bbl: \1.dvi0 |g' \
+    | perl -pe 's|\n|\nifeq (\$${FAKE},no)\n	\$${call make_bbl,\$${\@:.bbl=}}\nelse\n	\$${if \$${DEBUG},echo "[DBG C] Touching .out-of-date in \$${@}: \$$^"}\n	touch .out-of-date\nendif\n|g' >| ${call pref_depdir,${1}.biblio}; \
+    else \
+      cat < /dev/null >| ${call pref_depdir,${1}.biblio}; \
+    fi; \
+  fi
+
+.PRECIOUS: ${call depdir_qualif,%.biblio}
+
+${call depdir_qualif,%.biblio}: %.tex
+	${ensure_DEPDIR}
+  ifeq (${VERB},yes)
+	if test -e "$^"; \
+        then \
+          echo -n "Making ${notdir $@} from $^..."; \
+        else \
+          echo -n "Making ${notdir $@} from scratch..."; \
+        fi
+  endif
+	${call update_biblio,${notdir $*}}; \
+        ${if ${VERB}, \
+          if test -z "$$empty_bib" -a -z "$$t"; \
+          then \
+            echo " done (empty)."; \
+          else \
+            echo " done."; \
+          fi}
+
+.PHONY: biblio
+
+biblio: ${BIBLIO}
+
+ifeq (${INCL_BIBLIO},yes)
+  ifeq (${VERB},yes)
+    ${warning >>> Including ${BIBLIO} <<<}
+  endif
+  sinclude ${call pref_depdir,${BIBLIO}}
+endif
+
+
+# ========================================================================
+# Interface with the OCaml makefile (pretty-printing of pieces of
+# source code with `ocamlweb').
+
+# Variable MLL contains the ocamllex specifications.
+#
+ifndef MLL
+  MLL := ${notdir ${wildcard *.mll}}
+  ifeq (${MLL},*)
+    MLL :=#
+  endif
+endif
+
+# Variable MLY contains the ocamlyacc specifications.
+#
+ifndef MLY
+  MLY := ${notdir ${wildcard *.mly}}
+  ifeq (${MLY},*)
+    MLY :=#
+  endif
+endif
+
+# Variable MLI contains the ocaml interfaces.
+#
+ifndef MLI
+   MLI := ${notdir ${wildcard *.mli}}
+  ifeq (${MLI},*)
+    MLI :=#
+  endif
+endif
+
+# Variable ML contains the ocaml interfaces.
+#
+ifndef ML
+   ML := ${notdir ${wildcard *.ml}}
+  ifeq (${ML},*)
+    ML :=#
+  endif
+endif
+
+OCAML_SRC := ${sort ${MLI} ${ML} ${MLL} ${MLY}}
+
+ifneq (${OCW},)
+  ifeq (${OCAML_SRC},)
+PRETTY_TEX :=#
+OCW_WARNING := $$'  [W] No OCaml source files to pretty-print.\n      => Do you really need package ocamlweb?'
+  else
+PRETTY_TEX := ${GENDOC}.tex
+OCW_WARNING :=#
+  endif
+else
+PRETTY_TEX :=#
+OCW_WARNING :=#
+endif
+
+
+ifeq (${OCAMLWEB},none)
+${GENDOC}.tex:
+	@echo "\`ocamlweb' is not configured: ignoring."
+else
+  ifneq (${OCAML_SRC},)
+${GENDOC}.tex: ${OCAML_SRC}
+	echo -n "Pretty-printing sources to ${call loc_of,${GENDOC}.tex}..."
+	msg=$$(${OCAMLWEB} -o $@ --no-preamble --noweb --no-index $^ 2>&1);\
+        if test -z "$$msg"; \
+        then \
+          echo " done." ; \
+        else \
+          if   echo "$$msg" | grep "warning:" > /dev/null; \
+          then echo " done, but note that:"; \
+               echo "$$msg"; \
+          else echo " FAILED:"; \
+               echo "$$msg"; \
+          fi; \
+        fi
+  else
+${GENDOC}.tex:
+  endif
+endif
+
+.PHONY: pretty
+pretty: ${GENDOC}.tex
+
+
+# ------------------------------------------------------------------------
+# Overfulls
+#
+get_overfull_hbox = \
+  overfull_hbox=$$(grep 'Overfull \\hbox' ${1} 2> /dev/null \
+                   | wc --lines | tr --delete ' ')
+
+get_overfull_vbox = \
+  overfull_vbox=$$(grep 'Overfull \\vbox' ${1} 2> /dev/null \
+                   | wc --lines | tr --delete ' ')
+
+show_overfull_box = \
+  ${call get_overfull_hbox,${1}}; \
+  case $$overfull_hbox in \
+   0|"") ;; \
+   1) echo "  [W] 1 horizontal overfull.";; \
+   *) echo "  [W] $$overfull_hbox horizontal overfulls.";; \
+  esac; \
+  ${call get_overfull_vbox,${1}}; \
+  case $$overfull_vbox in \
+    0|"") ;; \
+    1) echo "  [W] 1 vertical overfull.";; \
+    *) echo "  [W] $$overfull_vbox vertical overfulls.";; \
+  esac
+
+show_overfulls = \
+  ${call show_overfull_box,${1}}; \
+  doc_class=$$(sed --quiet \
+               's|^ *\\documentclass\(\[\(.*\)\]\)\?[{]\(.*\)[}]|\3|p' \
+               $*.tex 2> /dev/null); \
+  if test "$$doc_class" = "seminar"; \
+  then \
+    slide_overfulls=$$(sed --quiet 's|LaTeX Warning: Slide \(.*\) overfull .*|\1|p' ${1} | ${call make_sorted_list,numeric-sort}); \
+    if test "$$slide_overfulls" != ""; \
+    then \
+      if test "$$overfull_hbox" != "0" -o "$$overfull_vbox" != "0"; \
+      then \
+        echo "      The following warning may be partly redundant:"; \
+      fi; \
+      case ${call num_of,slide_overfulls} in \
+        1) echo "  [W] Overfull at slide $$slide_overfulls.";; \
+        2) echo "  [W] Overfull at slides" ${call two_items,slide_overfulls}".";; \
+        *) echo "  [W] Overfulls at slides" ${call many_items,slide_overfulls}".";; \
+      esac; \
+    fi; \
+  fi
+
+# ------------------------------------------------------------------------
+# Underfulls
+#
+get_underfull_hbox = \
+  underfull_hbox=$$(grep 'Underfull \\hbox' ${1} 2> /dev/null \
+                   | wc --lines | tr --delete ' ')
+
+get_underfull_vbox = \
+  underfull_vbox=$$(grep 'Underfull \\vbox' ${1} 2> /dev/null \
+                   | wc --lines | tr --delete ' ')
+
+show_underfulls = \
+  ${call get_underfull_hbox,${1}}; \
+  case $$underfull_hbox in \
+    0|"") ;; \
+    1) echo "  [W] 1 horizontal underfull.";; \
+    *) echo "  [W] $$underfull_hbox horizontal underfulls.";; \
+  esac; \
+  ${call get_underfull_vbox,${1}}; \
+  case $$underfull_vbox in \
+    0|"") ;; \
+    1) echo "  [W] 1 vertical underfull.";; \
+    *) echo "  [W] $$underfull_vbox vertical underfulls.";; \
+  esac
+
+show_under_overfulls = \
+  ${call show_overfulls,${1}}; \
+  ${call show_underfulls,${1}}; \
+  if test "$$underfull_hbox" != "0" -o "$$underfull_vbox" != "0" \
+        -o "$$overfull_hbox" != "0" -o "$$overfull_vbox" != "0" \
+        -o "$$slide_overfulls" != ""; \
+  then \
+    echo "      => Rerun make for details or check ${call loc_of,${1}} for transcript."; \
+  fi
+
+# ------------------------------------------------------------------------
+# Get file name
+#
+SUFFIXES := ${shell \
+  suffixes=; \
+  for f in $$(ls); do \
+    new_suf=$$(echo $$f | sed -n 's|.*\.\([^\.]*\)$$|\1|p'); \
+    suffixes="$$suffixes $$new_suf"; \
+  done; \
+  echo $$suffixes | tr ' ' '\n' | sort --dictionary-order --unique}
+
+ifeq (${words ${PRESENT_TEX}},1)
+get_file = \
+  file=${PRESENT_TEX}
+else
+get_file = \
+  e=; \
+  for s in ${SUFFIXES}; do \
+    case "$$s" in \
+      ac|aux|cache|dvi|dvi0|status|in|log|log1|bib|blg);; \
+      *~);; \
+      *) e="$$e;s|\.$$s|\.$$s |g";; \
+    esac \
+  done; \
+  current=$$(head --lines=$$cutting_line_in_log ${1} \
+             | sed --expression="$$e" \
+             | tr --delete '\n' \
+             | perl -pe 's|\(|\n\(|g;s|\)|\n\)\n|g' \
+             | tr ' ' '\n' \
+             | grep "([[:alnum:]\|/\|\.]\|)" \
+             | tr --delete '\n'); \
+  next=$$(echo $$current | perl -pe 's|\(|\n\(|g;s|\)|\)\n|g' \
+          | grep --invert-match "(.*)" | tr --delete '\n'); \
+  until test "$$current" = "$$next"; do \
+    tmp=$$current; \
+    current=$$next; \
+    next=$$(echo $$current | perl -pe 's|\(|\n\(|g;s|\)|\)\n|g' \
+            | grep --invert-match "(.*)" | tr --delete '\n'); \
+  done; \
+  file=$$(echo $$current | tr --delete ')' \
+          | sed 's=.*([\.\|/]*\([[:alnum:]]\+\)=\1=g')
+endif
+
+# ------------------------------------------------------------------------
+# Errors
+#
+
+# Originellement on avait ${LOG} au lieu de ${1}, alors que parfois il
+# s'agit de ${LOG1}. Ca marche?
+#
+get_latex_error = \
+  latex_error=$$(sed --quiet "s|^! \(.*\)|\1|p" ${1} 2> /dev/null \
+                 | head --lines=1)
+
+make_next = \
+  $$(echo $$current | perl -pe 's|\(|\n\(|g;s|\)|\)\n|g' \
+     | grep --invert-match "(.*)" \
+     | tr --delete '\n')
+
+find_latex_error = \
+  ${call get_latex_error,${1}}; \
+  if test -n "$$latex_error"; \
+  then \
+    line=$$(sed --quiet "s|^l\.\([0-9]\+\).*|\1|p" ${1} \
+            | tr '\n' ' ' \
+            | cut --fields=1 --delimiter=' '); \
+    linenum_in_log=$$(grep --line-number '^! .*' ${1} \
+                      | head --lines=1 \
+                      | sed --quiet 's|^\([0-9]*\):.*|\1|p'); \
+    linenum_in_log=$$(expr $$linenum_in_log - 1); \
+    runaway_line=$$(nl --body-numbering=a ${1} \
+                | sed --quiet "s|^ *\([0-9]\+\).*Runaway argument?|\1|p" \
+                | tr '\n' ' ' \
+                | cut --fields=1 --delimiter=' '); \
+    if test -n "$$runaway_line"; \
+    then \
+      cutting_line_in_log=$$runaway_line; \
+    else \
+      cutting_line_in_log=$$linenum_in_log; \
+    fi; \
+    ${call get_file,${1}}; \
+    if test -z "$$file" -o ! -e "$$file"; \
+    then \
+      in_file=; \
+    else \
+      in_file=" in ${if ${LOC},${LOC}/}$$file"; \
+    fi; \
+    if test "$$latex_error" = "Undefined control sequence."; \
+    then \
+      error_line=$$(sed --quiet 's|^l.[[:digit:]]\+ \(.*\)|\1|p' ${1}); \
+      undefined_macro=$$(echo $$error_line \
+                         | sed --quiet 's|.* \([^ ]\+\)$$|\1|p'); \
+      if test -n "$$undefined_macro"; \
+      then \
+        latex_error="Undefined control sequence $$undefined_macro."; \
+      fi; \
+    fi; \
+    if test -z "$$line"; \
+    then \
+      if test -z "$$file" -a -z "$$runaway_line"; \
+      then \
+        echo "  [E] $$latex_error"; \
+      else \
+        echo "  [E] Error$$in_file:"; \
+        if test -n "$$runaway_line"; \
+        then \
+           grep --after-context=1 "^Runaway argument?" ${1} 2> /dev/null \
+         | tail --lines=1 \
+         | sed --quiet "s|^\(.*\)$$|      \1|p"; \
+        fi; \
+        echo "      $$latex_error"; \
+      fi; \
+    else \
+      echo "  [E] Error$$in_file at line $$line:"; \
+      echo "      $$latex_error"; \
+    fi; \
+    linenum_in_log=$$(expr $$linenum_in_log + 1); \
+    echo "      => Check line $$linenum_in_log in $*.log."; \
+    if test -n "$$runaway_line" -a "$$file" != $*.tex; \
+    then \
+      echo "      => Check the included or input file."; \
+    fi; \
+  fi
+
+# ------------------------------------------------------------------------
+# Making DVI for the first time.
+#
+get_filtered_missing_files = \
+  missing_files=$$(sed --quiet 's|^No file \(.*\)\.|\1|p' ${2} \
+                       2> /dev/null); \
+  filtered_missing_files=; \
+  for file in $$missing_files; do \
+    reject=false; \
+    for suffix in ${1}; do \
+      without_suffix=$$(basename $$file .$$suffix); \
+      if test "$$file" != "$$without_suffix"; \
+      then \
+        reject=true; \
+        break; \
+      fi; \
+    done; \
+    if test "$$reject" = "false"; \
+    then \
+      filtered_missing_files="$$filtered_missing_files $$file"; \
+    fi; \
+  done
+
+no_file_warning = \
+  ${call get_filtered_missing_files,aux bbl toc ind,${1}}; \
+  case ${call num_of,filtered_missing_files} in \
+    0|"");; \
+    1) echo "  [W] Missing file$$filtered_missing_files."; \
+       echo "      => Check the included or input file name.";; \
+    2) echo "  [W] Missing files ${call two_items,filtered_missing_files}."; \
+       echo "      => Check the included or input file names.";; \
+    *) echo "  [W] Missing files ${call many_items,filtered_missing_files}."; \
+       echo "      => Check the included or input file names.";; \
+  esac
+
+record_latex_success = \
+  if test -e .errors; \
+  then \
+    err=$$(cat .errors); \
+    rm --force .errors; \
+    for tex_basename in $$err; do \
+      if test "$$tex_basename" != "${1}"; \
+      then \
+        echo $$tex_basename >> .errors; \
+      fi; \
+    done; \
+  fi
+
+record_latex_failure = \
+  if ! (grep ${1} .errors > /dev/null 2>&1); \
+  then \
+    echo ${1} >> .errors; \
+  fi; \
+  if ! (grep ${1} .errmsg > /dev/null 2>&1); \
+  then \
+    ${if ${DEBUG},echo "<0> Adding ${1} to .errmsg";} \
+    echo ${1} >> .errmsg; \
+  fi
+
+latex_failure = \
+  echo " FAILED:"; \
+  ${call find_latex_error,${1}.log}; \
+  if test -n "$$latex_error"; \
+  then \
+    ${call record_latex_failure,${1}}; \
+  fi; \
+  if test ! -e "$$file"; \
+  then \
+    if grep rfull ${1}.log > /dev/null 2>&1; \
+    then \
+      if test "${words ${PRESENT_TEX}}" != "1"; \
+      then \
+        echo "      => Rerun make to try to get the erroneous file name."; \
+      fi; \
+    fi; \
+  fi
+
+latex = \
+  if ${LATEX} ${PROLOG} ${1}.tex > /dev/null; \
+  then \
+    ${call dvi_data,${1}.log}; \
+    make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                              ${1}.dep \
+                              DOC:='${DOC}' \
+                              INCL_DEP:=no \
+                              INCL_BIBLIO:=no}"; \
+    ${if ${VERB},echo "[11] Calling $$make_cmd";} \
+    eval $$make_cmd; \
+    latex_status=passed; \
+  else \
+    ${call latex_failure,${1}}; \
+    latex_status=failed; \
+  fi
+
+make_dvi0 = \
+  ${if ${DEBUG},echo "[DBG 9] Entering make_dvi0 with \$${1}=${1}";} \
+  echo -n "Making ${call loc_of,${1}.dvi} from ${call loc_of,${1}.tex}..."; \
+  ${call latex,${1}}; \
+  if test "$$latex_status" = "passed"; \
+  then \
+    ${if ${TOC_WARNING}, echo ${TOC_WARNING};} \
+    ${if ${OCW_WARNING}, echo ${OCW_WARNING};} \
+    ${call no_file_warning,${1}.log}; \
+    ${call record_latex_success,${1}}; \
+  fi; \
+  if test -e ${1}.dvi; \
+  then \
+    mv --force ${1}.dvi{,0}; \
+  fi
+
+%.dvi0:
+ifeq (${LATEX},none)
+	@echo "LaTeX is not configured."
+else 
+  ifeq (${FAKE},no)
+	${call make_dvi0,$*}
+  endif
+endif
+
+ifneq (${DOC},)
+mostlyclean::
+	if test -f . ${DOC:%=-o -e %.dvi0}; \
+        then \
+          ${if ${VERB},echo -n "Deleting DVI0 files...";} \
+          rm --force ${DOC:%=%.dvi0}; \
+          ${if ${VERB},echo " done.";} \
+        fi
+endif
+
+# ------------------------------------------------------------------------
+# Multiple labels
+#
+print_multiple_labels = \
+  case ${call num_of,multiple_labels} in \
+    0|"") ;; \
+    1) echo "  [W] Multiply-defined label" \
+            ${call one_id,multiple_labels}"."; \
+       echo "      => Check spellings or rename or remove all but one occurrence.";; \
+    2) echo "  [W] Multiply-defined labels" \
+            ${call two_id,multiple_labels}"."; \
+       echo "      => Check spellings or rename or remove all but one occurrence.";; \
+    *) echo "  [W] Multiply-defined labels" \
+            ${call many_id,multiple_labels}"."; \
+       echo "      => Check spellings or rename or remove all but one occurrence.";; \
+  esac
+
+
+# ------------------------------------------------------------------------
+# Citations
+#
+# In case of a \cite{X} in a `.tex' file, which is undefined, we will
+# report it immediately after running `bibtex'. In case the citation
+# is in the `.bib', we can only report it after running `latex' to
+# solve the citations. Hence, in the first case, we don't want to
+# report two times the undefined citation. Moreover we assume that a
+# citation can occur _only_ inside a `.tex' or `.bib' file.
+#
+ifeq (${BIB},)
+  ifeq (${ALL_BIB},)
+advice = \
+  echo "      => Create a bibliography and call \\bibliography in ${call loc_of,${DOC}.tex}."
+  else
+advice = \
+  echo "      => Create a bibliography and/or call \\bibliography in ${call loc_of,${DOC}.tex}."
+  endif
+else
+  ifeq (${ALL_BIB},)
+advice = \
+  case ${1} in \
+    1) echo "      => Check spelling or add corresponding entry.";; \
+    *) echo "      => Check spellings or add corresponding entries.";; \
+  esac
+  else
+advice = \
+case ${1} in \
+ 1) echo "      => Check spelling, add entry or add arguments to \\bibliography.";;\
+ *) echo "      => Check spellings, add entries or add arguments to \\bibliography.";;\
+esac
+  endif
+endif
+
+print_undef_cit = \
+  case ${call num_of,${1}} in \
+    0|"") ;; \
+    1) echo "  [W] Undefined citation" ${call one_id,${1}}"."; \
+       ${call advice,1};; \
+    2) echo "  [W] Undefined citations" ${call two_id,${1}}"."; \
+       ${call advice,2};; \
+    *) echo "  [W] Undefined citations:" ${call many_id,${1}}"."; \
+       ${call advice,many};; \
+  esac; \
+  case ${call num_of,${1}} in \
+    0|"") ;; \
+    *) for file in ${PRESENT_TEX} ${BIB}; do \
+         citations=; \
+         for citation in $$${1}; do \
+           if grep "\\\cite\(\[.*\]\)\?[{].*,\?$$citation,\?.*[}]" \
+                   $$file > /dev/null 2>&1; \
+           then \
+             citations="$$citations $$citation"; \
+           fi; \
+         done; \
+         citations=${call norm_list,citations}; \
+         case ${call num_of,citations} in \
+           0|"") ;; \
+           1) echo "         *" ${call many_items,file} \
+                   "cites" ${call one_id,citations}".";; \
+           2) echo "         *" ${call many_items,file} \
+                   "cites" ${call two_id,citations}".";; \
+           *) echo "         *" ${call many_items,file} \
+                   "cites:" ${call many_id,citations}".";; \
+         esac; \
+       done;; \
+  esac
+
+
+# ------------------------------------------------------------------------
+# Warnings and errors in bibliographies
+#
+get_warnings_in_blg = \
+  warnings_in_blg=$$(sed --quiet 's|^Warning--\(.*\)|\1|p' $$blg \
+                       2> /dev/null)
+
+get_generic_warnings_in_blg = \
+  if test -n "$$warnings_in_blg"; \
+  then \
+    generic_warnings_in_blg=$$(echo "$$warnings_in_blg" \
+      | grep --invert-match \
+         --regexp="I didn.t find a database entry for .*" 2> /dev/null); \
+  fi
+
+print_generic_warnings_in_blg = \
+  if test -n "$$generic_warnings_in_blg"; \
+  then \
+      echo "$$generic_warnings_in_blg" \
+    | while read warning; do \
+        entry=$$(echo $$warning | sed --quiet 's|.* in \(.*\)|\1|p' \
+                                  2> /dev/null); \
+        if test -n "$$entry"; \
+        then \
+          bibs_with_entry=$$(grep --files-with-matches "{$$entry," \
+                                  $$bib 2> /dev/null);\
+          case ${call num_of,bibs_with_entry} in \
+            0|"") echo "  [W] $$warning.";; \
+            1) case $$(echo $$bib | wc --words | tr --delete ' ') in \
+                 0|"");; \
+                 1) echo "  [W] $$warning.";; \
+                 *) echo "  [W] $$warning of $$bibs_with_entry.";; \
+               esac;; \
+            2) echo "  [W] $$warning of ${call two_items,bibs_with_entry}.";; \
+            *) echo "  [W] $$warning of ${call many_items,bibs_with_entry}.";; \
+          esac; \
+        else \
+          echo "  [W] $$warning."; \
+        fi; \
+      done; \
+  fi
+
+get_missing_entries = \
+  if test -n "$$warnings_in_blg"; \
+  then \
+    missing_entries=$$(echo "$$warnings_in_blg" \
+    | sed --quiet 's|I didn.t find a database entry for "\(.*\)"|\1|p' \
+          2> /dev/null \
+    | ${call make_sorted_list,dictionary-order}); \
+  fi
+
+get_num_errors = \
+  num_errors=$$(sed --quiet 's=.*\(was\|were\) \(.*\) error.*=\2=p' \
+                            $$blg 2> /dev/null)
+
+errors_in_blg = \
+  case $$num_errors in \
+    0|"") ;; \
+    *) if grep 'I found no \\bibstyle command' $$blg  > /dev/null 2>&1; \
+       then \
+         echo "  [E] \\bibliographystyle is missing:"; \
+         echo "      => Choose a style and add a call."; \
+       fi; \
+       if grep 'I found no \\citation commands' $$blg  > /dev/null 2>&1; \
+       then \
+         echo "  [E] \\cite calls are missing:"; \
+         echo "      => Add citations or use \\nocite."; \
+       fi; \
+       missing_bst=$$(sed --quiet \
+         "s|I couldn't open style file \(.*\)|\1|p" $$blg); \
+       if test "$$missing_bst" != ""; \
+       then \
+         echo "  [E] Bibliography style file ${if ${LOC},${LOC}/}$$missing_bst is missing."; \
+         echo "      (This error is counted two times.)"; \
+         echo "      => Check spelling or make this file available."; \
+       fi; \
+       all_errors=$$(grep --regexp="^[[:alpha:]][^-]*---line .*" $$blg 2> /dev/null); \
+       for b in ${BIB_BASENAMES}; do \
+         repeated=$$(echo "$$all_errors" \
+           | sed --quiet \
+               "s|Repeated entry---line \(.*\) of file $$b.bib|\1|p" $$blg \
+           | ${call make_sorted_list,numeric-sort}); \
+         repeated_entries=; \
+           for line in $$repeated; do \
+             repeated_entry=$$(nl --body-numbering=a $$b.bib \
+               | sed --quiet "s|^ *$$line[^0-9].*@.*[{]\(.*\),.*|\1|p"); \
+              repeated_entries="$$repeated_entries"$$'\n'"$$repeated_entry"; \
+           done; \
+         repeated_entries=$$(echo "$$repeated_entries" \
+                             | ${call make_sorted_list,dictionary-order}); \
+         case ${call num_of,repeated_entries} in \
+           0|"") ;; \
+           1) echo -n "  [E] Repeated entry" \
+                      ${call one_id,repeated_entries};; \
+           2) echo "  [E] Repeated entries" \
+                   ${call two_id,repeated_entries};; \
+           *) echo "  [E] Repeated entries:" \
+                   ${call many_id,repeated_entries};; \
+         esac; \
+         case ${call num_of,repeated} in \
+           0|"") ;; \
+           1) echo " in ${if ${LOC},${LOC}/}$$b.bib at line $$repeated."; \
+              echo -n "      => Merge entries or rename or remove"; \
+              echo " the redundant one.";; \
+           2) echo "      in ${if ${LOC},${LOC}/}$$b.bib at lines" \
+                   ${call two_items,repeated}"."; \
+              echo -n "      => Merge entries or rename or remove"; \
+              echo " the redundant one.";; \
+           *) echo "      in ${if ${LOC},${LOC}/}$$b.bib at lines" \
+                   ${call many_items,repeated}"."; \
+              echo -n "      => Merge entries or rename or remove"; \
+              echo " the redundant one.";; \
+         esac; \
+       done; \
+       other_errors=$$(echo "$$all_errors" \
+         | grep --invert-match --regexp="^Repeated entry---line .*" \
+                2> /dev/null); \
+       if test -n "$$other_errors"; \
+       then \
+           echo "$$other_errors" \
+         | while read err; do \
+              echo $$err \
+            | sed "s=^\(.*\)---line \([0-9]\+\) \(of file \([[:alnum:]\|_\|\.]\+\)\)\?.*=  [E] \1 at line \2 in file \4.=g" \
+                  2> /dev/null; \
+           done; \
+       else \
+         two_lines_errors=$$(grep --before-context=1 "^[-][-][-]line" $$blg \
+                             | sed 's|^--$$||g'); \
+         if test -n "$$two_lines_errors"; \
+         then \
+             echo "$$two_lines_errors" \
+           | while read err; do \
+               if test -n "$$err"; \
+               then \
+                 echo $$err \
+               | sed --quiet "s%^---line \([0-9]\+\) \(of file \([[:alnum:]\|_\|\.]\+\)\)\?.*%      => Check line \1 in file \3.%p" \
+                  2> /dev/null; \
+                 echo $$err \
+               | sed --quiet "s|^\([^-].*\)|  [E] \1|p"; \
+               fi; \
+             done; \
+         fi; \
+       fi; \
+  esac        
+
+# ------------------------------------------------------------------------
+# Making bibliographies
+#
+
+# Minimum cross-references
+#
+MCR :=2#
+
+ifeq (${BIBTEX},none)
+make_bbl = \
+  @echo "BibTeX is not configured; skipping bibliography."
+else
+make_bbl = \
+  ${call get_latex_error,${1}.log}; \
+  if test -z "$$latex_error"; \
+  then \
+    bib=$$(sed --quiet 's|^ *\\bibliography[{]\([^{%} ]\+\)[}].*|\1|p' \
+                       ${1}.tex \
+           | tr --delete ' ' \
+           | sed 's|,|.bib |g;s|$$|.bib|g'); \
+    case ${call num_of,bib} in \
+      1) echo -n "Processing bibliography $$bib of ${1}.tex...";; \
+      2) echo -n "Processing bibliographies" \
+                 $$(echo $$bib | sed 's| | and |g') \
+                 "of ${1}.tex...";; \
+      *) echo -n "Processing bibliographies" \
+                 $$(echo $$bib | sed 's| |,|g') \
+                 "of ${1}.tex...";; \
+    esac; \
+    ${BIBTEX} -terse -min-crossrefs=${MCR} ${1} > /dev/null; \
+    echo -n " done"; \
+    touch .ran-bibtex; \
+    entries=$$(sed --quiet \
+                   's/.*used \(.*\) \(entries\|entry\).*/\1/p' \
+                   ${1}.blg 2> /dev/null); \
+    case $$entries in \
+       "") echo -n " (0 entry";; \
+      0|1) echo -n " ($$entries entry";; \
+        *) echo -n " ($$entries entries";; \
+    esac; \
+    blg=${1}.blg; \
+    ${get_num_errors}; \
+    case $$num_errors in \
+      0|"") ;; \
+      1) echo -n ", 1 error";; \
+      *) echo -n ", $$num_errors errors";; \
+    esac; \
+    num_warnings=$$(grep --count Warning ${1}.blg 2> /dev/null); \
+    case $$num_warnings in \
+      0|"") if test "$$num_errors" = "0" -o -z "$$num_errors"; \
+            then echo ")."; \
+            else echo "):"; \
+            fi;; \
+      1) echo ", 1 warning):";; \
+      *) echo ", $$num_warnings warnings):";; \
+    esac; \
+    ${errors_in_blg}; \
+    ${get_warnings_in_blg}; \
+    ${get_missing_entries}; \
+    ${call print_undef_cit,missing_entries}; \
+    ${get_generic_warnings_in_blg}; \
+    ${print_generic_warnings_in_blg}; \
+  fi
+endif
+
+ifneq (${BBL},)
+override DEL_BBL := ${BBL}
+mostlyclean::
+	if test -f . ${DEL_BBL:%=-o -e %}; \
+        then \
+          ${if ${VERB},echo -n "Deleting compiled bibliographies...";} \
+          rm --force ${DEL_BBL}; \
+          ${if ${VERB},echo " done.";} \
+        fi
+endif
+
+ifneq (${BLG},)
+override DEL_BLG := ${BLG}
+mostlyclean::
+	if test -f . ${DEL_BLG:%=-o -e %}; \
+        then \
+          ${if ${VERB},echo -n "Deleting bibliography logs...";} \
+          rm --force ${DEL_BLG}; \
+          ${if ${VERB},echo " done.";} \
+        fi
+endif
+
+# ------------------------------------------------------------------------
+# Indexes
+
+MAKEINDEX := @MAKEINDEX@
+
+ALL_IST := ${notdir ${wildcard *.ist}}
+IST :=#
+ifneq (${words ${ALL_IST}},0)
+  ifeq (${words ${ALL_IST}},1)
+    IST := ${ALL_IST}
+  else
+    ${warning There is more than one index style file (${ALL_IST}).}
+    ${error Remove some of them or distinguish one with IST.}
+  endif
+endif
+
+ifneq (${MAKECMDGOALS},clean)
+  ifneq (${MAKECMDGOALS},distclean)
+Makefile.ind: ${PRESENT_TEX}
+  endif
+endif
+
+#ind: ${IND}
+
+%.ind: %.idx ${if ${IST},${IST}}
+
+# ------------------------------------------------------------------------
+# Labels and references
+#
+
+print_undefined_ref = \
+  case ${call num_of,undefined_ref} in \
+    0|"") ;; \
+    1) echo "  [W] Undefined reference" \
+            ${call one_id,undefined_ref}"."; \
+       echo "      => Check spelling or add corresponding \\label.";; \
+    2) echo "  [W] Undefined references" \
+            ${call two_id,undefined_ref}"."; \
+       echo "      => Check spellings or add corresponding \\label.";; \
+    *) echo "  [W] Undefined references:" \
+            ${call many_id,undefined_ref}"."; \
+       echo "      => Check spellings or add corresponding \\label.";; \
+  esac; \
+  case ${call num_of,undefined_ref} in \
+    0|"") ;; \
+    *) for file in ${PRESENT_TEX} ${BIB}; do \
+         references=; \
+         for reference in $$undefined_ref; do \
+           if grep "\\\\\(page\)\?ref[{]$$reference[}]" $$file > /dev/null 2>&1; \
+           then \
+             references="$$references $$reference"; \
+           fi; \
+         done; \
+         references=${call norm_list,references}; \
+         if test "${words ${PRESENT_TEX}}" != "1"; \
+         then \
+           case ${call num_of,references} in \
+             0|"") ;; \
+             1) echo "         *" ${call many_items,file} \
+                     "refers to" ${call one_id,references}".";; \
+             2) echo "         *" ${call many_items,file} \
+                     "refers to" ${call two_id,references}".";; \
+             *) echo "         *" ${call many_items,file} \
+                     "refers to:" ${call many_id,references}".";; \
+           esac; \
+         fi; \
+       done;; \
+  esac
+
+get_label_change = \
+  label_change=$$(sed --quiet \
+    "s|LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.|yes|p" ${1} \
+    2> /dev/null \
+  | ${call make_sorted_list,dictionary-order})
+
+get_multiple_labels = \
+  multiple_labels=$$(sed --quiet \
+    "s|LaTeX Warning: Label \`\(.*\)' multiply defined.|\1|p" ${1} \
+    2> /dev/null \
+  | ${call make_sorted_list,dictionary-order})
+
+multiple_labels = \
+  ${call get_multiple_labels,${1}}; \
+  ${print_multiple_labels}
+
+# Attention: il ne faut pas inclure dans la regexp "input line" car il
+# se peut que le mot "input" soit coupé!
+#
+get_undefined_ref = \
+  undefined_ref=$$(sed --quiet \
+    "s|LaTeX Warning: Reference \`\([^ ]\+\)' .*|\1|p" ${1} \
+    2> /dev/null \
+  | ${call make_sorted_list,dictionary-order})
+
+undefined_ref = \
+  ${call get_undefined_ref,${1}}; \
+  ${print_undefined_ref}
+
+# Attention: il ne faut pas inclure dans la regexp "input line" car il
+# se peut que le mot "input" soit coupé!
+#
+get_undefined_citations = \
+  undefined_citations=$$(sed --quiet \
+    "s|LaTeX Warning: Citation \`\([^ ]\+\)' .*|\1|p" ${1} \
+    2> /dev/null \
+  | ${call make_sorted_list,dictionary-order})
+
+find_all_missing_cit = \
+  ${call get_undefined_citations,${1}}; \
+  ${call print_undef_cit,undefined_citations}
+
+find_add_missing_cit = \
+  ${call get_undefined_citations,${1}}; \
+  blg="${BLG}"; \
+  ${get_warnings_in_blg}; \
+  ${get_missing_entries}; \
+  additional_citations=; \
+  remaining_entries=$$missing_entries; \
+  for citation in $$undefined_citations; do \
+    if test -z "$$remaining_entries"; \
+    then \
+      additional_citations="$$additional_citations $$citation"; \
+    else \
+      fst_entry=${call head,remaining_entries}; \
+      if test "$$fst_entry" = "$$citation"; \
+      then \
+        remaining_entries=${call tail,remaining_entries}; \
+      else \
+        additional_citations="$$additional_citations $$citation"; \
+      fi; \
+    fi; \
+  done; \
+  additional_citations=${call norm_list,additional_citations}; \
+  ${call print_undef_cit,additional_citations}
+
+# ------------------------------------------------------------------------
+# Detailed report of underfulls and overfulls in .log
+#
+# This feature is enabled when the document is already
+# up-to-date. (Otherwise a summary of the underfulls and overfulls is
+# achieved.)
+#
+get_page = \
+  page=$$(head --lines=$$linenum_in_log ${1} \
+          | tr --delete '\n' | tr --delete ' ' \
+          | sed --quiet 's|.*\[\([0-9]\+\)\].*|\1|p'); \
+  page=$$(expr $$page + 1)
+
+hbox_init = \
+  linenum_in_log=$$(echo "$$line" | sed --quiet 's|^\(.*\):.*|\1|p'); \
+  prefix=$$(head --lines=$$linenum_in_log ${1}); \
+  line_in_log=$$(echo "$$prefix" | tail --lines=1); \
+  linenum_in_tex=$$(echo "$$line_in_log" \
+                   | sed --quiet 's|.* \(line [0-9]\+\)|\1|p'); \
+  if test -z "$$linenum_in_tex"; \
+  then \
+    linenum_in_tex=$$(echo "$$line_in_log" \
+                   | sed --quiet 's|.* \(lines [0-9]\+--[0-9]\+\)|\1|p');\
+  fi
+
+get_message = \
+  file_size=$$(wc --lines ${1} | awk '{ print $$1 }') ; \
+  suffix=$$(tail --lines=$$(expr $$file_size - $$linenum_in_log) ${1}); \
+  message_size=$$(echo "$$suffix" \
+                  | grep "^ \[\]\$$" --line-number --max-count=1 \
+                  | sed 's|\([0-9]\+\):.*|\1|g' \
+                 ); \
+  message_size=$$(expr $$message_size - 1); \
+  message=$$(echo "$$suffix" | head --lines=$$message_size); \
+  new_suffix_size=$$(expr $$file_size - $$linenum_in_log - $$message_size); \
+  new_suffix=$$(tail --lines=$$new_suffix_size ${1}); \
+  prefix=$$(head --lines=$$linenum_in_log ${1})
+
+clean_message = \
+  echo "$$prefix" >| ${1}; \
+  for ((num=$$message_size;$$num>0;num--)) do \
+    echo | (cat >> ${1}); \
+  done; \
+  echo "$$new_suffix" >> ${1}
+
+u_vbox = \
+  linenum_in_log=$$(echo "$$line" | sed --quiet 's|^\(.*\):.*|\1|p'); \
+  line_in_log=$$(head --lines=$$linenum_in_log ${1} | tail --lines=1); \
+  badness=$$(echo "$$line_in_log" \
+            | sed --quiet 's|.*\((badness .*)\).*|\1|p'); \
+  ${call get_page,${1}}; \
+  cutting_line_in_log=$$linenum_in_log; \
+  ${call get_file,${1}}; \
+  if test -z "$$file"; \
+  then \
+    echo "  [W] Underfull \\vbox $$badness at page $$page."; \
+  else \
+    echo "  [W] Underfull \\vbox $$badness in $$file."; \
+    echo "      => Check page $$page."; \
+  fi
+
+print_message = \
+  filtered=$$(echo "$$message" \
+              | tr --delete '\n' \
+              | sed -e 's+\\OT1/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\OMS/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\OML/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\T1/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\OMS/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\OMX/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\U/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\OT2/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's+\\PD1/[[:alnum:]\|/\|\.]*++g' \
+                    -e 's|\[\]||g' \
+                    -e 's|$$[^$$]*\$$|<maths>|g' \
+                    -e 's|$$[^$$]*$$|<maths>|g' \
+                    -e 's|\^^[[:alnum:]]*||g' \
+                    -e 's|^ *||g' \
+                    -e 's|[ ]\+| |g'); \
+  if test -n "$$filtered"; \
+  then echo $$':\n' "     $$filtered"; \
+  else echo "."; \
+  fi
+
+u_hbox = \
+  ${call hbox_init,${1}.log1}; \
+  badness=$$(echo "$$line_in_log" \
+             | sed --quiet 's|.*\((badness .*)\).*|\1|p'); \
+  ${call get_page,${1}.log1}; \
+  cutting_line_in_log=$$linenum_in_log; \
+  ${call get_file,${1}.log1}; \
+  ${call get_message,${1}.log1}; \
+  if test -z "$$file"; \
+  then \
+    echo "  [W] Underfull \\hbox $$badness at page $$page."; \
+  else \
+    if test -z "$$linenum_in_tex"; \
+    then \
+      echo -n "  [W] Underfull \\hbox $$badness in $$file"; \
+    else \
+      echo -n "  [W] Underfull \\hbox $$badness in $$file at $$linenum_in_tex"; \
+    fi; \
+    ${print_message}; \
+    echo "      => Check page $$page and line $$linenum_in_log in ${1}.log."; \
+  fi; \
+  ${call clean_message,${1}.log1}
+
+o_hbox = \
+  ${call hbox_init,${1}.log1}; \
+  too_wide=$$(echo "$$line_in_log" \
+              | sed --quiet 's|.*(\(.*pt\) too wide).*|\1|p'); \
+  ${call get_page,${1}.log1}; \
+  cutting_line_in_log=$$linenum_in_log; \
+  ${call get_file,${1}.log1}; \
+  ${call get_message,${1}.log1}; \
+  if test -z "$$file"; \
+  then \
+    echo "  [W] Overfull \\hbox ($$too_wide) at page $$page."; \
+  else \
+    if test -z "$$linenum_in_tex"; \
+    then \
+      echo -n "  [W] Overfull \\hbox ($$too_wide) in $$file"; \
+    else \
+      echo -n "  [W] Overfull \\hbox ($$too_wide) in $$file at $$linenum_in_tex"; \
+    fi; \
+    ${print_message}; \
+    echo "      => Check page $$page and line $$linenum_in_log in ${1}.log."; \
+  fi; \
+  ${call clean_message,${1}.log1}
+
+o_vbox = \
+  linenum_in_log=$$(echo "$$line" | sed --quiet 's|^\(.*\):.*|\1|p'); \
+  line_in_log=$$(head --lines=$$linenum_in_log ${1} | tail --lines=1); \
+  too_high=$$(echo "$$line_in_log" \
+              | sed --quiet 's|.*(\(.*pt\) too high).*|\1|p'); \
+  ${call get_page,${1}}; \
+  cutting_line_in_log=$$linenum_in_log; \
+  ${call get_file,${1}}; \
+  if test -z "$$file"; \
+  then \
+    echo "  [W] Overfull \\vbox ($$too_high) at page $$page."; \
+  else \
+    echo "  [W] Overfull \\vbox ($$too_high) in $$file."; \
+    echo "      => Check page $$page."; \
+  fi
+
+slide_overfull = \
+  linenum_in_log=$$(echo "$$line" \
+                    | sed --quiet 's|^\(.*\):LaTeX Warning:.*|\1|p'); \
+  line_in_log=$$(head --lines=$$linenum_in_log ${1} | tail --lines=1); \
+  points=$$(echo "$$line_in_log" \
+            | sed --quiet 's|.* by \(.*pt\) .*|\1|p'); \
+  ${call get_page,${1}}; \
+  cutting_line_in_log=$$linenum_in_log; \
+  ${call get_file,${1}}; \
+  if test -z "$$file"; \
+  then \
+    echo "  [W] Slide overfull ($$points) at page $$page."; \
+  elif test -e "$$file"; \
+    then \
+      echo "  [W] Slide overfull ($$points) in $$file."; \
+      echo "      => Check page $$page."; \
+    else \
+      echo "  [W] Slide overfull ($$points) at page $$page."; \
+      echo "      => Correct previous warning to get file name."; \
+  fi
+
+
+show_detailed_under_overfulls = \
+  cp --force ${1}.log ${1}.log1; \
+    grep --line-number rfull ${1}.log 2>&1 \
+  | while read line; do \
+      slide_overfull=$$(echo "$$line" \
+                        | sed --quiet 's|LaTeX Warning: Slide .* overfull .*|yes|p'); \
+      if test -z "$$slide_overfull"; \
+      then \
+        kind=$$(echo "$$line" | awk '{ print $$1 $$2 }'); \
+      else \
+        kind=slide_overfull; \
+      fi; \
+      case "$$kind" in \
+        [0-9]*:Underfull\hbox) ${call u_hbox,${1}};; \
+        [0-9]*:Underfull\vbox) ${call u_vbox,${1}.log1};; \
+        [0-9]*:Overfull\hbox) ${call o_hbox,${1}};; \
+        [0-9]*:Overfull\vbox) ${call o_vbox,${1}.log1};; \
+        slide_overfull) ${call slide_overfull,${1}.log1};; \
+      esac; \
+    done
+
+# ------------------------------------------------------------------------
+# Status of document processing
+#
+# When the document is up-to-date, the status of the document
+# processing is displayed, as a reminder. Two cases occur: with or
+# without bibliographies.
+#
+show_common_status = \
+  if test ! -e "${1}.log"; \
+  then \
+    echo "TeX log file ${call loc_of,${1}.log} is missing."; \
+  else \
+    ${call show_detailed_under_overfulls,${1}}; \
+    ${call find_latex_error,${1}.log1}; \
+    if test -z "$$latex_error"; \
+    then \
+      ${if ${TOC_WARNING}, echo ${TOC_WARNING};} \
+      ${if ${OCW_WARNING}, echo ${OCW_WARNING};} \
+      ${call no_file_warning,${1}.log}; \
+      ${call undefined_ref,${1}.log}; \
+      ${call find_all_missing_cit,${1}.log}; \
+      ${call multiple_labels,${1}.log}; \
+    elif ! (grep ${1} .errmsg > /dev/null 2>&1); \
+      then \
+        ${if ${DEBUG},echo "<1> Adding ${1} to .errmsg";} \
+        echo ${1} >> .errmsg; \
+    fi; \
+  fi
+
+ifeq (${BIB},)
+show_status = ${call show_common_status,${1}}
+else
+bib_status = \
+  blg_basename=$$(basename $$blg .blg); \
+  bib=$$(sed --quiet 's|^ *\\bibliography[{]\([^{%} ]\+\)[}].*|\1|p' \
+             $$blg_basename.tex \
+         | tr --delete ' ' \
+         | sed --expression='s|,|.bib |g' \
+               --expression='s|$$|.bib|g'); \
+  case ${call num_of,bib} in \
+    1) echo "Status of bibliography $$bib:";; \
+    2) echo "Status of bibliographies" \
+            $$(echo $$bib | sed 's| | and |g'):;; \
+    *) echo "Status of bibliographies" \
+            $$(echo $$bib | sed 's| |,|g'):;; \
+  esac
+
+show_status = \
+  ${call show_common_status,${1}}; \
+  if test "${BIB}" != ""; \
+  then \
+    for blg in ${BLG}; do \
+      if test ! -e "$$blg"; \
+      then \
+        echo "BibTeX log file $$blg is missing."; \
+      else \
+        ${bib_status}; \
+        ${get_warnings_in_blg}; \
+        ${get_generic_warnings_in_blg}; \
+        ${print_generic_warnings_in_blg}; \
+        ${get_num_errors}; \
+        ${errors_in_blg}; \
+        if test -z "$$num_errors" -a -z "$$generic_warnings_in_blg"; \
+        then \
+          echo "nothing to report."; \
+        fi; \
+      fi; \
+    done; \
+  fi
+endif
+
+# ------------------------------------------------------------------------
+#
+.PHONY: FORCE
+FORCE: ;
+
+# ------------------------------------------------------------------------
+# Remaking DVIs
+#
+# Two cases occur: with or without bibliographies. We also handle the
+# special connection with the OCaml makefile (pretty-printing
+# facility).
+#
+make_figure = \
+  echo -n "Making ${call loc_of,${1}.dvi} from ${call loc_of,${1}.tex}..."; \
+  ${call latex,${1}}; \
+  if test "$$latex_status" = "passed"; \
+  then \
+    ${call record_latex_success,${1}}; \
+  fi
+
+ifeq (${UPDATE},yes)
+  ifeq (${FAKE},yes)
+make_dvi = \
+  ${if ${DEBUG}, echo "[DBG 3] Touching .out-of-date in \`$@: $^'";} \
+  ${if ${DEBUG}, echo "[DBG 3] Prerequisites \`$?' are out of date.";} \
+  touch .out-of-date
+  else
+    ifeq (${BIB},)
+make_dvi_bis = \
+  ${call show_under_overfulls,${1}.log}; \
+  ${call get_latex_error,${1}.log}; \
+  if test -z "$$latex_error"; \
+  then \
+    ${call get_undefined_ref,${1}.log}; \
+    if test -n "$$undefined_ref"; \
+    then \
+      present_labels=; \
+      for label in $$undefined_ref; do \
+        if grep "\\\label[{]$$label[}]" ${PRESENT_TEX} > /dev/null 2>&1; \
+        then \
+          present_labels="$$present_labels $$label"; \
+        fi; \
+      done; \
+      missing_labels=; \
+      remaining_labels=$$present_labels; \
+      for undef_ref in $$undefined_ref; do \
+        if test -z "$$remaining_labels"; \
+        then \
+          missing_labels="$$missing_labels $$undef_ref"; \
+        else \
+          fst_label=${call head,remaining_labels}; \
+          if test "$$fst_label" = "$$undef_ref"; \
+          then \
+            remaining_labels=${call tail,remaining_labels}; \
+          else \
+            missing_labels="$$missing_labels $$undef_ref"; \
+          fi; \
+        fi; \
+      done; \
+      missing_labels=${call norm_list,missing_labels}; \
+      if test "$$missing_labels" = "$$undefined_ref"; \
+      then \
+        ${print_undefined_ref}; \
+        if test -e ${1}.dvi0; \
+        then cp --force ${1}.dvi0 ${1}.dvi; \
+        fi; \
+      else \
+        echo -n "Recompiling document to solve references..."; \
+        ${call latex,${1}}; \
+        if test "$$latex_status" = "passed"; \
+        then \
+          ${call undefined_ref,${1}.log}; \
+          ${call multiple_labels,${1}.log}; \
+        fi; \
+      fi; \
+    else \
+      ${call get_label_change,${1}.log}; \
+      if test -n "$$label_change"; \
+      then \
+        echo -n "Recompiling to solve possible label changes..."; \
+        ${call latex,${1}}; \
+        if test "$$latex_status" = "passed"; \
+        then \
+          ${call multiple_labels,${1}.log}; \
+        fi; \
+      elif test -n "${TABLE_OF_CONTENTS}"; \
+        then \
+          echo -n "Recompiling to merge table of contents..."; \
+          ${call latex,${1}}; \
+      elif test -e ${1}.dvi0; \
+        then cp --force ${1}.dvi0 ${1}.dvi; \
+      fi; \
+    fi; \
+    ${call find_all_missing_cit,${1}.log}; \
+  fi; \
+  if test ${1}.dvi0 -nt ${1}.dvi; \
+  then cp --force ${1}.dvi0 ${1}.dvi; \
+  fi
+    else
+make_dvi_bis = \
+  ${call get_latex_error,${1}.log}; \
+  if test -z "$$latex_error"; \
+  then \
+    make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                              ${BBL} \
+                              DOC:=${1} \
+                              INCL_DEP:=no \
+                              INCL_BIBLIO:=yes}"; \
+    ${if ${VERB},echo "[2] Calling $$make_cmd";} \
+    eval $$make_cmd; \
+    if test -e .ran-bibtex; \
+    then \
+      rm --force .ran-bibtex; \
+      echo -n "Merging document and bibliography..."; \
+      ${call latex,${1}}; \
+      if test "$$latex_status" = "passed"; \
+      then \
+        ${call multiple_labels,${1}.log}; \
+        if grep 'Citation .* undefined' ${1}.log > /dev/null 2>&1; \
+        then \
+          echo -n "Recompiling document to solve citations..."; \
+          ${call latex,${1}}; \
+          if test "$$latex_status" = "passed"; \
+          then \
+            ${call find_add_missing_cit,${1}.log}; \
+          fi; \
+        fi; \
+      fi; \
+    fi; \
+    ${call undefined_ref,${1}.log}; \
+    ${call show_under_overfulls,${1}.log}; \
+  fi; \
+  if test ${1}.dvi0 -nt ${1}.dvi; \
+  then \
+    cp --force ${1}.dvi0 ${1}.dvi; \
+  fi
+    endif
+
+make_dvi = \
+  merged_sorted_lists=$$(echo ${DOC} ${1} \
+                         | tr ' ' '\n' \
+                         | sort --dictionary-order --unique \
+                         | tr '\n' ' '); \
+  if test "$$merged_sorted_lists" = "${DOC} "; \
+  then \
+    ${if ${DEBUG},echo "[DBG 6] Updating a master document.";} \
+    make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                              ${1}.dvi0 \
+                              DOC:=${1} \
+                              INCL_DEP:=yes \
+                              INCL_BIBLIO:=yes}"; \
+    ${if ${VERB},echo "[1] Calling $$make_cmd";} \
+    eval $$make_cmd; \
+    ${call make_dvi_bis,${1}}; \
+  else \
+    ${if ${DEBUG},echo "[DBG B] Making a figure.";} \
+    case ${firstword ${MAKECMDGOALS}} in \
+      *.dvi0) \
+        if ! (grep ${1} .errors > /dev/null 2>&1); \
+        then \
+          ${call make_figure,${1}}; \
+        fi;; \
+      *) ${call make_figure,${1}};; \
+    esac; \
+  fi
+
+  endif
+endif
+
+print_previous_errors = \
+  for tex_basename in $$(cat .errors); do \
+    merged_sorted_lists=$$(echo ${DOC} $$tex_basename \
+                           | tr ' ' '\n' \
+                           | sort --dictionary-order --unique \
+                           | tr '\n' ' '); \
+    if test "$$merged_sorted_lists" != "${DOC} "; \
+    then \
+      echo -n "Making ${call loc_of,$${tex_basename}}.dvi from ${call loc_of,$${tex_basename}}.tex..."; \
+      ${call latex_failure,$${tex_basename}}; \
+    fi; \
+  done
+
+pre_make = \
+  if test -e .errors; \
+  then \
+    keep_dep=yes; \
+  else \
+    keep_dep=no; \
+  fi; \
+  make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                            $@ \
+                            UPDATE:=yes \
+                            FAKE:=yes \
+                            INCL_DEP:=yes \
+                            KEEP_DEP:=$$keep_dep \
+                            INCL_BIBLIO:=yes}"; \
+  ${if ${VERB},echo "[3] Calling $$make_cmd";} \
+  eval $$make_cmd; \
+  if test -e .out-of-date; \
+  then \
+    case $@ in \
+     *.dvi) \
+        make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  $@ \
+                                  UPDATE:=yes \
+                                  FAKE:=no \
+                                  INCL_DEP:=yes \
+                                  KEEP_DEP:=$$keep_dep \
+                                  INCL_BIBLIO:=yes}"; \
+        ${if ${VERB},echo "[D] Calling $$make_cmd";} \
+        eval $$make_cmd;; \
+      *.ps) \
+        if test -n "${strip ${HREF_PDF}}" \
+                -a -e .built-pdf; \
+        then \
+          rm --force .built-pdf; \
+          make_cmd="${strip ${MAKE} --file=Makefile \
+                                    --no-builtin-rules \
+                                    mostlyclean \
+                                    DOC:='${DOC}'}"; \
+          ${if ${VERB},echo "[C] Calling $$make_cmd";} \
+          eval $$make_cmd; \
+        fi; \
+        make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  $@ \
+                                  UPDATE:=yes \
+                                  FAKE:=no \
+                                  INCL_DEP:=yes \
+                                  KEEP_DEP:=$$keep_dep \
+                                  INCL_BIBLIO:=yes}"; \
+        ${if ${VERB},echo "[4] Calling $$make_cmd";} \
+        eval $$make_cmd;; \
+     *.pdf) \
+        if test -n "${strip ${HREF_PDF}}" \
+                -a ! -e .built-pdf; \
+        then \
+          make_cmd="${strip ${MAKE} --file=Makefile \
+                                    --no-builtin-rules \
+                                    mostlyclean \
+                                    DOC:='${DOC}'}"; \
+          ${if ${VERB},echo "[F] Calling $$make_cmd";} \
+          eval $$make_cmd; \
+          touch .built-pdf; \
+        fi; \
+        make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  $@ \
+                                  DEF:='${HREF_PDF}' \
+                                  UPDATE:=yes \
+                                  FAKE:=no \
+                                  INCL_DEP:=yes \
+                                  KEEP_DEP:=$$keep_dep \
+                                  INCL_BIBLIO:=yes}"; \
+        ${if ${VERB},echo "[10] Calling $$make_cmd";} \
+        eval $$make_cmd; \
+    esac; \
+    rm --force .out-of-date; \
+    if test -s .errors; \
+    then \
+      if test -s .errmsg; \
+      then \
+        for tex_basename in $$(cat .errors); do \
+          if ! (grep $$tex_basename .errmsg > /dev/null 2>&1); \
+          then \
+            echo -n "Making ${call loc_of,$${tex_basename}}.dvi from ${call loc_of,$${tex_basename}}.tex..."; \
+            ${call latex_failure,$${tex_basename}}; \
+          fi; \
+        done; \
+      else \
+        ${print_previous_errors}; \
+      fi; \
+    fi; \
+  else \
+    if test -s .errors; \
+    then \
+      ${print_previous_errors}; \
+    fi; \
+    echo "Document ${call loc_of,$@} is up-to-date."; \
+    ${call show_status,$*}; \
+  fi
+
+mostlyclean::
+	rm --force .built-pdf .out-of-date .errors .errmsg
+
+ifeq (${UPDATE},yes)
+%.dvi:
+	${call make_dvi,$*}
+else
+%.dvi: FORCE
+	${pre_make}
+endif
+
+ifneq (${DOC},)
+mostlyclean::
+	if test -f . ${DOC:%=-o -e %.dvi}; \
+        then \
+          ${if ${VERB},echo -n "Deleting DVI files...";} \
+          rm --force ${DOC:%=%.dvi}; \
+          ${if ${VERB},echo " done.";} \
+        fi
+endif
+
+# ------------------------------------------------------------------------
+# Special `dvi' rule.
+#
+.PHONY: dvi
+ifeq (${DOC},)
+dvi:
+	@echo "No LaTeX document to process."
+else
+dvi:
+	make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  ${DVI}}"; \
+        ${if ${VERB},echo "[5] Calling $$make_cmd";} \
+        eval $$make_cmd
+endif
+
+# ------------------------------------------------------------------------
+# Rules whose targets are <document>-4up.ps and <document>-4up.pdf
+#
+# This rule creates 4up pages of the document in PostScript and PDF by
+# means of `psnup'.
+#
+# Note: This section must be placed before section devoted to updating
+# %.ps and %.pdf (first matching goal selects the corresponding rule).
+#
+ifeq (${PSNUP},none)
+%-4up.ps %-4up.pdf:
+	echo "\`psnup' is not configured; skipping."
+else
+${4UPPS}: %-4up.ps: %.ps
+	echo -n "Making ${call loc_of,$@} from ${call loc_of,$<} using psnup..."
+	psnup_cmd="${strip ${PSNUP} -pa4 -r -d -4 $< 2>&1 >| $@ \
+                           | sed --quiet 's|.*Wrote \(.*\)|(\1)|p'}"; \
+        ${if ${VERB},echo; echo "Calling $$psnup_cmd";} \
+        info=$$(eval $$psnup_cmd); \
+        echo " done $$info."
+  ifneq (${PS2PDF},none)
+%-4up.pdf: %-4up.ps
+	${use_ps2pdf}
+  else
+%-4up.pdf: %-4up.ps
+	echo " => Install \`ps2pdf' to make a PDF from $<."
+  endif
+
+  ifneq (${4UPPS},) 
+mostlyclean::
+	if test -f . ${4UPPS:%=-o -e %}; \
+        then \
+          ${if ${VERB},echo -n "Deleting 4-up PostScripts...";} \
+          rm --force ${4UPPS}; \
+          ${if ${VERB},echo " done.";} \
+        fi 
+  endif
+
+  ifneq (${4UPPDF},) 
+mostlyclean::
+	if test -f . ${4UPPDF:%=-o -e %}; \
+        then \
+          ${if ${VERB},echo -n "Deleting 4-up PDF...";} \
+          rm --force ${4UPPDF}; \
+          ${if ${VERB},echo " done.";} \
+        fi 
+  endif
+endif
+
+# ------------------------------------------------------------------------
+# Rule whose target is <document>.ps
+#
+ifeq (${DVIPS},none)
+%.ps:
+	@echo "\`dvips' is not configured; skipping."
+else
+  ifeq (${UPDATE},yes)
+%.ps: %.dvi
+    ifeq (${FAKE},yes)
+	${if ${DEBUG},echo "[DBG 2] Touching .out-of-date in \`$@: $<'";}\
+        touch .out-of-date
+    else
+	if test -e $<; \
+        then \
+          echo -n "Making ${call loc_of,$@} from ${call loc_of,$<} using dvips..."; \
+          merged_sorted_lists=$$(echo ${DOC} $* \
+                                 | tr ' ' '\n' \
+                                 | sort --dictionary-order --unique \
+                                 | tr '\n' ' '); \
+          if test "$$merged_sorted_lists" = "${DOC} "; \
+          then \
+            ${if ${DEBUG},echo;echo "[DBG 7] Using dvips ${DVIPS_OPT}";} \
+            err=$$(${strip ${DVIPS} ${DVIPS_OPT} ${PRINTER} \
+                           $< -o $@ 2>&1}); \
+          else \
+            ${if ${DEBUG},echo;echo "[DBG A] Using dvips ${DVIPS_FIG_OPT}";} \
+            err=$$(${strip ${DVIPS} ${DVIPS_FIG_OPT} ${PRINTER} \
+                           $< -o $@ 2>&1}); \
+          fi; \
+          if test -e $@; \
+          then \
+            echo -n " done"; \
+            pp=$$(sed --quiet 's|%%Pages: \(.*\)|\1|p' $@ \
+                  | head --lines=1); \
+            size=$$(ls -al $@ | awk '{ print $$5 }'); \
+            if test "$$pp" = "1"; \
+            then echo " (1 page, $$size bytes)."; \
+            elif test -n "$$pp"; \
+              then echo " ($$pp pages, $$size bytes)."; \
+              else echo "."; \
+            fi; \
+          elif test -n "$$err"; \
+            then \
+              echo "FAILED:"; \
+              msg=$$(echo "$$err" | sed --quiet 's|\(.*dvips:.*\)|\1|p');\
+              echo "$$msg"; \
+            else \
+              echo "FAILED."; \
+          fi; \
+        fi
+    endif
+  else
+%.ps: FORCE
+	${pre_make}
+  endif
+endif
+
+# ------------------------------------------------------------------------
+# Special `ps', `pdf', `4up_ps' and `4up_pdf' rules.
+#
+
+.PHONY: ps
+
+ifeq (${DOC},)
+ps:
+	@echo "No LaTeX document to process."
+else
+ps:
+	make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  ${PS}}"; \
+        ${if ${VERB},echo "[9] Calling $$make_cmd";} \
+        eval $$make_cmd
+endif
+
+.PHONY: pdf
+
+ifeq (${DOC},)
+pdf:
+	@echo "No LaTeX document to process."
+else
+pdf:
+	make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  ${PDF}}"; \
+        ${if ${VERB},echo "[A] Calling $$make_cmd";} \
+        eval $$make_cmd
+endif
+
+.PHONY: 4up_ps
+
+ifeq (${DOC},)
+4up_ps:
+	@echo "No LaTeX document to process."
+else
+4up_ps:
+	make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  ${4UPPS} \
+                                  DOC:='${DOC}'}"; \
+        ${if ${VERB},echo "[B] Calling $$make_cmd";} \
+        eval $$make_cmd
+endif
+
+.PHONY: 4up_pdf
+
+ifeq (${DOC},)
+4up_pdf:
+	@echo "No LaTeX document to process."
+else
+4up_pdf:
+	make_cmd="${strip ${MAKE} --file=Makefile --no-builtin-rules \
+                                  ${4UPPDF} \
+                                  DOC:='${DOC}'}"; \
+        ${if ${VERB},echo "[7] Calling $$make_cmd";} \
+        eval $$make_cmd
+endif
+
+ifneq (${DOC},)
+mostlyclean::
+	if test -f . ${DOC:%=-o -e %.ps}; \
+        then \
+          ${if ${VERB},echo -n "Deleting PostScripts...";} \
+          rm --force ${DOC:%=%.ps}; \
+          ${if ${VERB},echo " done.";} \
+        fi
+endif
+
+# ------------------------------------------------------------------------
+# Fonts and graphics
+#
+# Some package selections lead to unreadable or incomplete PDF. We
+# detecte them, explain the problem and suggest a solution according
+# to the current system configuration.
+#
+check_fonts = \
+  if test -z "${TIMES}" -a -z "${AE}" -a "${FONTENC}" = "T1"; \
+  then \
+   echo "  [W] Some PDF viewers do not display T1 font encoding well."; \
+   echo "      => Try packages {times} or {ae,aecompl} or {lmodern}."; \
+   echo "         For maths: \usepackage{mathptmx}"; \
+   echo "                 or \usepackage[psamsfonts]{amsfonts}.";\
+  fi; \
+  if test -n "${AMSFONTS}"; \
+  then \
+    options=$$(${call find_opt,amsfonts}); \
+    sought=psamsfonts; \
+    ${is_in}; \
+    if test "$$in" = "false"; \
+    then echo " => Use \usepackage[psamsfonts]{amsfonts}."; \
+    fi; \
+  fi
+
+check_graphics = \
+  if test -n "${GRAPHICS}"; \
+  then \
+    options=$$(${call find_opt,graphics}); \
+    sought=${1}; \
+    ${is_in}; \
+    if test "$$in" = "false"; \
+    then echo " => Set \usepackage[$$sought]{graphics}."; \
+    fi; \
+  fi
+
+check_hyperref = \
+  if test -n "${HYPERREF}"; \
+  then \
+    options=$$(${call find_opt,hyperref}); \
+    sought=${1}; \
+    ${is_in}; \
+    if test "$$in" = "false"; \
+    then echo " => Set \usepackage[$$sought]{hyperref}."; \
+    fi; \
+  fi
+
+use_dvipdfm = \
+  ${check_fonts}; \
+  ${call check_graphics,dvipdfm}; \
+  ${call check_hyperref,dvipdfm}; \
+  echo -n "Making ${call loc_of,$@} from ${call loc_of,$<} using dvipdfm..."; \
+  dvipdfm_cmd="${strip ${DVIPDFM} ${DVIPDFM_OPT} -o $@ $< 2>&1}"; \
+  ${if ${VERB},echo;echo "Calling $$dvipdfm_cmd";} \
+  msg=$$(eval $$dvipdfm_cmd \
+         | sed --quiet 's|^\(.*\) bytes written|\1|p'); \
+  if test -n "$$msg"; \
+  then echo " done ($$msg bytes)."; \
+  else echo " FAILED."; \
+  fi
+
+use_dvipdf = \
+  ${check_fonts}; \
+  ${call check_graphics,dvipdf}; \
+  ${call check_hyperref,dvipdf}; \
+  echo -n "Making ${call loc_of,$@} from ${call loc_of,$<} using dvipdf..."; \
+  dvipdf_cmd="${DVIPDF} $@ $< 2>&1"; \
+  ${if ${VERB},echo;echo "Calling $$dvipdf_cmd";} \
+  msg=$$(eval $$dvipdf_cmd); \
+  if test -n "$$msg"; \
+  then echo " done ($$msg bytes)."; \
+  fi
+
+use_ps2pdf = \
+  ${check_fonts}; \
+  echo -n "Making ${call loc_of,$@} from ${call loc_of,$<} using ps2pdf..."; \
+  ps2pdf_cmd="${strip ${PS2PDF} ${PS2PDF_OPT} $< $@ 2>&1}"; \
+  ${if ${VERB},echo;echo "Calling $$ps2pdf_cmd";} \
+  eval $$ps2pdf_cmd; \
+  if test -e $@; \
+  then \
+    size=$$(ls -al $@ | awk '{ print $$5 }'); \
+    echo " done ($$size bytes)."; \
+  else \
+    echo " FAILED."; \
+  fi
+
+warn_pstricks = \
+  echo " => Since you use package \`pstricks', "; \
+  echo "    your PDF may lose graphics with \`${1}'."; \
+  echo "    You should install \`dvips'. Trying anyway..."
+
+ifeq (${PSTRICKS},)
+  ifneq (${DVIPDFM},none)
+    ifeq (${UPDATE},yes)
+%.pdf: %.dvi
+      ifeq (${FAKE},yes)
+	${if ${DEBUG},echo "[DBG 4] Touching .out-of-date";} \
+        touch .out-of-date
+      else
+	${use_dvipdfm}
+      endif
+    else
+%.pdf: FORCE
+	${pre_make}
+    endif
+  else # DVIPDFM = none
+    ifneq (${PS2PDF},none)
+      ifneq (${DVIPS},none)
+%.pdf: %.ps
+	${use_ps2pdf}
+      else # DVIPS = none
+        ifneq (${DVIPDF},none)
+%.pdf: %.dvi
+	${use_dvipdf}
+        else # DVIPDF = none
+%.pdf: %.dvi
+	echo " => Install \`dvips' to make a PDF from $<."
+        endif
+      endif
+    else # PS2PDF = none
+      ifneq (${DVIPDF},none)
+%.pdf: %.dvi
+	${use_dvipdf}
+      else # DVIPDF = none
+%.pdf: %.dvi
+	echo " => Install \`dvipdfm' or \`ps2pdf' to make a PDF from $<."
+      endif
+    endif
+  endif
+else # PSTRICKS = pstricks
+  ifneq (${PS2PDF},none)
+    ifneq (${DVIPS},none)
+%.pdf: %.ps
+	${use_ps2pdf}
+    else # DVIPS = none
+      ifneq (${DVIPDFM},none)
+%.pdf: %.dvi
+	${call warn_pstricks,dvipdfm}
+	${use_dvipdfm}
+      else # DVIPDFM = none
+        ifneq (${DVIPDF},none)
+%.pdf: %.dvi
+	${call warn_pstricks,dvipdf}
+	${use_dvipdf}
+        else # DVIPDF = none
+%.pdf: %.dvi
+	echo " => Install \`dvips' to make a PDF from $<."
+        endif
+      endif
+    endif
+  else # PS2PDF = none
+    ifneq (${DVIPDFM},none)
+%.pdf: %.dvi
+	${call warn_pstricks,dvipdfm}
+	${use_dvipdfm}
+    else # DVIPDFM = none
+      ifneq (${DVIPDF},none)
+%.pdf: %.dvi
+	${call warn_pstricks,dvipdf}
+	${use_dvipdf}
+      else # DVIPDF = none
+%.pdf: %.dvi
+	@echo " => Install \`ps2pdf' to make a PDF from $<."
+      endif
+    endif
+  endif
+endif
+
+ifneq (${DOC},)
+mostlyclean::
+	if test -f . ${DOC:%=-o -e %.pdf}; \
+        then \
+          ${if ${VERB},echo -n "Deleting PDF files...";} \
+          rm --force ${DOC:%=%.pdf}; \
+          ${if ${VERB},echo " done.";} \
+        fi
+endif
+
+# ========================================================================
+
+delete_files = \
+  if test -n "${1}"; \
+  then \
+    present_files=$$(ls ${1} 2> /dev/null); \
+    if test -n "$$present_files"; \
+    then \
+      linear_present_files=$$(echo $$present_files | tr '\n' ' '); \
+      ${if ${VERB}, echo -n "Deleting $$linear_present_files...";} \
+      rm --force $$linear_present_files; \
+      ${if ${VERB}, echo " done.";} \
+    fi; \
+  fi
+
+delete_ext = \
+  present_files=$$(ls *.${1} 2> /dev/null); \
+  if test -n "$$present_files"; \
+  then \
+    ${if ${VERB},echo -n "Deleting ${2}...";} \
+    rm --force *.${1}; \
+    ${if ${VERB},echo " done.";} \
+  fi
+
+delete_file = \
+  if test -e "${1}"; \
+  then \
+    ${if ${VERB}, echo -n "Deleting ${1}...";} \
+    rm --force ${1}; \
+    ${if ${VERB}, echo " done.";} \
+  fi
+
+ifneq (${DOC},)
+mostlyclean::
+	for document in ${DOC}; do \
+          ${call delete_file,$${document}.aux}; \
+        done
+endif
+
+mostlyclean::
+	${strip rm --force ${GENDOC}.* ${TOC}}
+
+ifneq (${DOC},)
+mostlyclean::
+	if test -f . ${DOC:%=-o -e %.log}; \
+        then \
+          ${if ${VERB},echo -n "Deleting TeX log files...";} \
+          rm --force ${DOC:%=%.log}; \
+          ${if ${VERB}, echo " done.";} \
+        fi
+	rm --force ${DOC:%=%.log1}
+endif
+
+# ========================================================================
+# Making a `Makefile.info' file by cutting the head of this makefile.
+#
+.PHONY: info
+info:
+	echo -n "Creating documentation Makefile.info..."
+	line_num=$$(grep --line-number 'END DOC' Makefile.in \
+                    | head --lines=1 \
+                    | sed --quiet 's|^\([0-9]*\):.*|\1|p'); \
+        line_num=$$(expr $$line_num - 2); \
+        head --lines=$$line_num Makefile.in \
+        | tr --delete '#' >| Makefile.info
+	echo " done."
+
+# ========================================================================
+# Cleaning
+#
+clean::
+	rm --force .errors .errmsg \
+                   .out-of-date .built-pdf \
+                   missfont.log texput.log
+	${call delete_file,Makefile.info}
+	${call delete_ext,toc,tables of contents}
+	four_up_ps=$$(ls *-4up*.ps 2> /dev/null); \
+        if test -n "$$four_up_ps"; \
+        then \
+          ${if ${VERB},echo -n "Deleting 4-up PostScripts...";} \
+          rm --force $$four_up_ps; \
+          ${if ${VERB},echo " done.";} \
+        fi 
+	four_up_pdf=$$(ls *-4up*.pdf 2> /dev/null); \
+        if test -n "$$four_up_pdf"; \
+        then \
+          ${if ${VERB},echo -n "Deleting 4-up PDF...";} \
+          rm --force $$four_up_pdf; \
+          ${if ${VERB},echo " done.";} \
+        fi 
+ifeq (${DOC},)
+	${call delete_ext,blg,BibTeX log files}
+	${call delete_ext,bbl,compiled bibliographies}
+	${call delete_ext,dvi,DVI files}
+	${call delete_ext,aux,TeX auxiliary files}
+	rm --force *.dvi0 *.log1
+	logs=$$(ls *.log 2> /dev/null | sed 's|config\.log||g'); \
+        ${call delete_files,$${logs}}; \
+	if test -f . ${EPS:%=-o -e %}; \
+        then \
+          ${if ${VERB},echo -n "Deleting generated EPS files...";} \
+          rm --force ${EPS}; \
+          ${if ${VERB},echo " done.";} \
+        fi
+	ps_basenames=$$(ls *.ps 2> /dev/null | sed 's|\.ps||g'); \
+        for ps_basename in $$ps_basenames; do \
+          if test -e $$ps_basename.tex; \
+          then \
+            ${call delete_file,$${ps_basename}.ps}; \
+          fi; \
+        done
+	pdf_basenames=$$(ls *.pdf 2> /dev/null | sed 's|\.pdf||g'); \
+        for pdf_basename in $$pdf_basenames; do \
+          if test -e $$pdf_basename.tex; \
+          then \
+            ${call delete_file,$${pdf_basename}.pdf}; \
+          fi; \
+        done
+else
+	for document in ${DOC}; do \
+          rm --force $$document.dvi0; \
+          ${call delete_file,$${document}.toc}; \
+          ${call delete_file,$${document}.pdf}; \
+          dep_file=${call pref_depdir,$${document}.dep}; \
+          if test -s $$dep_file; \
+          then \
+            tex_basenames=$$(grep --only-matching '[-_[:alnum:]]\+\.tex' \
+                                              $$dep_file \
+                             | sed 's|\.tex||g'); \
+            bbl_basenames=$$(grep --only-matching '[-_[:alnum:]]\+\.bbl' \
+                                              $$dep_file \
+                             | sed 's|\.bbl||g'); \
+            eps_basenames=$$(grep --only-matching '[-_[:alnum:]]\+\.eps' \
+                                                  $$dep_file \
+                             | sed 's|\.eps||g'); \
+            ps_basenames=$$(grep --only-matching '[-_[:alnum:]]\+\.ps' \
+                                                 $$dep_file \
+                             | sed 's|\.ps||g'); \
+            filtered_eps_files=; \
+            for eps_basename in $$eps_basenames; do \
+              if test -e $$eps_basename.fig -o -e $$eps_basename.gif; \
+              then \
+                filtered_eps_files="$$filtered_eps_files $$eps_basename.eps"; \
+              fi; \
+            done; \
+            ${call delete_files,$${filtered_eps_files}}; \
+            dependent_ps_files=$$document.ps; \
+            dependent_aux_files=; \
+            dependent_log_files=; \
+            dependent_dvi_files=; \
+            for ps_basename in $$ps_basenames; do \
+              if test -e $$ps_basename.fig -o -e $$ps_basename.gif; \
+              then \
+                dependent_ps_files="$$dependent_ps_files $$ps_basename.ps";\
+              elif test -e $$ps_basename.tex; \
+                then \
+                dependent_ps_files="$$dependent_ps_files $$ps_basename.ps";\
+                  if test -e $$ps_basename.aux; \
+                  then \
+                   dependent_aux_files="$$dependent_aux_files $$ps_basename.aux"; \
+                  fi; \
+                  if test -e $$ps_basename.log; \
+                  then \
+                   dependent_log_files="$$dependent_log_files $$ps_basename.log";\
+                  fi; \
+                  if test -e $$ps_basename.dvi; \
+                  then \
+                    dependent_dvi_files="$$dependent_dvi_files $$ps_basename.dvi"; \
+                  fi; \
+              fi; \
+            done; \
+            ${call delete_files,$${dependent_ps_files}}; \
+            ${call delete_files,$${dependent_aux_files}}; \
+            ${call delete_files,$${dependent_log_files}}; \
+            ${call delete_files,$${dependent_dvi_files}}; \
+            for tex_basename in $$tex_basenames; do \
+              ${call delete_file,$${tex_basename}.ps}; \
+              ${call delete_file,$${tex_basename}.dvi}; \
+              ${call delete_file,$${tex_basename}.aux}; \
+              ${call delete_file,$${tex_basename}.log}; \
+            done; \
+            for bbl_basename in $$bbl_basenames; do \
+              ${call delete_file,$${bbl_basename}.bbl}; \
+              ${call delete_file,$${bbl_basename}.blg}; \
+            done; \
+          else \
+            ${if ${VERB},echo "Note: $$dep_file is missing or empty.";} \
+            ${call delete_file,$${document}.aux}; \
+            ${call delete_file,$${document}.ps}; \
+            ${call delete_file,$${document}.pdf}; \
+            ${call delete_file,$${document}.dvi}; \
+            rm --force $$document.dvi0; \
+          fi; \
+          ${call delete_file,$${document}.log}; \
+          rm --force $$document.log1; \
+          ${call delete_file,$${document}.bbl}; \
+          ${call delete_file,$${document}.blg}; \
+        done
+endif
+ifeq (${DEPDIR_EXISTS},yes)
+	${if ${VERB},echo -n "Deleting dependences..."}
+	rm --force --recursive ${DEPDIR}
+	${if ${VERB},echo " done."}
+endif
+
+# Distribution clean by removing [emacs] temporary files, [configure]
+# logs and `Makefile'.
+#
+AC_VERSION := @ac_version@
+
+.PHONY: distclean
+distclean:
+	${MAKE} --file=Makefile --no-builtin-rules clean DOC:=
+	if test -e config.cache -o -e config.log -o -e config.status; \
+        then \
+          echo -n "Deleting generated configuration files${if ${LOC}, in ${LOC}}..."; \
+          rm --force --recursive configure config.log config.status \
+                                 autom4te.cache \
+                                 autom4te-${AC_VERSION}.cache; \
+          echo " done."; \
+        fi
+	echo -n "Deleting emacs backup files${if ${LOC}, in ${LOC}}..."; \
+        rm --force *~ .*~ \#*\# .\#*; \
+        echo " done."
+	echo -n "Deleting ${call loc_of,Makefile}..."
+	rm --force Makefile
+	echo " done."
+	echo "Run \`autoconf' and \`./configure' again${if ${LOC}, in ${LOC}}."
+
+
+# ========================================================================
+# Debugging section
+#
+# It is important to use square brackets around the variables. Braces
+# do not have the expected semantics (try echo V={a,b,c}).
+#
+.PHONY: env
+env::
+	@echo Directories
+	@echo LOC=[${LOC}]
+	@echo
+	@echo Files
+	@echo PRESENT_TEX=[${PRESENT_TEX}]
+	@echo PRESENT_DOC_TEX=[${PRESENT_DOC_TEX}]
+	@echo SLAVE_TEX=[${SLAVE_TEX}]
+	@echo DOC_AND_SLAVE_TEX=[${DOC_AND_SLAVE_TEX}]
+	@echo PRESENT_DOC=[${PRESENT_DOC}]
+	@echo DOC=[${DOC}]
+	@echo DOC_CLASS=[${DOC_CLASS}]
+	@echo DEP=[${DEP}]
+	@echo BIBLIO=[${BIBLIO}]
+	@echo TEX=[${TEX}]
+	@echo AUX=[${AUX}]
+	@echo ALL_IST=[${ALL_IST}]
+	@echo IST=[${IST}]
+	@echo MAKEIDX=[${MAKEIDX}]
+	@echo BST_BASENAME=[${BST_BASENAME}]
+	@echo BIB_BASENAMES=[${BIB_BASENAMES}]
+	@echo ALL_BIB=[${ALL_BIB}]
+	@echo ALL_BST=[${ALL_BST}]
+	@echo PRESENT_BIB=[${PRESENT_BIB}]
+	@echo MISSING_BIB=[${MISSING_BIB}]
+	@echo BIB=[${BIB}]
+	@echo BBL=[${BBL}]
+	@echo BST=[${BST}]
+	@echo PRESENT_BST=[${PRESENT_BST}]
+	@echo LOG=[${LOG}]
+	@echo LOG1=[${LOG1}]
+	@echo BLG=[${BLG}]
+	@echo TOC=[${TOC}]
+	@echo DVI=[${DVI}]
+	@echo PS=[${PS}]
+	@echo PDF=[${PDF}]
+	@echo 4UPPS=[${4UPPS}]
+	@echo EPS=[${EPS}]
+	@echo FIG=[${FIG}]
+	@echo MLL=[${MLL}]
+	@echo MLY=[${MLY}]
+	@echo MLI=[${MLI}]
+	@echo ML=[${ML}]
+	@echo OCAML_SRC=[${OCAML_SRC}]
+	@echo
+	@echo Packages
+	@echo PACKAGES=[${PACKAGES}]
+	@echo OCW=[${OCW}]
+	@echo TIMES=[${TIMES}]
+	@echo FONTENC=[${FONTENC}]
+	@echo AMSSYMB=[${AMSSYMB}]
+	@echo AMSMATH=[${AMSMATH}]
+	@echo AMSFONTS=[${AMSFONTS}]
+	@echo PSTRICKS=[${PSTRICKS}]
+	@echo AE=[${AE}]
+	@echo GRAPHICS=[${GRAPHICS}]
+	@echo GRAPHICX=[${GRAPHICX}]
+	@echo HYPERREF=[${HYPERREF}]
+	@echo
+	@echo Tools
+	@echo LATEX=[${LATEX}]
+	@echo BIBTEX=[${BIBTEX}]
+	@echo DVIPS=[${DVIPS}]
+	@echo PSNUP=[${PSNUP}]
+	@echo DVIPDFM=[${DVIPDFM}]
+	@echo DVIPDF=[${DVIPDF}]
+	@echo PS2PDF=[${PS2PDF}]
+	@echo PDFTEX=[${PDFTEX}]
+	@echo HEVEA=[${HEVEA}]
+	@echo HACHA=[${HACHA}]
+	@echo OCAMLWEB=[${OCAMLWEB}]
+	@echo
+	@echo Options
+	@echo PP=[${PP}]
+	@echo PAGES=[${PAGES}]
+	@echo DVIPS_PP=[${DVIPS_PP}]
+	@echo DVIPS_OPT=[${DVIPS_OPT}]
+	@echo DVIPS_FIG_OPT=[${DVIPS_FIG_OPT}]
+	@echo DVIPDFM_OPT=[${DVIPDFM_OPT}]
+	@echo PS2PDF_OPT=[${PS2PDF_OPT}]
+	@echo PRINTER=[${PRINTER}]
+	@echo
+	@echo SUFFIXES=[${SUFFIXES}]
+	@echo
+	@echo TABLE_OF_CONTENTS=[${TABLE_OF_CONTENTS}]
+	@echo
+	@echo PHONY_TARGETS=[${PHONY_TARGETS}]
+	@echo VERB=[${VERB}]
+
+%: ;
