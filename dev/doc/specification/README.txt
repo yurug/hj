@@ -1,3 +1,15 @@
+14/07/14
+Chapter 1 : updated
+Added actors section
+Review mistake
+
+Chapter 2 : updated
+Change of package diagram
+Review mistake
+
+Chapter 3 : in progress
+Removed for the moment from the final document.
+
 10/07/14
 Chapter 3 : Diagram class core package V0.1
 
