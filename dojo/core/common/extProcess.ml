@@ -5,8 +5,7 @@
 open Str
 open Lwt
 open Lwt_process
-open COMMON_log
-open COMMON_pervasives
+open ExtPervasives
 
 let default_timeout = 700.
 
@@ -16,9 +15,7 @@ type command = Lwt_process.command * string
 
 let ( !% ) s = (shell s, s)
 
-let strace f (cmd, s) =
-  log [Strace] s;
-  f cmd
+let strace f (cmd, s) = f cmd
 
 let string_of_process_status = function
   | Unix.WEXITED   d -> Printf.sprintf "Exited %d" d

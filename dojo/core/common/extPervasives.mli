@@ -2,8 +2,6 @@
 
 (** Extension to the OCaml library. *)
 
-{shared{
-
 (** A value of type ['a only] is isomorphic to a
     value of type ['a]. This type constructor is introduced
     to help the type-checker distinguish between a product
@@ -113,8 +111,6 @@ val list_tl_cut : int -> 'a list -> 'a list
 
 val list_index_of : 'a -> 'a list -> int
 
-}}
-
 val lwt_condition_wait_timeout : int -> 'a Lwt_condition.t -> 'a option Lwt.t
 
 (** [natural_indices ()] returns a map from a set of values to
@@ -221,25 +217,11 @@ exception SmallJump
 val small_jump : 'a -> 'b Lwt.t
 val ( @| ) : (unit -> 'a Lwt.t) -> (unit -> 'b Lwt.t) -> 'b Lwt.t
 
-val warn_only : string -> 'a -> 'b Lwt.t
-
 module MRef : sig
   type 'a t
   val create : 'a -> 'a t
   val read : 'a t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
   val write : 'a t -> 'a -> unit Lwt.t
 end
-
-{shared{
-
-module LocalCache : sig
-  type 'a cache
-  type 'a cached deriving (Json)
-  val make_cache : unit -> 'a cache
-  val get : 'a cache -> 'a cached -> 'a
-  val cached : 'a cache -> 'a -> 'a cached
-end
-
-}}
 
 val string_of_date : float -> string

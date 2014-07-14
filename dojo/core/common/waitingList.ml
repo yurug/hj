@@ -3,11 +3,9 @@
 (** This module provides waiting lists, useful for
     fine-tuned scheduling. *)
 
-open COMMON_pervasives
+open ExtPervasives
 
 let this_session_timestamp = Unix.gettimeofday ()
-
-{shared{
 
 type ticket = int deriving (Json)
 
@@ -22,8 +20,6 @@ type 'a t = {
 } deriving (Json)
 
 type 'a waiting_list = 'a t deriving (Json)
-
-}}
 
 let string_of_ticket t = string_of_int t
 

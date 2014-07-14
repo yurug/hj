@@ -1,7 +1,5 @@
 (* -*- tuareg -*- *)
 
-{shared{
-
 open Lwt
 
 let ( $> ) f g () = f (); g ()
@@ -220,8 +218,6 @@ let list_cut n l =
 let list_tl_cut n l =
   List.rev (list_cut n (List.rev l))
 
-}}
-
 let lwt_condition_wait_timeout timeout c =
   let timeout_waiter, timeout_wakener = task () in
   let t = Lwt_timeout.create timeout (fun () -> wakeup timeout_wakener None) in
@@ -257,10 +253,8 @@ let natural_indices () =
           a;
         !s
       in
-      Ocsigen_messages.errlog (
-        Printf.sprintf "Broken invariant: %d <> %d or [%s] is wrong (%B)."
-          !marks max (string_of_marks a) !marked_exactly_once
-      );
+      Printf.eprintf "Broken invariant: %d <> %d or [%s] is wrong (%B)."
+        !marks max (string_of_marks a) !marked_exactly_once;
       assert false
     )
   in
@@ -336,10 +330,6 @@ exception SmallJump
 let small_jump _ =
   raise_lwt SmallJump
 
-let warn_only msg =
-  Ocsigen_messages.errlog (Printf.sprintf "Warning: %s\n" msg);
-  small_jump
-
 let ( @* ) f x = fun () -> f x
 
 let ( >>> ) e f =
@@ -347,7 +337,6 @@ let ( >>> ) e f =
 
 let ( >-> ) e f =
   fun l -> e l >>= (fun x -> f x l)
-
 
 let ( !>> ) e =
   e
@@ -397,54 +386,6 @@ module MRef = struct
   let read x f = with_lock x.mutex (fun () -> f x.content)
   let write x v = with_lock x.mutex (fun () -> return (x.content <- v))
 end
-
-{shared{
-
-module LocalCache : sig
-  type 'a cache
-  type 'a cached deriving (Json)
-  val make_cache : unit -> 'a cache
-  val get : 'a cache -> 'a cached -> 'a
-  val cached : 'a cache -> 'a -> 'a cached
-end = struct
-
-  type 'a cached =
-    | Declare of int * 'a
-    | Reference of int
-  deriving (Json)
-
-  (* FIXME: A more efficient representation ? *)
-  type 'a cache = (int, 'a) Hashtbl.t * ('a, int) Hashtbl.t
-
-  let make_cache () : 'a cache = (Hashtbl.create 13, Hashtbl.create 13)
-
-  exception CacheMiss
-
-  let get (cache, _) = function
-    | Declare (key, a) ->
-      Hashtbl.add cache key a;
-      a
-    | Reference key ->
-      try Hashtbl.find cache key with Not_found -> raise CacheMiss
-
-  let cached (cache, all) v =
-    try
-      Reference (Hashtbl.find all v)
-    with Not_found ->
-      let rec get_key () =
-        let key = Random.bits () in
-        if Hashtbl.mem cache key then
-          get_key ()
-        else (
-          Hashtbl.add all v key;
-          Declare (key, v)
-        )
-      in
-      get_key ()
-
-end
-
-}}
 
 let string_of_date d = Unix.(
   let d = localtime d in
