@@ -1,12 +1,8 @@
 (* -*- tuareg -*- *)
 
-{shared{
-
-(* FIXME: This module implementation is naive. *)
-
 open Lwt
 
-type label = string deriving (Json)
+type label = string
 
 exception InvalidLabel of string
 
@@ -24,7 +20,7 @@ let fresh_label =
   let r = ref 0 in
   fun prefix -> incr r; prefix ^ string_of_int !r
 
-type path = label list deriving (Json)
+type path = label list
 
 let rec normalize = function
   | [] -> []
@@ -32,9 +28,9 @@ let rec normalize = function
   | "" :: "" :: ls -> normalize ("" :: ls)
   | x :: ls -> x :: normalize ls
 
-type identifier = path deriving (Json)
+type identifier = path
 
-type t = identifier deriving (Json)
+type t = identifier
 
 let split_delim c s =
   let b = Buffer.create 13 in
@@ -140,5 +136,3 @@ let suffix prefix p =
     suffix prefix p
   with Not_found ->
     raise (InvalidPrefix (prefix, p))
-
-}}

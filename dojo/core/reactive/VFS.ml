@@ -13,7 +13,7 @@ open COMMON_process
 open COMMON_log
 open COMMON_unix
 
-(** The file system is the exclusive property of www-data. *)
+(** The file system is the exclusive property of the current user. *)
 let _ = Unix.umask 0o077
 
 (** {1 Functional part.} *)
