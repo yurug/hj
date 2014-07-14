@@ -57,19 +57,23 @@ let tar_create dst srcs lraise =
 let read c =
   handle_unix_error (fun () -> return (
     strace' (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
-  )) (Lwt_stream.of_list [])
+  )) (Lwt_stream.of_list [], ignore)
 
 let grep c pattern =
-  read c >-> (fun s ->
+  read c >-> (fun (s, stop) ->
   lreturn (
-    Lwt_stream.filter_map (fun s ->
-      if string_match (regexp pattern) s 0 then
-        try
-          Some (matched_group 1 s)
-        with Not_found -> None
-      else
-        None
-    ) s
+    let y =
+      Lwt_stream.filter_map (fun s ->
+        if string_match (regexp pattern) s 0 then
+          try (
+            Some (matched_group 1 s)
+          ) with Not_found -> None
+        else
+          None
+      ) s
+    in
+    stop ();
+    y
   ))
 
 let echo c f =
@@ -101,30 +105,32 @@ let cat f =
 
 let split c delim =
   handle_unix_error (fun () ->
-    let s =
+    let s, stop =
       strace' (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
     in
-    return (
+    let y =
       Lwt_stream.filter_map (fun s ->
         try
           Some (Str.split (regexp delim) s)
         with _ -> None
       ) s
-    )
+    in
+    stop ();
+    return y
   ) (Lwt_stream.of_list [])
 
 let now lraise =
-  (read (!% "date") >-> fun s _ -> Lwt_stream.next s) lraise
+  (read (!% "date") >-> fun (s, stop) _ -> stop (); Lwt_stream.next s) lraise
 
 let ssh ?timeout username private_key addr port cmd observer =
   let os = "-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null'" in
   handle_unix_error (fun () ->
-    let p = exec ?timeout (!% (
+    let p, stop = exec ?timeout (!% (
       Printf.sprintf
         "ssh %s@%s %s -q -p %d -i %s '(%s)'"
         username addr os port private_key cmd))
     in
-    observer p >>= fun _ -> return (fun () -> p#terminate)
+    observer p >>= fun _ -> return (fun () -> stop (); p#terminate)
   ) (fun () -> ())
 
 let scp ?timeout username private_key addr port srcs observer =
@@ -133,12 +139,12 @@ let scp ?timeout username private_key addr port srcs observer =
     let srcs =
       String.concat " " (List.map Filename.quote srcs)
     in
-    let p = exec ?timeout (!% (
+    let p, stop = exec ?timeout (!% (
       Printf.sprintf
         "scp %s -P %d -q -i %s %s %s@%s:"
         os port private_key srcs username addr))
     in
-    observer p >>= fun _ -> return (fun () -> p#terminate)
+    observer p >>= fun _ -> return (fun () -> stop (); p#terminate)
   ) (fun () -> ())
 
 let pdflatex content outputfile = Filename.(

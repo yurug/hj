@@ -24,8 +24,8 @@ let strace f (cmd, s) =
   return ret
 
 let strace' f (cmd, s) =
-  let _, _ = Log.log_process (strace_descriptor s) in
-  f cmd
+  let _, stop = Log.log_process (strace_descriptor s) in
+  (f cmd, (fun () -> ignore (stop ())))
 
 let string_of_process_status = function
   | Unix.WEXITED   d -> Printf.sprintf "Exited %d" d
@@ -46,7 +46,7 @@ let pread_lines ?(lraise=small_jump) c =
     ) c)
   with _ ->
     (lraise @* (`SystemError "pread_lines"))
-    @| (fun () -> return (Lwt_stream.of_list []))
+    @| (fun () -> return (Lwt_stream.of_list [], ignore))
 
 let blind_exec c =
   strace (

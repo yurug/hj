@@ -92,7 +92,7 @@ let git_show hash what lraise =
 
 let git_toplevel where lraise =
   pread_lines (!% (where @@ "git rev-parse --show-toplevel")) ~lraise
-  >>= last_new
+  >>= (fun (s, stop) -> stop (); last_new s)
 
 let on_path f ?(relative = true) p =
   let p = root relative p in
