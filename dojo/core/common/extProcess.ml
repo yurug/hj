@@ -15,7 +15,17 @@ type command = Lwt_process.command * string
 
 let ( !% ) s = (shell s, s)
 
-let strace f (cmd, s) = f cmd
+let strace_descriptor = Log.make_unary_string_event "strace"
+
+let strace f (cmd, s) =
+  let _, stop = Log.log_process (strace_descriptor s) in
+  lwt ret = f cmd in
+  ignore (stop ());
+  return ret
+
+let strace' f (cmd, s) =
+  let _, _ = Log.log_process (strace_descriptor s) in
+  f cmd
 
 let string_of_process_status = function
   | Unix.WEXITED   d -> Printf.sprintf "Exited %d" d
@@ -31,9 +41,9 @@ let pread ?(lraise=small_jump) c =
 
 let pread_lines ?(lraise=small_jump) c =
   try_lwt
-    return (strace (
-      pread_lines ~timeout:default_timeout ~stdin:`Dev_null ~stderr:`Dev_null) c
-    )
+    return (strace' (
+      pread_lines ~timeout:default_timeout ~stdin:`Dev_null ~stderr:`Dev_null
+    ) c)
   with _ ->
     (lraise @* (`SystemError "pread_lines"))
     @| (fun () -> return (Lwt_stream.of_list []))
@@ -63,4 +73,4 @@ let success ?(lraise=small_jump) c =
     @| (fun () -> return_false)
 
 let exec ?timeout c =
-  strace (open_process_full ?timeout) c
+  strace' (open_process_full ?timeout) c

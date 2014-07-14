@@ -15,6 +15,7 @@ and symbol = Symbol of string
 and event_identifier = int
 
 let warning = Symbol "warning"
+let endof   = Symbol "endof"
 
 let logs = Queue.create ()
 
@@ -28,3 +29,11 @@ let log d =
 type warning = descriptor
 
 let warning s = [TApp (warning, [TString s])]
+
+let make_unary_string_event e = fun s -> [TApp (Symbol e, [TString e])]
+
+let endof e = [TApp (endof, [TEvent e])]
+
+let log_process d =
+  let e = log d in
+  (e, fun () -> log (endof e))
