@@ -6,14 +6,15 @@
 PROJECT_NAME := hackojo
 
 # Source files for the server
-SERVER_FILES := $(wildcard *.eliomi *.eliom common/*.eliom common/*.eliomi)
+SERVER_FILES := $(wildcard *.eliomi *.eliom)
 # Source files for the client
-CLIENT_FILES := $(wildcard *.eliomi *.eliom common/*.eliom common/*.eliomi)
+CLIENT_FILES := $(wildcard *.eliomi *.eliom)
 
 SRCDIRS := common
 
 # OCamlfind packages for the server
-SERVER_PACKAGES := tyxml ldap unix
+SERVER_PACKAGES := tyxml unix hackojo-core
+
 # OCamlfind packages for the client
 CLIENT_PACKAGES :=
 
