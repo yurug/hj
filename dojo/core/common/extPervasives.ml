@@ -331,7 +331,7 @@ let small_jump _ =
   raise_lwt SmallJump
 
 let warn_only w =
-  Log.log w;
+  ignore (Log.log w);
   small_jump
 
 let ( @* ) f x = fun () -> f x

@@ -1,4 +1,4 @@
-type event = Event of timestamp * descriptor
+type event = Event of event_identifier * timestamp * descriptor
 
 and timestamp = float
 
@@ -18,7 +18,12 @@ let warning = Symbol "warning"
 
 let logs = Queue.create ()
 
-let log d = Queue.push (Event (Unix.gettimeofday (), d)) logs
+let id = ref 0
+
+let log d =
+  incr id;
+  Queue.push (Event (!id, Unix.gettimeofday (), d)) logs;
+  !id
 
 type warning = descriptor
 
