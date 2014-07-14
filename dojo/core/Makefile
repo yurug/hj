@@ -1,4 +1,5 @@
 OCAMLBUILD=ocamlbuild -use-menhir -use-ocamlfind
+OCAMLFIND=ocamlfind
 
 .PHONY: all clean install
 
@@ -10,4 +11,4 @@ clean:
 	rm *~
 
 install:
-	$(OCAMLFIND) install hackojo.core
+	$(OCAMLFIND) install hackojo-core META hackojoCore.cmxa common/extPervasives.mli
