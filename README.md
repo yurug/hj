@@ -46,7 +46,7 @@ bin/initialize.sh
 
 # Deployment
 
-- Run the deployment script from $(ROOT).
+- Run the deployment script from `$(ROOT)`.
 ```Shell
 bin/deploy.sh
 ```
