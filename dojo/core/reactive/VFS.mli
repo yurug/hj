@@ -2,11 +2,10 @@
 
 (** A versioned hierarchical file system. *)
 
-(** This module implements a versioned hierarchical filesystem rooted
-    at [CORE_config.ressource_root].
+(** This module implements a versioned hierarchical filesystem.
 
     It is hierarchical in the usual way: one can address a stored file
-    using a [CORE_identifier.t] which is a singularized path. But, it
+    using a [Identifier.t] which is a singularized path. But, it
     is also hierarchical in terms of history. Indeed, the history of
     the file system is made of the independent histories of local
     sub-filesystems which also are singularized.
