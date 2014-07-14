@@ -23,10 +23,10 @@ their programming skills under the wise supervision of their teachers.
 - `doc`
   User manual
 
-- 'etc'
+- `etc`
   Configuration files
 
-- 'bin'
+- `bin`
   Administration programs
 
 ## Installation
