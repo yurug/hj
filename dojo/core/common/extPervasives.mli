@@ -215,6 +215,7 @@ val ( @* ) : ('a -> 'b) -> 'a -> unit -> 'b
     whose exception is immediately captured by the combinator. *)
 exception SmallJump
 val small_jump : 'a -> 'b Lwt.t
+val warn_only : Log.warning -> 'a -> 'b Lwt.t
 val ( @| ) : (unit -> 'a Lwt.t) -> (unit -> 'b Lwt.t) -> 'b Lwt.t
 
 module MRef : sig
@@ -225,3 +226,11 @@ module MRef : sig
 end
 
 val string_of_date : float -> string
+
+(** The type of uninitialized references. *)
+type 'a oref
+
+(** [make failure] returns a pair of function (set, get) such that
+    [set x; get () = x] but at least one [set] must have be performed
+    before any [get]. Otherwise, [failure ()] is evaluated. *)
+val oref : (unit -> 'a) -> (('a -> unit) * (unit -> 'a))

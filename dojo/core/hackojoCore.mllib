@@ -2,4 +2,8 @@ common/extPervasives
 common/extProcess
 common/extUnix
 common/waitingList
+common/error
+
 reactive/identifier
+reactive/VFS
+reactive/reactiveErrors

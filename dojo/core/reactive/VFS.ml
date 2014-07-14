@@ -7,17 +7,24 @@ open Lwt_io
 open ExtPervasives
 open ExtProcess
 open ExtUnix
+open Log
 
-open CORE_identifier
-open CORE_standard_identifiers
-open CORE_error_messages
+open Identifier
+
+(** The file system is rooted there: *)
+let set_root, get_root = oref (fun () ->
+  Error.fatal ReactiveErrors.MissingConfiguredRoot
+)
+
+let root_path () = path_of_string (get_root ())
+let root relative p = if relative then concat (root_path ()) p else p
 
 (** The file system is the exclusive property of the current user. *)
 let _ = Unix.umask 0o077
 
 (** {1 Functional part.} *)
 
-type filename = CORE_identifier.t
+type filename = Identifier.t
 
 type stored_version = {
     number    : string;
@@ -73,7 +80,7 @@ let git_versions where what lraise =
         path      = path_of_string (Filename.concat where what);
       })
     with _ ->
-      Ocsigen_messages.errlog ("Fail");
+      (* FIXME: Log this. *)
       None
   in
   Lwt_stream.to_list (Lwt_stream.filter_map make_version log)
@@ -97,30 +104,23 @@ let on_path f ?(relative = true) p =
 let init_root () =
   let create_dir_if_absent relative dir lraise =
     let dir = string_of_path (root relative dir) in
-    blind_exec (!% (ressource_root @@ (Printf.sprintf "test -d %s" dir)))
+    blind_exec (!% (get_root () @@ (Printf.sprintf "test -d %s" dir)))
     >>= function
       | Unix.WEXITED 0 -> return ()
       | _ -> mkdir dir lraise
   in
   let under_git _ =
-    blind_exec (!% (ressource_root @@ "test -d .git"))
+    blind_exec (!% (get_root () @@ "test -d .git"))
   in
   let git_init _ =
-    blind_exec (!% (ressource_root @@ "git init"))
+    blind_exec (!% (get_root () @@ "git init"))
   in
   ltry (
-    !>> create_dir_if_absent false (path_of_string ressource_root)
+    !>> create_dir_if_absent false (root_path ())
     >>> under_git
     >-> (function
       | (Unix.WEXITED 0) as x -> lreturn x
       | _ -> git_init
-    )
-    >>> (
-      let rec create_all_paths = function
-        | [] -> lreturn ()
-        | p :: ps -> create_dir_if_absent true p >>> create_all_paths ps
-      in
-      create_all_paths std_paths
     )
     >>> lreturn ()
   )
@@ -144,7 +144,7 @@ let create who = on_path (fun p ps _ _ ->
 
 let create_tmp who =
   lwt dname =
-    ExtFilename.temp_filename ~temp_dir:ressource_root "tmp" ""
+    ExtFilename.temp_filename ~temp_dir:(get_root ()) "tmp" ""
   in
   let path = path_of_string dname in
   ltry (
@@ -200,7 +200,7 @@ let read v = ltry (fun lraise ->
 let onfile f who = on_path (fun p ps fname where c -> ltry (
   !>> f c ps
   >>> git_add where [fname]
-  >>> git_commit who where [fname] (I18N.String.saving ps)
+  >>> git_commit who where [fname] ps
   >>> lreturn ()
 ))
 
@@ -221,7 +221,12 @@ type inconsistency =
 
 and broken_operation_description = {
   operation : [`Create | `Delete | `Save | `Versions | `Read | `Owner ];
-  reason    : string;
+  reason    : [
+  | `Inconsistency         of inconsistency
+  | `AlreadyExists         of path
+  | `SystemError           of string
+  | `DirectoryDoesNotExist of path
+  ]
 }
 
 type consistency_level =
@@ -236,22 +241,6 @@ let string_of_operation = function
   | `Read     -> "vfs.read"
   | `Owner    -> "vfs.owner"
 
-let string_of_inconsistency = function
-  | NoRootRepository ->
-    I18N.String.there_is_no_repository_at_ressource_root
-  | Untracked fs ->
-    I18N.String.the_following_files_are_untracked (
-      List.map string_of_identifier fs
-    )
-  | BrokenOperation { operation; reason } ->
-    I18N.String.the_following_operation_is_broken
-      (string_of_operation operation)
-      reason
-
-let string_of_consistency_level = function
-  | Consistent -> I18N.String.the_filesystem_is_consistent
-  | Inconsistent c -> string_of_inconsistency c
-
 let ensure_consistency test icp =
   lwt_if test
     (return Consistent)
@@ -259,14 +248,14 @@ let ensure_consistency test icp =
 
 let there_is_repository_at_resssource_root () =
   ensure_consistency
-    (success (!% (ressource_root @@ "test -d .git")))
+    (success (!% (get_root () @@ "test -d .git")))
     (return NoRootRepository)
 
 let there_is_no_untracked_files () =
   lwt untracked_files = grep
-    (!% (ressource_root @@ "git status --porcelain"))
+    (!% (get_root () @@ "git status --porcelain"))
     ("\\?\\? \\(.*\\)")
-    (warn_only "core_vfs.there_is_no_untracked_files.grep failed.")
+    (warn_only (warning "core_vfs.there_is_no_untracked_files.grep failed."))
   in
   ensure_consistency
     (is_empty untracked_files)
@@ -281,7 +270,7 @@ let operation_works operation scenario =
     | `OK _ -> return Consistent
     | `KO e -> return (Inconsistent (BrokenOperation {
       operation = operation;
-      reason    = string_of_error e
+      reason    = e
     }))
 
 let vfs_create_works () =

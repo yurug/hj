@@ -16,12 +16,12 @@
     information about this tool.
 
 *)
-open CORE_identifier
+open Identifier
 
 (** {1 Functional parts.} *)
 
 (** A file system contains files. *)
-type filename = CORE_identifier.t
+type filename = Identifier.t
 
 (** [init_root ()] initializes the root of the file system if required. *)
 val init_root : unit
@@ -130,8 +130,8 @@ val read : version
 
 (** [owner path] returns the path of the nearest englobing [subvfs]
     from [path]. *)
-val owner : ?relative:bool -> CORE_identifier.path
-  -> [ `OK of CORE_identifier.path
+val owner : ?relative:bool -> Identifier.path
+  -> [ `OK of Identifier.path
      | `KO of (** Something went wrong at the system level.
                   (It may be git-related or os-related.) *)
          [> `SystemError of string
@@ -151,18 +151,19 @@ type inconsistency =
   | BrokenOperation of broken_operation_description
 
 and broken_operation_description = {
-  operation : [ `Create | `Delete | `Save | `Versions | `Read | `Owner ];
-  reason    : string;
+  operation : [`Create | `Delete | `Save | `Versions | `Read | `Owner ];
+  reason    : [
+  | `Inconsistency         of inconsistency
+  | `AlreadyExists         of path
+  | `SystemError           of string
+  | `DirectoryDoesNotExist of path
+  ]
 }
 
 (** File system consistency.*)
 type consistency_level =
   | Consistent
   | Inconsistent of inconsistency
-
-(** [string_of_consistency_level c] is a human-readable description
-    of the consistency level. *)
-val string_of_consistency_level : consistency_level -> string
 
 (** [check ()] if the file system rooted at
     [CORE_config.ressource_root] is in a coherent state.  *)

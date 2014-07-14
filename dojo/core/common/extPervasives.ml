@@ -330,6 +330,10 @@ exception SmallJump
 let small_jump _ =
   raise_lwt SmallJump
 
+let warn_only w =
+  Log.log w;
+  small_jump
+
 let ( @* ) f x = fun () -> f x
 
 let ( >>> ) e f =
@@ -393,3 +397,13 @@ let string_of_date d = Unix.(
     (1900 + d.tm_year) (1 + d.tm_mon) d.tm_mday
     d.tm_hour d.tm_min d.tm_sec
 )
+
+type 'a oref = 'a option ref
+let oref (type a) failure : (a -> unit) * (unit -> a) =
+  let r = ref None in
+  let set x = r := Some x in
+  let get () = match !r with
+    | None -> failure ()
+    | Some x -> x
+  in
+  set, get
