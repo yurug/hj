@@ -22,8 +22,7 @@ val tar_create : string -> string list -> ('a, 'b) raiser -> unit Lwt.t
 (** [grep cmd regexp] returns the stream of lines produces by [cmd]
     that match [regexp]. *)
 val grep :
-  COMMON_process.command -> string -> ('a, 'b) raiser
-  -> string Lwt_stream.t Lwt.t
+  ExtProcess.command -> string -> ('a, 'b) raiser -> string Lwt_stream.t Lwt.t
 
 (** [echo content fname] saves the [content] in [fname]. *)
 val echo : string -> string -> ('a, 'b) raiser -> unit Lwt.t
@@ -36,8 +35,8 @@ val cat : string -> ('a, 'b) raiser -> string Lwt.t
 
 (** [split cmd delim] splits each line produced by [cmd] using
     regexp [delim]. *)
-val split :
-  COMMON_process.command -> string -> ('a, 'b) raiser
+val split
+  : ExtProcess.command -> string -> ('a, 'b) raiser
   -> string list Lwt_stream.t Lwt.t
 
 (** [now ()] returns a string representation of the current time. *)

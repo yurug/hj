@@ -4,14 +4,13 @@ open Lwt
 open Lwt_stream
 open Lwt_io
 
-open CORE_config
+open ExtPervasives
+open ExtProcess
+open ExtUnix
+
 open CORE_identifier
 open CORE_standard_identifiers
 open CORE_error_messages
-open COMMON_pervasives
-open COMMON_process
-open COMMON_log
-open COMMON_unix
 
 (** The file system is the exclusive property of the current user. *)
 let _ = Unix.umask 0o077

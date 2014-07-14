@@ -5,9 +5,8 @@ open Lwt_io
 open Lwt_stream
 open Lwt_process
 
-open COMMON_log
-open COMMON_pervasives
-open COMMON_process
+open ExtPervasives
+open ExtProcess
 open Str
 
 type ('a, 'b) raiser = ([> `SystemError of string ] as 'a) -> 'b Lwt.t
@@ -144,11 +143,6 @@ let scp ?timeout username private_key addr port srcs observer =
 
 let pdflatex content outputfile = Filename.(
   let source = temp_file "hjd" ".tex" in
-  let write =
-    let cout = open_out source in
-    output_string cout content;
-    close_out cout
-  in
   let base = chop_extension source in
   let pdflatex lraise =
     success ~lraise (
