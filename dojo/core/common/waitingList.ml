@@ -7,19 +7,19 @@ open ExtPervasives
 
 let this_session_timestamp = Unix.gettimeofday ()
 
-type ticket = int deriving (Json)
+type ticket = int
 
-type slot = ticket option ref deriving (Json)
+type slot = ticket option ref
 
-type 'a resource = slot * 'a deriving (Json)
+type 'a resource = slot * 'a
 
 type 'a t = {
   timestamp : float;
   capacity : 'a resource list;
   tickets  : ticket list
-} deriving (Json)
+}
 
-type 'a waiting_list = 'a t deriving (Json)
+type 'a waiting_list = 'a t
 
 let string_of_ticket t = string_of_int t
 
