@@ -35,7 +35,7 @@ let about = menu_button HTTP_services.about I18N.(cap String.about) ()
 
 let home = menu_button HTTP_services.root I18N.(cap String.home) ()
 
-let user_menu =
+let user_menu : Html5_types.flow5 Eliom_content.Html5.D.elt list Eliom_reference.eref =
   Eliom_reference.eref
     ~scope:Eliom_common.default_session_scope
     [ home; about ]

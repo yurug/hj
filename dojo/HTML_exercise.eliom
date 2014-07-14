@@ -38,65 +38,68 @@ deriving (Json)
 
 let editor_div (e : CORE_exercise.t) authors =
 
-  let id = CORE_exercise.identifier e in
-  lwt init = raw_user_description_source id in
-  let state = ref (CORE_source.content init) in
+(*   let id = CORE_exercise.identifier e in *)
+(*   lwt init = raw_user_description_source id in *)
+(*   let state = ref (CORE_source.content init) in *)
 
-  let client_change =
-    {{ fun echo (s : string) ->
-      (* FIXME: Menhir produces mutually tail-recursive functions that
-         FIXME: are not optimized by js_of_ocaml. So, if the source is
-         FIXME: too large, the parsing is done on the server instead of
-         FIXME: on the client. *)
-      if String.length s < 4096 then
-        match CORE_description_format.exercise_of_string s with
-          | `OK cst ->
-            echo "";
-            return (Some (RCst cst))
-          | `KO e ->
-            echo (CORE_error_messages.string_of_error e);
-            return None
-      else
-        return (Some (RStr s))
-     }}
-  in
-  let server_change =
-    (server_function Json.t<editor_intermediate_result> (
-      let check_write_in_between () =
-        lwt current = raw_user_description_source id in
-        return (CORE_source.content current <> !state)
-      in
-      let change cst =
-        check_write_in_between () >>= function
-          | true ->
-            return [HTML_editor.Message I18N.String.please_reload_the_page]
-          | false ->
-            state := fst cst;
-            change_from_user_description e cst
-            >>= fun _ -> observe e (fun d -> return d)
-            >>= fun _ -> return []
-      in
-      function
-      | RCst cst ->
-        change cst
-      | RStr s ->
-        match CORE_description_format.exercise_of_string s with
-          | `OK cst ->
-            change cst
-          | `KO e ->
-            let msg = CORE_error_messages.string_of_error e in
-            return [HTML_editor.Message msg]
-     ))
-  in
-  lwt (editor_div, editor_id, editor_process) =
-    HTML_editor.create (CORE_source.content init) client_change server_change
-  in
-  lwt sources_div =
-    lwt d = HTML_source.entity_sources_div (module CORE_exercise) e in
-    return (div ~a:[a_class ["exercise_sources"]] [ d ])
-  in
-  let editor_div = div ~a:[a_class ["exercise_editor"]] [editor_div] in
-  return (div [sources_div; editor_div])
+(*   let client_change = *)
+(*     {{ fun echo (s : string) -> *)
+(*       (\* FIXME: Menhir produces mutually tail-recursive functions that *)
+(*          FIXME: are not optimized by js_of_ocaml. So, if the source is *)
+(*          FIXME: too large, the parsing is done on the server instead of *)
+(*          FIXME: on the client. *\) *)
+(*       if String.length s < 4096 then *)
+(*         match CORE_description_format.exercise_of_string s with *)
+(*           | `OK cst -> *)
+(*             echo ""; *)
+(*             return (Some (RCst cst)) *)
+(*           | `KO e -> *)
+(*             echo (CORE_error_messages.string_of_error e); *)
+(*             return None *)
+(*       else *)
+(*         return (Some (RStr s)) *)
+(*      }} *)
+(*   in *)
+(*   let server_change = *)
+(*     (server_function Json.t<editor_intermediate_result> ( *)
+(*       let check_write_in_between () = *)
+(*         lwt current = raw_user_description_source id in *)
+(*         return (CORE_source.content current <> !state) *)
+(*       in *)
+(*       let change cst = *)
+(*         check_write_in_between () >>= function *)
+(*           | true -> *)
+(*             return [HTML_editor.Message I18N.String.please_reload_the_page] *)
+(*           | false -> *)
+(*             state := fst cst; *)
+(*             change_from_user_description e cst *)
+(*             >>= fun _ -> observe e (fun d -> return d) *)
+(*             >>= fun _ -> return [] *)
+(*       in *)
+(*       function *)
+(*       | RCst cst -> *)
+(*         change cst *)
+(*       | RStr s -> *)
+(*         match CORE_description_format.exercise_of_string s with *)
+(*           | `OK cst -> *)
+(*             change cst *)
+(*           | `KO e -> *)
+(*             let msg = CORE_error_messages.string_of_error e in *)
+(*             return [HTML_editor.Message msg] *)
+(*      )) *)
+(*   in *)
+(*   lwt (editor_div, editor_id, editor_process) = *)
+(* (\*    HTML_editor.create (CORE_source.content init) client_change server_change*\) *)
+(*     assert false *)
+(*   in *)
+(*   lwt sources_div = *)
+(*     lwt d = HTML_source.entity_sources_div (module CORE_exercise) e in *)
+(*     return (div ~a:[a_class ["exercise_sources"]] [ d ]) *)
+(*   in *)
+(*   let editor_div = div ~a:[a_class ["exercise_editor"]] [editor_div] in *)
+(*   return (div [sources_div; editor_div]) *)
+  (* FIXME: Broken in eliom 4. *)
+  return (div [])
 
 let editor_div e authors =
   try_lwt
@@ -183,7 +186,7 @@ let exercise_div r (exo : CORE_exercise.t) answer evaluation authors =
             return [div [pcdata (string_of_error e)]]
       }}
   in
-  let display_math = {{ fun () ->
+  let display_math = {unit -> unit{ fun () ->
     Lwt.async (fun () ->
       return (Js.Unsafe.eval_string (
         Printf.sprintf

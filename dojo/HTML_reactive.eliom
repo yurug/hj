@@ -19,7 +19,7 @@ type ('a, 'b) c = 'a EltProduct.prod * 'b CORE_client_reaction.c
   let update_elts parents to_div x =
     lwt elts = to_div x in
     EltProduct.iter2 { exec2 = fun parent elt ->
-      Eliom_content.Html5.Manip.replaceAllChild parent [ elt ]
+      Eliom_content.Html5.Manip.replaceChildren parent [ elt ]
     } parents elts;
     return ()
 

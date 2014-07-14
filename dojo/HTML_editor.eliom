@@ -82,148 +82,152 @@ let fresh_editor_id =
     [init] and whose behavior is the composition of [local] and
     [remote]. *)
 let create
+    (type a)
     (init           : string)
-    (local_process  : 'a local_process)
-    (remote_process : 'a remote_process)
+    (local_process  : a local_process)
+    (remote_process : a remote_process)
     =
+  assert false
 
-  (** The widget is composed of three parts:
-      - an editor
-      - a message box
-      - a question box.
-  *)
+    (* FIXME: The following is broken in eliom 4. *)
 
-  (** Message box. *)
-  (** ------------ *)
+  (* (\** The widget is composed of three parts: *)
+  (*     - an editor *)
+  (*     - a message box *)
+  (*     - a question box. *)
+  (* *\) *)
 
-  (** The message displays only one string at a time. *)
-  let message_box = div ~a:[a_class ["editor_message"]] [] in
-  let echo = {string -> unit{ fun s ->
-    Manip.replaceAllChild %message_box [
-      pcdata s
-    ]
-   }} in
+  (* (\** Message box. *\) *)
+  (* (\** ------------ *\) *)
 
-  (** Question box. *)
-  (** ------------- *)
+  (* (\** The message displays only one string at a time. *\) *)
+  (* let message_box = div ~a:[a_class ["editor_message"]] [] in *)
+  (* let echo = {string -> unit{ fun s -> *)
+  (*   Manip.replaceChildren %message_box [ *)
+  (*     pcdata s *)
+  (*   ] *)
+  (*  }} in *)
 
-  (** The question box manages a stack of questions that may be
-      ignored by the user. (A question disappears after some
-      seconds.)
+  (* (\** Question box. *\) *)
+  (* (\** ------------- *\) *)
 
-      A question is defined by a string and a list of buttons
-      associated to callbacks. If this list if empty, the question
-      is merely an information message that disappears after some
-      time.
-  *)
-  let questions_box = div ~a:[a_class ["editor_questions_box"]] [] in
+  (* (\** The question box manages a stack of questions that may be *)
+  (*     ignored by the user. (A question disappears after some *)
+  (*     seconds.) *)
 
-  let process_request = {user_request -> unit Lwt.t{
-    let now () = (jsnew Js.date_now ())##valueOf () in
-    let hello, bye, lookup =
-      let h = Hashtbl.create 13 in
-      let hello s = Hashtbl.add h s (now ()) in
-      let bye s = Hashtbl.remove h s in
-      let lookup s = try Some (Hashtbl.find h s) with Not_found -> None in
-      (hello, bye, lookup)
-    in
-    let button process_request msg id (label, what) =
-      let onclick = fun _ ->
-        Lwt.async (fun () ->
-          lwt rqs = what () in
-          Lwt_list.iter_s process_request rqs
-        );
-        Manip.removeChild %questions_box (Id.get_element id);
-        bye msg
-      in
-      span ~a:[a_class ["editor_message_button"];
-               a_onclick onclick] [pcdata label]
-    in
-    let question process_request ?(timeout = 10.) msg buttons =
-      match lookup msg with
-        | Some _ -> None
-        | None ->
-          hello msg;
-          let id = Id.new_elt_id ~global:false () in
-          let onload _ =
-            Lwt.async (fun () -> Lwt_js.sleep timeout >>= fun _ -> (
-              Manip.removeChild %questions_box (Id.get_element id);
-              return (bye msg)
-            )
-            )
-          in
-          Some (Id.create_named_elt ~id
-                  (div
-                     ~a:[a_class ["editor_message"];
-                         a_onload onload
-                        ] (
-                       pcdata msg
-                       :: List.map (button process_request msg id) buttons
-                     )))
-    in
-    let message aux msg = question aux ~timeout:10. msg [] in
-    let push e =
-      return (match e with
-        | None -> ()
-        | Some e -> Manip.appendChild %questions_box e
-      )
-    in
-    let rec aux =
-      function
-        | Confirm (msg, what) ->
-          push (question aux msg [ I18N.String.no, (fun _ -> return []);
-                                   I18N.String.yes, what; ])
-        | Message msg ->
-          push (message aux msg)
-    in
-    aux
-  }}
-  in
+  (*     A question is defined by a string and a list of buttons *)
+  (*     associated to callbacks. If this list if empty, the question *)
+  (*     is merely an information message that disappears after some *)
+  (*     time. *)
+  (* *\) *)
+  (* let questions_box = div ~a:[a_class ["editor_questions_box"]] [] in *)
 
-  (** Editor. *)
-  (** ------- *)
+  (* let process_request = {user_request -> unit Lwt.t{ *)
+  (*   let now () = (jsnew Js.date_now ())##valueOf () in *)
+  (*   let hello, bye, lookup = *)
+  (*     let h = Hashtbl.create 13 in *)
+  (*     let hello s = Hashtbl.add h s (now ()) in *)
+  (*     let bye s = Hashtbl.remove h s in *)
+  (*     let lookup s = try Some (Hashtbl.find h s) with Not_found -> None in *)
+  (*     (hello, bye, lookup) *)
+  (*   in *)
+  (*   let button process_request msg id (label, what) = *)
+  (*     let onclick = fun _ -> *)
+  (*       Lwt.async (fun () -> *)
+  (*         lwt rqs = what () in *)
+  (*         Lwt_list.iter_s process_request rqs *)
+  (*       ); *)
+  (*       Manip.removeChild %questions_box (Id.get_element id); *)
+  (*       bye msg *)
+  (*     in *)
+  (*     span ~a:[a_class ["editor_message_button"]; *)
+  (*              a_onclick onclick] [pcdata label] *)
+  (*   in *)
+  (*   let question process_request ?(timeout = 10.) msg buttons = *)
+  (*     match lookup msg with *)
+  (*       | Some _ -> None *)
+  (*       | None -> *)
+  (*         hello msg; *)
+  (*         let id = Id.new_elt_id ~global:false () in *)
+  (*         let onload _ = *)
+  (*           Lwt.async (fun () -> Lwt_js.sleep timeout >>= fun _ -> ( *)
+  (*             Manip.removeChild %questions_box (Id.get_element id); *)
+  (*             return (bye msg) *)
+  (*           ) *)
+  (*           ) *)
+  (*         in *)
+  (*         Some (Id.create_named_elt ~id *)
+  (*                 (div *)
+  (*                    ~a:[a_class ["editor_message"]; *)
+  (*                        a_onload onload *)
+  (*                       ] ( *)
+  (*                      pcdata msg *)
+  (*                      :: List.map (button process_request msg id) buttons *)
+  (*                    ))) *)
+  (*   in *)
+  (*   let message aux msg = question aux ~timeout:10. msg [] in *)
+  (*   let push e = *)
+  (*     return (match e with *)
+  (*       | None -> () *)
+  (*       | Some e -> Manip.appendChild %questions_box e *)
+  (*     ) *)
+  (*   in *)
+  (*   let rec aux = *)
+  (*     function *)
+  (*       | Confirm (msg, what) -> *)
+  (*         push (question aux msg [ I18N.String.no, (fun _ -> return []); *)
+  (*                                  I18N.String.yes, what; ]) *)
+  (*       | Message msg -> *)
+  (*         push (message aux msg) *)
+  (*   in *)
+  (*   aux *)
+  (* }} *)
+  (* in *)
 
-  (** The editor is implemented by a third party library called "CodeMirror".
-      A previous implementation used a library called "Ace" but it happened
-      to interact badly with ocsigen (for strange reasons). *)
+  (* (\** Editor. *\) *)
+  (* (\** ------- *\) *)
 
-  let editor_id = fresh_editor_id () in
-  let on_load = a_onload {#Dom_html.event Js.t -> unit{ fun _ ->
-      let open Js.Unsafe in
-      let open Lwt in
+  (* (\** The editor is implemented by a third party library called "CodeMirror". *)
+  (*     A previous implementation used a library called "Ace" but it happened *)
+  (*     to interact badly with ocsigen (for strange reasons). *\) *)
 
-      let hi editor = Js.wrap_callback (
-        let nb = ref 0 in fun _ ->
-          incr nb;
-          let nb_now = !nb in
-          ignore (Lwt_js.sleep 3. >>= fun _ -> (
-            if !nb = nb_now then
-              let content = Js.to_string (editor##getValue ()) in
-              let process () = (%local_process %echo content >>= function
-                | None ->
-                  return ()
-                | Some v ->
-                  lwt urqs = %remote_process v in
-                  Lwt_list.iter_s %process_request urqs)
-              in
-              process ()
-            else
-              return ()));
-         Js._false
-      )
-      in
-      let i = CodeMirror.make %editor_id in
-      i##on (Js.string "change", hi i)
-  }}
-  in
-  let editor_textarea =
-    Eliom_content_core.Html5.D.textarea
-      ~a:[a_id editor_id; on_load; a_class ["editor"]] (pcdata init)
-  in
-  let editor = div ~a:[a_class ["editor_box"]] [
-    editor_textarea;
-    (*  FIXME: Reenable this:
-    message_box*)
-    questions_box
-  ] in
-  return (editor, editor_id, process_request)
+  (* let editor_id = fresh_editor_id () in *)
+  (* let on_load = a_onload {#Dom_html.event Js.t -> unit{ fun _ -> *)
+  (*     let open Js.Unsafe in *)
+  (*     let open Lwt in *)
+
+  (*     let hi editor = Js.wrap_callback ( *)
+  (*       let nb = ref 0 in fun _ -> *)
+  (*         incr nb; *)
+  (*         let nb_now = !nb in *)
+  (*         ignore (Lwt_js.sleep 3. >>= fun _ -> ( *)
+  (*           if !nb = nb_now then *)
+  (*             let content = Js.to_string (editor##getValue ()) in *)
+  (*             let process () = (%local_process %echo content >>= function *)
+  (*               | None -> *)
+  (*                 return () *)
+  (*               | Some v -> *)
+  (*                 lwt urqs = %remote_process v in *)
+  (*                 Lwt_list.iter_s %process_request urqs) *)
+  (*             in *)
+  (*             process () *)
+  (*           else *)
+  (*             return ())); *)
+  (*        Js._false *)
+  (*     ) *)
+  (*     in *)
+  (*     let i = CodeMirror.make %editor_id in *)
+  (*     i##on (Js.string "change", hi i) *)
+  (* }} *)
+  (* in *)
+  (* let editor_textarea = *)
+  (*   Eliom_content.Html5.D.Raw.textarea *)
+  (*     ~a:[a_id editor_id; on_load; a_class ["editor"]] (pcdata init) *)
+  (* in *)
+  (* let editor = div ~a:[a_class ["editor_box"]] [ *)
+  (*   editor_textarea; *)
+  (*   (\*  FIXME: Reenable this: *)
+  (*   message_box*\) *)
+  (*   questions_box *)
+  (* ] in *)
+  (* return (editor, editor_id, process_request) *)

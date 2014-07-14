@@ -74,14 +74,15 @@ let machinist_page mc =
             | `KO e -> warn e; return ()
     )
     in
-    let id = Id.new_elt_id ~global:false () in
-    let i = Id.create_named_elt id (string_input ~a:[a_onkeypress {{ fun e ->
-      if e##keyCode = 13 then (* FIXME: Check the portability of this. *)
-        let input_elt = Id.get_element %id in
-        let input_value = (To_dom.of_input input_elt)##value in
-        Lwt.async (fun () -> %run (Js.to_string input_value))
-    }}] ~input_type:`Text ())
-    in
+    let i = string_input ~input_type:`Text () in
+    {unit{
+      let i = To_dom.of_input %i in
+      ignore (Dom_html.(addEventListener i Event.keypress (handler (fun e ->
+        if e##keyCode = 13 then (* FIXME: Check the portability of this. *)
+          Lwt.async (fun () -> %run (Js.to_string i##value));
+        Js._true
+      )) Js._true))
+    }};
     return (div [
       i; d
     ])

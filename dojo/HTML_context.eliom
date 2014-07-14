@@ -71,7 +71,7 @@ let display_score answer_id checkpoint context evaluation =
   let diagnostic = div [] in
   lwt d =
     HTML_entity.reactive_div
-      [CORE_entity.SomeEntity evaluation] None get {{
+      [CORE_entity.SomeEntity evaluation] None get {CORE_evaluation.description -> _ {
       let rec interpret_diagnostic_command = CORE_diagnostic.(function
         | Empty ->
           ()
@@ -93,7 +93,7 @@ let display_score answer_id checkpoint context evaluation =
               %update_if_necessary (date, submission)
               >> return [p [pcdata (cs ^ "▹ En cours...")]]
             | Some (Evaluated (score, _, dcmd, ctx)) ->
-              Eliom_content.Html5.Manip.replaceAllChild %diagnostic [];
+              Eliom_content.Html5.Manip.replaceChildren %diagnostic [];
               Firebug.console##log (Js.string (CORE_diagnostic.string_of_command dcmd));
               interpret_diagnostic_command dcmd;
               (* FIXME: Display the folded diagnostic. *)
@@ -234,7 +234,7 @@ let display_user_input exo_id answer_id checkpoint context submission trigger =
       let choices_div = div [] in
       {unit Lwt.t{
         lwt e = %choices_editor () in
-        return (Manip.replaceAllChild %choices_div [e])
+        return (Manip.replaceChildren %choices_div [e])
       }};
       let submit = server_function Json.t<unit> (fun () ->
         submit_answer_choices exo_id checkpoint !choices
@@ -273,7 +273,7 @@ let display_user_input exo_id answer_id checkpoint context submission trigger =
       let editor_div = div [] in
       {unit Lwt.t{
         lwt e = %list_editor () in
-        return (Manip.replaceAllChild %editor_div [e])
+        return (Manip.replaceChildren %editor_div [e])
       }};
       let submit = server_function Json.t<unit> (fun () ->
         submit_answer_values exo_id checkpoint (
@@ -302,25 +302,23 @@ let display_user_input exo_id answer_id checkpoint context submission trigger =
         submit_property_choice exo_id checkpoint choice
       )
       in
-      let id = Id.new_elt_id () in
-      let select = {{ fun _ ->
-        let e = Id.get_element %id in
-        let e = To_dom.of_select e in
-        Lwt.async (fun () ->
-          %submit (Js.to_string e##value) >> %trigger ()
-        )
-      }}
-      in
       let property_selector =
-        Id.create_named_elt ~id (
-          Raw.select ~a:[a_onchange select] (
-            List.map (fun s ->
-              let a = if s = previous then [a_selected `Selected] else [] in
-              Raw.option ~a (pcdata s)) cs
-          )
+        Raw.select (
+          List.map (fun s ->
+            let a = if s = previous then [a_selected `Selected] else [] in
+            Raw.option ~a (pcdata s)) cs
         )
       in
+      {unit{
+        let e = To_dom.of_select %property_selector in
+        let select = fun _ ->
+          Lwt.async (fun () -> %submit (Js.to_string e##value) >> %trigger ());
+          Js._true
+        in
+        Dom_html.(ignore (addEventListener e Event.change (handler select) Js._true));
+      }};
       return (div ~a:[a_class ["user_answer"]] [property_selector])
+
 
 let extract_previous_submission checkpoint answer_id =
   CORE_answer.make answer_id >>= function
@@ -632,7 +630,7 @@ let display_master_view master exo checkpoint context =
       ) [] all_answers
     in
     let ws = (CORE_entity.SomeEntity exo) :: answers in
-    HTML_entity.reactive_div ws None get {{ fun d -> return d }}
+    HTML_entity.reactive_div ws None get {_ -> _ Lwt.t{ fun d -> return d }}
   )
   in
   let (see, div) = HTML_widget.show_or_hide rdiv in

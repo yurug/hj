@@ -1,3 +1,0 @@
-(* -*- tuareg -*- *)
-
-(** Autotesting web pages. *)

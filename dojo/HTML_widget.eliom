@@ -14,24 +14,26 @@
   type onclick_cb = (unit -> unit) client_value
 
   let generic_button classes labels onclick =
-    let id = Id.new_elt_id ~global:false () in
-    let onclick = {onclick_cb{
-      let state = ref 0 in
-      let next () =
-        if !state = List.length %labels - 1 then state := 0 else incr state
-      in
-      let label () = List.nth %labels !state in
-      fun e ->
-        let open Eliom_content.Html5 in
-        next ();
-        Manip.Named.replaceAllChild %id [label ()];
-        %onclick e
-    }}
-    in
-    let label = List.nth labels 0 in
-    Id.create_named_elt ~id (
-      div ~a:[a_onclick {{ fun _ -> %onclick () }}; a_class ("inlined" :: classes) ] [label]
-    )
+    assert false
+      (* FIXME: Broken since eliom 4. *)
+    (* let id = Id.new_elt_id ~global:false () in *)
+    (* let onclick = {onclick_cb{ *)
+    (*   let state = ref 0 in *)
+    (*   let next () = *)
+    (*     if !state = List.length %labels - 1 then state := 0 else incr state *)
+    (*   in *)
+    (*   let label () = List.nth %labels !state in *)
+    (*   fun e -> *)
+    (*     let open Eliom_content.Html5 in *)
+    (*     next (); *)
+    (*     Manip.Named.replaceChildren %id [label ()]; *)
+    (*     %onclick e *)
+    (* }} *)
+    (* in *)
+    (* let label = List.nth labels 0 in *)
+    (* Id.create_named_elt ~id ( *)
+    (*   div ~a:[a_onclick {{ fun _ -> %onclick () }}; a_class ("inlined" :: classes) ] [label] *)
+    (* ) *)
 
   let small_button ls = generic_button ["menu_button"] (List.map (fun l -> pcdata l) ls)
   let button ls = generic_button ["button"] (List.map (fun l -> pcdata l) ls)
@@ -117,52 +119,59 @@ let list_editor
   (** Actions. *)
 
   let rec remove_item table elt =
-    let remove_elt = server_function Json.t<unit> (fun () ->
-      return (indices_remove elt)
-    ) in
-    list_action list.remove elt {{ fun () -> return [] }} {{ fun on_last_idx ->
-      if not on_last_idx then (
-        let row = Id.get_element %elt in
-        Manip.Named.removeChild %table row;
-        %remove_elt ()
-      ) else return ()
-    }}
+    assert false
+      (* FIXME: Broken since Eliom 4. *)
+    (* let remove_elt = server_function Json.t<unit> (fun () -> *)
+    (*   return (indices_remove elt) *)
+    (* ) in *)
+    (* list_action list.remove elt {{ fun () -> return [] }} {{ fun on_last_idx -> *)
+    (*   if not on_last_idx then ( *)
+    (*     let row = Id.get_element %elt in *)
+    (*     Manip.Named.removeChild %table row; *)
+    (*     %remove_elt () *)
+    (*   ) else return () *)
+    (* }} *)
 
   and replace_item no_action table elt =
-    let get_rows = {{ fun () ->
-      let text_of_td ts (e : Dom.node Js.t) =
-        let unpack e f =
-          let c = e##firstChild in
-          Js.Opt.case c (fun () -> ts) f
-        in
-        unpack e (fun e -> unpack e (fun e ->
-          Js.Opt.case (Dom.CoerceTo.text e) (fun () -> ts) (fun v ->
-            let s = v##data in
-            Js.to_string s :: ts
-          )))
-      in
-      let row = Id.get_element %elt in
-      let tds = (To_dom.of_tr row)##childNodes in
-      let select =
-        if %no_action then
-          fun x -> List.rev x
-        else
-          fun l -> List.(rev (list_cut 1 l))
-      in
-      return (select (List.fold_left text_of_td [] (Dom.list_of_nodeList tds)))
-    }} in
-    let fresh_row_if_needed = fresh_row_if_needed table elt in
-    let after_replace = {bool -> unit Lwt.t{ fun on_last_idx ->
-      %fresh_row_if_needed on_last_idx >>= function
-        | None -> return ()
-        | Some tr ->
-          let tb = Id.get_element %table in
-          let tb = To_dom.of_tbody tb in
-          ignore (tb##appendChild (((To_dom.of_tr tr) :> Dom.node Js.t)));
-          return ()
-    }}
-    in
-    list_action list.replace elt get_rows after_replace
+    assert false
+      (* FIXME: Broken since Eliom 4. *)
+
+    (* let get_rows = {{ fun () -> *)
+    (*   let text_of_td ts (e : Dom.node Js.t) = *)
+    (*     let unpack e f = *)
+    (*       let c = e##firstChild in *)
+    (*       Js.Opt.case c (fun () -> ts) f *)
+    (*     in *)
+    (*     unpack e (fun e -> unpack e (fun e -> *)
+    (*       Js.Opt.case (Dom.CoerceTo.text e) (fun () -> ts) (fun v -> *)
+    (*         let s = v##data in *)
+    (*         Js.to_string s :: ts *)
+    (*       ))) *)
+    (*   in *)
+    (*   let row = Id.get_element %elt in *)
+    (*   let tds = (To_dom.of_tr row)##childNodes in *)
+    (*   let select = *)
+    (*     if %no_action then *)
+    (*       fun x -> List.rev x *)
+    (*     else *)
+    (*       fun l -> List.(rev (list_cut 1 l)) *)
+    (*   in *)
+    (*   return (select (List.fold_left text_of_td [] (Dom.list_of_nodeList tds))) *)
+    (* }} in *)
+    (* let fresh_row_if_needed = fresh_row_if_needed table elt in *)
+    (* let after_replace = {bool -> unit Lwt.t{ fun on_last_idx -> *)
+    (*   (\* FIXME: Broken since Eliom 4. *\) *)
+    (*   assert false *)
+    (*   (\* %fresh_row_if_needed on_last_idx >>= function *\) *)
+    (*   (\*   | None -> return () *\) *)
+    (*   (\*   | Some tr -> *\) *)
+    (*   (\*     let tb = Id.get_element %table in *\) *)
+    (*   (\*     let tb = To_dom.of_tbody tb in *\) *)
+    (*   (\*     ignore (tb##appendChild (((To_dom.of_tr tr) :> Dom.node Js.t))); *\) *)
+    (*   (\*     return () *\) *)
+    (* }} *)
+    (* in *)
+    (* list_action list.replace elt get_rows after_replace *)
 
   and fresh_row_if_needed table elt =
     server_function Json.t<bool> (fun on_last_idx ->
@@ -204,7 +213,7 @@ let list_editor
     let a =
       if no_action then
         let change = replace_item no_action table id in
-        [a_oninput {{ fun _ -> %change () }} ]
+        [a_oninput {{ fun _ -> assert false (* FIXME: Broken since Eliom 4: %change () *) }} ]
       else
         []
     in
@@ -301,7 +310,7 @@ let toggle s e =
     | Create maker ->
       lwt son = maker () in
       return (
-        Manip.replaceAllChild e [son];
+        Manip.replaceChildren e [son];
         s := Shown son
       )
     | Shown son ->
@@ -353,21 +362,26 @@ let validate_input validator id =
           let open Eliom_content.Html5 in
               let nb = ref 0 in
               fun _ ->
-                incr nb;
-                let nb_now = !nb in
-                let input_elt = Id.get_element %id in
-                let input_value = (To_dom.of_input input_elt)##value in
-                Lwt.async (fun () -> Lwt_js.sleep 0.5 >>= fun _ ->
-                  if !nb = nb_now then
-                    let v =
-                      match %validator (Js.to_string input_value) with
-                        | None -> "✓ OK"
-                        | Some reason -> "❌ " ^ reason
-                    in
-                    Lwt.return (
-                      Manip.replaceAllChild %message [pcdata v]
-                    ) else Lwt.return ()
-                )
+                assert false
+        (* FIXME: Broken since Eliom 4. *)
+
+                (* incr nb; *)
+                (* let nb_now = !nb in *)
+                (* let input_elt = Id.get_element %id in *)
+                (* let input_value = (To_dom.of_input input_elt)##value in *)
+                (* Lwt.async (fun () -> Lwt_js.sleep 0.5 >>= fun _ -> *)
+                (*   if !nb = nb_now then *)
+                (*     let v = *)
+                (*       assert false *)
+                (*         (\* FIXME: Broken since eliom 4. *\) *)
+                (*       (\* match %validator (Js.to_string input_value) with *\) *)
+                (*       (\*   | None -> "✓ OK" *\) *)
+                (*       (\*   | Some reason -> "❌ " ^ reason *\) *)
+                (*     in *)
+                (*     Lwt.return ( *)
+                (*       Manip.replaceAllChild %message [pcdata v] *)
+                (*     ) else Lwt.return () *)
+                (* ) *)
         }}
       in
       ([ a_oninput validator; a_onchange validator ], [message])
@@ -432,16 +446,20 @@ let fileuploader_wrapper width height import (constructor : (_, _, _) c)
   let input_id = Id.new_elt_id () in
   let form_id = Id.new_elt_id ~global:false () in
   let onchange = {{ fun _ ->
-    let f = Id.get_element %form_id in
-    let f = To_dom.of_form f in
-    %onchange_cb ();
-    f##submit ()
+    (* FIXME: Broken since Eliom 4. *)
+    (* let f = Id.get_element %form_id in *)
+    (* let f = To_dom.of_form f in *)
+    (* %onchange_cb (); *)
+    (* f##submit () *)
+    assert false
   }}
   in
   let onclick = {{ fun _ ->
-    let self = Id.get_element %input_id in
-    let self = To_dom.of_input self in
-    self##value <- Js.string "";
+                (* FIXME: Broken since eliom 4. *)
+    (* let self = Id.get_element %input_id in *)
+    (* let self = To_dom.of_input self in *)
+(*    self##value <- Js.string ""; *)
+    assert false
   }}
   in
   let style =

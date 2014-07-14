@@ -29,18 +29,20 @@ let elt_of_hackojo_scroll x =
   x.elt
 
 let create_subscroll () =
-  let id = new_elt_id ~global:false () in
-  let subs = create_named_elt ~id (div ~a:[a_class ["scroll_item_subs"]] []) in
-  lwt (reaction, sender) =
-    CORE_client_reaction.listening
-    (fun c -> {{ react "subscroll" [%c] (function
-      | Push idx ->
-        lwt elt = HTML_remote_fragment.remote_get idx in
-        let open Eliom_content.Html5 in
-        Lwt.return (Manip.Named.appendChild %id elt)
-     ) }})
-  in
-  return (subs, sender)
+  assert false
+  (* FIXME: Broken since eliom 4. *)
+  (* let id = new_elt_id ~global:false () in *)
+  (* let subs = create_named_elt ~id (div ~a:[a_class ["scroll_item_subs"]] []) in *)
+  (* lwt (reaction, sender) = *)
+  (*   CORE_client_reaction.listening *)
+  (*   (fun c -> {{ react "subscroll" [%c] (function *)
+  (*     | Push idx -> *)
+  (*       lwt elt = HTML_remote_fragment.remote_get idx in *)
+  (*       let open Eliom_content.Html5 in *)
+  (*       Lwt.return (Manip.Named.appendChild %id elt) *)
+  (*    ) }}) *)
+  (* in *)
+  (* return (subs, sender) *)
 
 let hackojo_scroll
     (status : div)

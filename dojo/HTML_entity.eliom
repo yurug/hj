@@ -132,138 +132,145 @@ let streamed get =
       return EOS
 
 let reactive_div
-    ?condition es after_display (get : unit -> 'a list Lwt.t) display
+    (type a)
+    ?condition
+    es
+    after_display
+    (get : unit -> a list Lwt.t)
+    display
 =
-  let eid = Id.new_elt_id () in
-  lwt e_channels = CORE_entity.(
-    Lwt_list.map_s (function (SomeEntity e) -> channel e) es
-  )
-  in
-  let ids = CORE_entity.(
-    List.map (function (SomeEntity e) -> string_of_identifier (identifier e)) es
-  )
-  in
-  let ids = String.concat " " ids in
+  assert false
+    (* FIXME: The following is broken in Eliom 4. *)
+  (* let eid = Id.new_elt_id () in *)
+  (* lwt e_channels = CORE_entity.( *)
+  (*   Lwt_list.map_s (function (SomeEntity e) -> channel e) es *)
+  (* ) *)
+  (* in *)
+  (* let ids = CORE_entity.( *)
+  (*   List.map (function (SomeEntity e) -> string_of_identifier (identifier e)) es *)
+  (* ) *)
+  (* in *)
+  (* let ids = String.concat " " ids in *)
 
-  (** Producer. *)
-  let sget = streamed get in
-  let remote_get : (unit, 'a p) server_function =
-    server_function Json.t<unit> sget
-  in
-  let onload = {{ fun _ ->
-    Lwt.async (fun () ->
-      let process data =
-        try_lwt
-          lwt cs = %display data in
-          List.iter (Eliom_content.Html5.Manip.Named.appendChild %eid) cs;
-          return ()
-        with e -> Lwt.return (
-          Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e))
-        )
-      in
+  (* (\** Producer. *\) *)
+  (* let sget = streamed get in *)
+  (* let remote_get : (unit, a p) server_function = *)
+  (*   server_function Json.t<unit> sget *)
+  (* in *)
+  (* let onload = {{ fun _ -> *)
+  (*   Lwt.async (fun () -> *)
+  (*     let process data = *)
+  (*       try_lwt *)
+  (*         lwt cs = %display data in *)
+  (*         List.iter (Eliom_content.Html5.Manip.Named.appendChild %eid) cs; *)
+  (*         return () *)
+  (*       with e -> Lwt.return ( *)
+  (*         Firebug.console##log (Js.string ("Exn2..." ^ Printexc.to_string e)) *)
+  (*       ) *)
+  (*     in *)
 
-      let retry_count = ref 10 in
+  (*     let retry_count = ref 10 in *)
 
-      let rec refresh () =
-        try_lwt
-          let p = get_progress () in
-          let rec flush () =
-            %remote_get () >>= function
+  (*     let rec refresh () = *)
+  (*       try_lwt *)
+  (*         let p = get_progress () in *)
+  (*         let rec flush () = *)
+  (*           %remote_get () >>= function *)
 
-              | NoChange ->
-                return ()
+  (*             | NoChange -> *)
+  (*               return () *)
 
-              | BOS ->
-                Eliom_content.Html5.Manip.Named.replaceAllChild %eid [p];
-                flush ()
+  (*             | BOS -> *)
+  (*               Eliom_content.Html5.Manip.Named.replaceAllChild %eid [p]; *)
+  (*               flush () *)
 
-              | Data x ->
-                process x >> flush ()
+  (*             | Data x -> *)
+  (*               process x >> flush () *)
 
-              | EOS ->
-                Eliom_content.Html5.Manip.Named.removeChild %eid p;
-                Lwt.return (
-                  match %after_display with
-                    | Some f -> f ()
-                    | None -> ()
-                )
-          in
-          flush ()
-        with
-          | e ->
-            if !retry_count = 0 then (
-              Firebug.console##log (
-                "Sorry. Too many networking problem :" ^ Printexc.to_string e
-              );
-              Lwt.return ()
-            )
-            else (
-              Firebug.console##log (
-                "Retrying because of :" ^ Printexc.to_string e
-              );
-              decr retry_count;
-              refresh ()
-            )
-      in
+  (*             | EOS -> *)
+  (*               Eliom_content.Html5.Manip.Named.removeChild %eid p; *)
+  (*               Lwt.return ( *)
+  (*                 match %after_display with *)
+  (*                   | Some f -> f () *)
+  (*                   | None -> () *)
+  (*               ) *)
+  (*         in *)
+  (*         flush () *)
+  (*       with *)
+  (*         | e -> *)
+  (*           if !retry_count = 0 then ( *)
+  (*             Firebug.console##log ( *)
+  (*               "Sorry. Too many networking problem :" ^ Printexc.to_string e *)
+  (*             ); *)
+  (*             Lwt.return () *)
+  (*           ) *)
+  (*           else ( *)
+  (*             Firebug.console##log ( *)
+  (*               "Retrying because of :" ^ Printexc.to_string e *)
+  (*             ); *)
+  (*             decr retry_count; *)
+  (*             refresh () *)
+  (*           ) *)
+  (*     in *)
 
-      let visible = ref false in
+  (*     let visible = ref false in *)
 
-      let get_visible () =
-        visible := true;
-        refresh ()
-      in
+  (*     let get_visible () = *)
+  (*       visible := true; *)
+  (*       refresh () *)
+  (*     in *)
 
-      (* FIXME: Move this to HTML_widget. *)
-      let is_visible () =
-        let elt = Id.get_element %eid in
-        let delt = To_dom.of_element elt in
-        let b = delt##getBoundingClientRect () in
-        let wh = Js.Optdef.case (Dom_html.window##innerHeight)
-          (fun () -> Dom_html.document##documentElement##clientHeight)
-          (fun x -> x)
-        in
-        let ww = Js.Optdef.case (Dom_html.window##innerWidth)
-          (fun () -> Dom_html.document##documentElement##clientWidth)
-          (fun x -> x)
-        in
-           b##top    >= Js.float 0.
-        && b##left   >= Js.float 0.
-        && b##bottom <= Js.float (float_of_int wh)
-        && b##top    <= Js.float (float_of_int ww)
-      in
-      let visibility_may_change = Dom.handler (fun _ ->
-        if is_visible () then (
-          if not !visible then Lwt.async get_visible
-        )
-        else (
-          if !visible then visible := false
-        );
-        Js._true
-      ) in
+  (*     (\* FIXME: Move this to HTML_widget. *\) *)
+  (*     let is_visible () = *)
+  (*       let elt = Id.get_element %eid in *)
+  (*       let delt = To_dom.of_element elt in *)
+  (*       let b = delt##getBoundingClientRect () in *)
+  (*       let wh = Js.Optdef.case (Dom_html.window##innerHeight) *)
+  (*         (fun () -> Dom_html.document##documentElement##clientHeight) *)
+  (*         (fun x -> x) *)
+  (*       in *)
+  (*       let ww = Js.Optdef.case (Dom_html.window##innerWidth) *)
+  (*         (fun () -> Dom_html.document##documentElement##clientWidth) *)
+  (*         (fun x -> x) *)
+  (*       in *)
+  (*          b##top    >= Js.float 0. *)
+  (*       && b##left   >= Js.float 0. *)
+  (*       && b##bottom <= Js.float (float_of_int wh) *)
+  (*       && b##top    <= Js.float (float_of_int ww) *)
+  (*     in *)
+  (*     let visibility_may_change = Dom.handler (fun _ -> *)
+  (*       if is_visible () then ( *)
+  (*         if not !visible then Lwt.async get_visible *)
+  (*       ) *)
+  (*       else ( *)
+  (*         if !visible then visible := false *)
+  (*       ); *)
+  (*       Js._true *)
+  (*     ) in *)
 
-      Lwt.async (fun () ->
-        return (List.iter (fun e -> ignore (
-          Dom.addEventListener Dom_html.window (Dom.Event.make e)
-            visibility_may_change Js._false
-        )) [ "scroll"; "resize"; "DOMContentLoaded" ])
-      );
+  (*     Lwt.async (fun () -> *)
+  (*       return (List.iter (fun e -> ignore ( *)
+  (*         Dom.addEventListener Dom_html.window (Dom.Event.make e) *)
+  (*           visibility_may_change Js._false *)
+  (*       )) [ "scroll"; "resize"; "DOMContentLoaded" ]) *)
+  (*     ); *)
 
-      refresh () >> (
-        CORE_client_reaction.react_on_background %ids %e_channels (
-          function
-             | CORE_entity.HasChanged ->
-               Firebug.console##log (Js.string ("Has changed " ^ %ids));
-               if is_visible () then refresh () else return ()
-             | CORE_entity.MayChange ->
-               Lwt.return ()
-        );
-        return ();
-        ))
+  (*     refresh () >> ( *)
+  (*       CORE_client_reaction.react_on_background %ids %e_channels ( *)
+  (*         function *)
+  (*            | CORE_entity.HasChanged -> *)
+  (*              Firebug.console##log (Js.string ("Has changed " ^ %ids)); *)
+  (*              if is_visible () then refresh () else return () *)
+  (*            | CORE_entity.MayChange -> *)
+  (*              Lwt.return () *)
+  (*       ); *)
+  (*       return (); *)
+  (*       )) *)
 
-        }}
-  in
-  let elt = Id.create_named_elt ~id:eid (
-    div ~a:[a_class ["reactive"]; a_onload onload] [get_progress ()]
-  )
-  in
-  return elt
+  (*       }} *)
+  (* in *)
+  (* let elt = Id.create_named_elt ~id:eid ( *)
+  (*   div ~a:[a_class ["reactive"]; a_onload onload] [get_progress ()] *)
+  (* ) *)
+  (* in *)
+  (* return elt *)

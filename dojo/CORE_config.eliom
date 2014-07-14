@@ -13,13 +13,13 @@ let ressource_root =
 
 (** Mathjax location. *)
 let mathjax_src () =
-  Eliom_content_core.Xml.uri_of_string
+  Eliom_content.Xml.uri_of_string
     "https://c328740.ssl.cf1.rackcdn.com/mathjax/latest/\
      MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
 (** codemirror editor source location. *)
 let codemirror_editor_src () =
-  Eliom_content_core.Xml.uri_of_string "/codemirror/lib/codemirror.js"
+  Eliom_content.Xml.uri_of_string "/codemirror/lib/codemirror.js"
 
 (** codemirror editor css location. *)
 let codemirror_editor_css () =
