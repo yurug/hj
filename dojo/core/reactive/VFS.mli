@@ -141,7 +141,7 @@ val owner : ?relative:bool -> Identifier.path
 
 (** The VFS might be incoherent for one of the following reasons: *)
 type inconsistency =
-  (** There is no repository rooted at [CORE_config.ressource_root]. *)
+  (** There is no configured root. *)
   | NoRootRepository
   (** There exists a file or a directory that is not tracked by any
       repository. *)
@@ -164,6 +164,5 @@ type consistency_level =
   | Consistent
   | Inconsistent of inconsistency
 
-(** [check ()] if the file system rooted at
-    [CORE_config.ressource_root] is in a coherent state.  *)
+(** [check ()] if the file system is in a coherent state.  *)
 val check: unit -> consistency_level Lwt.t

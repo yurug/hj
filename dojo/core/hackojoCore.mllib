@@ -1,3 +1,4 @@
+common/log
 common/extPervasives
 common/extProcess
 common/extUnix
