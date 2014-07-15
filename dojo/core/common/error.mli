@@ -1,0 +1,1 @@
+val fatal : exn -> 'a
