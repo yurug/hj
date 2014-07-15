@@ -1,3 +1,10 @@
+15/07/14
+
+Chapter 1 & 2 : unchanged
+
+Chapter 3 : v0.1
+Modules descriptions
+
 14/07/14
 Chapter 1 : updated
 Added actors section
