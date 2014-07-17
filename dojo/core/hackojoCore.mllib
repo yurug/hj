@@ -8,4 +8,4 @@ common/error
 reactive/identifier
 reactive/VFS
 reactive/reactiveErrors
-reactive/source
+reactive/resource
