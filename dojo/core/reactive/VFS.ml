@@ -101,12 +101,15 @@ let on_path f ?(relative = true) p =
   let where = Filename.dirname ps in
   f p ps fname where
 
-let init_root () =
+let init_root ipath =
+  set_root ipath;
   let create_dir_if_absent relative dir lraise =
     let dir = string_of_path (root relative dir) in
     blind_exec (!% (get_root () @@ (Printf.sprintf "test -d %s" dir)))
     >>= function
-      | Unix.WEXITED 0 -> return ()
+      | Unix.WEXITED 0 ->
+        Printf.printf "done\n%!";
+        return ()
       | _ -> mkdir dir lraise
   in
   let under_git _ =

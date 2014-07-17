@@ -9,14 +9,17 @@ CMIS := $(wildcard _build/common/*.cmi _build/reactive/*.cmi _build/machine/*.cm
 all:
 	$(OCAMLBUILD) hackojoCore.otarget
 
+quietbuild:
+	$(shell $(OCAMLBUILD) hackojoCore.otarget 2>&1 build.log)
+
 clean:
 	$(OCAMLBUILD) -clean
-	rm *~
+	rm --force *~
 
 uninstall:
-	$(OCAMLFIND) remove hackojo-core
+	$(shell $(OCAMLFIND) remove hackojo-core 2> uninstall.log)
 
 install:
-	$(OCAMLFIND) install hackojo-core META hackojoCore.cmxa hackojoCore.a $(MLIS) $(CMIS)
+	$(shell $(OCAMLFIND) install hackojo-core META hackojoCore.cmxa hackojoCore.a $(MLIS) $(CMIS) 2> install.log)
 
-reinstall: uninstall install
+reinstall: quietbuild uninstall install

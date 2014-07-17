@@ -22,8 +22,9 @@ open Identifier
 (** A file system contains files. *)
 type filename = Identifier.t
 
-(** [init_root ()] initializes the root of the file system if required. *)
-val init_root : unit
+(** [init_root path] initializes the root of the file system at [path]
+    if required. *)
+val init_root : string
   -> [ `OK of unit
      | `KO of [ `SystemError of string ]
      ] Lwt.t

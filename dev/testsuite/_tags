@@ -1,0 +1,4 @@
+true: thread, syntax(camlp4o), package(str), package(lwt.unix), package(lwt), package(lwt.syntax), syntax(lwt), package(lwt.preemptive), package(hackojo-core)
+
+<core> : include
+<core/*> : include

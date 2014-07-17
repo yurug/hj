@@ -21,6 +21,8 @@ let logs = Queue.create ()
 
 let id = ref 0
 
+(* FIXME: is Unix.gettimeofday a syscall? Be aware of this possible
+   FIXME: source of inefficiency... *)
 let log d =
   incr id;
   Queue.push (Event (!id, Unix.gettimeofday (), d)) logs;
