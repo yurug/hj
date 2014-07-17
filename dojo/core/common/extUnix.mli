@@ -1,6 +1,7 @@
 (* -*- tuareg -*- *)
 
 (** Wrap common UNIX commands. *)
+open ExtProcess
 
 type ('a, 'b) raiser = ([> `SystemError of string ] as 'a) -> 'b Lwt.t
 
@@ -21,8 +22,7 @@ val tar_create : string -> string list -> ('a, 'b) raiser -> unit Lwt.t
 
 (** [grep cmd regexp] returns the stream of lines produces by [cmd]
     that match [regexp]. *)
-val grep :
-  ExtProcess.command -> string -> ('a, 'b) raiser -> string Lwt_stream.t Lwt.t
+val grep : command -> string -> ('a, 'b) raiser -> string Lwt_stream.t Lwt.t
 
 (** [echo content fname] saves the [content] in [fname]. *)
 val echo : string -> string -> ('a, 'b) raiser -> unit Lwt.t
@@ -44,8 +44,7 @@ val now : ('a, 'b) raiser -> string Lwt.t
 
 (** [ssh ?timeout username key addr port cmd observer] runs a process
     which executes a remote command through a secured connection.
-    This function returns a function to cancel this command at any moment.
-*)
+    This function returns a function to cancel this command at any time. *)
 val ssh :
   ?timeout:float
   -> string -> string
@@ -57,8 +56,7 @@ val ssh :
 
 (** [scp ?timeout username key addr port src dst observer] runs a process
     which copies a file through a secured connection.
-    This function returns a function to cancel this command at any moment.
-*)
+    This function returns a function to cancel this command at any time. *)
 val scp :
   ?timeout:float
   -> string -> string
