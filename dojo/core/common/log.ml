@@ -1,21 +1,23 @@
+type event_identifier = int
+
+type 'a ty =
+  | TString : string ty
+  | TInt    : int ty
+  | TEvent  : event_identifier ty
+  | TP      : 'a ty * 'b ty -> ('a * 'b) ty
+
 type event = Event of event_identifier * timestamp * descriptor
 
 and timestamp = float
 
 and descriptor = term list
 
-and term =
-  | TApp    of symbol * term list
-  | TInt    of int
-  | TString of string
-  | TEvent  of event_identifier
+and term = Term : 'a symbol * 'a -> term
 
-and symbol = Symbol of string
+and 'a symbol = Symbol of string * 'a ty
 
-and event_identifier = int
-
-let warning = Symbol "warning"
-let endof   = Symbol "endof"
+let warning = Symbol ("warning", TString)
+let endof   = Symbol ("endof", TEvent)
 
 let logs = Queue.create ()
 
@@ -28,13 +30,17 @@ let log d =
   Queue.push (Event (!id, Unix.gettimeofday (), d)) logs;
   !id
 
+let log' d = ignore (log d)
+
 type warning = descriptor
 
-let warning s = [TApp (warning, [TString s])]
+let descriptor_maker s ty x = [Term (Symbol (s, ty), x)]
 
-let make_unary_string_event e = fun s -> [TApp (Symbol e, [TString e])]
+let make_unary_string_event e = descriptor_maker e TString
 
-let endof e = [TApp (endof, [TEvent e])]
+let warning s = [Term (warning, s)]
+
+let endof e = [Term (endof, e)]
 
 let log_process d =
   let e = log d in

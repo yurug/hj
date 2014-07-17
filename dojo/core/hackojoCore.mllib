@@ -12,3 +12,4 @@ reactive/resource
 reactive/property
 reactive/inMemory
 reactive/onDisk
+reactive/entity

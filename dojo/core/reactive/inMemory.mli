@@ -32,7 +32,7 @@ type dependencies
     the following form. *)
 type 'a state_change =
   | UpdateDependencies of dependencies
-  | UpdateResources    of Resource.name list
+  | UpdateResources    of Resource.t list
   | UpdateProperties   of properties
   | UpdateContent      of 'a
   | UpdateSequence     of 'a state_change * 'a state_change
@@ -49,8 +49,8 @@ val content : 'a meta -> 'a
 (** [properties m] returns the properties of [m]. *)
 val properties : 'a meta -> properties
 
-(** [sources m] returns the filenames of [m]'s sources. *)
-val sources : 'a meta -> Resource.name list
+(** [resources m] returns the names of [m]'s resources. *)
+val resources : 'a meta -> Resource.name list
 
 (** [dependencies m] returns the dependencies of [m]. *)
 val dependencies : 'a meta -> dependencies
@@ -105,7 +105,7 @@ val to_list:
     [id] with dependencies [ds], properties [ps], resources [res], and
     content [c]. *)
 val make
-  : identifier -> dependencies -> properties -> Resource.name list
+  : identifier -> dependencies -> properties -> Resource.t list
   -> 'a -> 'a meta
 
 (** [update e c] applies the low-level change [c] on the state

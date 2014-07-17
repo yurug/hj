@@ -46,17 +46,18 @@ type 'a meta = {
   identifier      : identifier;
   dependencies    : dependencies;
   properties      : properties;
-  sources         : Resource.name list;
+  resources       : Resource.name list;
   content         : 'a;
   tick            : float;
 } deriving (Json)
 
 let now e = { e with tick = Unix.gettimeofday () }
 
-let make identifier dependencies properties sources content =
-  now { identifier; dependencies; content; properties; sources; tick = 0. }
+let make identifier dependencies properties resources content =
+  let resources = List.map Resource.name resources in
+  now { identifier; dependencies; content; properties; resources; tick = 0. }
 
-let sources e = e.sources
+let resources e = e.resources
 
 let identifier e = e.identifier
 
@@ -74,13 +75,14 @@ let update_properties e s = now { e with properties = s }
 
 let update_dependencies e d = now { e with dependencies = d }
 
-let update_sources e s =
-  let sources = s @ List.(filter (fun x -> not (mem x s)) e.sources) in
-  now { e with sources }
+let update_resources e s =
+  let ns = List.map Resource.name s in
+  let resources = ns @ List.(filter (fun x -> not (mem x ns)) e.resources) in
+  now { e with resources }
 
 type 'a state_change =
   | UpdateDependencies of dependencies
-  | UpdateResources    of Resource.name list
+  | UpdateResources    of Resource.t list
   | UpdateProperties   of properties
   | UpdateContent      of 'a
   | UpdateSequence     of 'a state_change * 'a state_change
@@ -102,7 +104,7 @@ let rec state_changes = function
 
 let rec update e = function
   | UpdateDependencies d -> update_dependencies e d
-  | UpdateResources s -> update_sources e s
+  | UpdateResources s -> update_resources e s
   | UpdateProperties s -> update_properties e s
   | UpdateContent c -> update_content e c
   | UpdateSequence (c1, c2) -> update (update e c1) c2
@@ -112,7 +114,9 @@ let rec string_of_state_change string_of_replacement = function
   | UpdateDependencies _ ->
     "Update dependencies"
   | UpdateResources s ->
-    Printf.sprintf "Update sources (%s)" (String.concat " " s)
+    Printf.sprintf
+      "Update sources (%s)"
+      (String.concat " " (List.map Resource.name s))
   | UpdateProperties s ->
     "Update properties"
   | UpdateContent young ->
