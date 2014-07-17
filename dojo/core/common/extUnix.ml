@@ -165,9 +165,9 @@ let pdflatex content outputfile = Filename.(
   in
   !>> pdflatex
   (* FIXME: If the compilation failed, we want to create a diagnostic and
-  (* FIXME: send a bug report to us. Indeed, we shall make sure that our
-  (* FIXME: generated LaTeX is always well-formed. By the way, user-written
-  (* FIXME: LaTeX should be processed separately. *)
+   * FIXME: send a bug report to us. Indeed, we shall make sure that our
+   * FIXME: generated LaTeX is always well-formed. By the way, user-written
+   * FIXME: LaTeX should be processed separately. *)
   >>> cp (base ^ ".pdf") outputfile
   >>> cleanup
 )

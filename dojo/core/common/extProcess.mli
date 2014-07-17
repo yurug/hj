@@ -2,6 +2,8 @@
 
 (** Extension to Lwt_process. *)
 
+(* FIXME: Comment this API. *)
+
 open Lwt_process
 
 val ( @@ ) : string -> string -> string
