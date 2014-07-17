@@ -1,6 +1,6 @@
 (* -*- tuareg -*- *)
 
-(** Wrap most common UNIX commands. *)
+(** Wrap common UNIX commands. *)
 
 type ('a, 'b) raiser = ([> `SystemError of string ] as 'a) -> 'b Lwt.t
 
