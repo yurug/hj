@@ -2,7 +2,7 @@
 
 open Lwt
 
-type label = string
+type label = string deriving (Json)
 
 exception InvalidLabel of string
 
@@ -20,7 +20,7 @@ let fresh_label =
   let r = ref 0 in
   fun prefix -> incr r; prefix ^ string_of_int !r
 
-type path = label list
+type path = label list deriving (Json)
 
 let rec normalize = function
   | [] -> []
@@ -28,9 +28,9 @@ let rec normalize = function
   | "" :: "" :: ls -> normalize ("" :: ls)
   | x :: ls -> x :: normalize ls
 
-type identifier = path
+type identifier = path deriving (Json)
 
-type t = identifier
+type t = identifier deriving (Json)
 
 let split_delim c s =
   let b = Buffer.create 13 in

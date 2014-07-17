@@ -14,7 +14,7 @@
 
 (** A label is implemented as a string that does not contain
     {!Filename.dir_sep}. *)
-type label
+type label deriving (Json)
 
 (** [label s] returns a label represented by [s].
     Raise {!InvalidLabel} if [s] contains {!Filename.dir_sep}. *)
@@ -24,7 +24,7 @@ val fresh_label : string -> label
 exception InvalidLabel of string
 
 (** A path is a sequence of label from the root to a node. *)
-type path
+type path deriving (Json)
 
 (** [make x] turns a list of labels into a path. *)
 val make : label list -> path
@@ -40,8 +40,8 @@ val concat : path -> path -> path
 val pcompare : path -> path -> int
 
 (** An identifier is a singularized path. *)
-type identifier
-type t = identifier
+type identifier deriving (Json)
+type t = identifier deriving (Json)
 
 (** {2 Conversions} *)
 
