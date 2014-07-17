@@ -55,7 +55,6 @@ val ssh :
   -> ('a, 'b) raiser
   -> (unit -> unit) Lwt.t
 
-
 (** [scp ?timeout username key addr port src dst observer] runs a process
     which copies a file through a secured connection.
     This function returns a function to cancel this command at any moment.
