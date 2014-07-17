@@ -14,6 +14,10 @@
     @see <http://git-scm.com/> the official GIT website for general
     information about this tool.
 
+    Notice that we assume that the file system is the exclusive
+    property of the current instance of this module. If the file
+    system is modified at the same time by other means, it might
+    break something.
 *)
 open Identifier
 
@@ -53,8 +57,7 @@ val delete: string -> path
          [> `DirectoryDoesNotExist of path
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         | `SystemError of string
-         ]
+         | `SystemError of string ]
      ] Lwt.t
 
 (** [save who path content] stores the string [content] in the file
@@ -64,8 +67,7 @@ val save : string -> path -> string
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [> `SystemError of string
-         ]
+         [> `SystemError of string ]
      ] Lwt.t
 
 (** [append who path content] appends the string [content] at the end
@@ -76,9 +78,12 @@ val append : string -> path -> string
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [> `SystemError of string
-         ]
+         [> `SystemError of string ]
      ] Lwt.t
+
+(** [exists path] returns [true] iff [path] is an existing
+    location in the file system. *)
+val exists : path -> bool
 
 (** a [version] is a timestamped file. *)
 type version
@@ -90,8 +95,7 @@ val versions : path
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [> `SystemError of string
-         ]
+         [> `SystemError of string ]
      ] Lwt.t
 
 (** [latest id] is the latest version of the file
@@ -101,8 +105,7 @@ val latest : path
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [> `SystemError of string
-         ]
+         [> `SystemError of string ]
      ] Lwt.t
 
 (** [number version] returns a unique string identifier for the
@@ -124,8 +127,7 @@ val read : version
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [> `SystemError of string
-         ]
+         [> `SystemError of string ]
      ] Lwt.t
 
 (** [owner path] returns the path of the nearest englobing [subvfs]
@@ -135,6 +137,5 @@ val owner : Identifier.path
      | `KO of
          (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
-         [> `SystemError of string
-         ]
+         [> `SystemError of string ]
      ] Lwt.t

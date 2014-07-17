@@ -11,3 +11,4 @@ reactive/reactiveErrors
 reactive/resource
 reactive/property
 reactive/inMemory
+reactive/onDisk

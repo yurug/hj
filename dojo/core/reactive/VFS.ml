@@ -95,6 +95,7 @@ let git_toplevel where lraise =
   >>= (fun (s, stop) -> stop (); last_new s)
 
 let on_path f p =
+  let p = root true p in
   let ps = string_of_path p in
   let fname = Filename.basename ps in
   let where = Filename.dirname ps in
@@ -211,3 +212,6 @@ let owner = on_path (fun _ where _ _ -> ltry (
   git_toplevel where
   >-> fun s -> lreturn (path_of_string s)
 ))
+
+let exists path =
+  Sys.file_exists (string_of_path (root true path))
