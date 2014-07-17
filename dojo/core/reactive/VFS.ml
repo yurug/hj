@@ -94,8 +94,7 @@ let git_toplevel where lraise =
   pread_lines (!% (where @@ "git rev-parse --show-toplevel")) ~lraise
   >>= (fun (s, stop) -> stop (); last_new s)
 
-let on_path f ?(relative = true) p =
-  let p = root relative p in
+let on_path f p =
   let ps = string_of_path p in
   let fname = Filename.basename ps in
   let where = Filename.dirname ps in
@@ -107,9 +106,7 @@ let init_root ipath =
     let dir = string_of_path (root relative dir) in
     blind_exec (!% (get_root () @@ (Printf.sprintf "test -d %s" dir)))
     >>= function
-      | Unix.WEXITED 0 ->
-        Printf.printf "done\n%!";
-        return ()
+      | Unix.WEXITED 0 -> return ()
       | _ -> mkdir dir lraise
   in
   let under_git _ =
@@ -151,7 +148,7 @@ let create_tmp who =
   in
   let path = path_of_string dname in
   ltry (
-    !!> (create who ~relative:false @* path)
+    !!> (create who @* path)
     >>> lreturn path
   )
 
@@ -214,152 +211,3 @@ let owner = on_path (fun _ where _ _ -> ltry (
   git_toplevel where
   >-> fun s -> lreturn (path_of_string s)
 ))
-
-(** {1 Unit testing.} *)
-
-type inconsistency =
-  | NoRootRepository
-  | Untracked of filename list
-  | BrokenOperation of broken_operation_description
-
-and broken_operation_description = {
-  operation : [`Create | `Delete | `Save | `Versions | `Read | `Owner ];
-  reason    : [
-  | `Inconsistency         of inconsistency
-  | `AlreadyExists         of path
-  | `SystemError           of string
-  | `DirectoryDoesNotExist of path
-  ]
-}
-
-type consistency_level =
-  | Consistent
-  | Inconsistent of inconsistency
-
-let string_of_operation = function
-  | `Create   -> "vfs.create"
-  | `Delete   -> "vfs.delete"
-  | `Save     -> "vfs.save"
-  | `Versions -> "vfs.versions"
-  | `Read     -> "vfs.read"
-  | `Owner    -> "vfs.owner"
-
-let ensure_consistency test icp =
-  lwt_if test
-    (return Consistent)
-    (lwt ic = icp in return (Inconsistent ic))
-
-let there_is_repository_at_resssource_root () =
-  ensure_consistency
-    (success (!% (get_root () @@ "test -d .git")))
-    (return NoRootRepository)
-
-let there_is_no_untracked_files () =
-  lwt untracked_files = grep
-    (!% (get_root () @@ "git status --porcelain"))
-    ("\\?\\? \\(.*\\)")
-    (warn_only (warning "core_vfs.there_is_no_untracked_files.grep failed."))
-  in
-  ensure_consistency
-    (is_empty untracked_files)
-    (lwt fs = to_list untracked_files in
-     let fs = List.map identifier_of_string fs in
-     return (Untracked fs))
-
-let who = "system.test.vfs <here@hackojo.org>"
-
-let operation_works operation scenario =
-  scenario >>= function
-    | `OK _ -> return Consistent
-    | `KO e -> return (Inconsistent (BrokenOperation {
-      operation = operation;
-      reason    = e
-    }))
-
-let vfs_create_works () =
-  operation_works `Create (
-    create_tmp who
-  )
-
-let in_tmp_dir f =
-  !>>> create_tmp who
-  >>>= (fun x ->
-    f x
-    >>>= delete who ~relative:false @* x)
-
-let vfs_delete_works () =
-  operation_works `Delete (
-    !>>> create_tmp who
-    >>>= fun x -> delete who ~relative:false x
-  )
-
-let vfs_save_works () =
-  operation_works `Save (
-    in_tmp_dir (fun x ->
-      save who ~relative:false (concat x (make [label "test"])) "Test"
-    )
-  )
-
-let vfs_versions_works () =
-  operation_works `Versions (
-    in_tmp_dir (fun x ->
-      let fname = concat x (make [label "test"]) in
-      !>>> (save who ~relative:false fname "Test1")
-      >>>= save who ~relative:false fname @* "Test2"
-      >>>= (fun () ->
-        versions ~relative:false fname >>>= fun vs ->
-        if List.length vs <> 2 then
-          return (`KO (`SystemError "git log"))
-        else
-          return (`OK ())
-      )
-    )
-  )
-
-let vfs_read_works () =
-  operation_works `Read (
-    in_tmp_dir (fun x ->
-      let fname = concat x (make [label "test"]) in
-      !>>> (save who ~relative:false fname "Test1")
-      >>>= save who ~relative:false fname @* "Test2"
-      >>>= (fun () ->
-        versions ~relative:false fname >>>= function
-          | [ _; v ] -> (
-            read v >>= function
-              | `OK c ->
-                if c <> "Test1" then
-                  return (`KO (`SystemError "invalid file content"))
-                else
-                  return (`OK ())
-              | `KO s -> return (`KO s)
-          )
-          | _ -> return (`KO (`SystemError "read because of version"))
-      )
-    )
-  )
-
-let vfs_owner_works () =
-  operation_works `Owner (
-    in_tmp_dir (fun x ->
-      owner ~relative:false x
-      >>>= (fun y ->
-        if x <> y then
-          return (`KO (`SystemError (Printf.sprintf "|%s| <> |%s|"
-                                       (string_of_path x)
-                                       (string_of_path y))))
-        else return (`OK ())
-      )
-    )
-  )
-
-let check () =
-  continue_while_is Consistent [
-    there_is_repository_at_resssource_root;
-    there_is_no_untracked_files;
-    vfs_create_works;
-    vfs_delete_works;
-    vfs_save_works;
-    vfs_versions_works;
-    vfs_read_works;
-    vfs_owner_works;
-  ]

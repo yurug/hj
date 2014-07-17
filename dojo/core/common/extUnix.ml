@@ -56,7 +56,7 @@ let tar_create dst srcs lraise =
 
 let read c =
   handle_unix_error (fun () -> return (
-    strace' (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
+    strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
   )) (Lwt_stream.of_list [], ignore)
 
 let grep c pattern =
@@ -106,7 +106,7 @@ let cat f =
 let split c delim =
   handle_unix_error (fun () ->
     let s, stop =
-      strace' (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
+      strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
     in
     let y =
       Lwt_stream.filter_map (fun s ->

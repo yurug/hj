@@ -33,8 +33,7 @@ val init_root : string
     [who].  The [path] must not exist in the root vfs. All the needed
     directories are created on-the-fly if they do not exist.
 *)
-val create:
-  string -> ?relative:bool -> path
+val create: string -> path
   -> [ `OK of unit
      | `KO of
          (** The path is already taken. *)
@@ -47,7 +46,7 @@ val create:
 
 (** [delete who path] deletes a subvfs at [path].  The [path] must
     exist in the root vfs. *)
-val delete: string -> ?relative:bool -> path
+val delete: string -> path
   -> [ `OK of unit
      | `KO of
          (** The path is invalid. *)
@@ -60,7 +59,7 @@ val delete: string -> ?relative:bool -> path
 
 (** [save who path content] stores the string [content] in the file
     at [path]. If there is no file at [path], it is created. *)
-val save : string -> ?relative:bool -> path -> string
+val save : string -> path -> string
   -> [ `OK of unit
      | `KO of
          (** Something went wrong at the system level.
@@ -69,10 +68,10 @@ val save : string -> ?relative:bool -> path -> string
          ]
      ] Lwt.t
 
-(** [append who path content] appends the string [content] in the end
+(** [append who path content] appends the string [content] at the end
     of the file located at [path]. If there is no file at [path], it
     is created. *)
-val append : string -> ?relative:bool -> path -> string
+val append : string -> path -> string
   -> [ `OK of unit
      | `KO of
          (** Something went wrong at the system level.
@@ -81,12 +80,12 @@ val append : string -> ?relative:bool -> path -> string
          ]
      ] Lwt.t
 
-(** a [version] is timestamp file. *)
+(** a [version] is a timestamped file. *)
 type version
 
 (** [versions path] returns the list of versions of the file
     located at [path]. *)
-val versions : ?relative:bool -> path
+val versions : path
   -> [ `OK of version list
      | `KO of
          (** Something went wrong at the system level.
@@ -97,7 +96,7 @@ val versions : ?relative:bool -> path
 
 (** [latest id] is the latest version of the file
     located at [path]. *)
-val latest : ?relative:bool -> path
+val latest : path
   -> [ `OK of version
      | `KO of
          (** Something went wrong at the system level.
@@ -106,7 +105,7 @@ val latest : ?relative:bool -> path
          ]
      ] Lwt.t
 
-(** [number version] returns a string identifier for the
+(** [number version] returns a unique string identifier for the
     [version]. *)
 val number : version -> string Lwt.t
 
@@ -122,7 +121,8 @@ val timestamp : version -> Int64.t Lwt.t
 (** [read version] returns the content of a version. *)
 val read : version
   -> [ `OK of string
-     | `KO of (** Something went wrong at the system level.
+     | `KO of
+         (** Something went wrong at the system level.
              (It may be git-related or os-related.) *)
          [> `SystemError of string
          ]
@@ -130,40 +130,11 @@ val read : version
 
 (** [owner path] returns the path of the nearest englobing [subvfs]
     from [path]. *)
-val owner : ?relative:bool -> Identifier.path
+val owner : Identifier.path
   -> [ `OK of Identifier.path
-     | `KO of (** Something went wrong at the system level.
-                  (It may be git-related or os-related.) *)
+     | `KO of
+         (** Something went wrong at the system level.
+             (It may be git-related or os-related.) *)
          [> `SystemError of string
          ]
      ] Lwt.t
-
-(** {1 Unit tests.} *)
-
-(** The VFS might be incoherent for one of the following reasons: *)
-type inconsistency =
-  (** There is no configured root. *)
-  | NoRootRepository
-  (** There exists a file or a directory that is not tracked by any
-      repository. *)
-  | Untracked of filename list
-  (** One of the basic operations is broken. *)
-  | BrokenOperation of broken_operation_description
-
-and broken_operation_description = {
-  operation : [`Create | `Delete | `Save | `Versions | `Read | `Owner ];
-  reason    : [
-  | `Inconsistency         of inconsistency
-  | `AlreadyExists         of path
-  | `SystemError           of string
-  | `DirectoryDoesNotExist of path
-  ]
-}
-
-(** File system consistency.*)
-type consistency_level =
-  | Consistent
-  | Inconsistent of inconsistency
-
-(** [check ()] if the file system is in a coherent state.  *)
-val check: unit -> consistency_level Lwt.t

@@ -8,9 +8,9 @@ val ( @@ ) : string -> string -> string
 
 type command
 
-val strace : (Lwt_process.command -> 'a Lwt.t) -> command -> 'a Lwt.t
+val strace_lwt : (Lwt_process.command -> 'a Lwt.t) -> command -> 'a Lwt.t
 
-val strace' : (Lwt_process.command -> 'a) -> command -> 'a * (unit -> unit)
+val strace : (Lwt_process.command -> 'a) -> command -> 'a * (unit -> unit)
 
 val ( !% ) : string -> command
 
