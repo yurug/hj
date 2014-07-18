@@ -9,7 +9,7 @@ reactive/identifier
 reactive/VFS
 reactive/reactiveErrors
 reactive/resource
-reactive/property
+reactive/facts
 reactive/inMemory
 reactive/onDisk
 reactive/entity

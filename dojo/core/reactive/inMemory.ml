@@ -3,7 +3,6 @@
 (** In-memory representation of an entity state. *)
 
 open Identifier
-open Property
 
 type dependency_kind = string
 
@@ -45,7 +44,6 @@ let all_dependencies d k =
 type 'a meta = {
   identifier      : identifier;
   dependencies    : dependencies;
-  properties      : properties;
   resources       : Resource.name list;
   content         : 'a;
   tick            : float;
@@ -53,9 +51,9 @@ type 'a meta = {
 
 let now e = { e with tick = Unix.gettimeofday () }
 
-let make identifier dependencies properties resources content =
+let make identifier dependencies resources content =
   let resources = List.map Resource.name resources in
-  now { identifier; dependencies; content; properties; resources; tick = 0. }
+  now { identifier; dependencies; content; resources; tick = 0. }
 
 let resources e = e.resources
 
@@ -63,15 +61,11 @@ let identifier e = e.identifier
 
 let dependencies e = e.dependencies
 
-let properties e = e.properties
-
 let content e = e.content
 
 let timestamp e = e.tick
 
 let update_content e c = now { e with content = c }
-
-let update_properties e s = now { e with properties = s }
 
 let update_dependencies e d = now { e with dependencies = d }
 
@@ -83,7 +77,6 @@ let update_resources e s =
 type 'a state_change =
   | UpdateDependencies of dependencies
   | UpdateResources    of Resource.t list
-  | UpdateProperties   of properties
   | UpdateContent      of 'a
   | UpdateSequence     of 'a state_change * 'a state_change
   | NoUpdate
@@ -105,7 +98,6 @@ let rec state_changes = function
 let rec update e = function
   | UpdateDependencies d -> update_dependencies e d
   | UpdateResources s -> update_resources e s
-  | UpdateProperties s -> update_properties e s
   | UpdateContent c -> update_content e c
   | UpdateSequence (c1, c2) -> update (update e c1) c2
   | NoUpdate -> e
@@ -117,8 +109,6 @@ let rec string_of_state_change string_of_replacement = function
     Printf.sprintf
       "Update sources (%s)"
       (String.concat " " (List.map Resource.name s))
-  | UpdateProperties s ->
-    "Update properties"
   | UpdateContent young ->
     "Update content"
   | UpdateSequence (c1, NoUpdate) | UpdateSequence (NoUpdate, c1)->

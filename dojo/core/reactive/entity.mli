@@ -45,7 +45,6 @@
     this state. *)
 open InMemory
 open Identifier
-open Property
 
 (** The type of entity with content of type ['a] and high-level
     changes of type ['c]. *)
@@ -132,7 +131,7 @@ module type S = sig
       after the creation of this entity in memory.
   *)
   val make:
-    ?init:(data * dependencies * properties * Resource.t list)
+    ?init:(data * dependencies * Resource.t list)
     -> ?reaction:(data, change) reaction
     -> Identifier.t ->
     [ `OK of t

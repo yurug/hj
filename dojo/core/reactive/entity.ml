@@ -5,7 +5,6 @@
 open Printf
 open Lwt
 
-open Property
 open Identifier
 open InMemory
 open Error
@@ -164,7 +163,7 @@ module type S = sig
   type t = (data, change) entity
 
   val make:
-    ?init:(data * dependencies * properties * Resource.t list)
+    ?init:(data * dependencies * Resource.t list)
     -> ?reaction:(data, change) reaction
     -> Identifier.t ->
     [ `OK of t
@@ -301,11 +300,11 @@ and type change = I.change
   (** [initialize init deps fnames id] creates the on-the-disk
       representation of [id] so that it can be loaded afterwards.
       Precondition: [id] must not already exist. *)
-  and initialize init deps properties fnames id =
+  and initialize init deps fnames id =
     if OnDisk.exists id then
       return (`KO (`AlreadyExists (path_of_identifier id)))
     else
-      OTD.save (InMemory.make id deps properties fnames init)
+      OTD.save (InMemory.make id deps fnames init)
 
   (* ************************** *)
   (*  Operations over entities  *)
@@ -314,10 +313,10 @@ and type change = I.change
   (** [make init reaction id] deals with the instanciation of [id] ... *)
   and make ?init ?(reaction = I.react) id =
     match init with
-      | Some (init, dependencies, properties, filenames) ->
+      | Some (init, dependencies, filenames) ->
         (** This is the first time for [id], we make room for it in
             the file system ... *)
-        initialize init dependencies properties filenames id
+        initialize init dependencies filenames id
         (** ... and we instanciate it from that. *)
         >>>= fun () -> make ~reaction id
 

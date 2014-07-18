@@ -18,7 +18,6 @@
 *)
 
 open Identifier
-open Property
 
 (** {1 Definitions of entities. *)
 
@@ -33,7 +32,6 @@ type dependencies
 type 'a state_change =
   | UpdateDependencies of dependencies
   | UpdateResources    of Resource.t list
-  | UpdateProperties   of properties
   | UpdateContent      of 'a
   | UpdateSequence     of 'a state_change * 'a state_change
   | NoUpdate
@@ -45,9 +43,6 @@ val identifier : 'a meta -> identifier
 
 (** [content m] returns the content of [m]. *)
 val content : 'a meta -> 'a
-
-(** [properties m] returns the properties of [m]. *)
-val properties : 'a meta -> properties
 
 (** [resources m] returns the names of [m]'s resources. *)
 val resources : 'a meta -> Resource.name list
@@ -105,7 +100,7 @@ val to_list:
     [id] with dependencies [ds], properties [ps], resources [res], and
     content [c]. *)
 val make
-  : identifier -> dependencies -> properties -> Resource.t list
+  : identifier -> dependencies -> Resource.t list
   -> 'a -> 'a meta
 
 (** [update e c] applies the low-level change [c] on the state
