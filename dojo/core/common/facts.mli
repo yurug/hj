@@ -1,14 +1,29 @@
 (* -*- tuareg -*- *)
 
-(** This module implements set of properties. *)
+(** This module implements a base of facts.
+
+    A fact is a property that holds in the world. A property is the
+    instanciation of a predicate over a tuple of values. Values
+    include standard literals (integer, string, float, ...) as well as
+    identifiers and timestamps.
+
+    The set of facts can only grow: there is no way to revert the
+    assertion of a fact (except of course if you have supercow
+    powers).
+
+*)
 
 (** {1 Property} *)
 type t deriving (Json)
 
-(** A property is parameterized by a value.*)
+(** *)
+
+(** A property is parameterized by a value. *)
 type value =
   | VInt of int
   | VIdentifier of Identifier.t
+  | VTimestamp of Timestamp.t
+  |
 deriving (Json)
 
 (** [property p vs] returns a property representing [p (vs)].
