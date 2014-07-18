@@ -2,6 +2,7 @@
 
 (** The reactive entities model. *)
 
+open Printf
 open Lwt
 
 open Property
@@ -526,9 +527,7 @@ and type change = I.change
               | `Observe x -> return (
                 if not (x >= 1) then
                   bad_assumption e
-                    Printf.sprintf "Still (%d >= 1) when slave observer stops"
-                      x
-                  );
+                    (sprintf "Still (%d >= 1) when slave observer stops." x);
                 e.mode <- `Observe (x - 1);
                 Lwt_condition.signal e.commit_cond ()
               )
