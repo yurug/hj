@@ -1,33 +1,50 @@
 (* -*- tuareg -*- *)
+(** This module implements a base of facts. *)
 
-type value =
-  | VInt of int
-  | VIdentifier of Identifier.t
-deriving (Json)
+open Identifier
+open Timestamp
 
-type t =
-  | Property of string * value list
-deriving (Json)
+type 'a predicate = {
+  name        : string;
+  ty          : 'a ty;
+  visibility  : identifier request;
+  statability : identifier request;
+}
 
-let valid_predicate_spec =
-  Str.regexp "[a-zA-Z0-9]+"
+and 'a request =
+  | Is : 'b predicate * ('a, 'b) pattern -> 'a request
 
-let valid_predicate x =
-  Str.string_match valid_predicate_spec x 0
+and ('a, 'b) pattern =
+  | Hole : ('a, 'a) pattern
+  | Val  :  'b request -> ('a, 'b) pattern
+  | Fst  : 'c * ('a, 'b) pattern -> ('a, 'c * 'b) pattern
+  | Snd  : ('a, 'b) pattern * 'c -> ('a, 'b * 'c) pattern
 
-exception InvalidPredicateName of string
+and 'a ty =
+  | TInt : int ty
+  | TString : string ty
+  | TFloat : float ty
+  | TIdentifier : identifier ty
+  | TTimestamp : timestamp ty
+  | TPair : 'a ty * 'b ty -> ('a * 'b) ty
 
-let property x vs =
-  if not (valid_predicate x) then raise (InvalidPredicateName x);
-  Property (x, vs)
+let make_predicate name visibility statability ty =
+  { name; ty; visibility; statability }
 
-(* FIXME: We may need a more efficient representation here. *)
-type properties = t list deriving (Json)
+type statement =
+    Statement : timestamp * identifier * 'a predicate * 'a -> statement
 
-let empty = []
+type chunk = statement ArraySimpleMap.t
 
-let is = List.mem
+type statements = chunk option list
 
-let assign s p = if not (is p s) then p :: s else s
+let statements : statements = ref []
 
-let unassign s p = List.filter (( <> ) p) s
+let state who pred x =
+  assert false
+
+type 'a answers =
+  | NoAnswer : 'a answers
+  | Next : 'a * (unit -> 'a answers) -> 'a answers
+
+val ask : identifier -> 'a request -> 'a answers

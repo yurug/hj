@@ -13,37 +13,36 @@
 
 *)
 
-(** {1 Property} *)
-type t deriving (Json)
+open Identifier
+open Timestamp
 
-(** *)
+type 'a predicate
 
-(** A property is parameterized by a value. *)
-type value =
-  | VInt of int
-  | VIdentifier of Identifier.t
-  | VTimestamp of Timestamp.t
-  |
-deriving (Json)
+and 'a request =
+  | Is : 'b predicate * ('a, 'b) pattern -> 'a request
 
-(** [property p vs] returns a property representing [p (vs)].
-    If [p] is not in [[a-zA-Z0-9]+], [InvalidPredicateName p] is raised. *)
-val property : string -> value list -> t
-exception InvalidPredicateName of string
+and ('a, 'b) pattern =
+  | Hole : ('a, 'a) pattern
+  | Fst : 'c * ('a, 'b) pattern -> ('a, 'c * 'b) pattern
+  | Snd : ('a, 'b) pattern * 'c -> ('a, 'b * 'c) pattern
 
-(** {1 Properties} *)
+type 'a ty =
+  | TInt : int ty
+  | TString : string ty
+  | TFloat : float ty
+  | TIdentifier : identifier ty
+  | TTimestamp : timestamp ty
+  | TPair : 'a ty * 'b ty -> ('a * 'b) ty
 
-(** A set of property. *)
-type properties deriving (Json)
+val make_predicate
+  : string -> identifier request -> identifier request
+  -> 'a ty
+  -> 'a predicate
 
-(** The empty properties. *)
-val empty : properties
+val state : identifier -> 'a predicate -> 'a -> unit
 
-(** [is p s] returns true iff [p] is in [s]. *)
-val is : t -> properties -> bool
+type 'a answers =
+  | NoAnswer : 'a answers
+  | Next : 'a * (unit -> 'a answers) -> 'a answers
 
-(** [assign s p] is the properties [s] with the property [p]. *)
-val assign : properties -> t -> properties
-
-(** [unassign s p] is the properties [s] without the property [p]. *)
-val unassign : properties -> t -> properties
+val ask : identifier -> 'a request -> 'a answers

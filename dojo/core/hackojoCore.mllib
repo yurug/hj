@@ -1,15 +1,1 @@
-common/log
-common/extPervasives
-common/extProcess
-common/extUnix
-common/waitingList
-common/error
-
-reactive/identifier
-reactive/VFS
-reactive/reactiveErrors
-reactive/resource
-reactive/facts
-reactive/inMemory
-reactive/onDisk
-reactive/entity
+common/arraySimpleMap

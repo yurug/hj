@@ -3,3 +3,7 @@
 type t
 
 type timestamp = t
+
+val current : unit -> t
+
+val compare : t -> t -> int

@@ -1,5 +1,3 @@
 let run () =
   CheckCommon.run ();
-  CheckReactive.run ()
-
-
+(*  CheckReactive.run ()*)
