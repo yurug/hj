@@ -1,5 +1,17 @@
-15/07/14
+22/07/14
+Chapter 1, 2 : updated
 
+Old chapter 3 (modules-dojo) : removed
+
+New chapter 3 (dynamic-analysis) : added
+State Transition Diagram for exercise, user & group entity.
+
+TODO 
+Description for these diagram ?
+evaluation & answers entity remaining.
+
+
+15/07/14
 Chapter 1 & 2 : unchanged
 
 Chapter 3 : v0.1
