@@ -1,4 +1,4 @@
-.PHONY: all clean install uninstall reinstall
+.PHONY: all clean install uninstall reinstall quietbuild
 
 OCAMLBUILD=ocamlbuild -use-menhir -use-ocamlfind
 OCAMLFIND=ocamlfind
@@ -13,7 +13,7 @@ all:
 
 quietbuild:
 	@ echo 'Rebuilding Hackojo CORE...'
-	$(shell $(OCAMLBUILD) hackojoCore.otarget 2> build.log)
+	$(OCAMLBUILD) hackojoCore.otarget
 
 clean:
 	$(OCAMLBUILD) -clean

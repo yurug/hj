@@ -7,8 +7,8 @@ all: configuration build run
 configuration:
 	@ $(MAKE) -s -C ../../dojo/core reinstall
 
-build:
-	@ $(shell $(OCAMLBUILD) check.native 1> build.log || cat build.log)
+build: clean
+	@ $(OCAMLBUILD) check.native
 
 run:
 	@ ./check.native
