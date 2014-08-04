@@ -1,9 +1,11 @@
-module Make (S : sig
+module type OrderedByKeyData = sig
   type key
   val compare : key -> key -> int
   type data
   val get_key : data -> key
-end) = struct
+end
+
+module Make (S : OrderedByKeyData) = struct
 
   open S
 

@@ -1,3 +1,4 @@
 let run () =
 (*  CheckExtProcess.run ()*)
-  CheckArraySimpleMap.run ()
+  CheckArraySimpleMap.run ();
+  CheckFacts.run ()

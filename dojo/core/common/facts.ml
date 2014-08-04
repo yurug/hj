@@ -8,8 +8,11 @@ type 'a predicate = {
   name        : string;
   ty          : 'a ty;
   visibility  : identifier request;
-  statability : identifier request;
+  permission  : identifier request;
 }
+
+and statement =
+    Statement : timestamp * identifier * 'a predicate * 'a -> statement
 
 and 'a request =
   | Is : 'b predicate * ('a, 'b) pattern -> 'a request
@@ -28,17 +31,21 @@ and 'a ty =
   | TTimestamp : timestamp ty
   | TPair : 'a ty * 'b ty -> ('a * 'b) ty
 
-let make_predicate name visibility statability ty =
-  { name; ty; visibility; statability }
+let make_predicate name visibility permission ty =
+  { name; ty; visibility; permission }
 
-type statement =
-    Statement : timestamp * identifier * 'a predicate * 'a -> statement
+module M = ArraySimpleMap.Make (struct
+  type data = statement
+  type key = timestamp
+  let get_key (Statement (t, _, _, _)) = t
+  let compare = Timestamp.compare
+end)
 
-type chunk = statement ArraySimpleMap.t
+type chunk = M.t
 
 type statements = chunk option list
 
-let statements : statements = ref []
+let statements : statements ref = ref []
 
 let state who pred x =
   assert false
@@ -47,4 +54,5 @@ type 'a answers =
   | NoAnswer : 'a answers
   | Next : 'a * (unit -> 'a answers) -> 'a answers
 
-val ask : identifier -> 'a request -> 'a answers
+let ask i r =
+  assert false

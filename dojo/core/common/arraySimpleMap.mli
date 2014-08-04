@@ -21,5 +21,4 @@ sig
   val find : t -> S.key -> int * S.data
 
   val length : t -> int
-
 end
