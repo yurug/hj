@@ -1,4 +1,9 @@
-true: thread, syntax(camlp4o), package(str), package(lwt.unix), package(lwt), package(lwt.syntax), syntax(lwt), package(lwt.preemptive), package(hackojo-core)
+true: package(hackojo-core)
+true: thread, syntax(camlp4o), package(str)
+true: package(lwt.unix), package(lwt), package(lwt.syntax), syntax(lwt), package(lwt.preemptive)
+true: package(js_of_ocaml.deriving), syntax(js_of_ocaml.deriving), package(js_of_ocaml.deriving.syntax)
+true: package(deriving), package(deriving.syntax), syntax(deriving)
+
 
 <core> : include
 <core/*> : include

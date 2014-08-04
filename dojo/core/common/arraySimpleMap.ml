@@ -32,8 +32,12 @@ module Make (S : OrderedByKeyData) = struct
 
   let last m = get m (m.last_idx)
 
+  let last_key m = get_key (last m)
+
+  let empty m = m.last_idx = -1
+
   let after_last_key m k =
-    m.last_idx = -1 || compare (get_key (last m)) k <> 1
+    empty m || compare (get_key (last m)) k <> 1
 
   let insert m d =
     let k = get_key d in
@@ -62,5 +66,49 @@ module Make (S : OrderedByKeyData) = struct
       aux (mid start stop) start stop
     in
     aux (mid 0 m.last_idx) 0 m.last_idx
+
+  let insert_map m m' =
+    if empty m' then
+      m.last_idx
+    else if not (after_last_key m (get_key (get m' 0))) then
+      raise (MisOrdered (last m, get m 0))
+    else if length m + length m' >= Array.length m.data then raise Full
+    else (
+      Array.blit m'.data 0 m.data (m.last_idx + 1) (m'.last_idx + 1);
+      m.last_idx <- (m.last_idx + 1) + m'.last_idx;
+      m.last_idx
+    )
+
+  let sub m start stop =
+    let start_idx, _ = find m start
+    and stop_idx, _ = find m stop
+    in {
+      data = Array.sub m.data start_idx (stop_idx - start_idx + 1);
+      last_idx = stop_idx - start_idx
+    }
+
+  let iter m f =
+    for i = 0 to m.last_idx do
+      match m.data.(i) with
+        | None -> assert false (* Because 0 <= i <= m.last_idx. *)
+        | Some x -> f x
+    done
+
+  let rev_iter m f =
+    for i = m.last_idx downto 0 do
+      match m.data.(i) with
+        | None -> assert false (* Because 0 <= i <= m.last_idx. *)
+        | Some x -> f x
+    done
+
+  type iterator = int
+
+  let start m = m.last_idx
+
+  let value m idx = m.data.(idx)
+
+  let next idx = idx - 1
+
+  let at_the_end idx = (idx < 0)
 
 end
