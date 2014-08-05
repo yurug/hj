@@ -51,7 +51,7 @@ val resources : 'a meta -> Resource.name list
 val dependencies : 'a meta -> dependencies
 
 (** [timestamp m] returns the timestamp of [m]. *)
-val timestamp : 'a meta -> float
+val timestamp : 'a meta -> Timestamp.t
 
 (** [now m] puts a timestamp on [m]. *)
 val now : 'a meta -> 'a meta

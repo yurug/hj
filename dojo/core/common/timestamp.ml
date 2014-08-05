@@ -17,3 +17,5 @@ let make start stop = (start, stop)
 let mem x (start, stop) = start <= x && x <= stop
 
 let always = (0., infinity)
+
+let older_than d t = current () -. t > d

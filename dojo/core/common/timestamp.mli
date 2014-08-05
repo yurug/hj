@@ -17,3 +17,5 @@ val make : timestamp -> timestamp -> interval
 val mem : timestamp -> interval -> bool
 
 val always : interval
+
+val older_than : float -> timestamp -> bool

@@ -4,3 +4,14 @@ common/identifier
 common/timestamp
 common/dstream
 common/facts
+common/log
+common/extProcess
+common/extUnix
+common/extPervasives
+
+reactive/reactiveErrors
+reactive/VFS
+reactive/Resource
+reactive/inMemory
+reactive/onDisk
+reactive/entity

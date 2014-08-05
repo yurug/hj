@@ -62,6 +62,10 @@ let rec coerce : type a b. a ty -> b ty -> (a, b) eqprop = fun ty ty' ->
       end
     | _, _ -> NEq
 
+let string = TString
+
+let ( ** ) ty1 ty2 = TPair (ty1, ty2)
+
 let make_predicate name visibility permission ty =
   { name; ty; visibility; permission }
 
@@ -183,7 +187,7 @@ let get (Iterator (chunk, _, idx)) = M.value chunk idx
 let rec push s =
   try
     let chunk = latest () in
-    (chunk.idx, M.insert chunk.data s)
+    StatementIdx (chunk.idx, M.insert chunk.data s)
   with M.Full ->
     new_statements_chunks ();
     push s

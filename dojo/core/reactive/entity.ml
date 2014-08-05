@@ -14,9 +14,6 @@ open ExtPervasives
 (*  Type definitions  *)
 (* ****************** *)
 
-(** A timestamp represents a version number for an entity. *)
-type timestamp = float deriving (Json)
-
 (** Two kinds of events are possibly happening to an entity. *)
 type event =
     (** A dependency of the entity has been updated, so at
@@ -67,8 +64,8 @@ and ('a, 'c) entity = {
   (*   *) commit_lock : Lwt_mutex.t;
   (*   *) commit_cond : unit Lwt_condition.t;
   mutable mode        : [ `Commit | `Observe of int ];
-  mutable log         : ('c * timestamp) list;
-  mutable last_save   : timestamp
+  mutable log         : ('c * Timestamp.t) list;
+  mutable last_save   : Timestamp.t
 }
 
 (** Shortcut for the type of entities. *)
@@ -273,7 +270,7 @@ and type change = I.change
       commit_lock; commit_cond;
       mode = `Observe 0;
       log = [];
-      last_save = 0.
+      last_save = Timestamp.current ()
     } in
     load id e;
     List.iter (register_dependency e)
@@ -340,7 +337,7 @@ and type change = I.change
       )
     )
 
-  (** [apply deps e c] does the effective changes [cs] of the
+  (** [apply deps e c] applies the effective changes [cs] to the
       content of [e]. *)
   and apply dependencies e cs =
 
@@ -384,8 +381,8 @@ and type change = I.change
 
   and save_on_disk e =
     (* FIXME: 60. must be a parameter. *)
-    if (timestamp e.description) <> e.last_save
-      && Unix.gettimeofday () -. e.last_save >= 60. then begin
+    if Timestamp.compare (timestamp e.description) e.last_save <> 0
+      && Timestamp.older_than 60. e.last_save then begin
       e.last_save <- timestamp e.description;
       OTD.save e.description
     end
@@ -421,11 +418,10 @@ and type change = I.change
         return (Lwt_condition.signal e.react_cond ())
 
   let bad_assumption_descriptor =
-    Log.(descriptor_maker "Entity.bad_assumption" (TP (TString, TString)))
+    Log.make_event_descriptor "Entity.bad_assumption" Facts.string
 
   let bad_assumption e msg =
-    let id = string_of_identifier (identifier e) in
-    Log.(log' (bad_assumption_descriptor (id, msg)))
+    Log.log (identifier e) bad_assumption_descriptor msg
 
   let observe (type a) ?who (e : t) (o : data meta -> a Lwt.t) : a Lwt.t =
     let master = ref false in

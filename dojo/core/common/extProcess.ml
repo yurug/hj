@@ -6,6 +6,12 @@ open Str
 open Lwt
 open Lwt_process
 open ExtPervasives
+open Identifier
+
+(* FIXME: Make sure this identifier is reserved. *)
+(** The following identifier represents an abstract entity
+    responsible for the low-level system operations. *)
+let system = identifier_of_string_list ["__hj__"; "system"]
 
 let default_timeout = 700.
 
@@ -15,16 +21,16 @@ type command = Lwt_process.command * string
 
 let ( !% ) s = (shell s, s)
 
-let strace_descriptor = Log.make_unary_string_event "strace"
+let strace_descriptor = Log.make_event_descriptor "strace" Facts.string
 
 let strace_lwt f (cmd, s) =
-  let _, stop = Log.log_process (strace_descriptor s) in
+  let stop = Log.log_process system strace_descriptor s in
   lwt ret = f cmd in
   ignore (stop ());
   return ret
 
 let strace f (cmd, s) =
-  let _, stop = Log.log_process (strace_descriptor s) in
+  let stop = Log.log_process system strace_descriptor s in
   (f cmd, (fun () -> ignore (stop ())))
 
 let string_of_process_status = function

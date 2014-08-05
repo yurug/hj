@@ -49,11 +49,11 @@ type 'a meta = {
   tick            : Timestamp.t;
 } deriving (Json)
 
-let now e = { e with tick = Timestamp.t () }
+let now e = { e with tick = Timestamp.current () }
 
 let make identifier dependencies resources content =
   let resources = List.map Resource.name resources in
-  now { identifier; dependencies; content; resources; tick = 0. }
+  { identifier; dependencies; content; resources; tick = Timestamp.current () }
 
 let resources e = e.resources
 

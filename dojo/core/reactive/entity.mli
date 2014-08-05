@@ -14,8 +14,7 @@
     Other entities may {i try} to update this state using high-level
     changes of type ['c].  In that case, the concerned entity is asked
     to {i react} to this attempt. It validates or invalidates this
-    update by turning it into low-level changes and may also trigger
-    more changes.
+    update by turning it into low-level changes.
 
     - An entity is connected to a set of entities, called its {i
     dependencies}.
@@ -27,16 +26,24 @@
     acyclic, this process can diverge.  For the moment, it is the
     responsability of the programmer to avoid non termination.
 
-    - The state of every entity is replicated in a versioned file system
-    by means of serialization to files. (See {!CORE_onthedisk_entity}
-    for details.) The file system is managed using the VCS named
-    Git. As a consequence the history of every entity is recorded.
+    - The internal state of every entity is replicated in a versioned
+    file system by means of serialization to files. (See
+    {!OnDisk} for details.) The file system is managed
+    using the VCS named Git. As a consequence the history of every
+    entity is recorded.
+
+    - The external state of the entity is represented using the
+    {!Facts}.
+
+    - All the events (this includes interactions between entities
+    and interactions between users and entities) are recorded as events
+    in the {!Log} system.
 
     The following module implements the reactive model for entities.
     It provides general functions to interact with entities as well as
     a functor to instantiate a specific instance of this concept by
     fixing a specific type for content, a specific type for high-level
-    changes and a specific dynamic behavior.
+    changes and a specific dynamic behavior (i.e. reaction function).
 
 *)
 
@@ -53,14 +60,11 @@ type ('a, 'c) t = ('a, 'c) entity
 
 (** An entity ... *)
 type ('a, 'c) reaction =
-    'a meta                  (** with ['a meta] state may react to *)
-    -> dependencies          (** a change of one of its dependencies ... *)
-    -> 'c list               (** or to external requests to change ... *)
-    -> ('c -> unit Lwt.t)    (** by scheduling a change or ... *)
-    -> 'a state_change Lwt.t (** by requesting an immediate internal change. *)
-
-(** A timestamp represents a version number for an entity. *)
-type timestamp deriving (Json)
+    'a meta                  (** ... with ['a meta] state may react to *)
+    -> dependencies          (** ... a change of one of its dependencies *)
+    -> 'c list               (** ... or to external requests to change *)
+    -> ('c -> unit Lwt.t)    (** ... by scheduling a change or *)
+    -> 'a state_change Lwt.t (** ... by asking for immediate internal update. *)
 
 (** Two kinds of events are possibly observable about an entity: *)
 type event =
@@ -93,7 +97,7 @@ val channel: ('a, 'c) t -> event Lwt_stream.t
 (** The unique identifier of an entity. *)
 val identifier: ('a, 'c) t -> Identifier.t
 
-(** [exists id] returns [true] iff [id] exsits. *)
+(** [exists id] returns [true] iff [id] exists. *)
 val exists : Identifier.t -> bool
 
 (** The following module signature specifies the general operations
@@ -221,4 +225,3 @@ module Passive (I : D)
 : U
   with type data = I.data
   and type change = I.data InMemory.state_change
-

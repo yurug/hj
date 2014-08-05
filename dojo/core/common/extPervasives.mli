@@ -215,7 +215,7 @@ val ( @* ) : ('a -> 'b) -> 'a -> unit -> 'b
     whose exception is immediately captured by the combinator. *)
 exception SmallJump
 val small_jump : 'a -> 'b Lwt.t
-val warn_only : Log.warning -> 'a -> 'b Lwt.t
+val warn_only : string -> 'a -> 'b Lwt.t
 val ( @| ) : (unit -> 'a Lwt.t) -> (unit -> 'b Lwt.t) -> 'b Lwt.t
 
 module MRef : sig
