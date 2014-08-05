@@ -236,6 +236,7 @@ and filter
 and search
 : type a. ?first:(a -> bool) -> identifier -> interval -> a request -> a stream
 = fun ?first asked_by interval r ->
+   (* FIXME: Start at the end of the interval... *)
    from_fun (latest_statement_iterator ()) (fun idx ->
      if at_the_end idx then Done
      else
@@ -254,3 +255,8 @@ and search
 
 let ask asked_by interval r =
   search asked_by interval r
+
+let latest asked_by interval r =
+  search ~first:(fun _ -> true) asked_by interval r
+
+(* FIXME: Optimize [latest] using a cache and another data structure. *)
