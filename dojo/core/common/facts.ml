@@ -1,10 +1,13 @@
 (* -*- tuareg -*- *)
 (** This module implements a base of facts. *)
 
+open Dstream
 open Identifier
 open Timestamp
 
 (* FIXME: Make sure this identifier is reserved. *)
+(** The following identifier represents an abstract entity which
+    has complete visibility over the facts. *)
 let daemon = identifier_of_string_list ["__hj__"; "daemon"]
 
 type 'a predicate = {
@@ -40,13 +43,34 @@ and 'a ty =
 
 and statement_idx = StatementIdx of int * int
 
+type ('a, 'b) eqprop =
+  | Eq  : ('a, 'a) eqprop
+  | NEq : ('a, 'b) eqprop
+
+let rec coerce : type a b. a ty -> b ty -> (a, b) eqprop = fun ty ty' ->
+  match (ty, ty') with
+    | TInt, TInt -> Eq
+    | TString, TString -> Eq
+    | TFloat, TFloat -> Eq
+    | TIdentifier, TIdentifier -> Eq
+    | TStatement, TStatement -> Eq
+    | TTimestamp, TTimestamp -> Eq
+    | TPair (a, b), TPair (a', b') ->
+      begin match coerce a a', coerce b b' with
+        | Eq, Eq -> Eq
+        | _, _ -> NEq
+      end
+    | _, _ -> NEq
+
 let make_predicate name visibility permission ty =
   { name; ty; visibility; permission }
+
+let timestamp_of_statement (Statement (t, _, _, _)) = t
 
 module M = ArraySimpleMap.Make (struct
   type data = statement
   type key = timestamp
-  let get_key (Statement (t, _, _, _)) = t
+  let get_key = timestamp_of_statement
   let compare = Timestamp.compare
 end)
 
@@ -55,7 +79,6 @@ type chunk = M.t
 type serialized_chunk = {
   mutable loaded     : bool;
           idx        : int;
-  mutable last_saved : timestamp;
   mutable data       : chunk;
 }
 
@@ -109,7 +132,6 @@ let new_statements_chunks () =
     let serialized_chunk = {
       loaded     = true;
       idx        = !statements_chunks_counter;
-      last_saved = Timestamp.origin ();
       data       = chunk;
     }
     in
@@ -126,21 +148,41 @@ let load_data idx =
 
 let load_chunk c =
   c.data <- load_data c.idx;
-  c.loaded <- true;
-  c.last_saved <- M.last_key c.data
+  c.loaded <- true
 
 let ensure_chunk_is_loaded c =
   if not c.loaded then load_chunk c;
   c
 
-let rec latest statements_chunks =
+let rec latest () =
   match !statements_chunks with
-    | [] -> new_statements_chunks (); latest statements_chunks
+    | [] -> new_statements_chunks (); latest ()
     | c :: _ -> ensure_chunk_is_loaded c
+
+type iterator = Iterator of chunk * serialized_chunk list * M.iterator
+
+let close_iterator (Iterator (chunk, _, idx)) : iterator =
+  Iterator (chunk, [], idx)
+
+let latest_statement_iterator () : iterator =
+  match !statements_chunks with
+    | [] -> assert false
+    | x :: xs -> Iterator (x.data, xs, M.start x.data)
+
+let next_older (Iterator (chunk, cs, idx)) =
+  if M.at_the_end idx then (
+    match cs with
+      | [] -> Iterator (chunk, [], idx)
+      | chunk :: cs -> Iterator (chunk.data, cs, M.start chunk.data)
+  ) else Iterator (chunk, cs, M.next idx)
+
+let at_the_end (Iterator (_, cs, _)) = (cs = [])
+
+let get (Iterator (chunk, _, idx)) = M.value chunk idx
 
 let rec push s =
   try
-    let chunk = latest statements_chunks in
+    let chunk = latest () in
     (chunk.idx, M.insert chunk.data s)
   with M.Full ->
     new_statements_chunks ();
@@ -156,93 +198,59 @@ let iter f =
     if not was_loaded then unload c
   ) !statements_chunks
 
-type iterator =
-  | End
-  | Value of statement * (unit -> iterator)
-
-let iterator_over_statements () =
-  let i = M.start (latest statements_chunks).data in
-  assert false
-
-let no_more_answer = NoMoreAnswer
-
-let single_answer x = NextAsnwers (x, fun () -> NoMoreAnswer)
-
-let rec map_answers f = function
-  | NoMoreAnswer -> NoMoreAnswer
-  | Next (x, s) -> Next (f x, fun () -> map_answers f (s ()))
-
-type ('a, 'b) eqprop =
-  | Eq  : ('a, 'a) eqprop
-  | NEq : ('a, 'b) eqprop
-
-let rec coerce : type a b. a ty -> b ty -> (a, b) eqprop = fun ty ty' ->
-  match (ty, ty') with
-    | TInt, TInt -> Eq
-    | TString, TString -> Eq
-    | TFloat, TFloat -> Eq
-    | TIdentifier, TIdentifier -> Eq
-    | TStatement, TStatement -> Eq
-    | TTimestamp, TTimestamp -> Eq
-    | TPair (a, b), TPair (a', b') ->
-      begin match coerce a a', coerce b b' with
-        | Eq, Eq -> Eq
-        | _, _ -> NEq
-      end
-    | _, _ -> NEq
-
-let rec answers
-: type a. identifier -> interval -> a request -> statement -> a option =
-fun asked_by interval r (Statement (t, who, p, x)) ->
-  if not (Timestamp.mem t interval) then `Stop
-  else if not (is_visible p asked_by) then `Skip
+let rec satisfy
+: type a. identifier -> a request -> statement -> a option =
+fun asked_by r (Statement (t, who, p, x)) ->
+  if not (is_visible p asked_by) then None
   else match r with
     | Is (p', pat) when is_visible p' asked_by ->
       begin match coerce p.ty p'.ty with
         | Eq -> match_pattern pat x
-        | NEq -> `Skip
+        | NEq -> None
       end
     | _ ->
-      `Skip
+      None
 
 and match_pattern
-: type a b. (a, b) pattern -> b -> a answers = fun p x ->
+: type a b. (a, b) pattern -> b -> a option = fun p x ->
   match p, x with
     | Hole, x ->
-      `Found x
-    | Fst (fp, p), (fx, x) ->
-      if fp = fx then
-        match_pattern p x
-      else
-        `Skip
-    | Snd (p, sp), (x, sx) ->
-      if sp = sx then
-        match_pattern p x
-      else
-        `Skip
+      Some x
+    | Fst (fp, p), (fx, x) when fp = fx ->
+      match_pattern p x
+    | Snd (p, sp), (x, sx) when sp = sx ->
+      match_pattern p x
+    | _, _ ->
+      None
 
 and is_visible
 : type a. a predicate -> identifier -> bool = fun p id ->
-  id = daemon || filter p.visibility id
+  id = daemon || filter p.visibility (Identifier.equal id)
 
 and filter
 : type a. a filter -> (a -> bool) -> bool = fun f first ->
   match f with
   | True -> true
-  | Satisfy r -> search ~first daemon always r
+  | Satisfy r -> not (is_empty (search ~first daemon always r))
 
-and search ?first asked_by interval r =
-  let rec aux = function
-    | End -> NoMoreAnswers
-    | Value (x, i) ->
-      match answers asked_by interval r x with
-        | None -> aux (next i)
-        | Some x -> match first with
-            | None -> NextAnswer (x, fun () -> aux (next i))
-            | Some f -> if f x then NextAnswer (x, fun () -> aux (next i))
-            | _ -> aux (next i)
-  in
-  aux iterator_over_statements
+and search
+: type a. ?first:(a -> bool) -> identifier -> interval -> a request -> a stream
+= fun ?first asked_by interval r ->
+   from_fun (latest_statement_iterator ()) (fun idx ->
+     if at_the_end idx then Done
+     else
+       let statement = get idx in
+       let ts = timestamp_of_statement statement in
+       if not (Timestamp.mem ts interval) then
+         Done
+       else match satisfy asked_by r statement with
+         | None -> Skip (next_older idx)
+         | Some x ->
+           match first with
+             | Some pred when pred x -> Yield (x, close_iterator idx)
+             | _ -> Yield (x, next_older idx)
+
+   )
 
 let ask asked_by interval r =
   search asked_by interval r

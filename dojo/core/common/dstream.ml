@@ -61,3 +61,5 @@ let from_list l =
     | x :: xs -> Yield (x, xs)
   in
   Stream (l, next)
+
+let is_empty s = try ignore (take 1 s); true with ExhaustedStream -> true

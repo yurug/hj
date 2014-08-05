@@ -2,4 +2,5 @@ common/error
 common/arraySimpleMap
 common/identifier
 common/timestamp
+common/dstream
 common/facts

@@ -44,6 +44,6 @@ sig
 
   val next : iterator -> iterator
 
-  val at_the_end : t -> bool
+  val at_the_end : iterator -> bool
 
 end

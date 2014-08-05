@@ -105,7 +105,11 @@ module Make (S : OrderedByKeyData) = struct
 
   let start m = m.last_idx
 
-  let value m idx = m.data.(idx)
+  exception InvalidIterator of iterator * t
+
+  let value m idx = match m.data.(idx) with
+    | None -> raise (InvalidIterator (idx, m))
+    | Some x -> x
 
   let next idx = idx - 1
 
