@@ -46,10 +46,10 @@ type 'a meta = {
   dependencies    : dependencies;
   resources       : Resource.name list;
   content         : 'a;
-  tick            : float;
+  tick            : Timestamp.t;
 } deriving (Json)
 
-let now e = { e with tick = Unix.gettimeofday () }
+let now e = { e with tick = Timestamp.t () }
 
 let make identifier dependencies resources content =
   let resources = List.map Resource.name resources in

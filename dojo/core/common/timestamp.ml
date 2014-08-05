@@ -1,7 +1,9 @@
-type t = float
+type t = float deriving (Json)
 
-type timestamp = t
+type timestamp = t deriving (Json)
 
+(* FIXME: use clock_gettime or an equivalent to get
+   a strictly monotonic clock.  *)
 let current () = Unix.gettimeofday ()
 
 let origin () = 0.

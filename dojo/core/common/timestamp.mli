@@ -1,8 +1,8 @@
 (** This module implements a notion of timestamp. *)
 
-type t
+type t deriving (Json)
 
-type timestamp = t
+type timestamp = t deriving (Json)
 
 val current : unit -> t
 
