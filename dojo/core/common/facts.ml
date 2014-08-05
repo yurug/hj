@@ -82,12 +82,9 @@ let filename_of_chunk_idx idx =
 
 let save_chunk c =
   if c.loaded then (
-    let unsaved = M.sub c.data c.last_saved (M.last_key c.data) in
-    if not (M.empty unsaved) then
-      let cout = open_out_bin (filename_of_chunk_idx c.idx) in
-      Marshal.to_channel cout unsaved [];
-      close_out cout;
-      c.last_saved <- M.last_key c.data
+    let cout = open_out_bin (filename_of_chunk_idx c.idx) in
+    Marshal.to_channel cout c [];
+    close_out cout
   )
 
 let save () =
@@ -123,14 +120,7 @@ let new_statements_chunks () =
 let load_data idx =
   let fname = filename_of_chunk_idx idx in
   let cin = open_in_bin fname in
-  let chunk = M.make statements_chunks_size in
-  let rec aux () =
-    try
-      ignore (M.insert_map chunk (Marshal.from_channel cin : chunk));
-      aux ()
-    with End_of_file -> ()
-  in
-  aux ();
+  let chunk = (Marshal.from_channel cin : chunk) in
   close_in cin;
   chunk
 
