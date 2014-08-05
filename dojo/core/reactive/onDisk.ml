@@ -44,7 +44,7 @@ let timestamp id =
     return (`OK timestamp)
   )
 
-let load_source id fname =
+let load_resource id fname =
   VFS.latest (file (path_of_identifier id) fname)
   >>= function
     | `KO e ->
@@ -57,13 +57,13 @@ let load_source id fname =
         | `OK content ->
           return (`OK (Resource.make fname content))
 
-let save_source id s =
+let save_resource id s =
   let save () =
     let path = file (path_of_identifier id) (Resource.name s) in
     VFS.save (who id) path (Resource.content s)
     >>>= fun _ -> return (`OK true)
   in
-  load_source id (Resource.name s) >>= function
+  load_resource id (Resource.name s) >>= function
     | `OK ls ->
       if ls = s then
         return (`OK false)

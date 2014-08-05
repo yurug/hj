@@ -51,12 +51,12 @@ module Make (D : sig
 end)
 : S with type data = D.data
 
-val save_source : Identifier.t -> Resource.t ->
+val save_resource : Identifier.t -> Resource.t ->
   [ `OK of bool
   | `KO of [> `SystemError of string ]
   ] Lwt.t
 
-val load_source : Identifier.t -> Resource.name ->
+val load_resource : Identifier.t -> Resource.name ->
   [ `OK of Resource.t
   | `KO of [> `SystemError of string ]
   ] Lwt.t

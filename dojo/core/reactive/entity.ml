@@ -538,11 +538,11 @@ and type change = I.change
   let identifier = identifier
 
   let resource e x =
-    OnDisk.load_source (identifier e) x
+    OnDisk.load_resource (identifier e) x
 
   let import_resource e s =
     e.description <- InMemory.(update e.description (UpdateResources [s]));
-    OnDisk.save_source (identifier e) s
+    OnDisk.save_resource (identifier e) s
 
   let _ =
     Lwt.async (fun () ->
