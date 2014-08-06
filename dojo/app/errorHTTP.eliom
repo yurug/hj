@@ -15,11 +15,13 @@ let set e = Eliom_reference.set error_state (`Error e)
 
 let return_txt s = Lwt.return (s ^ "\n", "text/plain")
 
+let msg s = "error:" ^ s
+
 let fallback s =
   Eliom_registration.String.register_service
     ~https:true
     ~path:[s] ~get_params:Eliom_parameter.unit (fun () () ->
       Eliom_reference.get error_state >>= function
-        | `Success -> return_txt "Success."
-        | `Error m -> return_txt m
+        | `Success -> return_txt "you_should_not_see_that"
+        | `Error m -> return_txt (msg m)
     )

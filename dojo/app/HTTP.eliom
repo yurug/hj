@@ -64,6 +64,6 @@ let api_service name mname ity oty doc code =
 
 let success s = return (s)
 
-let error s = return ("error:" ^ s)
+let error s = return (ErrorHTTP.msg s)
 
 let completed () = success "completed"

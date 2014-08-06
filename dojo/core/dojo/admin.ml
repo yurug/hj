@@ -16,6 +16,7 @@ let facts_up path =
 let up path =
   facts_up path
   >>>= User.up
+  >>>= Exercise.up
 
 let chroot path =
   shutdown ();

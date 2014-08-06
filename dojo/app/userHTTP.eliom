@@ -4,6 +4,7 @@ open Lwt
 open User
 open Identifier
 open HTTP
+open ExtPervasives
 
 (** The connected username is a server-side state which is shared with
     the client using a cookie. If I am correct, this piece of
@@ -33,8 +34,18 @@ let root_only f x =
     | Some id when is_admin id ->
       f x
     | _ ->
-      ErrorHTTP.set "You must be logged as admin to do that."
-      >> raise_lwt ForbiddenService
+      ErrorHTTP.set "admin_only" >> raise_lwt ForbiddenService
+
+let logged_user () =
+  user () >>= function
+    | Some id -> User.make id
+    | _ -> return (`KO `NotLogged)
+
+let teacher_only () =
+  logged_user () >>>= fun user ->
+  User.is_teacher user >>= function
+    | true -> return (`OK user)
+    | false -> return (`KO `ForbiddenService)
 
 let login_status () =
   Eliom_reference.get username >>= function
