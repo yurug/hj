@@ -73,7 +73,7 @@ let save_resource id s =
       save ()
 
 let exists id =
-  Sys.file_exists (string_of_path (metafile (path_of_identifier id)))
+  VFS.exists (metafile (path_of_identifier id))
 
 module type Converter = sig
   val version : string

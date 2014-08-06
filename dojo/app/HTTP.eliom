@@ -61,3 +61,7 @@ let api_service name mname ity oty doc code =
     (fun () p ->
       lwt r = code p in
       Lwt.return (ty_to_json oty r ^ "\n", "application/json"))
+
+let success s = return (s)
+
+let error s = return ("error:" ^ s)

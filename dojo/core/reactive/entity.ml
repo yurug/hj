@@ -333,7 +333,8 @@ and type change = I.change
             the file system ... *)
         initialize init dependencies filenames id
         (** ... and we instanciate it from that. *)
-        >>>= fun () -> make ~reaction id
+        >>>= fun () ->
+        make ~reaction id
 
       | None ->
         (** [id] already exists somewhere ...*)

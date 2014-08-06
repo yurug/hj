@@ -3,6 +3,7 @@
 open Lwt
 open User
 open Identifier
+open HTTP
 
 (** The connected username is a server-side state which is shared with
     the client using a cookie. If I am correct, this piece of
@@ -37,9 +38,9 @@ let root_only f x =
 
 let login_status () =
   Eliom_reference.get username >>= function
-    | `NotLogged -> return "not_logged"
-    | `FailedLogin -> return "login_failure"
-    | `Logged id -> return ("logged_as(" ^ string_of_identifier id ^ ")")
+    | `NotLogged -> success "not_logged"
+    | `FailedLogin -> error "login"
+    | `Logged id -> success ("logged_as:" ^ string_of_identifier id)
 
 let login_service = HTTP.(
   api_service "login" "user"
@@ -79,8 +80,11 @@ let register = HTTP.(
     "Register a user."
     (fun (login, password) ->
       User.register login password >>= (function
-        | `OK _ -> return "registered"
-        | `KO _ -> return "registration_failure"
+        | `OK _ -> success "registered"
+        | `KO (`UndefinedEntity id) -> assert false
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
       ))
 
 )
