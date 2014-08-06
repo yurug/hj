@@ -20,6 +20,11 @@ let username =
     ~persistent:"login_status"
     (`NotLogged : cookie_state)
 
+let user () =
+  Eliom_reference.get username >>= function
+    | `NotLogged | `FailedLogin -> None
+    | `Logged id -> Some id
+
 let login_status () =
   Eliom_reference.get username >>= function
     | `NotLogged -> return "not logged"
@@ -30,7 +35,8 @@ let login_service = HTTP.(
   api_service "login" "user"
     (string "login" ** string "password")
     (string "status")
-    "Login"
+    "Log the user in. \
+     Create a cookie containing the user status with respect to the system."
     (fun (login, password) ->
       Eliom_reference.set username (match User.authenticate login password with
         | `OK u -> `Logged u
@@ -43,7 +49,7 @@ let logout_service = HTTP.(
   api_service "logout" "user"
     unit
     (string "status")
-    "Logout"
+    "Log the user out."
     (fun () ->
       Eliom_reference.set username `NotLogged
       >> login_status ())
@@ -53,6 +59,6 @@ let whoami = HTTP.(
   api_service "whoami" "user"
     unit
     (string "status")
-    "Who am I?"
+    "Returns the status of the user with respect to the system."
     (fun () -> login_status ())
 )
