@@ -48,11 +48,10 @@ let login_service = HTTP.(
     "Log the user in. \
      Create a cookie containing the user status with respect to the system."
     (fun (login, password) ->
-      Eliom_reference.set username (match User.authenticate login password with
-        | `OK u -> `Logged u
-        | `KO -> `FailedLogin
-      )
-      >> login_status ())
+      User.authenticate login password >>= (function
+        | `OK u -> Eliom_reference.set username (`Logged u)
+        | `KO -> Eliom_reference.set username `FailedLogin
+      ) >> login_status ())
 )
 
 let logout_service = HTTP.(
