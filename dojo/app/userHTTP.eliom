@@ -82,6 +82,7 @@ let register = HTTP.(
       User.register login password >>= (function
         | `OK _ -> success "registered"
         | `KO (`UndefinedEntity id) -> assert false
+        | `KO `UnauthorizedLogin -> error "login_cannot_register"
         | `KO (`AlreadyExists _) -> error "already_exists"
         | `KO (`SystemError e) -> error ("system:" ^ e)
         | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))

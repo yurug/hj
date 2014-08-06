@@ -79,3 +79,8 @@ let success ?(lraise=small_jump) c =
 
 let exec ?timeout c =
   strace (open_process_full ?timeout) c
+
+let must_succeed c =
+  ltry (fun lraise -> success ~lraise c) >>= function
+    | `OK r -> return r
+    | `KO _ -> return false

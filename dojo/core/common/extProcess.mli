@@ -34,3 +34,5 @@ val success :
   ?lraise:([> `SystemError of string ] -> 'e Lwt.t)
   -> command
   -> bool Lwt.t
+
+val must_succeed : command -> bool Lwt.t

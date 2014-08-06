@@ -2,6 +2,8 @@ open Lwt
 open Entity
 open InMemory
 open Identifier
+open ExtPervasives
+open ExtProcess
 
 let path = Identifier.from_strings [ "users" ]
 
@@ -104,10 +106,19 @@ let authenticate login password =
   else
     authenticate_standard_user login password
 
+let registration_condition_command = ref (fun s -> !% "true")
+
+let set_registration_condition_command cmd =
+  registration_condition_command := fun l ->
+    !% (Str.(global_replace (regexp "%login") l cmd))
+
 let register login password =
-  if login = admin_username then
-    return (`KO (`AlreadyExists (path_of_identifier admin_id)))
-  else
-    let id = user_id login in
-    let data = { logged = false; password_digest = digest password } in
-    make ~init:(data, empty_dependencies, []) id
+  must_succeed (!registration_condition_command login) >>= function
+    | false -> return (`KO `UnauthorizedLogin)
+    | true ->
+      if login = admin_username then
+        return (`KO (`AlreadyExists (path_of_identifier admin_id)))
+      else
+        let id = user_id login in
+        let data = { logged = false; password_digest = digest password } in
+        make ~init:(data, empty_dependencies, []) id
