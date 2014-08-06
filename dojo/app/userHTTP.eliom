@@ -49,10 +49,10 @@ let logout_service = HTTP.(
       >> login_status ())
 )
 
-let login_status = HTTP.(
-  api_service "login_status" "user"
+let whoami = HTTP.(
+  api_service "whoami" "user"
     unit
     (string "status")
-    "Login status"
+    "Who am I?"
     (fun () -> login_status ())
 )
