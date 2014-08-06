@@ -13,7 +13,7 @@ CLIENT_FILES := $(wildcard *.eliomi *.eliom)
 SRCDIRS := common
 
 # OCamlfind packages for the server
-SERVER_PACKAGES := tyxml unix hackojo-core
+SERVER_PACKAGES := tyxml unix yojson hackojo-core
 
 # OCamlfind packages for the client
 CLIENT_PACKAGES :=

@@ -3,10 +3,8 @@
 OCAMLBUILD=ocamlbuild -use-menhir -use-ocamlfind
 OCAMLFIND=ocamlfind
 
-MLIS := $(wildcard common/*.mli reactive/*.mli machine/*.mli)
-CMIS := $(wildcard _build/common/*.cmi _build/reactive/*.cmi _build/machine/*.cmi)
-
-
+MLIS := $(wildcard common/*.mli reactive/*.mli machine/*.mli dojo/*.mli)
+CMIS := $(wildcard _build/common/*.cmi _build/reactive/*.cmi _build/machine/*.cmi _build/dojo/*.cmi)
 
 all:
 	$(OCAMLBUILD) hackojoCore.otarget
@@ -25,6 +23,6 @@ uninstall:
 
 install:
 	@ echo 'Installing Hackojo CORE...'
-	$(shell ocamlfind install hackojo-core META hackojoCore.cmxa hackojoCore.a $(MLIS) $(CMIS) 2> install.log)
+	$(shell ocamlfind install hackojo-core META hackojoCore.cmxa hackojoCore.cmxs hackojoCore.a $(MLIS) $(CMIS) 2> install.log)
 
 reinstall: quietbuild uninstall install

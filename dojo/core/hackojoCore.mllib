@@ -15,3 +15,5 @@ reactive/Resource
 reactive/inMemory
 reactive/onDisk
 reactive/entity
+
+dojo/user

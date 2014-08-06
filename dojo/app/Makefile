@@ -44,31 +44,6 @@ endif
 
 all: byte opt
 
-# GENERATED :=												\
-#   CORE_description_parser.eliom CORE_description_parser.eliomi CORE_description_lexer.eliom
-
-# prepare:
-
-# CORE_description_parser.eliom : CORE_description_CST.eliom
-
-
-# FIXME: Do that in a cleaner way. (Factorize!)
-# CORE_description_parser.eliom CORE_description_parser.eliomi: CORE_description_parser.mly
-# 	$(MENHIR) --explain CORE_description_parser.mly
-# 	echo '{shared{' | tee CORE_description_parser.eliom > CORE_description_parser.eliomi
-# 	cat CORE_description_parser.mli >> CORE_description_parser.eliomi
-# 	cat CORE_description_parser.ml >> CORE_description_parser.eliom
-# 	rm CORE_description_parser.ml
-# 	rm CORE_description_parser.mli
-# 	echo '}}' | tee -a CORE_description_parser.eliom >> CORE_description_parser.eliomi
-
-# CORE_description_lexer.eliom: CORE_description_lexer.mll
-# 	$(OCAMLLEX) CORE_description_lexer.mll
-# 	echo '{shared{' > CORE_description_lexer.eliom
-# 	cat CORE_description_lexer.ml | sed s/';;'/''/ >> CORE_description_lexer.eliom
-# 	rm CORE_description_lexer.ml
-# 	echo '}}' >> CORE_description_lexer.eliom
-
 byte opt:: $(TEST_PREFIX)$(ELIOMSTATICDIR)/${PROJECT_NAME}.js
 byte opt:: $(TEST_PREFIX)$(ETCDIR)/$(PROJECT_NAME).conf
 byte opt:: $(TEST_PREFIX)$(ETCDIR)/$(PROJECT_NAME)-test.conf
