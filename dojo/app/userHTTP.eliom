@@ -37,9 +37,9 @@ let root_only f x =
 
 let login_status () =
   Eliom_reference.get username >>= function
-    | `NotLogged -> return "not logged"
-    | `FailedLogin -> return "previous login failed"
-    | `Logged id -> return ("logged as " ^ string_of_identifier id)
+    | `NotLogged -> return "not_logged"
+    | `FailedLogin -> return "login_failure"
+    | `Logged id -> return ("logged_as(" ^ string_of_identifier id ^ ")")
 
 let login_service = HTTP.(
   api_service "login" "user"
@@ -70,4 +70,17 @@ let whoami = HTTP.(
     (string "status")
     "Returns the status of the user with respect to the system."
     (fun () -> login_status ())
+)
+
+let register = HTTP.(
+  api_service "register" "user"
+    (string "login" ** string "password")
+    (string "status")
+    "Register a user."
+    (fun (login, password) ->
+      User.register login password >>= (function
+        | `OK _ -> return "registered"
+        | `KO _ -> return "registration_failure"
+      ))
+
 )

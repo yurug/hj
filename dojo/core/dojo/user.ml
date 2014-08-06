@@ -103,3 +103,11 @@ let authenticate login password =
     return (authenticate_admin password)
   else
     authenticate_standard_user login password
+
+let register login password =
+  if login = admin_username then
+    return (`KO (`AlreadyExists (path_of_identifier admin_id)))
+  else
+    let id = user_id login in
+    let data = { logged = false; password_digest = digest password } in
+    make ~init:(data, empty_dependencies, []) id
