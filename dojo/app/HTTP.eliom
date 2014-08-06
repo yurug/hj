@@ -7,12 +7,15 @@ open Eliom_service
 open Eliom_parameter
 
 type ('a, 'b) ty =
+  | TUnit : (unit, unit) ty
   | TString : string -> (string, [ `One of string ] param_name) ty
   | TPair   : ('a, 'ap) ty * ('b, 'bp) ty -> (('a * 'b), ('ap * 'bp)) ty
 
 let ( ** ) a b = TPair (a, b)
 
 let string s = TString s
+
+let unit = TUnit
 
 type ('i, 'ip, 'o, 'op) api_service = {
   name  : string;
@@ -32,6 +35,7 @@ let rec eliom_parameters_from_ty
 : type a b. (a, b) ty -> (a, [ `WithoutSuffix ], b) Eliom_parameter.params_type
 = Eliom_parameter.(function
   | TString l -> string l
+  | TUnit -> unit
   | TPair (a, b) -> eliom_parameters_from_ty a ** eliom_parameters_from_ty b
 )
 
@@ -40,6 +44,7 @@ let rec ty_to_json_object
 = fun ty x ->
   match ty with
     | TString l -> [(l, `String x)]
+    | TUnit -> []
     | TPair (a, b) -> ty_to_json_object a (fst x) @ ty_to_json_object b (snd x)
 
 let ty_to_json ty x = to_string (`Assoc (ty_to_json_object ty x))

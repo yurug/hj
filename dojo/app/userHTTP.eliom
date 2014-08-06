@@ -26,7 +26,6 @@ let login_status () =
     | `FailedLogin -> return "previous login failed"
     | `Logged id -> return ("logged as " ^ string_of_identifier id)
 
-(** Login is an action on the state of the server. *)
 let login_service = HTTP.(
   api_service "login" "user"
     (string "login" ** string "password")
@@ -38,4 +37,22 @@ let login_service = HTTP.(
         | `KO -> `FailedLogin
       )
       >> login_status ())
+)
+
+let logout_service = HTTP.(
+  api_service "logout" "user"
+    unit
+    (string "status")
+    "Logout"
+    (fun () ->
+      Eliom_reference.set username `NotLogged
+      >> login_status ())
+)
+
+let login_status = HTTP.(
+  api_service "login_status" "user"
+    unit
+    (string "status")
+    "Login status"
+    (fun () -> login_status ())
 )
