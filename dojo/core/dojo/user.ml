@@ -45,6 +45,9 @@ type internal_state = {
   logged          : bool;
   password_digest : password_digest;
   teacher         : bool;
+  firstname       : string;
+  surname         : string;
+  email           : string;
 } deriving (Json)
 
 include Entity.Make (struct
@@ -136,7 +139,19 @@ let register login password =
         let id = user_id login in
         let password_digest = digest password in
         lwt teacher = is_teacher login in
-        let data = { login; logged = false; password_digest; teacher } in
+        lwt firstname = get_user_info login "firstname" in
+        lwt surname = get_user_info login "surname" in
+        lwt email = get_user_info login "email" in
+        let data = {
+          login;
+          logged = false;
+          password_digest;
+          teacher;
+          firstname;
+          surname;
+          email
+        }
+        in
         make ~init:(data, empty_dependencies, []) id
     | r ->
       return (`KO `UnauthorizedLogin)
