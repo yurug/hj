@@ -41,9 +41,11 @@ let authenticate_admin password =
     `KO
 
 type internal_state = {
-    logged          : bool;
-    password_digest : password_digest
-  } deriving (Json)
+  login           : string;
+  logged          : bool;
+  password_digest : password_digest;
+  teacher         : bool;
+} deriving (Json)
 
 include Entity.Make (struct
 
@@ -106,19 +108,35 @@ let authenticate login password =
   else
     authenticate_standard_user login password
 
-let registration_condition_command = ref (fun s -> !% "true")
+let user_info_command = ref (fun login what -> !% "echo 1")
 
-let set_registration_condition_command cmd =
-  registration_condition_command := fun l ->
-    !% (Str.(global_replace (regexp "%login") l cmd))
+let set_user_info_command cmd =
+  user_info_command := fun login what ->
+    !% Str.(
+      let cmd = global_replace (regexp "%login") login cmd in
+      global_replace (regexp "%what") what cmd
+    )
+
+let get_user_info login what =
+  ltry (fun lraise -> pread ~lraise (!user_info_command login what))
+  >>= function
+    | `OK s -> return s
+    | `KO e -> return "get_user_info_failed" (* FIXME: Critical. *)
+
+let is_teacher login =
+  lwt s = get_user_info login "status" in
+  return (s = "teacher")
 
 let register login password =
-  must_succeed (!registration_condition_command login) >>= function
-    | false -> return (`KO `UnauthorizedLogin)
-    | true ->
+  get_user_info login "exists" >>= function
+    | "1" ->
       if login = admin_username then
         return (`KO (`AlreadyExists (path_of_identifier admin_id)))
       else
         let id = user_id login in
-        let data = { logged = false; password_digest = digest password } in
+        let password_digest = digest password in
+        lwt teacher = is_teacher login in
+        let data = { login; logged = false; password_digest; teacher } in
         make ~init:(data, empty_dependencies, []) id
+    | _ ->
+      return (`KO `UnauthorizedLogin)

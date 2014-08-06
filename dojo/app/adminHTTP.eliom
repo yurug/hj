@@ -17,14 +17,16 @@ let chroot =
         | `KO e -> return "error" (* FIXME: give an error code. *)
      ))
 
-let set_registration_condition_command =
-  api_service "preregister_hook" "admin" (string "cmd") (string "status")
+let set_user_info_command =
+  api_service "user_info_command" "admin" (string "cmd") (string "status")
 
-    "Define a command to check if a login is allowed to register.    \n\
+    "Define a command to get information about a login.              \n\
      The command is a UNIX command where '%login' is replaced by the \n\
-     login to be checked."
+     login and %what is replaced by one of the following fields:     \n\
+     exists, status, firstname, name, email.                         \n\
+    "
 
     (root_only (fun cmd ->
-      User.set_registration_condition_command cmd;
+      User.set_user_info_command cmd;
       completed ()
      ))
