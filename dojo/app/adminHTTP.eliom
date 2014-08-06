@@ -18,7 +18,7 @@ let chroot =
      ))
 
 let set_user_info_command =
-  api_service "user_info_command" "admin" (string "cmd") (string "status")
+  api_service "get_user_info" "admin" (string "cmd") (string "status")
 
     "Define a command to get information about a login.              \n\
      The command is a UNIX command where '%login' is replaced by the \n\

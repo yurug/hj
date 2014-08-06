@@ -129,7 +129,7 @@ let is_teacher login =
 
 let register login password =
   get_user_info login "exists" >>= function
-    | "1" ->
+    | "1\n" ->
       if login = admin_username then
         return (`KO (`AlreadyExists (path_of_identifier admin_id)))
       else
@@ -138,5 +138,5 @@ let register login password =
         lwt teacher = is_teacher login in
         let data = { login; logged = false; password_digest; teacher } in
         make ~init:(data, empty_dependencies, []) id
-    | _ ->
+    | r ->
       return (`KO `UnauthorizedLogin)
