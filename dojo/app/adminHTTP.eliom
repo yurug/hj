@@ -8,7 +8,7 @@ open UserHTTP
 
 let chroot =
   api_service "chroot" "admin" (string "path") (string "status")
-    "Change the root of the system. "
+    "Change the root of the system."
     (root_only (fun path ->
       chroot path >>= function
         | `OK () -> return "completed"
