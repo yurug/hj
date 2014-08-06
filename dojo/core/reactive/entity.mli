@@ -146,6 +146,9 @@ module type S = sig
       | `InternalError   of exn
     ]] Lwt.t
 
+  (** [shutdown ()] deactivates all the entities of this kind. *)
+  val shutdown : unit -> unit
+
   (** [change e c] externally asks for a change [c] to happen
       asynchronously. At some point, this request will trigger the
       reaction of the entity, which is not atomic.

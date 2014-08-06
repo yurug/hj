@@ -22,8 +22,18 @@ let username =
 
 let user () =
   Eliom_reference.get username >>= function
-    | `NotLogged | `FailedLogin -> None
-    | `Logged id -> Some id
+    | `NotLogged | `FailedLogin -> return None
+    | `Logged id -> return (Some id)
+
+exception ForbiddenService
+
+let root_only f x =
+  user () >>= function
+    | Some id when is_admin id ->
+      f x
+    | _ ->
+      ErrorHTTP.set "You must be logged as admin to do that."
+      >> raise_lwt ForbiddenService
 
 let login_status () =
   Eliom_reference.get username >>= function

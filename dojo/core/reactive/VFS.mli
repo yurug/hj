@@ -30,7 +30,7 @@ type filename = Identifier.t
     if required. *)
 val init_root : string
   -> [ `OK of unit
-     | `KO of [ `SystemError of string ]
+     | `KO of [> `SystemError of string ]
      ] Lwt.t
 
 (** [create who path] initializes a subvfs at [path], authored by

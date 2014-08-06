@@ -5,3 +5,4 @@ true: package(deriving), package(deriving.syntax), syntax(deriving)
 <common/facts.ml> : -syntax(js_of_ocaml.deriving), -syntax(deriving), -syntax(lwt), -syntax(camlp4o)
 
 <common> : include
+<reactive> : include

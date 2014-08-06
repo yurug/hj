@@ -171,6 +171,9 @@ module type S = sig
       | `InternalError   of exn
     ]] Lwt.t
 
+  val shutdown
+    : unit -> unit
+
   val change
     : ?who:identifier -> t -> change -> unit Lwt.t
 
@@ -249,9 +252,24 @@ and type change = I.change
 
   (** There must be at most one instance of an entity.  We use a pool
       to maintain the set of alive entities. *)
-  let (loaded, load, iter_on_pool) =
+  let (loaded, load, iter_on_pool, empty_pool) =
     let pool = IdHashtbl.create 13 in
-    (IdHashtbl.get pool, IdHashtbl.add pool, fun f -> IdHashtbl.iter f pool)
+    let iter f = IdHashtbl.iter f pool in
+    let clear () = IdHashtbl.clear pool in
+    (IdHashtbl.get pool, IdHashtbl.add pool, iter, clear)
+
+  let shutdown () =
+    (* FIXME: We should properly stop, that is:
+       1. Reject all new "external changes"
+       2. Wait for all the "internal changes" to have converged.
+
+       The current implementation is still safe because the
+       implementation of the code of each entity does not assume that
+       a change it has requested is applied as long as it has not been
+       checked the result by itself. In other words, between two updates
+       the internal state of an entity is always consistent because its
+       consistency does not depend on the other entities' states. *)
+    empty_pool ()
 
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)

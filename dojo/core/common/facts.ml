@@ -102,8 +102,6 @@ let get_datadir () = match !datadir with
   | None -> Error.fatal UndefinedFactsDataDirectory
   | Some d -> d
 
-let set_datadir s = datadir := Some s
-
 let filename_of_chunk_idx idx =
   Filename.concat (get_datadir ()) ("facts." ^ string_of_int idx)
 
@@ -116,6 +114,18 @@ let save_chunk c =
 
 let save () =
   List.iter save_chunk !statements_chunks
+
+let save_if_needed () =
+  try save () with UndefinedFactsDataDirectory ->
+    (* This means that the system was not running. *)
+    ()
+
+let set_datadir s =
+  save_if_needed ();
+  statements_chunks := [];
+  datadir := Some s
+
+
 
 let unload c =
   c.loaded <- false;
