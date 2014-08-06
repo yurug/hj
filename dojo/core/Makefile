@@ -18,7 +18,7 @@ clean:
 	rm --force *~
 
 uninstall:
-	@ echo 'Removing exisintg Hackojo CORE installation...'
+	@ echo 'Removing existing Hackojo CORE installation...'
 	$(shell $(OCAMLFIND) remove hackojo-core 2> uninstall.log)
 
 install:
