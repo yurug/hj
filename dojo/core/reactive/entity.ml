@@ -182,7 +182,14 @@ module type S = sig
 
   val identifier : t -> Identifier.t
 
-  val resource : t -> Resource.name -> [
+  val resources : t -> Resource.name list
+
+  val resource_versions : t -> Resource.name -> [
+    `KO of [> `SystemError of string ]
+  | `OK of VFS.version list
+  ] Lwt.t
+
+  val resource : t -> ?version:VFS.version -> Resource.name -> [
     `KO of [> `SystemError of string ]
   | `OK of Resource.t
   ] Lwt.t
@@ -556,12 +563,17 @@ and type change = I.change
 
   let identifier = identifier
 
-  let resource e x =
-    OnDisk.load_resource (identifier e) x
+  let resource e ?version x =
+    OnDisk.load_resource (identifier e) ?version x
 
   let import_resource e s =
     e.description <- InMemory.(update e.description (UpdateResources [s]));
     OnDisk.save_resource (identifier e) s
+
+  let resources e = InMemory.resources e.description
+
+  let resource_versions e name =
+    OnDisk.resource_versions (identifier e) name
 
   let _ =
     Lwt.async (fun () ->

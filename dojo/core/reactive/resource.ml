@@ -1,5 +1,7 @@
 (* -*- tuareg -*- *)
 
+(* FIXME: Enable lazy loading of content. *)
+
 type name = string deriving (Json)
 
 type t = {

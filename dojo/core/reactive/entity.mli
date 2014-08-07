@@ -171,8 +171,18 @@ module type S = sig
       will never change during the life of [e]. *)
   val identifier : t -> Identifier.t
 
-  (** [resource e name] returns the source of [e] named [name]. *)
-  val resource : t -> Resource.name -> [
+  (** [resources e] returns all the resource of [e]. *)
+  val resources : t -> Resource.name list
+
+  (** [resource_versions e name] returns all the versions of resource
+      [name] in [e]. *)
+  val resource_versions : t -> Resource.name -> [
+    `KO of [> `SystemError of string ]
+  | `OK of VFS.version list
+  ] Lwt.t
+
+  (** [resource e name] returns the resource of [e] named [name]. *)
+  val resource : t -> ?version:VFS.version -> Resource.name -> [
     `KO of [> `SystemError of string ]
   | `OK of Resource.t
   ] Lwt.t
