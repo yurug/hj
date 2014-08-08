@@ -27,3 +27,11 @@ let create_exercise = HTTP.(
         | `KO (`UndefinedEntity id) ->
           error ("undefined:" ^ (string_of_identifier id)))
 )
+
+let (upload_resource, download_resource) =
+  EntityHTTP.create_resource_management_api
+    (module Exercise)
+    "exercise_upload"
+    "exercise_download"
+    "exercise_ls"
+    "exercise"

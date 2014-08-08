@@ -79,7 +79,7 @@ let grep c pattern =
 let echo c f =
   handle_unix_error (fun () ->
     with_file
-      ~flags:[Unix.O_CREAT; Unix.O_WRONLY; Unix.O_TRUNC ]
+      ~flags:[Unix.O_CREAT; Unix.O_RDWR; Unix.O_TRUNC ]
       ~mode:output f (fun oc ->
       write oc c
     )

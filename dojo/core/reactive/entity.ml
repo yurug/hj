@@ -191,7 +191,7 @@ module type S = sig
 
   val resource : t -> ?version:VFS.version -> Resource.name -> [
     `KO of [> `SystemError of string ]
-  | `OK of Resource.t
+  | `OK of Resource.t * Identifier.path
   ] Lwt.t
 
   val import_resource : t -> Resource.t -> [

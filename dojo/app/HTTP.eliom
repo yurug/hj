@@ -28,11 +28,10 @@ type ('i, 'ip, 'o, 'op) api_service = {
   ity   : ('i, 'ip) ty;
   oty   : ('o, 'op) ty;
   doc   : string;
-  code  : 'i -> 'o Lwt.t
 }
 
 type some_api_service =
-  ApiService : ('i, 'ip, 'o, 'op) api_service -> some_api_service
+    ApiService : ('i, 'ip, 'o, 'op) api_service -> some_api_service
 
 let apis = Hashtbl.create 37
 
@@ -45,7 +44,8 @@ let rec eliom_parameters_from_ty
   | TPair (a, b) -> eliom_parameters_from_ty a ** eliom_parameters_from_ty b
 )
 
-let file_info_to_json_object f = assert false
+(** To return the content of a file, prefer standard ways. *)
+let file_info_to_json_object f = `String "file"
 
 let rec ty_to_json_object
 : type a b. (a, b) ty -> a -> (string * json) list
@@ -58,24 +58,47 @@ let rec ty_to_json_object
 
 let ty_to_json ty x = to_string (`Assoc (ty_to_json_object ty x))
 
-let api_service name mname ity oty doc code =
-  let s = { name; mname; ity; oty; doc; code } in
+let init_api_service name mname ity oty doc register =
+  let s = { name; mname; ity; oty; doc } in
   Hashtbl.add apis name (ApiService s);
   let post_params = eliom_parameters_from_ty ity in
   let fallback = ErrorHTTP.fallback name in
-  Eliom_registration.String.register_post_service
-    ~https:true
-    ~fallback
-    ~post_params
-    (fun () p ->
-      lwt r = code p in
-      Lwt.return (ty_to_json oty r ^ "\n", "application/json"))
+  register post_params fallback
+
+let api_service name mname ity oty doc code =
+  init_api_service name mname ity oty doc (fun post_params fallback ->
+    Eliom_registration.String.register_post_service
+      ~https:true
+      ~fallback
+      ~post_params
+      (fun () p ->
+        lwt r = code p in
+        Lwt.return (ty_to_json oty r ^ "\n", "application/json"))
+  )
+
+let api_download_service name mname ity doc code =
+  init_api_service name mname ity (TFile "o") doc (fun post_params fallback ->
+    Eliom_registration.File.register_post_service
+      ~https:true
+      ~fallback
+      ~post_params
+      (fun () p -> code p)
+  )
 
 let success s = return (s)
 
 let error s = return (ErrorHTTP.msg s)
 
 let completed () = success "completed"
+
+let return_completed _ = return (`OK "completed")
+
+let handle_error = function
+  | `OK x -> return x
+  | `KO (`AlreadyExists _) -> assert false
+  | `KO (`UndefinedEntity id) -> error "undefined_entity"
+  | `KO (`SystemError e) -> error ("system:" ^ e)
+  | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
 
 let file_upload_service import =
   let service =

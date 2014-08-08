@@ -184,7 +184,7 @@ module type S = sig
   (** [resource e name] returns the resource of [e] named [name]. *)
   val resource : t -> ?version:VFS.version -> Resource.name -> [
     `KO of [> `SystemError of string ]
-  | `OK of Resource.t
+  | `OK of Resource.t * Identifier.path
   ] Lwt.t
 
   (** [import_resource e r] inserts [r] in the resources of [e]. *)

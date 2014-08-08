@@ -45,8 +45,9 @@ let timestamp id =
   )
 
 let load_resource id ?version fname =
+  let path = file (path_of_identifier id) fname in
   (match version with
-    | None -> VFS.latest (file (path_of_identifier id) fname)
+    | None -> VFS.latest path
     | Some v -> return (`OK v)
   ) >>= function
     | `KO e ->
@@ -56,7 +57,7 @@ let load_resource id ?version fname =
         | `KO e ->
           return (`KO e)
         | `OK content ->
-          return (`OK (Resource.make fname content))
+          return (`OK (Resource.make fname content, path))
 
 let resource_versions id name =
   VFS.versions (file (path_of_identifier id) name)
@@ -68,7 +69,7 @@ let save_resource id s =
     >>>= fun _ -> return (`OK true)
   in
   load_resource id (Resource.name s) >>= function
-    | `OK ls ->
+    | `OK (ls, _) ->
       if ls = s then
         return (`OK false)
       else
