@@ -198,6 +198,9 @@ let read v = ltry (fun lraise ->
       git_show v.number (string_of_path v.path) lraise
 )
 
+let version_from_number n =
+  assert false (* FIXME: To be implemented. *)
+
 let onfile f who = on_path (fun p ps fname where c -> ltry (
   !>> f c ps
   >>> git_add where [fname]

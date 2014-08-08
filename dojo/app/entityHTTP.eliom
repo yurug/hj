@@ -28,11 +28,12 @@ let create_resource_management_api
     ),
 
   api_download_service download_name module_name
-    (string "identifier" ** string "resource_name")
+    (string "identifier" ** string "resource_name" ** string "version")
     "Download a resource."
-    (fun (id, resource_name) ->
+    (fun (id, (resource_name, version)) ->
+      let version = if version = "" then None else Some version in
       (E.make (identifier_of_string id) >>>= fun e ->
-       E.resource e resource_name >>>= fun (_, p) ->
+       E.resource e ~version resource_name >>>= fun (_, p) ->
        return (`OK (VFS.real_path p))
       ) >>= handle_error
     ),
