@@ -8,8 +8,8 @@ open Identifier
 open HTTP
 open UserHTTP
 
-let create_exercise = HTTP.(
-  api_service "create_exercise" "exercise"
+let exercise_create = HTTP.(
+  api_service "exercise_create" "exercise"
     (string "name")
     (string "status")
     "Create a fresh exercise."

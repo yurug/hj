@@ -32,6 +32,6 @@ let create_resource_management_api
     (fun (id, resource_name) ->
       (E.make (identifier_of_string id) >>>= fun e ->
        E.resource e resource_name >>>= fun (_, p) ->
-       return (`OK (Identifier.string_of_path p))
+       return (`OK (VFS.real_path p))
       ) >>= handle_error
     )

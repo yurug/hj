@@ -213,5 +213,8 @@ let owner = on_path (fun _ where _ _ -> ltry (
   >-> fun s -> lreturn (path_of_string s)
 ))
 
+let real_path path =
+  string_of_path (root true path)
+
 let exists path =
-  Sys.file_exists (string_of_path (root true path))
+  Sys.file_exists (real_path path)

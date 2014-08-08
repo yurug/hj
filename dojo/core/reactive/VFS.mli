@@ -139,3 +139,5 @@ val owner : Identifier.path
              (It may be git-related or os-related.) *)
          [> `SystemError of string ]
      ] Lwt.t
+
+val real_path : Identifier.path -> string
