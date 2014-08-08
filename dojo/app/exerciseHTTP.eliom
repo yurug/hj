@@ -28,7 +28,7 @@ let exercise_create = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
-let (upload_resource, download_resource) =
+let (upload_resource, download_resource, ls_resource) =
   EntityHTTP.create_resource_management_api
     (module Exercise)
     "exercise_upload"

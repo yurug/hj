@@ -12,13 +12,16 @@ type ('a, 'b) ty =
   | TUnit : (unit, unit) ty
   | TString : string -> (string, [ `One of string ] param_name) ty
   | TFile : string -> (file_info, [ `One of file_info ] param_name) ty
-  | TPair   : ('a, 'ap) ty * ('b, 'bp) ty -> (('a * 'b), ('ap * 'bp)) ty
+  | TPair : ('a, 'ap) ty * ('b, 'bp) ty -> (('a * 'b), ('ap * 'bp)) ty
+  | TList : string * ('a, 'ap) ty -> ('a list, 'ap listnames) ty
 
 let ( ** ) a b = TPair (a, b)
 
 let string s = TString s
 
 let file s = TFile s
+
+let list name ty = TList (name, ty)
 
 let unit = TUnit
 
@@ -40,6 +43,7 @@ let rec eliom_parameters_from_ty
 = Eliom_parameter.(function
   | TString l -> string l
   | TFile f -> file f
+  | TList (name, t) -> list name (eliom_parameters_from_ty t)
   | TUnit -> unit
   | TPair (a, b) -> eliom_parameters_from_ty a ** eliom_parameters_from_ty b
 )
@@ -53,10 +57,13 @@ let rec ty_to_json_object
   match ty with
     | TString l -> [(l, `String x)]
     | TFile f -> [(f, file_info_to_json_object f)]
+    | TList (f, ty) -> [(f, `List (List.map (ty_to_json ty) x))]
     | TUnit -> []
     | TPair (a, b) -> ty_to_json_object a (fst x) @ ty_to_json_object b (snd x)
 
-let ty_to_json ty x = to_string (`Assoc (ty_to_json_object ty x))
+and ty_to_json
+: type a b. (a, b) ty -> a -> json
+= fun ty x -> `Assoc (ty_to_json_object ty x)
 
 let init_api_service name mname ity oty doc register =
   let s = { name; mname; ity; oty; doc } in
@@ -65,6 +72,8 @@ let init_api_service name mname ity oty doc register =
   let fallback = ErrorHTTP.fallback name in
   register post_params fallback
 
+exception APIError of string
+
 let api_service name mname ity oty doc code =
   init_api_service name mname ity oty doc (fun post_params fallback ->
     Eliom_registration.String.register_post_service
@@ -72,8 +81,11 @@ let api_service name mname ity oty doc code =
       ~fallback
       ~post_params
       (fun () p ->
-        lwt r = code p in
-        Lwt.return (ty_to_json oty r ^ "\n", "application/json"))
+        try_lwt
+          lwt r = code p in
+          Lwt.return (to_string (ty_to_json oty r) ^ "\n", "application/json")
+        with (APIError msg) ->
+          Lwt.return (msg ^ "\n", "content/txt"))
   )
 
 let api_download_service name mname ity doc code =
@@ -87,7 +99,7 @@ let api_download_service name mname ity doc code =
 
 let success s = return (s)
 
-let error s = return (ErrorHTTP.msg s)
+let error s = raise_lwt (APIError (ErrorHTTP.msg s))
 
 let completed () = success "completed"
 
