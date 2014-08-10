@@ -56,9 +56,9 @@ val save_resource : Identifier.t -> Resource.t ->
   | `KO of [> `SystemError of string ]
   ] Lwt.t
 
-val load_resource : Identifier.t -> ?version:VFS.version -> Resource.name ->
+val load_resource : Identifier.t -> ?version:string -> Resource.name ->
   [ `OK of Resource.t * Identifier.path
-  | `KO of [> `SystemError of string ]
+  | `KO of [> `SystemError of string | `NoSuchVersion ]
   ] Lwt.t
 
 val resource_versions : Identifier.t -> Resource.name ->

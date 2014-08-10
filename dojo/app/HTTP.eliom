@@ -94,7 +94,13 @@ let api_download_service name mname ity doc code =
       ~https:true
       ~fallback
       ~post_params
-      (fun () p -> code p)
+      (fun () p ->
+        try_lwt
+          code p
+        with (APIError msg) ->
+          Ocsigen_messages.errlog msg;
+          return "")
+      (* FIXME: Properly handle errors. *)
   )
 
 let success s = return (s)
@@ -109,6 +115,7 @@ let handle_error = function
   | `OK x -> return x
   | `KO (`AlreadyExists _) -> assert false
   | `KO (`UndefinedEntity id) -> error "undefined_entity"
+  | `KO `NoSuchVersion -> error "no_such_version_exists"
   | `KO (`SystemError e) -> error ("system:" ^ e)
   | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
 

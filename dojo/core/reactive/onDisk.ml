@@ -48,7 +48,7 @@ let load_resource id ?version fname =
   let path = file (path_of_identifier id) fname in
   (match version with
     | None -> VFS.latest path
-    | Some v -> return (`OK v)
+    | Some version_number -> VFS.version_from_number path version_number
   ) >>= function
     | `KO e ->
       return (`KO e)

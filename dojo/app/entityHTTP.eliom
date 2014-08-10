@@ -31,10 +31,13 @@ let create_resource_management_api
     (string "identifier" ** string "resource_name" ** string "version")
     "Download a resource."
     (fun (id, (resource_name, version)) ->
-      let version = if version = "" then None else Some version in
       (E.make (identifier_of_string id) >>>= fun e ->
-       E.resource e ~version resource_name >>>= fun (_, p) ->
-       return (`OK (VFS.real_path p))
+       let version = if version = "" then None else Some version in
+       E.resource e ?version resource_name >>>= fun (r, p) ->
+       let tmp = Filename.get_temp_dir_name () in
+       let tmp_file = Filename.concat tmp resource_name in
+       ltry (fun lraise -> echo (Resource.content r) tmp_file lraise)
+       >>>= fun _ -> return (`OK tmp_file)
       ) >>= handle_error
     ),
 

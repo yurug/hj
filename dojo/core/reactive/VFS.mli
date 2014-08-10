@@ -108,9 +108,10 @@ val latest : path
          [> `SystemError of string ]
      ] Lwt.t
 
-(** [version_from_number n] returns the version numbered [n]. *)
-val version_from_number : string
-  -> [ `OK version
+(** [version_from_number path n] returns the version numbered [n]
+    of [path]. *)
+val version_from_number : path -> string
+  -> [ `OK of version
      | `KO of [> `SystemError of string | `NoSuchVersion ]
      ] Lwt.t
 

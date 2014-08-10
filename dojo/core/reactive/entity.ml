@@ -189,8 +189,8 @@ module type S = sig
   | `OK of VFS.version list
   ] Lwt.t
 
-  val resource : t -> ?version:VFS.version -> Resource.name -> [
-    `KO of [> `SystemError of string ]
+  val resource : t -> ?version:string -> Resource.name -> [
+    `KO of [> `SystemError of string | `NoSuchVersion ]
   | `OK of Resource.t * Identifier.path
   ] Lwt.t
 

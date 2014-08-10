@@ -182,8 +182,8 @@ module type S = sig
   ] Lwt.t
 
   (** [resource e name] returns the resource of [e] named [name]. *)
-  val resource : t -> ?version:VFS.version -> Resource.name -> [
-    `KO of [> `SystemError of string ]
+  val resource : t -> ?version:string -> Resource.name -> [
+    `KO of [> `SystemError of string | `NoSuchVersion ]
   | `OK of Resource.t * Identifier.path
   ] Lwt.t
 
