@@ -6,3 +6,5 @@ true: package(deriving), package(deriving.syntax), syntax(deriving)
 
 <common> : include
 <reactive> : include
+<dojo> : include
+<aka> : include

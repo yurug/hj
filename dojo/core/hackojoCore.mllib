@@ -8,6 +8,8 @@ common/log
 common/extProcess
 common/extUnix
 common/extPervasives
+common/position
+common/syntacticAnalysis
 
 reactive/reactiveErrors
 reactive/VFS
@@ -15,6 +17,12 @@ reactive/Resource
 reactive/inMemory
 reactive/onDisk
 reactive/entity
+
+aka/akaError
+aka/akaCST
+aka/akaParser
+aka/akaLexer
+aka/aka
 
 dojo/user
 dojo/admin

@@ -24,13 +24,13 @@ type event =
    (** The entity has been updated. *)
   | HasChanged
 
-(** An entity ... *)
 type ('a, 'c) reaction =
-    'a meta                  (** with ['a meta] state may react to *)
-    -> dependencies          (** a change of one of its dependencies ... *)
-    -> 'c list               (** or to external requests to change ... *)
-    -> ('c -> unit Lwt.t)    (** by scheduling a change or ... *)
-    -> 'a state_change Lwt.t (** by requesting an immediate internal change. *)
+    (** An entity ... *)
+    'a meta               (** ... with ['a meta] state may react to *)
+    -> dependencies          (** ... a change of one of its dependencies *)
+    -> 'c list               (** ... or to external requests to change *)
+    -> ('c -> unit Lwt.t)    (** ... by scheduling a change or *)
+    -> 'a state_change Lwt.t (** ... by asking for immediate internal update. *)
 
 (** The state of an entity can be up-to-date or modified. In that
     later case, the modified dependencies and the scheduled changes

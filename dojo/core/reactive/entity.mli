@@ -58,9 +58,9 @@ open Identifier
 type ('a, 'c) entity
 type ('a, 'c) t = ('a, 'c) entity
 
-(** An entity ... *)
 type ('a, 'c) reaction =
-    'a meta                  (** ... with ['a meta] state may react to *)
+    (** An entity ... *)
+    'a meta               (** ... with ['a meta] state may react to *)
     -> dependencies          (** ... a change of one of its dependencies *)
     -> 'c list               (** ... or to external requests to change *)
     -> ('c -> unit Lwt.t)    (** ... by scheduling a change or *)

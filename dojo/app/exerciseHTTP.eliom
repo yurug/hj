@@ -35,3 +35,25 @@ let (upload_resource, download_resource, ls_resource) =
     "exercise_download"
     "exercise_ls"
     "exercise"
+
+let exercise_update = HTTP.(
+  api_service "exercise_update" "exercise"
+    (string "identifier")
+    (string "status")
+    "Trigger an exercise update from resource 'source.aka'."
+    (fun name ->
+      (teacher_only () >>>= fun user ->
+       Exercise.make (identifier_of_string name) >>>= fun exo ->
+       Exercise.update user exo
+      ) >>= function
+        | `OK _ -> completed ()
+        | `KO (`InvalidCode e) -> success e
+        | `KO `NotLogged -> error "not_logged"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+        | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+        | `KO `ForbiddenService -> error "teacher_only"
+        | `KO (`UndefinedEntity id) ->
+          error ("undefined:" ^ (string_of_identifier id)))
+)
