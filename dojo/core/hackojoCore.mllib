@@ -23,6 +23,7 @@ aka/akaCST
 aka/akaParser
 aka/akaLexer
 aka/akaAST
+aka/akaTypeChecker
 aka/aka
 
 dojo/user

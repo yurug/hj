@@ -1,26 +1,60 @@
 open ExtPervasives
 open AkaAST
 
+(** This module implements a very basic birectional type-checker
+   for Aka. *)
+
+(* FIXME: This should be replaced by a full type inference engine
+   in the future. *)
+
 module TypeEnv = struct
+
+  type t = (variable * ty) list deriving (Json)
 
   let initial = []
 
+  let lookup env k = List.assoc k env
+
+  let bind env k v = (k, v) :: env
+
 end
 
-exception InferTypeArgument of AkaCST.term'
-exception TypeClash         of AkaCST.term' * ty * ty option
+exception CannotInfer of AkaCST.term'
+exception IllTyped    of AkaCST.term' * ty
+exception TypeClash   of AkaCST.term' * ty * ty
 
-let rec check_equal_type ty1 ty2 =
-  assert false
+let unit_ty = TApp (TVariable "unit", [])
 
-let elaborate =
+let int_ty = TApp (TVariable "int", [])
+
+let string_ty = TApp (TVariable "string", [])
+
+let float_ty = TApp (TVariable "float", [])
+
+let arrow_symbol = TVariable "->"
+
+let mk_arrow ty1 ty2 =
+  TApp (arrow_symbol, [ty1; ty2])
+
+let destruct_arrow = function
+  | TApp (k, [ity; oty]) when k = arrow_symbol -> Some (ity, oty)
+  | _ -> None
+
+let rec equal_type (TApp (k1, ts1)) (TApp (k2, ts2)) =
+  List.(length ts1 = length ts2 && k1 = k2 && for_all2 equal_type ts1 ts2)
+
+let elaborate p =
 
   let rec t ds = list_foldmap declaration TypeEnv.initial ds
 
-  and declaration = function
+  and declaration env = function
     | ValueDecl (l, a, t) ->
-      let ty = may_check env t a in
-      (TypeEnv.bind l ty env, ValueDecl (l, option_ty a, term' t))
+      let (ty, t) = may_check env t a in
+      (TypeEnv.bind env l ty, ValueDecl (l, Some ty, t))
+
+  and may_check env t = function
+    | None -> infer_term' env t
+    | Some ty -> (ty, check_term' env ty t)
 
   and infer_term env cst = function
     | Lit l ->
@@ -33,9 +67,9 @@ let elaborate =
     | Lam (x, a, t) -> begin
       match a with
         | None ->
-          raise (CannotInferTypeArgument cst)
+          raise (CannotInfer cst)
         | Some ity ->
-          let env = TypeEnv.bind x ity env in
+          let env = TypeEnv.bind env x ity in
           let oty, t = infer_term' env t in
           (mk_arrow ity oty, Lam (x, Some ity, t))
     end
@@ -47,32 +81,42 @@ let elaborate =
             let b = check_term' env ity b in
             (oty, App (a, b))
           | None ->
-            raise (CannotInferTypeOfFunction a)
+            raise (CannotInfer (fst a))
       end
 
-  and infer_term' env t = infer_term env (fst t) (snd t)
+  and infer_term' env t =
+    let (ty, t') = infer_term env (fst t) (snd t) in
+    (ty, (fst t, t'))
 
-  and infer_literal = function
-    | C.LUnit -> TUnit
-    | C.LInt x -> TInt
-    | C.LFloat f -> TFloat
-    | C.LString s -> TString
+  and infer_literal env = function
+    | LUnit -> unit_ty
+    | LInt x -> int_ty
+    | LFloat f -> float_ty
+    | LString s -> string_ty
 
   and check_term env cst ty = function
     | Lam (x, a, t) -> begin
       match destruct_arrow ty with
         | Some (ity, oty) ->
-          check_annotation a ity;
-          let env = TypeEnv.bind x ity env in
+          check_annotation cst ity a;
+          let env = TypeEnv.bind env x ity in
           let t = check_term' env oty t in
           Lam (x, Some ity, t)
         | None ->
-          raise (InvalidType (cst, ty, None))
+          raise (IllTyped (cst, ty))
     end
 
     | t ->
-      let ity = infer_term env cst t in
-      if not (equal_type ty ity) then raise (TypeClash (cst, ty, Some ity))
+      let ity, t = infer_term env cst t in
+      if not (equal_type ty ity) then raise (TypeClash (cst, ty, ity));
+      t
 
+  and check_term' env ty t =
+    let t' = check_term env (fst t) ty (snd t) in
+    (fst t, t')
+
+  and check_annotation cst ity = function
+    | Some a when not (equal_type a ity) -> raise (TypeClash (cst, a, ity))
+    | _ -> ()
   in
-  t
+  t p

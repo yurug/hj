@@ -20,7 +20,7 @@ let exercise_identifier name =
   Identifier.(identifier_of_path (concat path (path_of_string name)))
 
 type code_state =
-  | Valid of Timestamp.t * AkaCST.t
+  | Valid of Timestamp.t * Aka.t
   | NoCode
   | Error of Timestamp.t * string
 deriving (Json)

@@ -82,7 +82,7 @@ let from_cst =
 
   and name = function
     | C.Long  i -> failwith "TODO"
-    | C.Short i -> Short i
+    | C.Short i -> i
 
   and term' t = (t, term (value t))
 
