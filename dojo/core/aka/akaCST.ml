@@ -8,15 +8,15 @@ open Identifier
 type t = declaration list
 
 and declaration =
-  | ValueDecl of label * ty option * term located
+  | ValueDecl of label * ty option * term'
 
 and term =
   | Lit of literal
   | Template of template
 
   | Variable of name
-  | Lam of variable * ty option * term located
-  | App of term located * term located
+  | Lam of variable * ty option * term'
+  | App of term' * term'
 
 and name =
   | Long  of identifier
@@ -26,8 +26,11 @@ and template = template_atom list
 
 and template_atom =
   | Raw  of string located
-  | Code of term located
-  | RawCode of string (** Should not occur in final AST. *)
+  | Code of term'
+
+  (** Should not occur in final CST. This constructor is used during
+      intermediate trees in multi-level parsing. *)
+  | RawCode of string
 
 and term' = term located
 
@@ -44,7 +47,7 @@ and variable = Identifier.label
 
 and type_variable = TVariable of string
 
-deriving (Json)
+    deriving (Json)
 
 type 'a with_raw = string * 'a
 

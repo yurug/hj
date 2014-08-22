@@ -22,6 +22,7 @@ aka/akaError
 aka/akaCST
 aka/akaParser
 aka/akaLexer
+aka/akaAST
 aka/aka
 
 dojo/user
