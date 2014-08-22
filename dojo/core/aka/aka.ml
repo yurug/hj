@@ -1,5 +1,5 @@
 type t =
-    AkaTypeChecker.TypeEnv.t * AkaAST.t
+    unit
 deriving (Json)
 
 let compile source_code =
@@ -10,10 +10,6 @@ let compile source_code =
       ~parser_fun:AkaParser.program
       ~input:source_code
   in
-  let ast =
-    AkaAST.from_cst cst
-  in
-  let typed_ast =
-    AkaTypeChecker.elaborate ast
-  in
-  typed_ast
+  let ast = AkaCST.to_ast cst in
+  let _typed_ast = InferTypes.program ast in
+  ()
