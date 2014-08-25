@@ -30,7 +30,8 @@ type internal_state = {
   code         : code_state
 } deriving (Json)
 
-type public_change = UpdateCode
+type public_change =
+  | UpdateCode
 
 include Entity.Make (struct
 

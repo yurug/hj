@@ -88,10 +88,12 @@ rule main = parse
 | "unit"                                { TUNIT }
 | "as"                                  { AS }
 | "import"                              { IMPORT }
+| "do"                                  { DO }
 
 (** Punctuations. *)
 | "?"                                   { QMARK }
 | "."                                   { DOT }
+| "#"                                   { SHARP }
 | "_"                                   { UNDERSCORE }
 | "="                                   { EQUAL }
 | ","                                   { COMMA }
@@ -100,6 +102,8 @@ rule main = parse
 | "|"                                   { PIPE }
 | "->"                                  { RARROW }
 | "=>"                                  { DRARROW }
+| ">>"                                  { RRPAREN }
+| "<<"                                  { LLPAREN }
 | "{"                                   { LBRACE }
 | "}"                                   { RBRACE }
 | "("                                   { LPAREN }

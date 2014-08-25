@@ -49,12 +49,13 @@
 
 (** Punctation. *)
 %token EOF EQUAL LBRACE RBRACE LPAREN RPAREN COMMA COLON SEMICOLON PIPE DOT
+%token LLPAREN RRPAREN SHARP
 
 (** Symbols. *)
 %token RARROW DRARROW UNDERSCORE QMARK
 
 (** Keywords. *)
-%token DEF DATATYPE AND TINT TUNIT TCHAR AS IMPORT
+%token DEF DATATYPE AND TINT TUNIT TCHAR AS IMPORT DO
 
 (** Priorities *)
 
@@ -77,8 +78,10 @@ top_term: t=located(term) EOF {
   error $startpos $endpos
 }
 
+%inline define : DEF { () } | EQUAL { () }
+
 declaration:
-DEF
+define
 ts=type_parameters
 x=name ty=ty_ascription EQUAL t=located(term) {
   let pos = Position.lex_join $startpos $endpos in
@@ -88,7 +91,7 @@ x=name ty=ty_ascription EQUAL t=located(term) {
   in
   ValueDecl ((pos, x, s, t))
 }
-| DEF fs=separated_nonempty_list(AND, fundef) {
+| define fs=separated_nonempty_list(AND, fundef) {
   RecFunDecl fs
 }
 | DATATYPE ts=separated_list(AND, type_definition) {
@@ -177,6 +180,10 @@ term0:
   let pos = Position.lex_join $startpos $endpos in
   Position.value (lambda pos xs t)
 }
+| DO LBRACE t=term RBRACE {
+  let pos = Position.lex_join $startpos $endpos in
+  Position.value (lambda pos [] t)
+}
 | x=INT {
   Lit  (LInt x)
 }
@@ -192,7 +199,7 @@ term0:
 | LPAREN t=term RPAREN {
   t
 }
-| t=located(term0) DOT f=lname {
+| t=located(term0) SHARP f=lname {
   Field (t, f)
 }
 | LBRACE rs=separated_nonempty_list(SEMICOLON, record_binding) RBRACE {
@@ -200,6 +207,10 @@ term0:
 }
 | t=TEMPLATE {
   Template t
+}
+| LLPAREN ts=list(terminated(located(term), DOT)) RRPAREN
+{
+  Template (List.map (fun t -> Code t) ts)
 }
 
 record_binding: f=lname EQUAL t=located(term) {
