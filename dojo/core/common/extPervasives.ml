@@ -407,3 +407,9 @@ let oref (type a) failure : (a -> unit) * (unit -> a) =
     | Some x -> x
   in
   set, get
+
+let how_long msg f =
+  let t = Unix.gettimeofday () in
+  let y = f () in
+  Printf.eprintf "%s took %f ms.\n%!" msg (Unix.gettimeofday () -. t);
+  y

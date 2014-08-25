@@ -234,3 +234,5 @@ type 'a oref
     [set x; get () = x] but at least one [set] must have be performed
     before any [get]. Otherwise, [failure ()] is evaluated. *)
 val oref : (unit -> 'a) -> (('a -> unit) * (unit -> 'a))
+
+val how_long : string -> (unit -> 'a) -> 'a
