@@ -23,7 +23,7 @@
 (** This module provides a constraint solver based on unification
     under a mixed prefix. *)
 
-open Positions
+open Position
 open Name
 open MultiEquation
 open InferenceTypes

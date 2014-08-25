@@ -27,7 +27,7 @@
     (non-quantified) type variables are considered part of a global namespace.
 *)
 
-open Positions
+open Position
 open Misc
 open Name
 open Types
@@ -174,9 +174,9 @@ let export is_type_scheme =
           TName (var_name v)
     in
     if s.[0] = '\'' then
-      TyVar (undefined_position, name)
+      TyVar (dummy, name)
     else
-      TyApp (undefined_position, name, [])
+      TyApp (dummy, name, [])
   in
 
   let rec export_variable visited v =
@@ -249,7 +249,7 @@ let export is_type_scheme =
     let t = export_variable visited v in
     (prefix visited tvs (), t)
 
-exception RecursiveType of Positions.position
+exception RecursiveType of Position.position
 
 let type_of_variable pos v =
   try

@@ -1,0 +1,48 @@
+### Starting build.
+# Target: PPrint.ml.depends, tags: { extension:ml, file:PPrint.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrint.ml > PPrint.ml.depends # cached
+# Target: PPrintCombinators.mli.depends, tags: { extension:mli, file:PPrintCombinators.mli, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrintCombinators.mli > PPrintCombinators.mli.depends # cached
+# Target: PPrintEngine.mli.depends, tags: { extension:mli, file:PPrintEngine.mli, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrintEngine.mli > PPrintEngine.mli.depends # cached
+# Target: PPrintRenderer.ml.depends, tags: { extension:ml, file:PPrintRenderer.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrintRenderer.ml > PPrintRenderer.ml.depends # cached
+# Target: PPrintRenderer.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:PPrintRenderer.cmo, file:PPrintRenderer.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrintRenderer.cmo PPrintRenderer.ml # cached
+# Target: PPrintEngine.cmi, tags: { byte, compile, extension:mli, file:PPrintEngine.mli, interf, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrintEngine.cmi PPrintEngine.mli # cached
+# Target: PPrintCombinators.cmi, tags: { byte, compile, extension:mli, file:PPrintCombinators.mli, interf, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrintCombinators.cmi PPrintCombinators.mli # cached
+# Target: PPrintOCaml.mli.depends, tags: { extension:mli, file:PPrintOCaml.mli, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrintOCaml.mli > PPrintOCaml.mli.depends # cached
+# Target: PPrintOCaml.cmi, tags: { byte, compile, extension:mli, file:PPrintOCaml.mli, interf, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrintOCaml.cmi PPrintOCaml.mli # cached
+# Target: PPrint.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:PPrint.cmo, file:PPrint.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrint.cmo PPrint.ml # cached
+# Target: PPrintCombinators.ml.depends, tags: { extension:ml, file:PPrintCombinators.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrintCombinators.ml > PPrintCombinators.ml.depends # cached
+# Target: PPrintCombinators.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:PPrintCombinators.cmo, file:PPrintCombinators.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrintCombinators.cmo PPrintCombinators.ml # cached
+# Target: PPrintEngine.ml.depends, tags: { extension:ml, file:PPrintEngine.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrintEngine.ml > PPrintEngine.ml.depends # cached
+# Target: PPrintEngine.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:PPrintEngine.cmo, file:PPrintEngine.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrintEngine.cmo PPrintEngine.ml # cached
+# Target: PPrintOCaml.ml.depends, tags: { extension:ml, file:PPrintOCaml.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules PPrintOCaml.ml > PPrintOCaml.ml.depends # cached
+# Target: PPrintOCaml.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:PPrintOCaml.cmo, file:PPrintOCaml.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -g -o PPrintOCaml.cmo PPrintOCaml.ml # cached
+# Target: PPrintLib.cma, tags: { byte, extension:cma, file:PPrintLib.cma, library, link, ocaml, quiet }
+ocamlfind ocamlc -a -g PPrintRenderer.cmo PPrintEngine.cmo PPrintCombinators.cmo PPrintOCaml.cmo PPrint.cmo -o PPrintLib.cma # cached
+# Target: PPrintRenderer.cmx, tags: { compile, extension:cmx, extension:ml, file:PPrintRenderer.cmx, file:PPrintRenderer.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -g -o PPrintRenderer.cmx PPrintRenderer.ml # cached
+# Target: PPrintEngine.cmx, tags: { compile, extension:cmx, extension:ml, file:PPrintEngine.cmx, file:PPrintEngine.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -g -o PPrintEngine.cmx PPrintEngine.ml # cached
+# Target: PPrintCombinators.cmx, tags: { compile, extension:cmx, extension:ml, file:PPrintCombinators.cmx, file:PPrintCombinators.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -g -o PPrintCombinators.cmx PPrintCombinators.ml # cached
+# Target: PPrintOCaml.cmx, tags: { compile, extension:cmx, extension:ml, file:PPrintOCaml.cmx, file:PPrintOCaml.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -g -o PPrintOCaml.cmx PPrintOCaml.ml # cached
+# Target: PPrint.cmx, tags: { compile, extension:cmx, extension:ml, file:PPrint.cmx, file:PPrint.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -g -o PPrint.cmx PPrint.ml # cached
+# Target: PPrintLib.cmxa, tags: { extension:cmxa, file:PPrintLib.cmxa, library, link, native, ocaml, quiet }
+ocamlfind ocamlopt -a -g PPrintRenderer.cmx PPrintEngine.cmx PPrintCombinators.cmx PPrintOCaml.cmx PPrint.cmx -o PPrintLib.cmxa # cached
+# Compilation successful.

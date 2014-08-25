@@ -33,7 +33,7 @@
     occur check is performed here. *)
 
 open Misc
-open Positions
+open Position
 open InferenceTypes
 open MultiEquation
 

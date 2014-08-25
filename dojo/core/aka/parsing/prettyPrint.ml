@@ -2,7 +2,7 @@
 
 module Make (GAST : AST.GenericS) = struct
 
-  open Positions
+  open Position
   open Name
   open GAST
   open PPrint
@@ -188,6 +188,9 @@ module Make (GAST : AST.GenericS) = struct
 
     | PUnit ->
       !^ "()"
+
+    | PStringConstant s ->
+      !^ (Printf.sprintf "\"%s\"" s)
 
   and record_bindings rbs =
     separate_map (!^ ";" ^^ break 1) record_binding rbs
@@ -409,9 +412,9 @@ module Make (GAST : AST.GenericS) = struct
   and instance_definition id =
     does_not_exist_in_ocaml (fun () ->
       let instance_index =
-        TyApp (undefined_position, id.instance_index,
+        TyApp (dummy, id.instance_index,
                List.map
-                 (fun t -> TyApp (undefined_position, t, []))
+                 (fun t -> TyApp (dummy, t, []))
                  id.instance_parameters
         )
       in

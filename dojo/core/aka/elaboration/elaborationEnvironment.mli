@@ -1,7 +1,7 @@
 (** Typing environment for {!XAST}. *)
 
 open XAST
-open Positions
+open Position
 open Name
 
 (** The type of environments. *)

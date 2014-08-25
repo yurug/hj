@@ -29,7 +29,7 @@
     - The second one records the scheme of the data constructors. *)
 
 open MultiEquation
-open Positions
+open Position
 open Name
 
 (** A type constructor is characterized by an arity, a variable and an
@@ -74,11 +74,11 @@ val is_regular_datacon_scheme: environment -> variable list -> crterm -> bool
 (** [lookup_datacon env k] gives access to the typing information
     related to the data constructor [k] in [env]. *)
 val lookup_datacon
-  : ?pos:Positions.position -> environment -> dname -> data_constructor
+  : ?pos:Position.position -> environment -> dname -> data_constructor
 
 (** Looks for a type constructor given its name. *)
 val lookup_type_variable :
-  ?pos:Positions.position -> environment -> tname
+  ?pos:Position.position -> environment -> tname
   -> variable InferenceTypes.arterm
 
 (** Accessor to the arity of a type constructor. *)

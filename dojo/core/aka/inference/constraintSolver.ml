@@ -24,11 +24,11 @@
 
 open Misc
 open Name
-open Positions
+open Position
 open TypeAlgebra
 open InferenceTypes
 open MultiEquation
-open Positions
+open Position
 open Misc
 open Constraint
 open Unifier

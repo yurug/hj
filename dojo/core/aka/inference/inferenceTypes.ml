@@ -21,7 +21,7 @@
 (**************************************************************************)
 
 open Misc
-open Positions
+open Position
 open Name
 
 (** This module implements the internal representation of terms. *)

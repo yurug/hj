@@ -20,7 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Positions
+open Position
 open Name
 open IAST
 open TypingEnvironment

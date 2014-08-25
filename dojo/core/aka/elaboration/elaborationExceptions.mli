@@ -1,5 +1,5 @@
 (** Exceptions for type checking of {!XAST} and its elaboration in ML. *)
-open Positions
+open Position
 open Name
 
 (** [UnboundIdentifier] is raised if an identifier is unbound. *)
@@ -110,4 +110,4 @@ exception InvalidRecordConstruction of position
 
 (** [OverloadedSymbolCannotBeBound] is raised when an overloaded
     symbol is introduced by a let. *)
-exception OverloadedSymbolCannotBeBound of Positions.position * name
+exception OverloadedSymbolCannotBeBound of position * name

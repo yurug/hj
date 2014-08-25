@@ -23,7 +23,7 @@
 (** This module transforms types from the user's syntax to the
     internal representation of the inference engine. *)
 
-open Positions
+open Position
 open Misc
 open KindInferencer
 open Constraint

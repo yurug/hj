@@ -20,7 +20,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Positions
+open Position
 open Misc
 open InferenceTypes
 open Name
@@ -351,5 +351,5 @@ let variable_set kind xs =
     (fun x (vs, xts) ->
        let k, n = kind (TName x) in
        let v = variable k ?name:n () in
-         v :: vs, StringMap.add x ((TVariable v), undefined_position) xts
+         v :: vs, StringMap.add x ((TVariable v), dummy) xts
     ) xs ([], StringMap.empty)

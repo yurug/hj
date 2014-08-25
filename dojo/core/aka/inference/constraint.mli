@@ -23,7 +23,7 @@
 (** Syntax for typing constraints. *)
 
 open Misc
-open Positions
+open Position
 open MultiEquation
 open InferenceTypes
 open Name
@@ -87,7 +87,7 @@ type tscheme = (crterm, variable) scheme
 type tclass_constraint = (crterm, variable) canonical_constraint
 
 (** [cposition c] returns the position related to [c]. *)
-val cposition : ('a, 'b) type_constraint -> Positions.position
+val cposition : ('a, 'b) type_constraint -> Position.position
 
 (** [t1 =?= t2] is an equality constraint *)
 val (=?=): crterm -> crterm -> position -> tconstraint

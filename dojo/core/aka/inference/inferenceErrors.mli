@@ -1,6 +1,6 @@
 (** Turn exceptions into error messages for type elaboration. *)
 
-open Positions
+open Position
 open MultiEquation
 
 (** [handle_error print_variable f] executes [f ()] and exits the

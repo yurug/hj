@@ -21,7 +21,7 @@
 (**************************************************************************)
 
 (** This module provides the type algebra for the ML language. *)
-open Positions
+open Position
 
 (** The type algebra augments the {!CoreAlgebra} to relate it with
     the ML source language. *)

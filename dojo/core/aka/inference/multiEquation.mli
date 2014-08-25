@@ -23,7 +23,7 @@
 (** This module implements a data structure for multi-equations. *)
 
 open Misc
-open Positions
+open Position
 open Name
 
 (** {3 Multi-equation descriptor} *)

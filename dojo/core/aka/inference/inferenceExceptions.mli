@@ -25,14 +25,14 @@
 open Name
 open InferenceTypes
 open MultiEquation
-open Positions
+open Position
 
 (** [IncompatibleTypes] is raised when two types do not unify. *)
 exception IncompatibleTypes of position * variable * variable
 
 (** [TypingError] is raised when an inconsistency is detected during
     constraint solving. *)
-exception TypingError of Positions.position
+exception TypingError of position
 
 (** [UnboundTypeIdentifier] is raised when an unbound type identifier
     is found. *)

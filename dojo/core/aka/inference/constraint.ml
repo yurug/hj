@@ -21,7 +21,7 @@
 (**************************************************************************)
 
 open Name
-open Positions
+open Position
 open Misc
 open MultiEquation
 open InferenceTypes
@@ -107,7 +107,7 @@ let rec cposition = function
       cposition c
 
   | (CConjunction [] | CDisjunction []) ->
-      undefined_position
+      dummy
 
   | (CConjunction l | CDisjunction l) ->
       join (cposition (List.hd l)) (cposition (last l))
@@ -139,7 +139,7 @@ let (^) c1 c2 =
         CConjunction [c1; c2]
 
 let conj cs =
-  List.fold_left ( ^ ) (CTrue undefined_position) cs
+  List.fold_left ( ^ ) (CTrue dummy) cs
 
 (** [ex qs c] returns the constraint [exists qs.c]. We encode existential
    constraints in terms of [let] constraints, since the latter are more

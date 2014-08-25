@@ -1,4 +1,4 @@
-open Positions
+open Position
 open Name
 open XAST
 open Types
@@ -70,7 +70,7 @@ let is_superclass pos k1 k2 env =
   </sujet>*)
 
 let bind_type_variable t env =
-  bind_type t KStar (TypeDef (undefined_position, KStar, t, DAlgebraic [])) env
+  bind_type t KStar (TypeDef (dummy, KStar, t, DAlgebraic [])) env
 
 let labels_of rtcon env =
   let p (_, (_, _, rtcon')) = rtcon = rtcon' in
@@ -90,7 +90,7 @@ let bind_label pos l ts ty rtcon env =
     { env with labels = (l, (ts, ty, rtcon)) :: env.labels }
 
 let initial =
-  let primitive_type t k = TypeDef (undefined_position, k, t, DAlgebraic []) in
+  let primitive_type t k = TypeDef (dummy, k, t, DAlgebraic []) in
   List.fold_left (fun env (t, k) ->
     bind_type t k (primitive_type t k) env
   ) empty [

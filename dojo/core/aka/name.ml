@@ -1,7 +1,7 @@
-type name = Name of string
+type name = Name of string deriving (Json)
 
-type dname = DName of string
+type dname = DName of string deriving (Json)
 
-type lname = LName of string
+type lname = LName of string deriving (Json)
 
-type tname = TName of string
+type tname = TName of string deriving (Json)

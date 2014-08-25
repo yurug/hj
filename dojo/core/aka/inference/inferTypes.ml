@@ -1,7 +1,7 @@
 (** Type elaboration from implicitely typed ML to explicitely typed ML. *)
 
 open Misc
-open Positions
+open Position
 open Name
 open IAST
 open Types
@@ -120,7 +120,7 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
           try
             assoc x subst
           with Not_found ->
-            TyVar (undefined_position, x)
+            TyVar (dummy, x)
         ) ts)
 
       and instantiation_of_identifier p s x =
@@ -218,6 +218,7 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
         | PIntegerConstant x -> XAST.PIntegerConstant x
         | PCharConstant c -> XAST.PCharConstant c
         | PUnit -> XAST.PUnit
+        | PStringConstant s -> XAST.PStringConstant s
 
       and bind_value = function
         | BindValue (p, vs) ->

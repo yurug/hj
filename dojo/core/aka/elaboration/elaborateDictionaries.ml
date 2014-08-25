@@ -2,18 +2,16 @@ open String
 open Name
 open XAST
 open Types
-open Positions
+open Position
 open ElaborationErrors
 open ElaborationExceptions
 open ElaborationEnvironment
 
 let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
 
-(*<corrige>*)
 let fresh_instance_name =
   let r = ref 0 in
   fun () -> incr r; Name ("instance_" ^ string_of_int !r)
-(*</corrige>*)
 
 let rec program p = handle_error List.(fun () ->
   flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p))
@@ -285,6 +283,9 @@ and primitive pos = function
   | PIntegerConstant _ ->
     TyApp (pos, TName "int", [])
 
+  | PStringConstant _ ->
+    TyApp (pos, TName "string", [])
+
   | PUnit ->
     TyApp (pos, TName "unit", [])
 
@@ -507,7 +508,7 @@ and instance_definitions env = function
       | _, _ -> assert false
     in
     let (env, bs) = aux env [] idecs ids in
-    ([BindRecValue (undefined_position, bs) ], env)
+    ([BindRecValue (dummy, bs) ], env)
   )
 
 and instance_definition rec_env env (parameters, binding) i =
@@ -675,7 +676,7 @@ and is_class_predicate env = function
     false
 
 and is_simple env ty =
-  fst (canonical_to_simple_type undefined_position env ty) = []
+  fst (canonical_to_simple_type dummy env ty) = []
 
 and extract_dictionary_context pos env ps e =
   List.fold_left (fun (tyctx, ctx, env) (ClassPredicate (k, t)) ->

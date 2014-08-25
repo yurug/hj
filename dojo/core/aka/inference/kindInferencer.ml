@@ -24,7 +24,7 @@
 
 open InferenceTypes
 open MultiEquation
-open Positions
+open Position
 open Name
 open Types
 open InferenceExceptions

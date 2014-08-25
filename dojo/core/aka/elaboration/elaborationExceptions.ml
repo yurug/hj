@@ -1,4 +1,4 @@
-open Positions
+open Position
 open Name
 
 exception UnboundIdentifier of position * name
@@ -29,5 +29,5 @@ exception SameNameInTypeAbstractionAndScheme of position
 exception LabelAlreadyTaken of position * lname
 exception LabelDoesNotBelong of position * lname * tname * tname
 exception InvalidRecordInstantiation of position
-exception OverloadedSymbolCannotBeBound of Positions.position * name
+exception OverloadedSymbolCannotBeBound of position * name
 exception InvalidRecordConstruction of position

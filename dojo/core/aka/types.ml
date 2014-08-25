@@ -1,19 +1,23 @@
-open Positions
+open Position
 open Name
 
 type kind =
   | KStar
   | KArrow of kind * kind
+deriving (Json)
 
 type t =
   | TyVar   of position * tname
   | TyApp   of position * tname * t list
+deriving (Json)
 
 type scheme = TyScheme of tname list * class_predicates * t
 
 and class_predicate = ClassPredicate of tname * tname
 
 and class_predicates = class_predicate list
+
+deriving (Json)
 
 let tyarrow pos ity oty =
   TyApp (pos, TName "->", [ity; oty])
@@ -58,13 +62,13 @@ end
 
 module ImplicitTyping =
 struct
-  type binding = Name.name * t option
+  type binding = Name.name * t option deriving (Json)
 
   let binding _ x ty : binding = (x, ty)
 
   let destruct_binding b = b
 
-  type instantiation = t option
+  type instantiation = t option deriving (Json)
 
   let instantiation pos = function
     | TypeApplication _ ->
@@ -80,7 +84,7 @@ end
 
 module ExplicitTyping =
 struct
-  type binding = Name.name * t
+  type binding = Name.name * t deriving (Json)
 
   let binding pos x = function
     | None -> Errors.fatal [pos] "An explicit type annotation is required."
@@ -88,7 +92,7 @@ struct
 
   let destruct_binding (x, ty) = (x, Some ty)
 
-  type instantiation = t list
+  type instantiation = t list deriving (Json)
 
   let instantiation pos = function
     | LeftImplicit ->

@@ -32,7 +32,7 @@
     It is understood that finite and infinite terms are legal -- no
     occur check is performed here. *)
 
-open Positions
+open Position
 open MultiEquation
 open InferenceTypes
 

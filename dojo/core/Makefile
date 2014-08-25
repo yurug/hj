@@ -1,6 +1,6 @@
 .PHONY: all clean install uninstall reinstall quietbuild
 
-OCAMLBUILD=ocamlbuild -use-menhir -use-ocamlfind
+OCAMLBUILD=ocamlbuild -use-menhir -use-ocamlfind -yaccflag --explain
 OCAMLFIND=ocamlfind
 
 MLIS := $(wildcard common/*.mli reactive/*.mli machine/*.mli dojo/*.mli)

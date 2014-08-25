@@ -3,8 +3,8 @@
 (** {2 Extended lexing positions} *)
 
 (** Abstract type for pairs of positions in the lexing stream. *)
-type t
-type position = t
+type t deriving (Json)
+type position = t deriving (Json)
 
 (** Decoration of a value with a position. *)
 type 'a located =

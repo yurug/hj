@@ -22,7 +22,7 @@
 
 (** This module implements typing constraint generation. *)
 
-open Positions
+open Position
 open Misc
 open KindInferencer
 open Constraint
@@ -65,7 +65,7 @@ let empty_fragment =
   {
     gamma       = StringMap.empty;
     vars        = [];
-    tconstraint = CTrue undefined_position;
+    tconstraint = CTrue dummy;
   }
 
 (** Joining two fragments is straightforward except that the environments
@@ -671,7 +671,7 @@ let bind env b =
 
 let rec infer_program env p =
   let (env, ctx) = fold env block p in
-  ctx (CDump undefined_position)
+  ctx (CDump dummy)
 
 and block env = function
   | BClassDefinition ct -> infer_class env ct
@@ -689,8 +689,8 @@ let init_env () =
     let (env, acu, lrqs, let_env) as r =
       List.fold_left
         (fun acu (d, rqs, ty) ->
-          intern_data_constructor undefined_position adt_name acu
-            (undefined_position, d, rqs, ty)
+          intern_data_constructor dummy adt_name acu
+            (dummy, d, rqs, ty)
         ) acu ds
     in
     (acu, r)
@@ -719,13 +719,13 @@ let init_env () =
   in
   (* The initial environment is implemented as a constraint context. *)
   ((fun c ->
-       CLet ([ Scheme (undefined_position, vs, [], [],
-                       CLet ([ Scheme (undefined_position, lrqs, [], [],
-                                       CTrue undefined_position,
+       CLet ([ Scheme (dummy, vs, [], [],
+                       CLet ([ Scheme (dummy, lrqs, [], [],
+                                       CTrue dummy,
                                        let_env) ],
                              c),
                        StringMap.empty) ],
-             CTrue undefined_position)),
+             CTrue dummy)),
   vs, init_env)
 
 let generate_constraint b =

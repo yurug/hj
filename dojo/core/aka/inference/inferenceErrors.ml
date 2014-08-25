@@ -2,7 +2,7 @@ open Name
 
 let handle_error print_variable p =
   let fatal pos msg =
-    let pos = Positions.([start_of_position pos; end_of_position pos]) in
+    let pos = Position.([start_of_position pos; end_of_position pos]) in
     Errors.fatal pos msg
   in
   try

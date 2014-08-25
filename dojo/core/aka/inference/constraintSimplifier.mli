@@ -8,7 +8,7 @@
     - forall b, k b => k_1 b /\ ... k_N b                (E')
 *)
 
-open Positions
+open Position
 open Name
 open MultiEquation
 

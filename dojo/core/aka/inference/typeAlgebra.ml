@@ -22,7 +22,7 @@
 
 open MultiEquation
 open InferenceTypes
-open Positions
+open Position
 open Name
 open Types
 open IAST
@@ -44,10 +44,11 @@ let builtin_env =
                   []);
 
     TName "int" , (false, NonAssoc, 2, KStar, []);
+    TName "string" , (false, NonAssoc, 2, KStar, []);
     TName "char", (false, NonAssoc, 2, KStar, []);
     TName "unit", (false, NonAssoc, 3, KStar,
              [ (DName "_Unit", [],
-                TyApp (undefined_position, TName "unit", []))])
+                TyApp (dummy, TName "unit", []))])
   |]
 
 let get_infix (i, _, _,_,_) =
@@ -97,6 +98,7 @@ let symbol tenv (i : tname) =
 
 let type_of_primitive tenv = function
   | PIntegerConstant _ -> symbol tenv (TName "int")
+  | PStringConstant _ -> symbol tenv (TName "string")
   | PUnit -> symbol tenv (TName "unit")
   | PCharConstant _ -> symbol tenv (TName "char")
 

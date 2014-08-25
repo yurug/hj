@@ -22,7 +22,7 @@
 
 open Name
 open MultiEquation
-open Positions
+open Position
 
 exception UnboundTypeIdentifier of position * tname
 
@@ -62,9 +62,9 @@ exception MultipleClassDefinitions of position * tname
 
 exception UnboundClass of position * tname
 
-exception IncompatibleTypes of Positions.position * variable * variable
+exception IncompatibleTypes of position * variable * variable
 
-exception TypingError of Positions.position
+exception TypingError of position
 
 exception UnboundIdentifier of position * name
 

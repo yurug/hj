@@ -22,7 +22,7 @@
 
 (** This module provides a simple inference engine for the kinds. *)
 
-open Positions
+open Position
 open Types
 open Name
 

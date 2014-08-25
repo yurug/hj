@@ -1,19 +1,24 @@
 (** The syntax for types and type annotations. *)
 
-open Positions
+open Position
 open Name
 
 (** The types are first-order terms. *)
 type t =
   | TyVar        of position * tname
   | TyApp        of position * tname * t list
+deriving (Json)
 
 (** Type schemes. *)
-type scheme = TyScheme of tname list * class_predicates * t
+type scheme =
+  TyScheme of tname list * class_predicates * t
 
-and class_predicate = ClassPredicate of tname * tname
+and class_predicate =
+  ClassPredicate of tname * tname
 
-and class_predicates = class_predicate list
+and class_predicates =
+  class_predicate list
+deriving (Json)
 
 type instantiation_kind =
   | TypeApplication of t list
@@ -73,6 +78,7 @@ val destruct_tyarrow : t -> (t * t) option
 type kind =
   | KStar
   | KArrow of kind * kind
+deriving (Json)
 
 (** [kind_of_arity n] returns the kind for type constructors
     of arity [n]. *)

@@ -20,6 +20,12 @@ reactive/entity
 
 aka/akaError
 aka/akaCST
+aka/Name
+aka/pprint/src/PPrint
+aka/pprint/src/PPrintCombinators
+aka/pprint/src/PPrintEngine
+aka/pprint/src/PPrintOCaml
+aka/pprint/src/PPrintRenderer
 aka/parsing/akaParser
 aka/parsing/akaLexer
 aka/parsing/ASTio
@@ -46,7 +52,6 @@ aka/inference/MultiEquation
 aka/inference/Env
 aka/inference/ConstraintGeneration
 aka/common/Errors
-aka/common/Positions
 aka/common/BasicSetEquations
 aka/common/Misc
 aka/common/UnionFind
@@ -58,7 +63,9 @@ aka/elaboration/ElaborateDictionaries
 aka/elaboration/ElaborationEnvironment
 aka/AkaError
 aka/XAST
+aka/akaInterpreter
 aka/Aka
+
 
 dojo/user
 dojo/admin

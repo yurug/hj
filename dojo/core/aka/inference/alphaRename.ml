@@ -3,8 +3,8 @@
 open Name
 open IAST
 
-exception UnboundVariable of Positions.position * name
-exception OverloadedSymbolCannotBeBound of Positions.position * name
+exception UnboundVariable of Position.position * name
+exception OverloadedSymbolCannotBeBound of Position.position * name
 
 let program p =
   let exclusive_name = -1 in

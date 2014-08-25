@@ -23,7 +23,7 @@
 (** This module implements a typing environment useful for type
     inference. *)
 
-open Positions
+open Position
 open Misc
 
 open Name
@@ -132,7 +132,7 @@ let as_kind_env env =
       match Env.lookup (!env).type_info id with
         | (k, _, _) -> k
     with Not_found ->
-      raise (UnboundTypeConstructor (undefined_position, id))
+      raise (UnboundTypeConstructor (dummy, id))
   in
   let update i k =
     env := add_type_variable (!env) i (k, variable Flexible ())

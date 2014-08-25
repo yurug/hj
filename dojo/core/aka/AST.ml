@@ -1,5 +1,5 @@
 open Name
-open Positions
+open Position
 open Types
 
 module Make (P : Types.TypingSyntax) = struct
@@ -67,6 +67,7 @@ module Make (P : Types.TypingSyntax) = struct
   and primitive =
     | PIntegerConstant of int     (** Integer constant. *)
     | PCharConstant of char       (** Character constant. *)
+    | PStringConstant of string   (** String constant. *)
     | PUnit                       (** Unit constant. *)
 
   (** Pattern matching branch. *)

@@ -1,6 +1,6 @@
 (** Error messages. *)
 
-open Positions
+open Position
 open Lexing
 
 let string_of_positions ps =
@@ -12,10 +12,14 @@ let string_of_positions = function
   | [start; stop] -> string_of_pos (lex_join start stop)
   | ps -> string_of_positions ps
 
+exception AkaError of string
+
 let fatal pos msg =
-  Printf.eprintf "%s:\n%s\n" (string_of_positions pos) msg;
-  exit 1
+  Error.fatal (
+    AkaError (Printf.sprintf "%s:\n%s\n" (string_of_positions pos) msg)
+  )
 
 let fatal' pos msg =
-  Printf.eprintf "%s:\n%s\n" (string_of_pos pos) msg;
-  exit 1
+  Error.fatal (
+    AkaError (Printf.sprintf "%s:\n%s\n" (string_of_pos pos) msg)
+  )

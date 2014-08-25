@@ -24,7 +24,7 @@
     into terms of the external syntax of types and type schemes. *)
 
 open Name
-open Positions
+open Position
 open MultiEquation
 
 exception RecursiveType of position
