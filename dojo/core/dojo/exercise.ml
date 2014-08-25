@@ -49,7 +49,8 @@ include Entity.Make (struct
       OnDisk.load_resource (identifier state) "source.aka" >>= function
         | `OK (source, _) ->
           (try_lwt
-             return_valid (Aka.compile (Resource.content source))
+             lwt cst = Aka.compile (Resource.content source) in
+             return_valid cst
            with AkaError.Parse pos ->
              return_error (Position.string_of_pos pos ^ ": Syntax error."))
         | `KO _ ->
@@ -109,3 +110,14 @@ let update who exo =
           | _ -> Lwt_unix.yield () >> wait ()
     in
     wait ()
+
+let load_module id =
+  make id >>= function
+    | `OK exo -> begin observe exo
+      (fun data -> return (content data).code) >>= function
+        | Valid (_, a) -> return (`OK a)
+        | _ -> return `KO
+    end
+    | `KO _ -> return `KO
+
+let _ = AkaCST.set_loader load_module

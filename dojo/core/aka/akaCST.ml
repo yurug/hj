@@ -1,6 +1,7 @@
 (* -*- tuareg -*- *)
 
 (** Concrete syntax trees. *)
+open Lwt
 open Error
 open Position
 open Identifier
@@ -87,11 +88,12 @@ and mltypekind = Types.kind
 
 deriving (Json)
 
-let loader : (path -> t) ref = ref (fun _ -> assert false)
+let loader : (identifier -> [> `OK of t | `KO ] Lwt.t) ref =
+  ref (fun _ -> assert false)
 
 let set_loader = ( := ) loader
 
-let load p = !loader p
+let load p = !loader (identifier_of_path p)
 
 type 'a with_raw = string * 'a
 
@@ -119,7 +121,7 @@ and equivalent_terms' t1 t2 = Position.(equivalent_terms (value t1) (value t2))
 module I = IAST
 module T = Types.ImplicitTyping
 
-let to_ast : t -> IAST.program =
+let to_ast : t -> IAST.program Lwt.t =
 
   let fresh_record_name =
     let c = ref 0 in
@@ -132,7 +134,7 @@ let to_ast : t -> IAST.program =
     let mark m = loaded_modules := Identifier.Set.add m !loaded_modules in
     let load_module m =
       let path = path_of_identifier m in
-      if loaded m then [] else (
+      if loaded m then return (`OK []) else (
         mark m;
         load path
       )
@@ -140,23 +142,32 @@ let to_ast : t -> IAST.program =
     load_module
   in
   let rec t ds =
-    List.(flatten (map declaration' ds))
+    lwt ds = Lwt_list.map_s declaration' ds in
+    return (List.flatten ds)
 
   and declaration' d =
     declaration (position d) (value d)
 
   and declaration pos = function
     | ValueDecl vdef ->
-      [I.(BDefinition (BindValue (pos, [value_definition vdef])))]
+      return [
+        I.(BDefinition (BindValue (pos, [value_definition vdef])))
+      ]
 
     | RecFunDecl (vdefs) ->
-      [I.(BDefinition (BindRecValue (pos, List.map value_definition vdefs)))]
+      return [
+        I.(BDefinition (BindRecValue (pos, List.map value_definition vdefs)))
+      ]
 
     | TypeDecl (pos, tdefs) ->
-      [I.BTypeDefinitions (I.TypeDefs (pos, List.map type_definition tdefs))]
+      return [
+        I.BTypeDefinitions (I.TypeDefs (pos, List.map type_definition tdefs))
+      ]
 
     | Import m ->
-      t (load_module m)
+      load_module m >>= function
+        | `OK cst -> t cst
+        | `KO -> raise_lwt (AkaError.LoadModule m)
 
   and value_definition (pos, l, a, t) =
       let ts, ty = destruct_tyscheme_option a in

@@ -1,5 +1,7 @@
+open Lwt
+
 type t =
-    unit
+    AkaCST.t
 deriving (Json)
 
 let parse source_code = AkaCST.(
@@ -33,9 +35,9 @@ let parse source_code = AkaCST.(
 let compile source_code =
   ExtPervasives.how_long "compile" (fun () ->
     let cst = parse source_code in
-    let ast = AkaCST.to_ast cst in
+    lwt ast = AkaCST.to_ast cst in
     Printf.printf "Implicit:\n %s\n%!" (ASTio.(to_string IAST.pprint_program ast));
     let _typed_ast = InferTypes.program ast in
     Printf.printf "Explicit:\n %s\n%!" (ASTio.(to_string XAST.pprint_program _typed_ast));
-    ()
+    return cst
   )
