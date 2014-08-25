@@ -220,11 +220,27 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
     in
     (ids_def, add_type_constructor tenv name (ikind, ivar, ids_def), c)
   in
+  let tds, (tenv, c) = list_foldmap
+    (fun (tenv, c) td ->
+      match td with
+      | TypeDef (pos', kind, name, _) ->
+        let ids_def, tenv, c' = bind_new_tycon pos' name tenv kind in
+        ((Some ids_def, td), (tenv, fun x -> c (c' x)))
 
+      | ExternalType (pos, ts, name, _) ->
+        let kind = kind_of_arity (List.length ts) in
+        let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind in
+        let ivar = variable ~name Constant () in
+        let tenv = add_type_constructor tenv name (ikind, ivar, ref Abstract) in
+        ((None, td), (tenv,
+         fun c ->
+           CLet ([Scheme (pos, [ivar], [], [], c, StringMap.empty)], CTrue pos)
+        ))
+    ) (tenv, fun c -> c) tds
+  in
   List.fold_left
     (fun (tenv, c) -> function
-      | TypeDef (pos', kind, name, DRecordType (ts, rts)) ->
-        let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
+      | (Some ids_def, TypeDef (pos', kind, name, DRecordType (ts, rts))) ->
         let rqs, rtenv = fresh_unnamed_rigid_vars pos tenv ts in
         let tenv' = add_type_variables rtenv tenv in
         let tyvs = List.map (fun v -> TyVar (pos', v)) ts in
@@ -237,8 +253,7 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
         ids_def := Product (rqs, rty, List.map intern_label_type rts);
         (tenv, c)
 
-      | TypeDef (pos', kind, name, DAlgebraic ds) ->
-        let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
+      | (Some ids_def, TypeDef (pos', kind, name, DAlgebraic ds)) ->
         let (tenv, ids, rqs, let_env) =
           List.fold_left
             (intern_data_constructor pos name)
@@ -254,18 +269,12 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
         in
         (tenv, c)
 
-      | ExternalType (pos, ts, name, _) ->
-        let kind = kind_of_arity (List.length ts) in
-        let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind in
-        let ivar = variable ~name Constant () in
-        let tenv = add_type_constructor tenv name (ikind, ivar, ref Abstract) in
-        (tenv,
-         fun c ->
-           CLet ([Scheme (pos, [ivar], [], [], c, StringMap.empty)], CTrue pos)
-        )
-
+      | None, ExternalType (pos, ts, name, _) ->
+        (tenv, c)
+      | _, _ ->
+        assert false
     )
-    (tenv, fun c -> c)
+    (tenv, c)
     tds
 
 (** [infer_vdef pos tenv (pos, qs, p, e)] returns the constraint
