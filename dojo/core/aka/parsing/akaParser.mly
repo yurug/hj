@@ -202,7 +202,9 @@ term0:
 | t=located(term0) SHARP f=lname {
   Field (t, f)
 }
-| LBRACE rs=separated_nonempty_list(SEMICOLON, record_binding) RBRACE {
+| LBRACE
+  rs=record_bindings
+  RBRACE {
   Record rs
 }
 | t=TEMPLATE {
@@ -211,6 +213,14 @@ term0:
 | LLPAREN ts=list(terminated(located(term), DOT)) RRPAREN
 {
   Template (List.map (fun t -> Code t) ts)
+}
+
+record_bindings:
+r=record_binding SEMICOLON? {
+  [r]
+}
+| r=record_binding SEMICOLON rs=record_bindings {
+  r :: rs
 }
 
 record_binding: f=lname EQUAL t=located(term) {

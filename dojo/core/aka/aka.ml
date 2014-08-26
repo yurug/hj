@@ -32,12 +32,20 @@ let parse source_code = AkaCST.(
   substitute_template aux_term (toplevel source_code)
 )
 
+let typecheck cst =
+  lwt ast = AkaCST.to_ast cst in
+  Printf.printf "Implicit:\n %s\n%!" (ASTio.(to_string IAST.pprint_program ast));
+  let typed_ast = InferTypes.program ast in
+  Printf.printf "Explicit:\n %s\n%!" (ASTio.(to_string XAST.pprint_program typed_ast));
+  return typed_ast
+
 let compile source_code =
   ExtPervasives.how_long "compile" (fun () ->
     let cst = parse source_code in
-    lwt ast = AkaCST.to_ast cst in
-    Printf.printf "Implicit:\n %s\n%!" (ASTio.(to_string IAST.pprint_program ast));
-    let _typed_ast = InferTypes.program ast in
-    Printf.printf "Explicit:\n %s\n%!" (ASTio.(to_string XAST.pprint_program _typed_ast));
-    return cst
+    lwt typed_ast = typecheck cst in
+    return (cst, typed_ast)
   )
+
+let execute cst =
+  lwt typed_ast = typecheck cst in
+  AkaInterpreter.program typed_ast

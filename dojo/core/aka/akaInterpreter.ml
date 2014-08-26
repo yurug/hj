@@ -24,7 +24,6 @@ and block env = function
   | BDefinition vb -> value_binding env vb
   | _ -> env
 
-
 and value_binding env = function
   | BindValue (_, vdefs) ->
     let env, _ = list_foldmap value_definition env vdefs in
@@ -130,4 +129,4 @@ and first_match env sv = function
       | Some env -> Some env
     end
 
-let program t = program empty t
+let program t = Lwt.return (program empty t)

@@ -50,7 +50,7 @@ include Entity.Make (struct
       OnDisk.load_resource (identifier state) "source.aka" >>= function
         | `OK (source, _) ->
           (try_lwt
-             lwt cst = Aka.compile (Resource.content source) in
+             lwt (cst, _) = Aka.compile (Resource.content source) in
              return_valid cst
            with AkaError.Parse pos ->
              return_error (Position.string_of_pos pos ^ ": Syntax error."))
@@ -121,4 +121,14 @@ let load_module id =
     end
     | `KO _ -> return `KO
 
-let _ = AkaCST.set_loader load_module
+let questions id uid =
+  load_module id >>= function
+    | `OK cst ->
+      let final_env = Aka.execute cst in
+      assert false
+
+    | `KO ->
+      return `KO
+
+let initialization =
+  AkaCST.set_loader load_module
