@@ -74,6 +74,9 @@ let init_api_service name mname ity oty doc register =
 
 exception APIError of string
 
+let return_json ty r =
+  Lwt.return (to_string (ty_to_json ty r) ^ "\n", "application/json")
+
 let api_service name mname ity oty doc code =
   init_api_service name mname ity oty doc (fun post_params fallback ->
     Eliom_registration.String.register_post_service
@@ -83,9 +86,10 @@ let api_service name mname ity oty doc code =
       (fun () p ->
         try_lwt
           lwt r = code p in
-          Lwt.return (to_string (ty_to_json oty r) ^ "\n", "application/json")
+          return_json oty r
         with (APIError msg) ->
-          Lwt.return (msg ^ "\n", "content/txt"))
+          return_json (TString "status") (msg ^ "\n")
+      )
   )
 
 let api_download_service name mname ity doc code =

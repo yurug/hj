@@ -88,7 +88,7 @@ and mltypekind = Types.kind
 
 deriving (Json)
 
-let loader : (identifier -> [> `OK of t | `KO ] Lwt.t) ref =
+let loader : (identifier -> [> `OK of t | `KO of identifier ] Lwt.t) ref =
   ref (fun _ -> assert false)
 
 let set_loader = ( := ) loader
@@ -121,7 +121,7 @@ and equivalent_terms' t1 t2 = Position.(equivalent_terms (value t1) (value t2))
 module I = IAST
 module T = Types.ImplicitTyping
 
-let to_ast : t -> IAST.program Lwt.t =
+let to_ast : identifier -> t -> IAST.program Lwt.t = fun module_name program ->
 
   let fresh_record_name =
     let c = ref 0 in
@@ -167,7 +167,13 @@ let to_ast : t -> IAST.program Lwt.t =
     | Import m ->
       load_module m >>= function
         | `OK cst -> t cst
-        | `KO -> raise_lwt (AkaError.LoadModule m)
+        | `KO id ->
+          (* Self inclusion is ignored.
+             This is convenient for std.aka compilation. *)
+          if Identifier.compare id module_name = 0 then
+            return []
+          else
+            raise_lwt (AkaError.LoadModule m)
 
   and value_definition (pos, l, a, t) =
       let ts, ty = destruct_tyscheme_option a in
@@ -273,13 +279,14 @@ let to_ast : t -> IAST.program Lwt.t =
 
   and type_variable v = v
   in
-  t
+  t (Position.(with_pos dummy (Import (identifier_of_string "std")))
+     :: program)
 
-let rec substitute_term f =
-  let rec term' t = Position.map term t
+let rec substitute_term_in_term f =
+  let rec term' t = f (Position.map term t)
 
   and term = function
-    | Template t -> Template (List.map f t)
+    | Template t -> Template t
     | Lam (x, a, t) -> Lam (x, a, term' t)
     | App (a, b) -> App (term' a, term' b)
     | KApp (k, ts) -> KApp (k, List.map term' ts)
@@ -298,7 +305,7 @@ let rec substitute_term f =
   in
   term'
 
-let substitute_template f =
+let substitute_term_in_program f =
   let rec t fs = List.map declaration' fs
 
   and declaration' d = Position.map declaration d
@@ -308,7 +315,19 @@ let substitute_template f =
     | RecFunDecl vdefs -> RecFunDecl (List.map value_definition vdefs)
     | t -> t
 
-  and value_definition (pos, x, s, t) = (pos, x, s, substitute_term f t)
+  and value_definition (pos, x, s, t) =
+    (pos, x, s, substitute_term_in_term f t)
 
   in
   t
+
+let substitute_template f = Position.map (function
+  | Template t -> Template (List.map f t)
+  | u -> u
+)
+
+let substitute_template_in_program f =
+  substitute_term_in_program (substitute_template f)
+
+let substitute_template_in_term f =
+  substitute_term_in_term (substitute_template f)

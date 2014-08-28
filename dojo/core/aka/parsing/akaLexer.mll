@@ -89,6 +89,10 @@ rule main = parse
 | "as"                                  { AS }
 | "import"                              { IMPORT }
 | "do"                                  { DO }
+| "begin"                               { BEGIN }
+| "end"                                 { END }
+| "with"                                { WITH }
+| "aka"                                 { AKA }
 
 (** Punctuations. *)
 | "?"                                   { QMARK }
@@ -124,7 +128,10 @@ rule main = parse
 
 | label as id                           { NAME id }
 
-| (label ("/" label)+) as s             { IDENTIFIER (identifier_of_string s) }
+| (("/" label)+) as s             {
+  let s = String.(sub s 1 (length s - 1)) in
+  IDENTIFIER (identifier_of_string s)
+}
 
 | ("'" label) as id                     { TVNAME id }
 

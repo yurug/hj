@@ -17,7 +17,7 @@ let up () = VFS.(
 )
 
 let exercise_identifier name =
-  Identifier.(identifier_of_path (concat path (path_of_string name)))
+  Identifier.(identifier_of_path (concat path (path_of_identifier name)))
 
 type code_state =
   | Valid of Timestamp.t * Aka.t
@@ -50,10 +50,20 @@ include Entity.Make (struct
       OnDisk.load_resource (identifier state) "source.aka" >>= function
         | `OK (source, _) ->
           (try_lwt
-             lwt (cst, _) = Aka.compile (Resource.content source) in
-             return_valid cst
-           with AkaError.Parse pos ->
-             return_error (Position.string_of_pos pos ^ ": Syntax error."))
+             lwt r = Aka.compile (identifier state) (Resource.content source) in
+             return_valid (fst r)
+           with
+             (* FIXME: The following lacks consistency. *)
+             | AkaError.LoadModule m ->
+               return_error (Printf.sprintf "Failed to load module %s." (
+                 string_of_identifier m)
+               )
+             | AkaError.Parse pos ->
+               return_error (Position.string_of_pos pos ^ ": Syntax error.")
+             | Errors.AkaError (msg) ->
+               return_error (msg)
+          )
+
         | `KO _ ->
           (* FIXME: More informative message. *)
           return_error "internal error while loading source.aka"
@@ -112,23 +122,28 @@ let update who exo =
     in
     wait ()
 
-let load_module id =
+let load_module ?(relative=true) id =
+  let id = if relative then exercise_identifier id else id in
   make id >>= function
     | `OK exo -> begin observe exo
       (fun data -> return (content data).code) >>= function
         | Valid (_, a) -> return (`OK a)
-        | _ -> return `KO
+        | _ -> return (`KO id)
     end
-    | `KO _ -> return `KO
+    | `KO _ -> return (`KO id)
 
 let questions id uid =
-  load_module id >>= function
+  load_module ~relative:false id >>= function
     | `OK cst ->
-      let final_env = Aka.execute cst in
-      assert false
+      (* FIXME: The following environment could be cached since it
+         FIXME: only depends on [cst]. *)
+      lwt final_env = Aka.execute id cst in
+      let questions = Aka.extract_questions final_env uid in
+      let questions = Questions.ReifyFromAka.questions questions in
+      return (`OK (Questions.Txt.questions questions))
 
-    | `KO ->
-      return `KO
+    | `KO _ ->
+      return (`KO (`InvalidModule id))
 
 let initialization =
   AkaCST.set_loader load_module

@@ -113,6 +113,18 @@ let lex_join x1 x2 =
     end_p   = lexing_position_from_std x2
   }
 
+let shift new_start t =
+  let shift_pos p = { p with
+    pos_lnum = new_start.Lexing.pos_lnum + p.pos_lnum - 1;
+    pos_bol  = new_start.Lexing.pos_cnum + p.pos_bol;
+    pos_cnum = new_start.Lexing.pos_cnum + p.pos_cnum;
+  }
+  in
+  {
+    start_p = shift_pos t.start_p;
+    end_p   = shift_pos t.end_p
+  }
+
 let join_located l1 l2 f =
   {
     value    = f l1.value l2.value;
@@ -129,11 +141,11 @@ let string_of_pos p =
   let start_p = lexing_position_to_std p.start_p
   and end_p = lexing_position_to_std p.end_p in
   let l = line start_p in
-  let c1, c2 = characters start_p end_p in
+  let c1, _c2 = characters start_p end_p in
     if filename = "" then
-      Printf.sprintf "Line %d, characters %d-%d" l c1 c2
+      Printf.sprintf "this:%d:%d" l c1
     else
-      Printf.sprintf "File \"%s\", line %d, characters %d-%d" filename l c1 c2
+      Printf.sprintf "%s:%d:%d" filename l c1
 
 let pos_or_undef = function
   | None -> dummy

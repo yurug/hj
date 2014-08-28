@@ -35,6 +35,10 @@
     | _ :: ts -> KArrow (KStar, kind_of_type_parameters ts)
   )
 
+  let rec apply t = function
+    | [] -> t
+    | a :: ts -> apply (with_pos (position t) (App (t, a))) ts
+
 %}
 
 %start<AkaCST.t> program
@@ -55,7 +59,7 @@
 %token RARROW DRARROW UNDERSCORE QMARK
 
 (** Keywords. *)
-%token DEF DATATYPE AND TINT TUNIT TCHAR AS IMPORT DO
+%token DEF DATATYPE AND TINT TUNIT TCHAR AS IMPORT DO BEGIN END WITH AKA
 
 (** Priorities *)
 
@@ -98,8 +102,13 @@ x=name ty=ty_ascription EQUAL t=located(term) {
   let pos = Position.lex_join $startpos $endpos in
   TypeDecl (pos, ts)
 }
-| IMPORT x=IDENTIFIER {
-  Import x
+| IMPORT id=IDENTIFIER {
+  Import id
+}
+| AKA LBRACE t=located(term) RBRACE {
+  let pos = Position.lex_join $startpos $endpos in
+  ValueDecl ((pos, Name "__questions__", None,
+              with_pos pos (Lam (Name "__target__", None, t))))
 }
 
 fundef:
@@ -163,7 +172,11 @@ ty_ascription: /* empty */ {
 
 term:
 a=located(term) b=located(term0) {
-  App (a, b)
+  match value a with
+    | KApp (k, ts) ->
+      KApp (k, ts @ [ b ])
+    | _ ->
+      App (a, b)
 }
 | t=located(term) QMARK LBRACE
   PIPE? bs=separated_list(PIPE, located(branch))
@@ -180,6 +193,12 @@ term0:
   let pos = Position.lex_join $startpos $endpos in
   Position.value (lambda pos xs t)
 }
+| BEGIN LPAREN t0=located(term) RPAREN
+  ts=separated_nonempty_list(WITH, located(term_sequence))
+  END
+{
+  value (apply t0 ts)
+}
 | DO LBRACE t=term RBRACE {
   let pos = Position.lex_join $startpos $endpos in
   Position.value (lambda pos [] t)
@@ -189,9 +208,6 @@ term0:
 }
 | l=name {
   Variable l
-}
-| LBRACE k=dname ts=located(term0)+ RBRACE {
-  KApp (k, ts)
 }
 | k=dname {
   KApp (k, [])
@@ -210,8 +226,12 @@ term0:
 | t=TEMPLATE {
   Template t
 }
-| LLPAREN ts=list(terminated(located(term), DOT)) RRPAREN
+| LLPAREN ts=term_sequence RRPAREN
 {
+  ts
+}
+
+%inline term_sequence: ts=list(terminated(located(term), DOT)) {
   Template (List.map (fun t -> Code t) ts)
 }
 
@@ -240,21 +260,25 @@ branch: p=located(pattern) DRARROW t=located(term)
 }
 
 pattern:
-x=name
-{
-  PVar x
-}
-| UNDERSCORE
-{
-  PWildcard
-}
-| p=located(pattern) AS x=name
+ LPAREN p=located(pattern) RPAREN AS x=name
 {
   PAlias (x, p)
 }
 | LPAREN p=located(pattern) COLON ty=mltype RPAREN
 {
   PTypeConstraint (p, ty)
+}
+| k=UNAME ps=located(pattern0)+
+{
+  PData (DName k, ps)
+}
+| p=pattern0 {
+  p
+}
+
+pattern0:
+LPAREN p=pattern RPAREN {
+  p
 }
 | LPAREN RPAREN
 {
@@ -272,9 +296,13 @@ x=name
 {
   PData (DName k, [])
 }
-| LBRACE k=UNAME ps=located(pattern)+ RBRACE
+| x=name
 {
-  PData (DName k, ps)
+  PVar x
+}
+| UNDERSCORE
+{
+  PWildcard
 }
 
 mltype: x=tvname

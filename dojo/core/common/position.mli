@@ -97,6 +97,9 @@ val string_of_pos : t -> string
     in that case, it returns [undefined_position]. *)
 val pos_or_undef : t option -> t
 
+(** [shift new_start t] shifts [t] as if [(1, 1)] were [new_start]. *)
+val shift : Lexing.position -> t -> t
+
 (** {2 Interaction with the lexer runtime} *)
 
 (** [cpos lexbuf] returns the current position of the lexer. *)

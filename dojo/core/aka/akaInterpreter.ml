@@ -10,11 +10,16 @@ type value =
 
 and env = (name * value ref) list
 
-let lookup x env = ! (List.assoc x env)
+exception UnboundIdentifier of string
+exception UnboundLabel of string
+
+let lookup ((Name n) as x) env = try ! (List.assoc x env)
+  with Not_found -> raise (UnboundIdentifier n)
 
 let bind x v env = (x, ref v) :: env
 
-let update x v (env : env) = (List.assoc x env) := v
+let update ((Name n) as x) v (env : env) = try ((List.assoc x env) := v)
+  with Not_found -> raise (UnboundIdentifier n)
 
 let empty = []
 
@@ -33,7 +38,7 @@ and value_binding env = function
     let env, vs = list_foldmap value_definition env vdefs in
     List.iter (fun (x, v) ->
       match v with
-        | VClosure (_, x, e) -> update x (VClosure (env, x, e)) env
+        | VClosure (_, y, e) -> update x (VClosure (env, y, e)) env
         | _ -> assert false (* We only have recursive immediate functions. *)
     ) vs;
     env
@@ -74,9 +79,11 @@ and expression env = function
       branches env (expression env e) bs
 
     (** Records. *)
-    | ERecordAccess (_, e, l) ->
+    | ERecordAccess (_, e, ((LName n) as l)) ->
       begin match expression env e with
-        | VRecord vs -> List.assoc l vs
+        | VRecord vs -> begin try List.assoc l vs
+          with Not_found -> raise (UnboundLabel n)
+        end
         | _ -> assert false (* By typing. *)
       end
 
