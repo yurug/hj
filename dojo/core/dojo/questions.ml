@@ -25,9 +25,11 @@ type statement =
 type context =
 | QCM of statement list * int list
 
+type string_t = string template
+
 type questions =
-| Question of string template * statement template * context template
-| Section of string template * questions template
+| Question of string_t * string_t * statement template * context template
+| Section  of string_t * questions template
 
 
 (* FIXME: The following code could be generated from std.aka to improve
@@ -89,8 +91,9 @@ module ReifyFromAka = struct
     | _ -> assert false
 
   let rec questions = function
-    | VData (DName "Question", [n; s; c]) ->
-      Question (template string n, template statement s, template context c)
+    | VData (DName "Question", [n; t; s; c]) ->
+      Question (template string n, template string t,
+                template statement s, template context c)
     | VData (DName "Section", [n; q]) ->
       Section (template string n, template questions q)
     | _ -> assert false
@@ -117,9 +120,10 @@ module Txt = struct
       ))
 
   let rec questions level = function
-    | Question (id, s, c) ->
-      Printf.sprintf "%s\n%s\n%s\n"
+    | Question (id, title, s, c) ->
+      Printf.sprintf "[%s] %s\n%s\n%s\n"
         (string_template id)
+        (string_template title)
         (vcat statement s)
         (vcat context c)
 
