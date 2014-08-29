@@ -66,6 +66,8 @@ val resource_versions : Identifier.t -> Resource.name ->
   | `KO of [> `SystemError of string ]
   ] Lwt.t
 
+val resource_real_path : Identifier.t -> Resource.name -> string
+
 val exists : Identifier.t -> bool
 
 val timestamp : Identifier.t ->

@@ -66,6 +66,9 @@ aka/XAST
 aka/akaInterpreter
 aka/Aka
 
+machine/WaitingList
+machine/Machinist
+machine/Sandbox
 
 dojo/user
 dojo/admin

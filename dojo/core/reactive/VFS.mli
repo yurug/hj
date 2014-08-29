@@ -148,3 +148,5 @@ val owner : Identifier.path
      ] Lwt.t
 
 val real_path : Identifier.path -> string
+
+val relativize_identifier : Identifier.identifier -> Identifier.identifier

@@ -44,6 +44,9 @@ let timestamp id =
     return (`OK timestamp)
   )
 
+let resource_real_path id fname =
+  VFS.real_path (file (path_of_identifier id) fname)
+
 let load_resource id ?version fname =
   let path = file (path_of_identifier id) fname in
   (match version with

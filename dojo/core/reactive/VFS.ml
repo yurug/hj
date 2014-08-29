@@ -19,6 +19,12 @@ let set_root, get_root = oref (fun () ->
 let root_path () = path_of_string (get_root ())
 let root relative p = if relative then concat (root_path ()) p else p
 
+let relativize p =
+  suffix (root_path ()) p
+
+let relativize_identifier p =
+  identifier_of_path (relativize (path_of_identifier p))
+
 (** The file system is the exclusive property of the current user. *)
 let _ = Unix.umask 0o077
 
@@ -229,3 +235,4 @@ let real_path path =
 
 let exists path =
   Sys.file_exists (real_path path)
+

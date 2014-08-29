@@ -124,7 +124,6 @@ let exercise_evaluation_state = HTTP.(
     (string "status")
     "Return the state of the evaluation for a question."
     (fun (name, qid) ->
-
        let string_of_evaluation_state = Questions.(function
          | EvaluationError _ -> assert false
          | EvaluationDone grade -> Questions.string_of_grade grade

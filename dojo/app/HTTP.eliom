@@ -13,6 +13,7 @@ type 'a user_type =
 
 type ('a, 'b) ty =
   | TUnit : (unit, unit) ty
+  | TInt : string -> (int, [ `One of int ] param_name) ty
   | TString : string -> (string, [ `One of string ] param_name) ty
   | TFile : string -> (file_info, [ `One of file_info ] param_name) ty
   | TPair : ('a, 'ap) ty * ('b, 'bp) ty -> (('a * 'b), ('ap * 'bp)) ty
@@ -22,6 +23,8 @@ type ('a, 'b) ty =
 let ( ** ) a b = TPair (a, b)
 
 let string s = TString s
+
+let int s = TInt s
 
 let file s = TFile s
 
@@ -48,6 +51,7 @@ let rec eliom_parameters_from_ty
 : type a b. (a, b) ty -> (a, [ `WithoutSuffix ], b) Eliom_parameter.params_type
 = Eliom_parameter.(function
   | TString l -> string l
+  | TInt l -> int l
   | TFile f -> file f
   | TList (name, t) -> list name (eliom_parameters_from_ty t)
   | TUnit -> unit
@@ -63,6 +67,7 @@ let rec ty_to_json_object
 = fun ty x ->
   match ty with
     | TString l -> [(l, `String x)]
+    | TInt l -> [(l, `Int x)]
     | TFile f -> [(f, file_info_to_json_object f)]
     | TList (f, ty) -> [(f, `List (List.map (ty_to_json ty) x))]
     | TUnit -> []

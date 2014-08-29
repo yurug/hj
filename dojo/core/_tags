@@ -6,6 +6,7 @@ true: package(deriving), package(deriving.syntax), syntax(deriving), package(yoj
 
 <common> : include
 <reactive> : include
+<machine> : include
 <dojo> : include
 <aka> : include
 <aka/common> : include
