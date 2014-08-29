@@ -1,0 +1,90 @@
+open Lwt
+open Entity
+open InMemory
+open Identifier
+open ExtPervasives
+open ExtProcess
+
+let answers_module = "hackojo.answers <here@hackojo.org>"
+
+let path_of_exercise_answers exercise_identifier =
+  concat
+    (path_of_identifier exercise_identifier)
+    (from_strings ["answers"])
+
+let answers_identifier exercise_identifier user_identifier =
+  let path = path_of_exercise_answers exercise_identifier in
+  identifier_of_path (concat path (path_of_identifier user_identifier))
+
+type internal_state = {
+  contributors : User.identifier list;
+  questions    : Questions.t;
+  answers      : Questions.answers;
+  evaluations  : Questions.evaluations;
+} deriving (Json)
+
+type public_change =
+  | NewAnswer of Questions.identifier * User.identifier * Questions.answer
+
+include Entity.Make (struct
+
+  type data = internal_state deriving (Json)
+
+  type change = public_change
+
+  let react state mdeps cs later =
+    let apply_change content = function
+      | NewAnswer (qid, uid, answer) -> Questions.(
+        let answers = new_answer content.answers qid answer in
+        let evaluations =
+          update_evaluations content.evaluations content.questions qid answer
+        in
+        return { content with answers; evaluations }
+      )
+    in
+    (* FIXME: Common pattern to be factorized out. *)
+    let content0 = content state in
+    lwt content = Lwt_list.fold_left_s apply_change content0 cs in
+    if content == content0 then
+      return NoUpdate
+    else
+      return (UpdateContent content)
+
+  let current_version = "1.0"
+
+  let converters = []
+
+  let string_of_change = function
+    | NewAnswer (qid, uid, a) ->
+      Printf.sprintf "new answer to %s by %s : %s"
+        qid
+        (string_of_identifier uid)
+        (Questions.string_of_answer a)
+
+end)
+
+let answers_for id uid questions =
+  let answers_id = answers_identifier id uid in
+  make answers_id >>= function
+    | `OK answers ->
+      return (`OK answers)
+    | `KO (`UndefinedEntity _ | `SystemError _) ->
+      let content = {
+        questions;
+        answers = Questions.empty_answers;
+        contributors = [uid];
+        evaluations = Questions.empty_evaluations;
+      }
+      in
+      let init = (content, InMemory.empty_dependencies, []) in
+      make ~init answers_id
+    | `KO err ->
+      return (`KO err)
+
+let push_new_answer answers qid uid a =
+  change answers (NewAnswer (qid, uid, a))
+
+let evaluation_state answers qid =
+  observe answers (fun state ->
+    return (Questions.evaluation_state (content state).evaluations qid)
+  )

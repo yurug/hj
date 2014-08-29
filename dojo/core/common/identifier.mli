@@ -73,6 +73,13 @@ val lwt_map_fold
 
 module Set : Set.S with type elt = identifier
 
+module Dict : sig
+  type 'a t deriving (Json)
+  val empty : 'a t
+  val add : identifier -> 'a -> 'a t -> 'a t
+  val find : identifier -> 'a t -> 'a
+end
+
 type identifiers = Set.t
 
 (** [is_prefix p id] returns [true] if [p] is a prefix of [id]. *)

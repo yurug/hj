@@ -18,10 +18,10 @@ let handle_unix_error f default lraise =
     (lraise @* (`SystemError (Unix.error_message e)))
     @| (fun () -> return default)
 
-let mkdir ps =
-  handle_unix_error (fun () ->
-    Lwt_unix.mkdir ps 0o700
-  ) ()
+let mkdir ps lraise =
+  let cmd = Printf.sprintf "mkdir -p %s" ps in
+  success ~lraise (!% cmd)
+  >>= fun _ -> return ()
 
 let ls ps =
   handle_unix_error Lwt_unix.(fun () ->

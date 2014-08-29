@@ -53,7 +53,7 @@
 
 (** Punctation. *)
 %token EOF EQUAL LBRACE RBRACE LPAREN RPAREN COMMA COLON SEMICOLON PIPE DOT
-%token LLPAREN RRPAREN SHARP
+%token LLPAREN RRPAREN
 
 (** Symbols. *)
 %token RARROW DRARROW UNDERSCORE QMARK
@@ -194,7 +194,7 @@ term0:
   Position.value (lambda pos xs t)
 }
 | BEGIN LPAREN t0=located(term) RPAREN
-  ts=separated_nonempty_list(WITH, located(term_sequence))
+  ts=separated_nonempty_list(WITH, located(term_sequence_template))
   END
 {
   value (apply t0 ts)
@@ -215,7 +215,7 @@ term0:
 | LPAREN t=term RPAREN {
   t
 }
-| t=located(term0) SHARP f=lname {
+| t=located(term0) DOT f=lname {
   Field (t, f)
 }
 | LBRACE
@@ -226,13 +226,22 @@ term0:
 | t=TEMPLATE {
   Template t
 }
-| LLPAREN ts=term_sequence RRPAREN
+| LLPAREN ts=term_sequence_template RRPAREN
 {
   ts
 }
 
-%inline term_sequence: ts=list(terminated(located(term), DOT)) {
-  Template (List.map (fun t -> Code t) ts)
+%inline term_sequence_template: ts=term_sequence {
+  Template ts
+}
+
+term_sequence:
+  t=located(term) SEMICOLON?
+{
+  [Code t]
+}
+| t=located(term) SEMICOLON ts=term_sequence {
+  Code t :: ts
 }
 
 record_bindings:

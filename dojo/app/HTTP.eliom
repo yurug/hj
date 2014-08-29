@@ -8,12 +8,16 @@ open Eliom_lib
 open Eliom_parameter
 open ExtPervasives
 
+type 'a user_type =
+  | UserType of (string -> 'a) * ('a -> string) * ('a -> json)
+
 type ('a, 'b) ty =
   | TUnit : (unit, unit) ty
   | TString : string -> (string, [ `One of string ] param_name) ty
   | TFile : string -> (file_info, [ `One of file_info ] param_name) ty
   | TPair : ('a, 'ap) ty * ('b, 'bp) ty -> (('a * 'b), ('ap * 'bp)) ty
   | TList : string * ('a, 'ap) ty -> ('a list, 'ap listnames) ty
+  | TUser : string * 'a user_type -> ('a, [ `One of 'a ] param_name) ty
 
 let ( ** ) a b = TPair (a, b)
 
@@ -24,6 +28,8 @@ let file s = TFile s
 let list name ty = TList (name, ty)
 
 let unit = TUnit
+
+let user name fin fout tojson = TUser (name, UserType (fin, fout, tojson))
 
 type ('i, 'ip, 'o, 'op) api_service = {
   name  : string;
@@ -46,6 +52,7 @@ let rec eliom_parameters_from_ty
   | TList (name, t) -> list name (eliom_parameters_from_ty t)
   | TUnit -> unit
   | TPair (a, b) -> eliom_parameters_from_ty a ** eliom_parameters_from_ty b
+  | TUser (name, UserType (fin, fout, _)) -> user_type fin fout name
 )
 
 (** To return the content of a file, prefer standard ways. *)
@@ -60,6 +67,7 @@ let rec ty_to_json_object
     | TList (f, ty) -> [(f, `List (List.map (ty_to_json ty) x))]
     | TUnit -> []
     | TPair (a, b) -> ty_to_json_object a (fst x) @ ty_to_json_object b (snd x)
+    | TUser (n, UserType (_, _, to_json)) -> [(n, to_json x)]
 
 and ty_to_json
 : type a b. (a, b) ty -> a -> json

@@ -97,7 +97,6 @@ rule main = parse
 (** Punctuations. *)
 | "?"                                   { QMARK }
 | "."                                   { DOT }
-| "#"                                   { SHARP }
 | "_"                                   { UNDERSCORE }
 | "="                                   { EQUAL }
 | ","                                   { COMMA }

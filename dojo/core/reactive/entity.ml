@@ -155,6 +155,7 @@ let channel e = e.channel
 
 (** The base interface of an entity module. *)
 module type S = sig
+  type identifier = Identifier.t deriving (Json)
   type data
   type change
   type t = (data, change) entity
@@ -242,6 +243,8 @@ module Make (I : U) : S
 with type data = I.data
 and type change = I.change
 = struct
+
+  type identifier = Identifier.t deriving (Json)
 
   type data = I.data
 

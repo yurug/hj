@@ -26,12 +26,14 @@ type code_state =
 deriving (Json)
 
 type internal_state = {
-  contributors : identifier list;
-  code         : code_state
+  contributors : User.identifier list;
+  code         : code_state;
+  user_answers : Answers.identifier Dict.t
 } deriving (Json)
 
 type public_change =
   | UpdateCode
+  | NewAnswers of User.identifier * Answers.identifier
 
 include Entity.Make (struct
 
@@ -68,9 +70,16 @@ include Entity.Make (struct
           (* FIXME: More informative message. *)
           return_error "internal error while loading source.aka"
     in
+    let new_answers uid aid content =
+      let user_answers = Dict.add uid aid content.user_answers in
+      return { content with user_answers }
+    in
 
     let apply_change content = function
-      | UpdateCode -> update_code content
+      | UpdateCode ->
+        update_code content
+      | NewAnswers (uid, aid) ->
+        new_answers uid aid content
     in
 
     (* FIXME: Common pattern to be factorized out. *)
@@ -86,7 +95,10 @@ include Entity.Make (struct
   let converters = []
 
   let string_of_change = function
-    | UpdateCode -> "update code"
+    | UpdateCode ->
+      "update code"
+    | NewAnswers (uid, aid) ->
+      Printf.sprintf "new answers for %s" (string_of_identifier uid)
 
 end)
 
@@ -99,7 +111,8 @@ let create who name =
         | true ->
           let data = {
             contributors = [ User.identifier who ];
-            code = NoCode
+            code = NoCode;
+            user_answers = Dict.empty
           }
           in
           let init = (data, empty_dependencies, []) in
@@ -140,10 +153,36 @@ let questions id uid =
       lwt final_env = Aka.execute id cst in
       let questions = Aka.extract_questions final_env uid in
       let questions = Questions.ReifyFromAka.questions questions in
-      return (`OK (Questions.Txt.questions questions))
+      return (`OK questions)
 
     | `KO _ ->
       return (`KO (`InvalidModule id))
+
+let user_answers exo uid =
+  let id = identifier exo in
+  lwt user_answers =
+    observe exo (fun data ->
+      return (content data).user_answers)
+  in
+  try
+    let answers_id = Dict.find uid user_answers in
+    Answers.make answers_id
+  with Not_found ->
+    questions id uid >>>= fun questions ->
+    Answers.answers_for id uid questions >>>= fun answers ->
+    change exo (NewAnswers (uid, Answers.identifier answers))
+    >> return (`OK answers)
+
+let answer id uid qid a =
+  make id >>>= fun exo ->
+  user_answers exo uid >>>= fun answers ->
+  Answers.push_new_answer answers qid uid a >> return (`OK ())
+
+let evaluation_state id uid qid =
+  make id >>>= fun exo ->
+  user_answers exo uid >>>= fun answers ->
+  lwt s = Answers.evaluation_state answers qid in
+  return (`OK s)
 
 let initialization =
   AkaCST.set_loader load_module

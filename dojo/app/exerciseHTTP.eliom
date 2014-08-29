@@ -67,9 +67,86 @@ let exercise_questions = HTTP.(
       (logged_user () >>>= fun user ->
        let uid = User.identifier user in
        let name = identifier_of_string name in
-       Exercise.(questions name uid)
+       Exercise.(questions name uid) >>>= fun qs ->
+       return  (`OK (Questions.Txt.questions qs))
       ) >>= function
         | `OK e -> success e
+        | `KO (`InvalidModule id) ->
+          error ("invalid_module:" ^ string_of_identifier id)
+        | `KO (`InvalidCode e) -> success e
+        | `KO `NotLogged -> error "not_logged"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+        | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+        | `KO `ForbiddenService -> error "teacher_only"
+        | `KO (`UndefinedEntity id) ->
+          error ("undefined:" ^ (string_of_identifier id)))
+)
+
+let answer name = Questions.(
+  HTTP.user name string_to_answer answer_to_string answer_to_json
+)
+
+let exercise_push_new_answer = HTTP.(
+  api_service "exercise_push_new_answer" "exercise"
+    (string "identifier"
+     ** string "question_identifier"
+     ** answer "answer"
+    )
+    (string "status")
+    "Return the questions for the logged user."
+    (fun (name, (qid, answer)) ->
+      (logged_user () >>>= fun user ->
+       let uid = User.identifier user in
+       let id = identifier_of_string name in
+       Exercise.answer id uid qid answer
+      ) >>= function
+        | `OK _ -> completed ()
+        | `KO (`InvalidModule id) ->
+          error ("invalid_module:" ^ string_of_identifier id)
+        | `KO (`InvalidCode e) -> success e
+        | `KO `NotLogged -> error "not_logged"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+        | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+        | `KO `ForbiddenService -> error "teacher_only"
+        | `KO (`UndefinedEntity id) ->
+          error ("undefined:" ^ (string_of_identifier id)))
+)
+
+let exercise_evaluation_state = HTTP.(
+  api_service "exercise_evaluation_state" "exercise"
+    (string "identifier"
+     ** string "question_identifier"
+    )
+    (string "status")
+    "Return the state of the evaluation for a question."
+    (fun (name, qid) ->
+
+       let string_of_evaluation_state = Questions.(function
+         | EvaluationError _ -> assert false
+         | EvaluationDone grade -> Questions.string_of_grade grade
+         | EvaluationWaits -> "waiting..."
+         | EvaluationHandled _ -> "processing..."
+       )
+       in
+       let string_of_evaluation_error = Questions.(function
+         | UnboundQuestion -> "unbound_question"
+         | SyntaxErrorInAnswer -> "syntax_error_in_answer"
+         | InvalidContextDescription -> "invalid_context_description"
+         | NoAnswer -> "no_answer"
+       )
+       in
+      (logged_user () >>>= fun user ->
+       let uid = User.identifier user in
+       let id = identifier_of_string name in
+       Exercise.evaluation_state id uid qid
+      ) >>= function
+        | `OK (Questions.EvaluationError e) ->
+          error (string_of_evaluation_error e)
+        | `OK e -> success (string_of_evaluation_state e)
         | `KO (`InvalidModule id) ->
           error ("invalid_module:" ^ string_of_identifier id)
         | `KO (`InvalidCode e) -> success e

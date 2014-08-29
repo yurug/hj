@@ -102,6 +102,19 @@ module Set = Set.Make (Compare)
 
 module Map = Map.Make (Compare)
 
+(* FIXME: We may have to optimize the following data structure. *)
+module Dict = struct
+
+  type 'a t = (identifier * 'a) list deriving (Json)
+
+  let empty = []
+
+  let add k v t = (k, v) :: t
+
+  let find k t = snd (List.find (fun (k', v) -> compare k k' = 0) t)
+
+end
+
 let lwt_map_map f m =
   Map.fold (fun k v m ->
     lwt m = m in

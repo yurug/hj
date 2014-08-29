@@ -105,6 +105,8 @@ val exists : Identifier.t -> bool
     type [change]. *)
 module type S = sig
 
+  type identifier = Identifier.t deriving (Json)
+
   (** The type of the content. *)
   type data
 
