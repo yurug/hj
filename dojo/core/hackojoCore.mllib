@@ -73,5 +73,6 @@ machine/Sandbox
 dojo/user
 dojo/admin
 dojo/exercise
+dojo/seed
 dojo/questions
 dojo/answers

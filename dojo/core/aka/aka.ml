@@ -45,11 +45,9 @@ let typecheck module_name cst =
   return typed_ast
 
 let compile module_name source_code =
-  ExtPervasives.how_long "compile" (fun () ->
-    let cst = parse source_code in
-    lwt typed_ast = typecheck module_name cst in
-    return (cst, typed_ast)
-  )
+  let cst = parse source_code in
+  lwt typed_ast = typecheck module_name cst in
+  return (cst, typed_ast)
 
 let execute module_name cst =
   lwt typed_ast = typecheck module_name cst in

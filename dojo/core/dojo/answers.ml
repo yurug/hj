@@ -25,6 +25,7 @@ type internal_state = {
 
 type public_change =
   | NewAnswer of Questions.identifier * User.identifier * Questions.answer
+  | UpdateEvaluationState of Questions.identifier * Questions.evaluation_state
 
 include Entity.Make (struct
 
@@ -35,12 +36,23 @@ include Entity.Make (struct
   let react state mdeps cs later =
     let apply_change content = function
       | NewAnswer (qid, uid, answer) -> Questions.(
+        let update new_evaluation_state =
+          later (UpdateEvaluationState (qid, new_evaluation_state))
+        in
         let answers = new_answer content.answers qid answer in
-        let evaluations =
-          update_evaluations content.evaluations content.questions qid answer
+        let real_path = OnDisk.resource_real_path (InMemory.identifier state) in
+        lwt evaluations =
+          update_evaluations real_path content.evaluations content.questions qid answer update
         in
         return { content with answers; evaluations }
       )
+
+      | UpdateEvaluationState (qid, evaluation_state) ->
+        let evaluations =
+          Questions.update_evaluation qid evaluation_state content.evaluations
+        in
+        return { content with evaluations }
+
     in
     (* FIXME: Common pattern to be factorized out. *)
     let content0 = content state in
@@ -60,6 +72,9 @@ include Entity.Make (struct
         qid
         (string_of_identifier uid)
         (Questions.string_of_answer a)
+
+    | UpdateEvaluationState (qid, _) ->
+      Printf.sprintf "update evaluation state of %s" qid
 
 end)
 

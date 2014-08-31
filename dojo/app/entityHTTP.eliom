@@ -8,6 +8,7 @@ open HTTP
 
 (* FIXME: Access control is missing for the moment. *)
 let create_resource_management_api
+    ?(make_identifier = fun s -> return (`OK (identifier_of_string s)))
     (type d)
     (type c)
     (module E : Entity.S with type data = d and type change = c)
@@ -19,7 +20,8 @@ let create_resource_management_api
     (string "status")
     "Upload a resource."
     (fun (id, (resource_name, file)) ->
-      (E.make (identifier_of_string id) >>>= fun e ->
+      (make_identifier id >>>= fun id ->
+       E.make id >>>= fun e ->
        ltry (cat file.Ocsigen_extensions.tmp_filename) >>>= fun content ->
        let resource = Resource.make resource_name content in
        E.import_resource e resource

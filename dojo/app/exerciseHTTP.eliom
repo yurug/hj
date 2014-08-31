@@ -88,6 +88,32 @@ let answer name = Questions.(
   HTTP.user name string_to_answer answer_to_string answer_to_json
 )
 
+let exercise_subscribe = HTTP.(
+  api_service "exercise_subscribe" "exercise"
+    (string "identifier")
+    (string "status")
+    "Return the questions for the logged user."
+    (fun name ->
+      (logged_user () >>>= fun user ->
+       let uid = User.identifier user in
+       let id = identifier_of_string name in
+       Exercise.make id >>>= fun exo ->
+       Exercise.user_answers exo uid
+      ) >>= function
+        | `OK _ -> completed ()
+        | `KO (`InvalidModule id) ->
+          error ("invalid_module:" ^ string_of_identifier id)
+        | `KO (`InvalidCode e) -> success e
+        | `KO `NotLogged -> error "not_logged"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+        | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+        | `KO `ForbiddenService -> error "teacher_only"
+        | `KO (`UndefinedEntity id) ->
+          error ("undefined:" ^ (string_of_identifier id)))
+)
+
 let exercise_push_new_answer = HTTP.(
   api_service "exercise_push_new_answer" "exercise"
     (string "identifier"
@@ -136,25 +162,28 @@ let exercise_evaluation_state = HTTP.(
          | SyntaxErrorInAnswer -> "syntax_error_in_answer"
          | InvalidContextDescription -> "invalid_context_description"
          | NoAnswer -> "no_answer"
+         | IncompatibleAnswer -> "incompatible_answer"
+         | ErrorDuringGraderExecution -> "error_during_grader_execution"
        )
        in
-      (logged_user () >>>= fun user ->
-       let uid = User.identifier user in
-       let id = identifier_of_string name in
-       Exercise.evaluation_state id uid qid
-      ) >>= function
-        | `OK (Questions.EvaluationError e) ->
-          error (string_of_evaluation_error e)
-        | `OK e -> success (string_of_evaluation_state e)
-        | `KO (`InvalidModule id) ->
-          error ("invalid_module:" ^ string_of_identifier id)
-        | `KO (`InvalidCode e) -> success e
-        | `KO `NotLogged -> error "not_logged"
-        | `KO (`AlreadyExists _) -> error "already_exists"
-        | `KO (`SystemError e) -> error ("system:" ^ e)
-        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
-        | `KO `StudentsCannotCreateExercise -> error "teacher_only"
-        | `KO `ForbiddenService -> error "teacher_only"
-        | `KO (`UndefinedEntity id) ->
-          error ("undefined:" ^ (string_of_identifier id)))
+       (logged_user () >>>= fun user ->
+        let uid = User.identifier user in
+        let id = identifier_of_string name in
+        Exercise.evaluation_state id uid qid
+       ) >>= function
+         | `OK (Questions.EvaluationError e) ->
+           error (string_of_evaluation_error e)
+         | `OK e -> success (string_of_evaluation_state e)
+         | `KO (`InvalidModule id) ->
+           error ("invalid_module:" ^ string_of_identifier id)
+         | `KO (`InvalidCode e) -> success e
+         | `KO `NotLogged -> error "not_logged"
+         | `KO (`AlreadyExists _) -> error "already_exists"
+         | `KO (`SystemError e) -> error ("system:" ^ e)
+         | `KO (`InternalError e) ->
+           error ("internal:" ^ (Printexc.to_string e))
+         | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+         | `KO `ForbiddenService -> error "teacher_only"
+         | `KO (`UndefinedEntity id) ->
+           error ("undefined:" ^ (string_of_identifier id)))
 )
