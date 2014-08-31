@@ -282,6 +282,12 @@ deriving (Json)
 
 let empty_evaluations = []
 
+let lookup_evaluation_state qid evaluations =
+  try
+    Some (List.assoc qid evaluations)
+  with Not_found ->
+    None
+
 let matched_question_identifier qid id =
   flatten "" ( ^ ) ( ^ ) id = qid
 
@@ -408,6 +414,13 @@ let evaluate real_path questions qid answer update =
       return (EvaluationError UnboundQuestion)
 
 let update_evaluation qid evaluation_state evaluations =
+  (* Cancel existing job if needed. *)
+  begin match lookup_evaluation_state qid evaluations, evaluation_state with
+    | Some (EvaluationHandled job'), EvaluationHandled job when job = job' ->
+      Sandbox.cancel job'
+    | _, _ ->
+      ()
+  end;
   update_assoc qid evaluation_state evaluations
 
 let update_evaluations real_path evaluations questions qid answer update =
