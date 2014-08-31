@@ -416,7 +416,7 @@ let evaluate real_path questions qid answer update =
 let update_evaluation qid evaluation_state evaluations =
   (* Cancel existing job if needed. *)
   begin match lookup_evaluation_state qid evaluations, evaluation_state with
-    | Some (EvaluationHandled job'), EvaluationHandled job when job = job' ->
+    | Some (EvaluationHandled job'), EvaluationHandled job when job <> job' ->
       Sandbox.cancel job'
     | _, _ ->
       ()
