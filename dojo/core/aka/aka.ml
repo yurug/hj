@@ -30,7 +30,6 @@ let parse source_code = AkaCST.(
       let change_pos t =
         Position.(with_pos (shift spos (position t)) (value t))
       in
-      (* FIXME: Rewrite relative positions! *)
       Code (substitute_term_in_term change_pos ast)
     | t -> t
   in
