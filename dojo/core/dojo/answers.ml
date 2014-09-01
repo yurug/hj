@@ -18,6 +18,7 @@ let answers_identifier exercise_identifier user_identifier =
 
 type internal_state = {
   contributors : User.identifier list;
+  exercise     : Identifier.t;
   questions    : Questions.t;
   answers      : Questions.answers;
   evaluations  : Questions.evaluations;
@@ -25,6 +26,7 @@ type internal_state = {
 
 type public_change =
   | NewAnswer of Questions.identifier * User.identifier * Questions.answer
+  | NewEvaluation of Questions.identifier * User.identifier * Questions.answer
   | UpdateEvaluationState of Questions.identifier * Questions.evaluation_state
 
 include Entity.Make (struct
@@ -33,16 +35,46 @@ include Entity.Make (struct
 
   type change = public_change
 
+  let string_of_change = function
+    | NewAnswer (qid, uid, a) ->
+      Printf.sprintf "new answer to %s by %s : %s"
+        qid
+        (string_of_identifier uid)
+        (Questions.string_of_answer a)
+
+    | NewEvaluation (qid, uid, a) ->
+      Printf.sprintf "new evaluation of %s by %s : %s"
+        qid
+        (string_of_identifier uid)
+        (Questions.string_of_answer a)
+
+    | UpdateEvaluationState (qid, _) ->
+      Printf.sprintf "update evaluation state of %s" qid
+
   let react state mdeps cs later =
-    let apply_change content = function
-      | NewAnswer (qid, uid, answer) -> Questions.(
+    let apply_change content = Questions.(function
+      | NewAnswer (qid, uid, answer) ->
+        let evaluations =
+          update_evaluation qid EvaluationWaits content.evaluations
+        in
+        later (NewEvaluation (qid, uid, answer))
+        >> return { content with evaluations }
+
+      | NewEvaluation (qid, uid, answer) -> Questions.(
         let update new_evaluation_state =
           later (UpdateEvaluationState (qid, new_evaluation_state))
         in
         let answers = new_answer content.answers qid answer in
-        let real_path = OnDisk.resource_real_path (InMemory.identifier state) in
+        let exo_identifier = (InMemory.content state).exercise in
+        let exo_real_path = OnDisk.resource_real_path exo_identifier in
+        let answer_real_path =
+          OnDisk.resource_real_path (InMemory.identifier state)
+        in
         lwt evaluations =
-          update_evaluations real_path content.evaluations content.questions qid answer update
+          update_evaluations
+            exo_real_path answer_real_path
+            content.evaluations content.questions
+            qid answer update
         in
         return { content with answers; evaluations }
       )
@@ -52,7 +84,7 @@ include Entity.Make (struct
           Questions.update_evaluation qid evaluation_state content.evaluations
         in
         return { content with evaluations }
-
+    )
     in
     (* FIXME: Common pattern to be factorized out. *)
     let content0 = content state in
@@ -66,16 +98,6 @@ include Entity.Make (struct
 
   let converters = []
 
-  let string_of_change = function
-    | NewAnswer (qid, uid, a) ->
-      Printf.sprintf "new answer to %s by %s : %s"
-        qid
-        (string_of_identifier uid)
-        (Questions.string_of_answer a)
-
-    | UpdateEvaluationState (qid, _) ->
-      Printf.sprintf "update evaluation state of %s" qid
-
 end)
 
 let answers_for id uid questions =
@@ -86,6 +108,7 @@ let answers_for id uid questions =
     | `KO (`UndefinedEntity _ | `SystemError _) ->
       let content = {
         questions;
+        exercise = id;
         answers = Questions.empty_answers;
         contributors = [uid];
         evaluations = Questions.empty_evaluations;
@@ -103,3 +126,7 @@ let evaluation_state answers qid =
   observe answers (fun state ->
     return (Questions.evaluation_state (content state).evaluations qid)
   )
+
+let answer_of_question answers qid =
+  observe answers (fun state -> return (content state).answers)
+  >>= fun answers -> return (Questions.lookup_answer answers qid)

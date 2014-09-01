@@ -136,6 +136,7 @@ let handle_error = function
   | `KO (`SystemError e) -> error ("system:" ^ e)
   | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
   | `KO `NotLogged -> error "not_logged"
+  | `KO `FailedLogin -> error "login_failed"
 
 let file_upload_service import =
   let service =

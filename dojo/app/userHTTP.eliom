@@ -24,7 +24,8 @@ let username =
 
 let user () =
   Eliom_reference.get username >>= function
-    | `NotLogged | `FailedLogin -> return None
+    | `NotLogged
+    | `FailedLogin -> return None
     | `Logged id -> return (Some id)
 
 exception ForbiddenService
@@ -37,9 +38,10 @@ let root_only f x =
       ErrorHTTP.set "admin_only" >> raise_lwt ForbiddenService
 
 let logged_user () =
-  user () >>= function
-    | Some id -> User.make id
-    | _ -> return (`KO `NotLogged)
+  Eliom_reference.get username >>= function
+    | `Logged id -> User.make id
+    | `FailedLogin -> return (`KO `FailedLogin)
+    | `NotLogged -> return (`KO `NotLogged)
 
 let teacher_only () =
   logged_user () >>>= fun user ->
@@ -53,27 +55,36 @@ let login_status () =
     | `FailedLogin -> error "login"
     | `Logged id -> success ("logged_as:" ^ string_of_identifier id)
 
+let login_function (login, password) =
+  User.authenticate login password >>= (function
+    | `OK u -> Eliom_reference.set username (`Logged u)
+    | `KO -> Eliom_reference.set username `FailedLogin
+  )
+
+let login_server_function =
+  server_function Json.t<string * string> login_function
+
 let login_service = HTTP.(
   api_service "login" "user"
     (string "login" ** string "password")
     (string "status")
     "Log the user in. \
      Create a cookie containing the user status with respect to the system."
-    (fun (login, password) ->
-      User.authenticate login password >>= (function
-        | `OK u -> Eliom_reference.set username (`Logged u)
-        | `KO -> Eliom_reference.set username `FailedLogin
-      ) >> login_status ())
+    (fun x -> login_function x >> login_status ())
 )
+
+let logout_function () =
+  Eliom_reference.set username `NotLogged
+
+let logout_server_function =
+  server_function Json.t<unit> logout_function
 
 let logout_service = HTTP.(
   api_service "logout" "user"
     unit
     (string "status")
     "Log the user out."
-    (fun () ->
-      Eliom_reference.set username `NotLogged
-      >> login_status ())
+    (fun () -> logout_function () >> login_status ())
 )
 
 let whoami = HTTP.(

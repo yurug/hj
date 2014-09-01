@@ -175,6 +175,9 @@ let empty_answers = []
 let new_answer answers qid answer =
   update_assoc qid answer answers
 
+let lookup_answer answers qid =
+  List.assoc qid answers
+
 let string_of_answer = function
   | Invalid -> "invalid answer"
   | Choices cs ->
@@ -280,6 +283,12 @@ type evaluations =
   (identifier * evaluation_state) list
 deriving (Json)
 
+let string_of_evaluation_state = function
+  | EvaluationError _ -> "error"
+  | EvaluationDone g -> string_of_grade g
+  | EvaluationWaits -> "waiting"
+  | EvaluationHandled _ -> "handled"
+
 let empty_evaluations = []
 
 let lookup_evaluation_state qid evaluations =
@@ -378,12 +387,17 @@ let grade_program files cmd update =
       (* FIXME: Provide a more detailed diagnostic. *)
       return (EvaluationError ErrorDuringGraderExecution)
 
-let evaluate_using_context real_path context answer update =
+let evaluate_using_context
+    exo_real_path answer_real_path context answer update
+=
   match context, answer with
     | CtxQCM expected_choices, Choices cs ->
       return (grade_qcm expected_choices cs)
     | CtxGrader (expected_file, imported_files, command), File filename ->
-      let files = List.map real_path (expected_file :: imported_files) in
+      let files =
+        answer_real_path expected_file
+        :: List.map exo_real_path imported_files
+      in
       (* FIXME: Check that filename' = expected_file. *)
       grade_program files command update
     | _, Invalid ->
@@ -403,12 +417,14 @@ let make_context ctx_makers =
   in
   flatten None (fun accu _ -> accu) aux ctx_makers
 
-let evaluate real_path questions qid answer update =
+let evaluate exo_real_path answer_real_path questions qid answer update =
   match lookup_question questions qid with
     | Some (title, statement, context_makers) ->
       begin match make_context context_makers with
         | None -> return (EvaluationError InvalidContextDescription)
-        | Some context -> evaluate_using_context real_path context answer update
+        | Some context ->
+          evaluate_using_context
+            exo_real_path answer_real_path context answer update
       end
     | None ->
       return (EvaluationError UnboundQuestion)
@@ -423,8 +439,10 @@ let update_evaluation qid evaluation_state evaluations =
   end;
   update_assoc qid evaluation_state evaluations
 
-let update_evaluations real_path evaluations questions qid answer update =
-  lwt state = evaluate real_path questions qid answer update in
+let update_evaluations exo_real_path answer_real_path evaluations questions qid answer update =
+  lwt state =
+    evaluate exo_real_path answer_real_path questions qid answer update
+  in
   return (update_evaluation qid state evaluations)
 
 let evaluation_state evaluations qid =

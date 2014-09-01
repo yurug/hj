@@ -19,6 +19,7 @@ let machinist_create = HTTP.(
       ) >>= function
         | `OK _ -> completed ()
         | `KO `NotLogged -> error "not_logged"
+        | `KO `FailedLogin -> error "not_logged"
         | `KO (`AlreadyExists _) -> error "already_exists"
         | `KO (`SystemError e) -> error ("system:" ^ e)
         | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
@@ -57,6 +58,7 @@ let machinist_set_logins = HTTP.(
           | `OK _ -> completed ()
           | `KO (`InvalidCode e) -> success e
           | `KO `NotLogged -> error "not_logged"
+          | `KO `FailedLogin -> error "not_logged"
           | `KO (`AlreadyExists _) -> error "already_exists"
           | `KO (`SystemError e) -> error ("system:" ^ e)
           | `KO (`InternalError e) ->
@@ -89,6 +91,7 @@ let machinist_set_addresses = HTTP.(
           | `OK _ -> completed ()
           | `KO (`InvalidCode e) -> success e
           | `KO `NotLogged -> error "not_logged"
+          | `KO `FailedLogin -> error "not_logged"
           | `KO (`AlreadyExists _) -> error "already_exists"
           | `KO (`SystemError e) -> error ("system:" ^ e)
           | `KO (`InternalError e) ->
@@ -127,6 +130,7 @@ let machinist_execute = HTTP.(
       ) >>= function
         | `OK e -> success e
         | `KO `NotLogged -> error "not_logged"
+          | `KO `FailedLogin -> error "not_logged"
         | `KO (`AlreadyExists _) -> error "already_exists"
         | `KO (`SystemError e) -> error ("system:" ^ e)
         | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))

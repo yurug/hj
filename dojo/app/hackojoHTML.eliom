@@ -20,13 +20,10 @@ module Hackojo_app =
     end)
 
 let root_service =
-  Hackojo_app.register_service
+  Hackojo_app.register
     ~secure_session:true
-    ~path:[""]
-    ~get_params:Eliom_parameter.unit
+    ~service:ServicesHTML.root
     (fun () () ->
-      return (html
-                (head (title (pcdata "Hackojo")) [])
-                (body [div [pcdata "Yo"]])
-      )
+      lwt homepage = UserHTML.homepage ServicesHTML.root in
+      HTML.hackojo_page (fun _ -> div [pcdata "links"]) homepage
     )

@@ -5,7 +5,7 @@ open Identifier
 open ExtPervasives
 open ExtProcess
 
-let path = Identifier.from_strings [ "exercise" ]
+let path = Identifier.from_strings [ "aka" ]
 
 let exercise_module = "hackojo.exercise <here@hackojo.org>"
 

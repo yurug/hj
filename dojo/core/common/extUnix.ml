@@ -127,7 +127,7 @@ let ssh ?timeout username private_key addr port cmd observer =
   handle_unix_error (fun () ->
     let p, stop = exec ?timeout (!% (
       Printf.sprintf
-        "ssh %s@%s %s -q -p %d -i %s '(%s)'"
+        "ssh -4 %s@%s %s -q -p %d -i %s '(%s)'"
         username addr os port private_key cmd))
     in
     observer p >>= fun _ -> return (fun () -> stop (); p#terminate)

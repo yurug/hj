@@ -308,14 +308,14 @@ and type change = I.change
       let rec tick () =
         (** This is the only place where update is called. *)
         update e
-        (* FIXME: I would like to use the following condition to
-           FIXME: this active loop. Yet, for some reason, it does
+        (* FIXME: I would like to use the following condition instead of
+           FIXME: this ugly active loop. Yet, for some reason, it does
            FIXME: work. For the moment, I stay with an active loop
            FIXME: because it is not expansive but this is clearly
            FIXME: not satisfactory... *)
         (*        >> Lwt_condition.wait e.react_cond *)
         >> Lwt_unix.yield ()
-        >> Lwt_unix.sleep 1.
+        >> Lwt_unix.sleep 0.05
         >>= tick
       in
       tick ()
