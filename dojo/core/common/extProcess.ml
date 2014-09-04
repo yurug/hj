@@ -30,7 +30,6 @@ let strace_lwt f (cmd, s) =
   return ret
 
 let strace f (cmd, s) =
-  (* Printf.eprintf "CMD: %s\n%!" s; *)
   let stop = Log.log_process system strace_descriptor s in
   (f cmd, (fun () -> ignore (stop ())))
 

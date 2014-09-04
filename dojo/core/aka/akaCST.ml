@@ -294,7 +294,7 @@ let rec substitute_term_in_term f =
     | Record rs -> Record (List.map record_binding rs)
     | Field (t, l) -> Field (term' t, l)
     | Case (t, bs) -> Case (term' t, List.map branch' bs)
-    | x -> x
+    | (Lit _ | Variable _ as x) -> x
 
   and branch (Branch (p, t)) =
     Branch (p, term' t)

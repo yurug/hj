@@ -42,8 +42,18 @@ deriving (Json)
 type string_t = string template
 deriving (Json)
 
+type question = {
+  id         : string_t;
+  title      : string_t;
+  tags       : string list;
+  difficulty : int;
+  statement  : statement template;
+  context    : context template;
+}
+deriving (Json)
+
 type questions =
-| Question of string_t * string_t * statement template * context template
+| Question of question
 | Section  of string_t * questions template
 deriving (Json)
 
@@ -114,10 +124,25 @@ module ReifyFromAka = struct
       Grader (expected_file, import_files, command)
     | _ -> assert false
 
+  let tags l =
+    List.map (fun s -> Str.(global_replace (regexp " ") "" s)) (flatten_list l)
+
+  let question = function
+    | VRecord q ->
+      {
+        id         = template string (lookup "id" q);
+        title      = template string (lookup "title" q);
+        tags       = tags (template string (lookup "tags" q));
+        difficulty = int (lookup "difficulty" q);
+        statement  = template statement (lookup "statement" q);
+        context    = template context (lookup "context" q);
+      }
+    | _ -> assert false
+
+
   let rec questions = function
-    | VData (DName "Question", [n; t; s; c]) ->
-      Question (template string n, template string t,
-                template statement s, template context c)
+    | VData (DName "Question", [q]) ->
+      Question (question q)
     | VData (DName "Section", [n; q]) ->
       Section (template string n, template questions q)
     | _ -> assert false
@@ -144,12 +169,14 @@ module Txt = struct
       sprintf "%s?" expected_file
 
   let rec questions level = function
-    | Question (id, title, s, c) ->
-      Printf.sprintf "[%s] %s\n%s\n%s\n"
-        (flatten_string id)
-        (flatten_string title)
-        (vcat statement s)
-        (vcat context c)
+    | Question q ->
+      Printf.sprintf "[%s] %s [%s / %d]\n%s\n%s\n"
+        (flatten_string q.id)
+        (flatten_string q.title)
+        (String.concat ", " q.tags)
+        q.difficulty
+        (vcat statement q.statement)
+        (vcat context q.context)
 
     | Section (title, q) ->
       Printf.sprintf "%s %s\n%s\n"
@@ -177,6 +204,8 @@ let new_answer answers qid answer =
 
 let lookup_answer answers qid =
   List.assoc qid answers
+
+let iter_answers_s = Lwt_list.iter_s
 
 let string_of_answer = function
   | Invalid -> "invalid answer"
@@ -274,7 +303,7 @@ deriving (Json)
 
 type evaluation_state =
   | EvaluationError of evaluation_error
-  | EvaluationDone of grade
+  | EvaluationDone of identifier * string list * int * grade
   | EvaluationWaits
   | EvaluationHandled of evaluation_job_identifier
 deriving (Json)
@@ -285,7 +314,7 @@ deriving (Json)
 
 let string_of_evaluation_state = function
   | EvaluationError _ -> "error"
-  | EvaluationDone g -> string_of_grade g
+  | EvaluationDone (qid, _, _, g) -> qid ^ ":" ^ string_of_grade g
   | EvaluationWaits -> "waiting"
   | EvaluationHandled _ -> "handled"
 
@@ -302,9 +331,9 @@ let matched_question_identifier qid id =
 
 let lookup_question qs qid =
   let rec questions = function
-  | Question (id, title, statement, context) ->
-    if matched_question_identifier qid id then
-      Some (title, statement, context)
+  | Question q ->
+    if matched_question_identifier qid q.id then
+      Some (q.title, q.tags, q.difficulty, q.statement, q.context)
     else
       None
   | Section (_, qs) ->
@@ -324,21 +353,21 @@ type context_descriptor =
   | CtxQCM of int list
   | CtxGrader of string * string list * string
 
-let grade_qcm expected_choices cs =
+let grade_qcm qid tags difficulty expected_choices cs =
   let automatic_score =
     if List.(sort compare expected_choices = sort compare cs) then
       (1, 1)
     else
       (0, 1)
   in
-  EvaluationDone {
+  EvaluationDone (qid, tags, difficulty, {
     scores = [ (Automatic, automatic_score) ];
     trace  = []
-  }
+  })
 
 let grade_regexp = Str.regexp "GRADE \\([0-9]+\\) \\([0-9]+\\)/\\([0-9]+\\)"
 
-let grade_program files cmd update =
+let grade_program qid tags difficulty files cmd update =
   let trace                     = ref [] in
   let automatic_score           = ref 0 in
   let automatic_potential_score = ref 0 in
@@ -375,7 +404,7 @@ let grade_program files cmd update =
         [ (Automatic, (!automatic_score, !automatic_potential_score)) ]
       in
       let trace = List.rev !trace in
-      update (EvaluationDone { scores; trace })
+      update (EvaluationDone (qid, tags, difficulty, { scores; trace }))
   ) in
   (* Run the command. *)
   let cmd = Str.(global_replace (regexp "%seed") (Seed.to_string secret) cmd) in
@@ -388,18 +417,19 @@ let grade_program files cmd update =
       return (EvaluationError ErrorDuringGraderExecution)
 
 let evaluate_using_context
+    qid tags difficulty
     exo_real_path answer_real_path context answer update
 =
   match context, answer with
     | CtxQCM expected_choices, Choices cs ->
-      return (grade_qcm expected_choices cs)
+      return (grade_qcm qid tags difficulty expected_choices cs)
     | CtxGrader (expected_file, imported_files, command), File filename ->
       let files =
         answer_real_path expected_file
         :: List.map exo_real_path imported_files
       in
       (* FIXME: Check that filename' = expected_file. *)
-      grade_program files command update
+      grade_program qid tags difficulty files command update
     | _, Invalid ->
       return (EvaluationError SyntaxErrorInAnswer)
     | _, _ ->
@@ -419,11 +449,13 @@ let make_context ctx_makers =
 
 let evaluate exo_real_path answer_real_path questions qid answer update =
   match lookup_question questions qid with
-    | Some (title, statement, context_makers) ->
+    | Some (title, tags, difficulty, statement, context_makers) ->
       begin match make_context context_makers with
-        | None -> return (EvaluationError InvalidContextDescription)
+        | None ->
+          return (EvaluationError InvalidContextDescription)
         | Some context ->
           evaluate_using_context
+            qid tags difficulty
             exo_real_path answer_real_path context answer update
       end
     | None ->
@@ -439,14 +471,28 @@ let update_evaluation qid evaluation_state evaluations =
   end;
   update_assoc qid evaluation_state evaluations
 
-let update_evaluations exo_real_path answer_real_path evaluations questions qid answer update =
+let update_evaluations
+    exo_real_path answer_real_path evaluations questions qid answer update
+=
   lwt state =
     evaluate exo_real_path answer_real_path questions qid answer update
   in
-  return (update_evaluation qid state evaluations)
+  return (update_evaluation qid state evaluations, state)
 
 let evaluation_state evaluations qid =
   try
     List.assoc qid evaluations
   with Not_found ->
     EvaluationError NoAnswer
+
+let full_grade g =
+  List.for_all (fun (_, (i, o)) -> i = o) g.scores
+
+let on_completed evaluation_state f =
+  match evaluation_state with
+    | EvaluationDone (who, tags, difficulty, grade) ->
+      if full_grade grade then
+        f who tags difficulty
+      else
+        return ()
+    | _ -> return ()

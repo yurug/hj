@@ -10,6 +10,7 @@ common/extUnix
 common/extPervasives
 common/position
 common/syntacticAnalysis
+common/rb
 
 reactive/reactiveErrors
 reactive/VFS
@@ -70,6 +71,7 @@ machine/WaitingList
 machine/Machinist
 machine/Sandbox
 
+dojo/tag
 dojo/user
 dojo/admin
 dojo/exercise

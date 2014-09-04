@@ -78,6 +78,9 @@ module Dict : sig
   val empty : 'a t
   val add : identifier -> 'a -> 'a t -> 'a t
   val find : identifier -> 'a t -> 'a
+  val iter : ((identifier * 'a) -> unit) -> 'a t -> unit
+  val iter_s : ((identifier * 'a) -> unit Lwt.t) -> 'a t -> unit Lwt.t
+  val fold_s : ('b -> (identifier * 'a) -> 'b Lwt.t) -> 'b -> 'a t -> 'b Lwt.t
 end
 
 type identifiers = Set.t

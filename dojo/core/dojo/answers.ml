@@ -25,6 +25,7 @@ type internal_state = {
 } deriving (Json)
 
 type public_change =
+  | NewQuestions of Questions.t
   | NewAnswer of Questions.identifier * User.identifier * Questions.answer
   | NewEvaluation of Questions.identifier * User.identifier * Questions.answer
   | UpdateEvaluationState of Questions.identifier * Questions.evaluation_state
@@ -51,8 +52,19 @@ include Entity.Make (struct
     | UpdateEvaluationState (qid, _) ->
       Printf.sprintf "update evaluation state of %s" qid
 
+    | NewQuestions qs ->
+      Printf.sprintf "new questions"
+
   let react state mdeps cs later =
-    let apply_change content = Questions.(function
+    let apply_change content =
+      let update_tags qid evaluation_state =
+        Questions.on_completed evaluation_state (fun qid tags difficulty ->
+          Lwt_list.iter_s
+            (fun u -> User.tag u content.exercise qid tags difficulty)
+            content.contributors
+        )
+      in
+      Questions.(function
       | NewAnswer (qid, uid, answer) ->
         let evaluations =
           update_evaluation qid EvaluationWaits content.evaluations
@@ -70,21 +82,33 @@ include Entity.Make (struct
         let answer_real_path =
           OnDisk.resource_real_path (InMemory.identifier state)
         in
-        lwt evaluations =
+        lwt evaluations, evaluation_state =
           update_evaluations
             exo_real_path answer_real_path
             content.evaluations content.questions
             qid answer update
         in
-        return { content with answers; evaluations }
+        update_tags qid evaluation_state
+        >> return { content with answers; evaluations }
       )
 
       | UpdateEvaluationState (qid, evaluation_state) ->
-        let evaluations =
-          Questions.update_evaluation qid evaluation_state content.evaluations
-        in
-        return { content with evaluations }
-    )
+        update_tags qid evaluation_state
+        >> return {
+          content with evaluations =
+            Questions.update_evaluation qid evaluation_state content.evaluations
+        }
+
+      | NewQuestions questions ->
+        (* FIXME: We must implement a caching system not to evaluate
+           FIXME: twice the same answers on the same questions.
+           FIXME: Yet, this caching process should be bypassable... *)
+        iter_answers_s (fun (qid, a) ->
+          later (NewEvaluation (qid, List.hd content.contributors, a))
+        ) content.answers
+        >> return { content with questions }
+      )
+
     in
     (* FIXME: Common pattern to be factorized out. *)
     let content0 = content state in
@@ -130,3 +154,6 @@ let evaluation_state answers qid =
 let answer_of_question answers qid =
   observe answers (fun state -> return (content state).answers)
   >>= fun answers -> return (Questions.lookup_answer answers qid)
+
+let refresh_questions a qs =
+  change a (NewQuestions qs)

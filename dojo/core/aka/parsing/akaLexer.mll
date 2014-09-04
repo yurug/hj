@@ -30,6 +30,15 @@
   let fresh lexbuf =
     Position.with_cpos lexbuf ""
 
+  let cons lexbuf = function
+    | Raw s :: t ->
+      Raw (fresh lexbuf) :: Raw s :: t
+    | RawCode s :: t ->
+      RawCode (Position.map (fun s -> s ^ ";") s) :: t
+    | [] ->
+      Raw (fresh lexbuf) :: []
+    | _ -> assert false
+
   let next lexbuf = function
     | RawCode s :: t ->
       Raw (fresh lexbuf) :: RawCode s :: t
@@ -153,6 +162,12 @@ and template osym csym level accu = parse
     template osym csym (level + 1) (next lexbuf accu) lexbuf
   else
     template osym csym level (push_string lexbuf opening accu) lexbuf
+}
+| ";" {
+  template osym csym level (cons lexbuf accu) lexbuf
+}
+| "\\;" {
+  template osym csym level (push_string lexbuf ";" accu) lexbuf
 }
 | eof {
   error lexbuf

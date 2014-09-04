@@ -507,6 +507,15 @@ span.report {
    padding-top: 5px;
 }
 
+span.tag {
+    font-style: normal;
+    font-weight:bold;
+    border-radius : 10px;
+    border: 1px solid #AAA69C;
+    padding: 2px 15px;
+    margin-right: 3px;
+}
+
 span.editor_message_button {
     font-style: normal;
     font-weight:bold;

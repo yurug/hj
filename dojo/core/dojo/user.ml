@@ -48,16 +48,20 @@ type internal_state = {
   firstname       : string;
   surname         : string;
   email           : string;
+  tags            : Tag.set;
 } deriving (Json)
+
+type public_change =
+  | SetPasswordDigest of password_digest
+  | Login
+  | Logout
+  | Tagged of Identifier.t * Questions.identifier * string list * int
 
 include Entity.Make (struct
 
   type data = internal_state deriving (Json)
 
-  type change =
-    | SetPasswordDigest of password_digest
-    | Login
-    | Logout
+  type change = public_change
 
   let react state mdeps cs later =
     let make_change content = function
@@ -67,6 +71,9 @@ include Entity.Make (struct
         { content with logged = true }
       | Logout ->
         { content with logged = false }
+      | Tagged (exo_id, q_id, tags, difficulty) ->
+        let who = string_of_identifier exo_id ^ "/" ^ q_id in
+        { content with tags = Tag.tag who tags difficulty content.tags }
     in
     let content = List.fold_left make_change (content state) cs in
     return (UpdateContent content)
@@ -79,6 +86,12 @@ include Entity.Make (struct
     | SetPasswordDigest _ -> "set password"
     | Login  -> "login"
     | Logout -> "logout"
+    | Tagged (exo_id, q_id, tags, difficulty) ->
+      Printf.sprintf "tagged %s[%d] by %s/%s"
+        (String.concat ", " tags)
+        difficulty
+        (string_of_identifier exo_id)
+        q_id
 
 end)
 
@@ -154,9 +167,15 @@ let register login password =
           teacher;
           firstname;
           surname;
-          email
+          email;
+          tags = Tag.Set.empty
         }
         in
         make ~init:(data, empty_dependencies, []) id
     | r ->
       return (`KO `UnauthorizedLogin)
+
+let tag uid exoid qid tags difficulty =
+  make uid >>= function
+    | `OK user -> change user (Tagged (exoid, qid, tags, difficulty))
+    | _ -> return () (* FIXME *)

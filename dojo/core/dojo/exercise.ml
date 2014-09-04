@@ -178,6 +178,18 @@ let answer id uid qid a =
   user_answers exo uid >>>= fun answers ->
   Answers.push_new_answer answers qid uid a >> return (`OK ())
 
+let refresh_evaluations id =
+  make id >>>= fun exo ->
+  (observe exo (fun data -> return (content data).user_answers)
+   >>= fun answers -> Dict.fold_s (fun ret (uid, a_id) ->
+     match ret with
+       | `KO e -> return (`KO e)
+       | `OK () ->
+         questions id uid >>>= fun questions -> Answers.(
+           make a_id >>>= fun a ->
+           refresh_questions a questions >> return (`OK ()))
+   ) (`OK ()) answers)
+
 let evaluation_state id uid qid =
   make id >>>= fun exo ->
   user_answers exo uid >>>= fun answers ->

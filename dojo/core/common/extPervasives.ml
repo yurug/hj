@@ -149,6 +149,11 @@ let map_assoc k f l =
     | Some x -> update_assoc k (f x) l
     | None -> l
 
+let map_assoc_opt k f l =
+  match opt_assoc k l with
+    | Some x -> update_assoc k (f (Some x)) l
+    | None -> (k, f None) :: l
+
 let cons_if cond x xs =
   if cond then x :: xs else xs
 

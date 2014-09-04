@@ -113,6 +113,12 @@ module Dict = struct
 
   let find k t = snd (List.find (fun (k', v) -> compare k k' = 0) t)
 
+  let iter f (d : 'a t) = List.iter f d
+
+  let iter_s = Lwt_list.iter_s
+
+  let fold_s = Lwt_list.fold_left_s
+
 end
 
 let lwt_map_map f m =

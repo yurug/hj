@@ -28,7 +28,10 @@ let exercise_page exo =
   )
   in
 
-  let statement_as_html name title statements context answers editor_maker =
+  let statement_as_html
+      name title
+      tags difficulty
+      statements context answers editor_maker =
     let name_str : string = name in
 
     let grade_div = div [] in
@@ -61,7 +64,7 @@ let exercise_page exo =
             | EvaluationBeingProcessed ->
               update_grade_div [pcdata "..."];
               Lwt_js.sleep 1. >> wait ()
-            | EvaluationDone grade ->
+            | EvaluationDone (_, _, _, grade) ->
               write_trace_on_console grade.trace;
               return (update_grade_div (scores_as_html grade.scores))
             | EvaluationFailed ->
@@ -190,11 +193,22 @@ let exercise_page exo =
       aux [] context
     in
     lwt context = context_as_html context in
+    let rec stars = function
+      | 0 -> ""
+      | n -> "★" ^ stars (n - 1)
+    in
+    let tags_as_html tags =
+      p ~a:[a_class ["tags"]] (
+        List.map (fun t -> span ~a:[a_class ["tag"]] [pcdata t]) tags
+      )
+    in
     return (div (
-      h1 [pcdata title]
-      :: statements_as_html statements
-       @ context
-       @ [ grade_div ]
+      [ h1 [pcdata (title ^ " (" ^ stars difficulty ^ ")")];
+        tags_as_html tags
+      ]
+      @ statements_as_html statements
+      @ context
+      @ [ grade_div ]
     ))
   in
 
@@ -216,11 +230,15 @@ let exercise_page exo =
 
   let navigation_sidebar questions answers editor_maker = Questions.(
     let rec aux = function
-      | Question (name, title, statement, context) ->
-        let name = Questions.flatten_string name in
-        let title = Questions.flatten_string title in
+      | Question q ->
+        let name = Questions.flatten_string q.id in
+        let title = Questions.flatten_string q.title in
         let d = server_function Json.t<unit> (fun () ->
-          statement_as_html name title statement context answers editor_maker
+          statement_as_html
+            name title
+            q.tags q.difficulty
+            q.statement q.context
+            answers editor_maker
         )
         in
         [li

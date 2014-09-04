@@ -60,6 +60,28 @@ let exercise_update = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
+let exercise_refresh_evaluations = HTTP.(
+  api_service "exercise_refresh_evaluations" "exercise"
+    (string "identifier")
+    (string "status")
+    "Refresh the evaluations of an exercise 'source.aka'."
+    (fun name ->
+      (teacher_only () >>>= fun _ ->
+       Exercise.refresh_evaluations (identifier_of_string name)
+      ) >>= function
+        | `OK _ -> completed ()
+        | `KO (`InvalidCode e) -> success e
+        | `KO `NotLogged -> error "not_logged"
+        | `KO `FailedLogin -> error "login_failed"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+        | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+        | `KO `ForbiddenService -> error "teacher_only"
+        | `KO (`UndefinedEntity id) ->
+          error ("undefined:" ^ (string_of_identifier id)))
+)
+
 let exercise_questions_function name =
   logged_user () >>>= fun user ->
   let uid = User.identifier user in
@@ -180,7 +202,7 @@ type public_grade = {
 
 type public_evaluation_state =
   | NoEvaluation
-  | EvaluationDone of public_grade
+  | EvaluationDone of string * string list * int * public_grade
   | EvaluationBeingProcessed
   | EvaluationFailed
 
@@ -203,10 +225,14 @@ let make_public_grade g =
   }
 
 let make_public_evaluation_state = function
-  | Questions.EvaluationError _ -> EvaluationFailed
-  | Questions.EvaluationDone g -> EvaluationDone (make_public_grade g)
-  | Questions.EvaluationWaits -> EvaluationBeingProcessed
-  | Questions.EvaluationHandled _ -> EvaluationBeingProcessed
+  | Questions.EvaluationError _ ->
+    EvaluationFailed
+  | Questions.EvaluationDone (id, tags, level, g) ->
+    EvaluationDone (id, tags, level, make_public_grade g)
+  | Questions.EvaluationWaits ->
+    EvaluationBeingProcessed
+  | Questions.EvaluationHandled _ ->
+    EvaluationBeingProcessed
 
 let exercise_evaluation_state_function (name, (qid : string)) =
   logged_user () >>>= fun user ->
@@ -229,7 +255,7 @@ let exercise_evaluation_state = HTTP.(
     (fun (name, qid) ->
        let string_of_evaluation_state = Questions.(function
          | EvaluationError _ -> assert false
-         | EvaluationDone grade -> Questions.string_of_grade grade
+         | EvaluationDone (_, _, _, grade) -> Questions.string_of_grade grade
          | EvaluationWaits -> "waiting..."
          | EvaluationHandled _ -> "processing..."
        )
