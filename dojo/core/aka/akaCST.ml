@@ -286,7 +286,7 @@ let rec substitute_term_in_term f =
   let rec term' t = f (Position.map term t)
 
   and term = function
-    | Template t -> Template t
+    | Template t -> Template (List.map template_atom t)
     | Lam (x, a, t) -> Lam (x, a, term' t)
     | App (a, b) -> App (term' a, term' b)
     | KApp (k, ts) -> KApp (k, List.map term' ts)
@@ -295,6 +295,11 @@ let rec substitute_term_in_term f =
     | Field (t, l) -> Field (term' t, l)
     | Case (t, bs) -> Case (term' t, List.map branch' bs)
     | (Lit _ | Variable _ as x) -> x
+
+  and template_atom = function
+    | Raw s -> Raw s
+    | RawCode s -> RawCode s
+    | Code t -> Code (term' t)
 
   and branch (Branch (p, t)) =
     Branch (p, term' t)

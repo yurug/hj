@@ -25,6 +25,7 @@ let parse source_code = AkaCST.(
     substitute_template_in_term aux_term ast
   and aux_term = function
     | RawCode s ->
+      Printf.eprintf "Parsing '%s'\n%!" (Position.value s);
       let spos = Position.(start_of_position (position s)) in
       let ast = aux (step (Position.value s)) in
       let change_pos t =

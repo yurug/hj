@@ -120,8 +120,12 @@ rule main = parse
 | "}"                                   { RBRACE }
 | "("                                   { LPAREN }
 | ")"                                   { RPAREN }
-| ("["+) as opening {
-  let closing = String.make (String.length opening) ']' in
+| ("[" | "[:") as opening {
+  let closing = match opening with
+    | "[" -> "]"
+    | "[:" -> ":]"
+    | _ -> assert false (* By rule regexp. *)
+  in
   template opening closing 1 (next lexbuf []) lexbuf
 }
 
@@ -148,18 +152,23 @@ rule main = parse
 }
 
 and template osym csym level accu = parse
-| ("]"+ as closing) {
+| (("]" | ":]") as closing) {
   if closing = csym then(
     if level = 1 then
       TEMPLATE (List.rev accu)
-    else
+    else if level = 2 then
       template osym csym (level - 1) (next lexbuf accu) lexbuf
+    else
+      template osym csym (level - 1) (push_string lexbuf closing accu) lexbuf
   ) else
     template osym csym level (push_string lexbuf closing accu) lexbuf
 }
-| ("["+ as opening) {
+| (("[" | "[:") as opening) {
   if opening = osym then
-    template osym csym (level + 1) (next lexbuf accu) lexbuf
+    if level = 1 then
+      template osym csym (level + 1) (next lexbuf accu) lexbuf
+    else
+      template osym csym (level + 1) (push_string lexbuf opening accu) lexbuf
   else
     template osym csym level (push_string lexbuf opening accu) lexbuf
 }

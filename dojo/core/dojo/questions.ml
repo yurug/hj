@@ -23,19 +23,19 @@ let cons xs x = x :: xs
 
 let flatten_list s = List.rev (flatten [] cons cons s)
 
-type text = {
-  bold   : bool;
-  italic : bool;
-  value  : string
-}
+type text =
+  | Bold of text template
+  | Italic of text template
+  | String of string template
+  | Code of string template
 deriving (Json)
 
 type statement =
-| Text of text template
+| Paragraph of text template
 deriving (Json)
 
 type context =
-| QCM of statement list * int list
+| QCM of text template list * int list
 | Grader of string * string list * string
 deriving (Json)
 
@@ -100,23 +100,25 @@ module ReifyFromAka = struct
       []
     | _ -> assert false
 
-  let text = function
-    | VRecord fields ->
-      {
-        bold   = boolean (lookup "bold" fields);
-        italic = boolean (lookup "italic" fields);
-        value  = string (lookup "value" fields)
-      }
+  let rec text = function
+    | VData (DName "Bold", [ t ]) ->
+      Bold (template text t)
+    | VData (DName "Italic", [ t ]) ->
+      Italic (template text t)
+    | VData (DName "String", [ s ]) ->
+      String (template string s)
+    | VData (DName "Code", [ s ]) ->
+      Code (template string s)
     | _ -> assert false
 
   let statement = function
-    | VData (DName "Text", [t]) ->
-      Text (template text t)
+    | VData (DName "Paragraph", [t]) ->
+      Paragraph (template text t)
     | _ -> assert false
 
   let context = function
     | VData (DName "QCM", [choices; expected_choices]) ->
-      QCM (list statement choices, list int expected_choices)
+      QCM (list (template text) choices, list int expected_choices)
     | VData (DName "Grader", [expected_file; import_files; command]) ->
       let expected_file = flatten_string (template string expected_file) in
       let import_files = flatten_list (template string import_files) in
@@ -155,15 +157,24 @@ module Txt = struct
 
   let vcat f = flatten "" ( ^ ) (fun s c -> s ^ "\n" ^ f c)
 
-  let text t = t.value
+  let rec flatten_text t = flatten "" ( ^ ) (fun s t -> s ^ text t) t
+
+  and text = function
+    | Bold t | Italic t -> flatten_text t
+    | String s -> flatten_string s
+    | Code s -> "[" ^ flatten_string s ^ "]"
+
+  let paragraph t = text t
 
   let statement = function
-    | Text s -> flatten "" ( ^ ) (fun s t -> s ^ text t) s
+    | Paragraph s -> vcat text s
 
   let context = function
     | QCM (choices, _) ->
       String.concat "\n" (List.(
-        mapi (fun i -> (sprintf "%d. %s") (i + 1)) (map statement choices)
+        mapi
+          (fun i -> (sprintf "%d. %s") (i + 1))
+          (map flatten_text choices)
       ))
     | Grader (expected_file, _, _) ->
       sprintf "%s?" expected_file

@@ -23,11 +23,6 @@ let exercise_page exo =
 
   let statement_div = div [pcdata I18N.String.please_navigate] in
 
-  let flatten_as_list str elem t = List.rev (
-    flatten [] (fun a s -> str s :: a) (fun a s -> elem s :: a) t
-  )
-  in
-
   let statement_as_html
       name title
       tags difficulty
@@ -76,16 +71,38 @@ let exercise_page exo =
         wait ()
       }}
     in
-    let text_as_html t =
-       pcdata t.value
+    let string_template_as_html classes s =
+      span ~a:[a_class classes] [pcdata (flatten_string s)]
+    in
+    let string_template_as_html_code classes s =
+      code [pcdata (flatten_string s)]
+    in
+    let string_as_html classes s =
+      span ~a:[a_class classes] [pcdata s]
+    in
+    let rec template_text_as_html classes t =
+      List.rev (
+        flatten []
+          (fun a s -> string_as_html classes s :: a)
+          (fun a s -> text_as_html classes s @ a) t
+      )
+    and text_as_html classes = function
+      | String s -> [string_template_as_html classes s]
+      | Code s -> [string_template_as_html_code classes s]
+      | Bold t -> template_text_as_html ("bold" :: classes) t
+      | Italic t -> template_text_as_html ("italic" :: classes) t
     in
     let statement_as_html = function
-      | Text t -> flatten_as_list pcdata text_as_html t
+      | Paragraph t -> p (template_text_as_html [] t)
     in
     let statements_as_html t =
-      List.flatten (flatten_as_list (fun x -> [pcdata x]) statement_as_html t)
+      List.rev (
+        flatten []
+          (fun a s -> p [string_as_html [] s] :: a)
+          (fun a s -> statement_as_html s :: a)
+          t
+      )
     in
-
     let qcm_as_html statements =
 
       let choices = {int list ref{ ref [] }} in
@@ -100,10 +117,10 @@ let exercise_page exo =
          }}
       in
       let qcm_item (i : int) statement =
-        p (
-          input ~input_type:`Checkbox ~a:[a_onclick (oc i)] ()
-          :: statement_as_html statement
-        )
+        p [
+          input ~input_type:`Checkbox ~a:[a_onclick (oc i)] ();
+          span (template_text_as_html [] statement)
+        ]
       in
       div ~a:[a_onload onload] (List.mapi qcm_item statements @ [
         small_button ["OK"] {unit -> unit{ fun () ->
