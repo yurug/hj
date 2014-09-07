@@ -33,6 +33,8 @@ deriving (Json)
 
 type statement =
 | Paragraph of text template
+| Verbatim  of string template
+| CodeBlock of string template
 deriving (Json)
 
 type context =
@@ -117,6 +119,10 @@ module ReifyFromAka = struct
   let statement = function
     | VData (DName "Paragraph", [t]) ->
       Paragraph (template text t)
+    | VData (DName "Verbatim", [t]) ->
+      Verbatim (template string t)
+    | VData (DName "CodeBlock", [t]) ->
+      CodeBlock (template string t)
     | _ -> assert false
 
   let word s =
@@ -181,8 +187,12 @@ module Txt = struct
 
   let paragraph t = text t
 
+  let string x = x
+
   let statement = function
     | Paragraph s -> vcat text s
+    | CodeBlock s -> "codeblock {\n" ^ vcat string s ^ "\n}"
+    | Verbatim  s -> "verbatim  {\n" ^ vcat string s ^ "\n}"
 
   let context = function
     | QCM (choices, _) ->

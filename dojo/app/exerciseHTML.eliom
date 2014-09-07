@@ -98,6 +98,8 @@ let exercise_page exo =
     in
     let statement_as_html = function
       | Paragraph t -> p (template_text_as_html [] t)
+      | Verbatim t -> pre [pcdata (flatten_string t)]
+      | CodeBlock t -> pre [pcdata (flatten_string t)]
     in
     let statements_as_html t =
       List.rev (
