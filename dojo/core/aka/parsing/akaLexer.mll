@@ -12,6 +12,8 @@
 
   exception UnexpectedCharacter of char
 
+  let string_buffer = Buffer.create 13
+
   let error lexbuf =
     raise (AkaError.Parse (lex_join lexbuf.lex_start_p lexbuf.lex_curr_p))
 
@@ -79,6 +81,8 @@ let digit = [ '0' - '9' ]
 
 let identifier = label ('/' label)*
 
+let hexa   = [ '0'-'9' 'a'-'f' 'A'-'F']
+
 let number = digit+
 
 rule main = parse
@@ -102,6 +106,7 @@ rule main = parse
 | "end"                                 { END }
 | "with"                                { WITH }
 | "aka"                                 { AKA }
+| "external"                            { EXTERNAL }
 
 (** Punctuations. *)
 | "?"                                   { QMARK }
@@ -120,6 +125,11 @@ rule main = parse
 | "}"                                   { RBRACE }
 | "("                                   { LPAREN }
 | ")"                                   { RPAREN }
+
+(** Operators. *)
+
+(** Literal. *)
+
 | ("[" | "[:") as opening {
   let closing = match opening with
     | "[" -> "]"
@@ -129,9 +139,11 @@ rule main = parse
   template opening closing 1 (next lexbuf []) lexbuf
 }
 
-(** Operators. *)
+| '"' {
+  Buffer.clear string_buffer;
+  string lexbuf
+}
 
-(** Literal. *)
 | number as x {
   INT (int_of_string x)
 }
@@ -178,6 +190,12 @@ and template osym csym level accu = parse
 | "\\;" {
   template osym csym level (push_string lexbuf ";" accu) lexbuf
 }
+| "\\[" {
+  template osym csym level (push_string lexbuf "[" accu) lexbuf
+}
+| "\\]" {
+  template osym csym level (push_string lexbuf "]" accu) lexbuf
+}
 | eof {
   error lexbuf
 }
@@ -207,3 +225,47 @@ and comment level = parse
   | _ {
     comment level lexbuf
   }
+
+and string = parse
+| "\\n"
+{ Buffer.add_char string_buffer '\n'; string lexbuf }
+| "\\t"
+{ Buffer.add_char string_buffer '\t'; string lexbuf }
+| "\\b"
+{ Buffer.add_char string_buffer '\b'; string lexbuf }
+| "\\r"
+{ Buffer.add_char string_buffer '\r'; string lexbuf }
+| "\\" '"'
+{ Buffer.add_char string_buffer '"'; string lexbuf }
+| "\\\\"
+{ Buffer.add_char string_buffer '\\'; string lexbuf }
+
+| '\\'
+{
+  error lexbuf
+}
+| "\\" (digit digit digit as i) {
+   let c = int_of_string i in
+   if c < 0 || c > 255 then error lexbuf;
+   Buffer.add_char string_buffer (char_of_int c); string lexbuf
+}
+| "\\0" ("x" | "X") (hexa hexa as i) {
+   let c = int_of_string ("0x" ^ i) in
+   if c < 0 || c > 255 then error lexbuf;
+   Buffer.add_char string_buffer (char_of_int c); string lexbuf
+}
+| "\\0" ("b" | "B") (['0'-'1']+ as i) {
+   let c = int_of_string ("0b" ^ i) in
+   if c < 0 || c > 255 then error lexbuf;
+   Buffer.add_char string_buffer (char_of_int c); string lexbuf
+}
+| '"'                                   {
+  LSTRING (Buffer.contents string_buffer)
+}
+| _ as c                                {
+  Buffer.add_char string_buffer c;
+  string lexbuf
+}
+| eof                                   {
+  error lexbuf
+}

@@ -24,6 +24,7 @@ let ( !% ) s = (shell s, s)
 let strace_descriptor = Log.make_event_descriptor "strace" Facts.string
 
 let strace_lwt f (cmd, s) =
+  Printf.eprintf "%s\n%!" s;
   let stop = Log.log_process system strace_descriptor s in
   lwt ret = f cmd in
   ignore (stop ());

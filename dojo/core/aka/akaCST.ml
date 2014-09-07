@@ -10,6 +10,7 @@ open Name
 type t = declaration located list
 
 and declaration =
+  | External   of position * name * ty_scheme
   | ValueDecl  of value_definition
   | RecFunDecl of value_definition list
   | TypeDecl   of position * type_definition list
@@ -149,6 +150,11 @@ let to_ast : identifier -> t -> IAST.program Lwt.t = fun module_name program ->
     declaration (position d) (value d)
 
   and declaration pos = function
+    | External (pos, (Name s as name), Types.TyScheme (ts, _, ty)) ->
+      return [
+        I.(BDefinition (ExternalValue (pos, ts, (name, Some ty), s)))
+      ]
+
     | ValueDecl vdef ->
       return [
         I.(BDefinition (BindValue (pos, [value_definition vdef])))
@@ -267,7 +273,7 @@ let to_ast : identifier -> t -> IAST.program Lwt.t = fun module_name program ->
   and literal = function
     | LInt x -> I.PIntegerConstant x
     | LFloat f -> failwith "TODO"
-    | LString s -> failwith "TODO"
+    | LString s -> I.PStringConstant s
     | LUnit -> I.PUnit
     | LChar c -> I.PCharConstant c
 

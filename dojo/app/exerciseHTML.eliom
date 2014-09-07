@@ -77,8 +77,11 @@ let exercise_page exo =
     let string_template_as_html_code classes s =
       code [pcdata (flatten_string s)]
     in
+    let string_template_as_html_latex classes s =
+      span [pcdata ("\\(" ^ flatten_string s ^ "\\)")]
+    in
     let string_as_html classes s =
-      span ~a:[a_class classes] [pcdata s]
+      span ~a:(if classes = [] then [] else [a_class classes]) [pcdata s]
     in
     let rec template_text_as_html classes t =
       List.rev (
@@ -89,6 +92,7 @@ let exercise_page exo =
     and text_as_html classes = function
       | String s -> [string_template_as_html classes s]
       | Code s -> [string_template_as_html_code classes s]
+      | LaTeX s -> [string_template_as_html_latex classes s]
       | Bold t -> template_text_as_html ("bold" :: classes) t
       | Italic t -> template_text_as_html ("italic" :: classes) t
     in
@@ -240,7 +244,8 @@ let exercise_page exo =
           | _ ->
             %focus := Some %name;
             lwt div = %new_statement_div () in
-            return (Manip.replaceChildren %statement_div [div])
+            Manip.replaceChildren %statement_div [div];
+            return (WidgetHTML.display_math ["'central_column'"])
       )
     }}
   in

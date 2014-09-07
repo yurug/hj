@@ -4,6 +4,7 @@ open Name
 
 type value =
   | VClosure of env * name * expression
+  | VPrimitiveFun of (value -> value)
   | VData    of dname * value list
   | VRecord  of (lname * value) list
   | VPrimitive of primitive
@@ -13,8 +14,23 @@ and env = (name * value ref) list
 exception UnboundIdentifier of string
 exception UnboundLabel of string
 
+let lookup_primitive = function
+  | "string_append" -> VPrimitiveFun (function
+      | VPrimitive (PStringConstant s) ->
+        VPrimitiveFun (function
+          | VPrimitive (PStringConstant s') ->
+            VPrimitive (PStringConstant (s ^ s'))
+          | _ -> assert false (* By typing .*)
+        )
+      | _ -> assert false (* By typing .*)
+  )
+  | _ -> raise Not_found
+
 let lookup ((Name n) as x) env = try ! (List.assoc x env)
-  with Not_found -> raise (UnboundIdentifier n)
+  with Not_found ->
+    try lookup_primitive n
+    with Not_found ->
+      raise (UnboundIdentifier n)
 
 let bind x v env = (x, ref v) :: env
 
@@ -43,8 +59,8 @@ and value_binding env = function
     ) vs;
     env
 
-  | ExternalValue _ ->
-    failwith "TODO"
+  | ExternalValue (_, _, (x, _), p) ->
+    bind x (lookup_primitive p) env
 
 and value_definition env (ValueDef (_, _, _, (x, _), t)) =
   let v = expression env t in
@@ -58,6 +74,8 @@ and expression env = function
     | EApp (_, a, b) -> begin match expression env a with
         | VClosure (env', x, e) ->
           expression (bind x (expression env b) env') e
+        | VPrimitiveFun f ->
+          f (expression env b)
         | _ -> assert false (* By typing. *)
     end
 

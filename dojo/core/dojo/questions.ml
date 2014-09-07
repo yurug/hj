@@ -9,15 +9,15 @@ type 'a template =
 | TNil
 deriving (Json)
 
-let flatten init on_string on_code =
+let flatten init on_string on_code s =
   let rec aux accu = function
     | TNil -> accu
     | TAtom (s, t) -> aux (on_string accu s) t
     | TCode (s, t) -> aux (on_code accu s) t
   in
-  aux init
+  aux init s
 
-let flatten_string = flatten "" ( ^ ) ( ^ )
+let flatten_string s = flatten "" ( ^ ) ( ^ ) s
 
 let cons xs x = x :: xs
 
@@ -28,6 +28,7 @@ type text =
   | Italic of text template
   | String of string template
   | Code of string template
+  | LaTeX of string template
 deriving (Json)
 
 type statement =
@@ -109,6 +110,8 @@ module ReifyFromAka = struct
       String (template string s)
     | VData (DName "Code", [ s ]) ->
       Code (template string s)
+    | VData (DName "LaTeX", [ s ]) ->
+      LaTeX (template string s)
     | _ -> assert false
 
   let statement = function
@@ -116,25 +119,36 @@ module ReifyFromAka = struct
       Paragraph (template text t)
     | _ -> assert false
 
+  let word s =
+    Str.(global_replace (regexp " ") "" s)
+
+  let words l =
+    List.map word (flatten_list l)
+
   let context = function
     | VData (DName "QCM", [choices; expected_choices]) ->
       QCM (list (template text) choices, list int expected_choices)
     | VData (DName "Grader", [expected_file; import_files; command]) ->
-      let expected_file = flatten_string (template string expected_file) in
-      let import_files = flatten_list (template string import_files) in
+      let rec print = function
+        | TAtom (s, t) -> s ^ ":" ^ print t
+        | TCode (s, t) -> s ^ "::" ^ print t
+        | TNil -> ""
+      in
+      let ts = template string expected_file in
+      Printf.eprintf "Grader expected file template : %s\n%!" (print ts);
+      let expected = word (flatten_string (template string expected_file)) in
+      Printf.eprintf "Grader expected file : %s\n%!" expected;
+      let import_files = words (template string import_files) in
       let command = flatten_string (template string command) in
-      Grader (expected_file, import_files, command)
+      Grader (expected, import_files, command)
     | _ -> assert false
-
-  let tags l =
-    List.map (fun s -> Str.(global_replace (regexp " ") "" s)) (flatten_list l)
 
   let question = function
     | VRecord q ->
       {
         id         = template string (lookup "id" q);
         title      = template string (lookup "title" q);
-        tags       = tags (template string (lookup "tags" q));
+        tags       = words (template string (lookup "tags" q));
         difficulty = int (lookup "difficulty" q);
         statement  = template statement (lookup "statement" q);
         context    = template context (lookup "context" q);
@@ -163,6 +177,7 @@ module Txt = struct
     | Bold t | Italic t -> flatten_text t
     | String s -> flatten_string s
     | Code s -> "[" ^ flatten_string s ^ "]"
+    | LaTeX s -> "$" ^ flatten_string s ^ "$"
 
   let paragraph t = text t
 
@@ -419,6 +434,7 @@ let grade_program qid tags difficulty files cmd update =
   ) in
   (* Run the command. *)
   let cmd = Str.(global_replace (regexp "%seed") (Seed.to_string secret) cmd) in
+  Printf.eprintf "Files: %s\n" (String.concat ", " files);
   Sandbox.(exec files cmd observer)
   >>= function
     | `OK (job, persistence_id) ->

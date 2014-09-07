@@ -149,7 +149,6 @@ let exec
     files cmd observer =
 
   try_lwt
-
     let requirements =
       cons_if (persistence = RequirePersistence) Lockable requirements
     in

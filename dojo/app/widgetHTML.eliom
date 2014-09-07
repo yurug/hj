@@ -481,3 +481,14 @@ let fileuploader width height import =
     (label : _ :> (_, _, _) c)
     {{ fun () -> () }}
     (pcdata "↑")
+
+{client{
+let display_math elements =
+  Lwt.async (fun () ->
+    return (Js.Unsafe.eval_string (
+      Printf.sprintf
+        "MathJax.Hub.Queue([\"Typeset\",MathJax.Hub,%s]);"
+        (String.concat "," elements)
+    ))
+  )
+}}

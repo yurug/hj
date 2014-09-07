@@ -48,6 +48,7 @@
 %token<string> NAME UNAME TVNAME
 %token<Identifier.t> IDENTIFIER
 %token<int> INT
+%token<string> LSTRING
 %token<char> CHAR
 %token<AkaCST.template_atom list> TEMPLATE
 
@@ -60,6 +61,7 @@
 
 (** Keywords. *)
 %token DEF DATATYPE AND TINT TUNIT TCHAR AS IMPORT DO BEGIN END WITH AKA
+%token EXTERNAL
 
 (** Priorities *)
 
@@ -109,6 +111,13 @@ x=name ty=ty_ascription EQUAL t=located(term) {
   let pos = Position.lex_join $startpos $endpos in
   ValueDecl ((pos, Name "__questions__", None,
               with_pos pos (Lam (Name "__target__", None, t))))
+}
+| EXTERNAL
+  ts=type_parameters
+  x=name COLON ty=mltype
+{
+  let pos = Position.lex_join $startpos $endpos in
+  External (pos, x, TyScheme (ts, [], ty))
 }
 
 fundef:
@@ -205,6 +214,9 @@ term0:
 }
 | x=INT {
   Lit  (LInt x)
+}
+| x=LSTRING {
+  Lit  (LString x)
 }
 | l=name {
   Variable l
