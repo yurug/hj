@@ -57,16 +57,18 @@ let message msg =
       method on : js_string t -> ('a, 'b) meth_callback -> unit meth
       method getValue : js_string t meth
       method setValue : js_string t -> unit meth
+      method setOption : js_string t -> js_string t -> unit meth
       method setBooleanOption : js_string t -> boolean -> unit meth
       method toTextArea : unit -> unit meth
     end
 
-    let make ta =
+    let make ta mode =
       (* FIXME: Define a cleaner binding. *)
       eval_string (
         Printf.sprintf
           "CodeMirror.fromTextArea(document.getElementById(\"%s\"), {
-           lineNumbers: true
+           lineNumbers: true,
+           mode: \"text/x-java\"
            });" ta)
 
   end
@@ -95,7 +97,15 @@ type interface = {
 exception NoEditor
 }}
 
-let make = {string -> interface{ fun (container_id : string) ->
+let make = {string -> string -> interface{ fun container_id ext ->
+  let mode =
+    match ext with
+    | ".java" ->
+      "text/x-java"
+    | ext ->
+      Firebug.console##log (Js.string ("Unknown extension " ^ ext));
+      ""
+  in
   let editor_id = fresh_editor_id () in
   let elt = Dom_html.(createTextarea document) in
   let container_elt = ExtDom.get_element_by_id container_id in
@@ -108,7 +118,7 @@ let make = {string -> interface{ fun (container_id : string) ->
   ignore (container_elt##appendChild (elt));
   ignore (container_elt##appendChild (button));
   ignore (container_elt##appendChild (console));
-  let editor = CodeMirror.make editor_id in
+  let editor = CodeMirror.make editor_id mode in
   let get_value () = Js.to_string (editor##getValue ()) in
   let set_value s  = editor##setValue (Js.string s) in
   let dispose () =

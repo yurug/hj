@@ -16,7 +16,7 @@ open Identifier
 
 {shared{
 type editor_maker =
-    (unit -> EditorHTML.interface) client_value
+    (string -> EditorHTML.interface) client_value
 }}
 
 type page_descriptor =

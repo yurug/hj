@@ -21,7 +21,14 @@ let flatten_string s = flatten "" ( ^ ) ( ^ ) s
 
 let cons xs x = x :: xs
 
-let flatten_list s = List.rev (flatten [] cons cons s)
+let cons_skip_semicolon xs = function
+  | ";" -> xs
+  | x -> x :: xs
+
+let flatten_list s =
+  List.rev (
+    flatten [] cons_skip_semicolon cons s
+  )
 
 type text =
   | Bold of text template
@@ -34,7 +41,7 @@ deriving (Json)
 type statement =
 | Paragraph of text template
 | Verbatim  of string template
-| CodeBlock of string template
+| CodeBlock of string template * string template
 deriving (Json)
 
 type context =
@@ -121,29 +128,21 @@ module ReifyFromAka = struct
       Paragraph (template text t)
     | VData (DName "Verbatim", [t]) ->
       Verbatim (template string t)
-    | VData (DName "CodeBlock", [t]) ->
-      CodeBlock (template string t)
+    | VData (DName "CodeBlock", [l; t]) ->
+      CodeBlock (template string l, template string t)
     | _ -> assert false
 
   let word s =
     Str.(global_replace (regexp " ") "" s)
 
   let words l =
-    List.map word (flatten_list l)
+    List.(filter (fun x -> x <> "") (map word (flatten_list l)))
 
   let context = function
     | VData (DName "QCM", [choices; expected_choices]) ->
       QCM (list (template text) choices, list int expected_choices)
     | VData (DName "Grader", [expected_file; import_files; command]) ->
-      let rec print = function
-        | TAtom (s, t) -> s ^ ":" ^ print t
-        | TCode (s, t) -> s ^ "::" ^ print t
-        | TNil -> ""
-      in
-      let ts = template string expected_file in
-      Printf.eprintf "Grader expected file template : %s\n%!" (print ts);
       let expected = word (flatten_string (template string expected_file)) in
-      Printf.eprintf "Grader expected file : %s\n%!" expected;
       let import_files = words (template string import_files) in
       let command = flatten_string (template string command) in
       Grader (expected, import_files, command)
@@ -190,9 +189,12 @@ module Txt = struct
   let string x = x
 
   let statement = function
-    | Paragraph s -> vcat text s
-    | CodeBlock s -> "codeblock {\n" ^ vcat string s ^ "\n}"
-    | Verbatim  s -> "verbatim  {\n" ^ vcat string s ^ "\n}"
+    | Paragraph s ->
+      vcat text s
+    | CodeBlock (l, s) ->
+      "codeblock [" ^ flatten_string l ^ "] {\n" ^ vcat string s ^ "\n}"
+    | Verbatim  s ->
+      "verbatim  {\n" ^ vcat string s ^ "\n}"
 
   let context = function
     | QCM (choices, _) ->

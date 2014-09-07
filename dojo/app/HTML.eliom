@@ -69,29 +69,34 @@ let bar () =
     ]
   )
 
-let include_javascript url =
+let include_javascript ?(init="") url =
   script
     ~a:[a_src url; a_mime_type "text/javascript"; a_charset "utf-8" ]
-    (pcdata "")
+    (pcdata init)
 
-let editor_css = Config.codemirror_editor_css ()
-
-let editor_script = [
-  include_javascript (Config.codemirror_editor_src ());
-  include_javascript (Config.mathjax_src ())
+let external_css = [
+  Config.codemirror_editor_css ();
+  Config.highlight_css ()
 ]
+
+let external_scripts = List.map include_javascript Config.([
+  codemirror_editor_src ();
+  mathjax_src ();
+  highlight_src ();
+  jquery_src ()
+] @ codemirror_editor_modes ())
 
 let hackojo_page left_column central_column =
   lwt bar = bar () in
-  let editor_interface = {unit -> EditorHTML.interface{ fun () ->
-     %EditorHTML.make "editor_column"
+  let editor_interface = {string -> EditorHTML.interface{ fun ext ->
+     %EditorHTML.make "editor_column" ext
   }}
   in
   return (
     Eliom_tools.F.html
       ~title:I18N.String.the_hacking_dojo
-      ~css:[["css";"hackojo.css"]; editor_css]
-      ~other_head:editor_script
+      ~css:(["css";"hackojo.css"] :: external_css)
+      ~other_head:external_scripts
       (body ~a:[a_id "global"]
          (bar
           :: [

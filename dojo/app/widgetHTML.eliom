@@ -491,4 +491,14 @@ let display_math elements =
         (String.concat "," elements)
     ))
   )
+
+let highlight elements =
+  Js.Unsafe.(
+    let hf = variable "hljs" in
+    List.iter (fun a ->
+      let a = To_dom.of_pre a in
+      meth_call hf "highlightBlock" [| (inject a) |]
+    ) elements
+  )
+
 }}

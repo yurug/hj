@@ -29,6 +29,8 @@ let exercise_page exo =
       statements context answers editor_maker =
     let name_str : string = name in
 
+    let codes = ref [] in
+
     let grade_div = div [] in
 
     let display_evaluation_state =
@@ -97,9 +99,18 @@ let exercise_page exo =
       | Italic t -> template_text_as_html ("italic" :: classes) t
     in
     let statement_as_html = function
-      | Paragraph t -> p (template_text_as_html [] t)
-      | Verbatim t -> pre [pcdata (flatten_string t)]
-      | CodeBlock t -> pre [pcdata (flatten_string t)]
+      | Paragraph t ->
+        p (template_text_as_html [] t)
+      | Verbatim t ->
+        pre [pcdata (flatten_string t)]
+      | CodeBlock (l, t) ->
+        let elt =
+          pre [code ~a:[a_class [flatten_string l]] [
+            pcdata (flatten_string t)
+          ]]
+        in
+        codes := elt :: !codes;
+        elt
     in
     let statements_as_html t =
       List.rev (
@@ -113,7 +124,10 @@ let exercise_page exo =
 
       let choices = {int list ref{ ref [] }} in
 
-      let onload = {{ fun _ -> !(%reset) (); %reset := fun () -> () }} in
+      let onload = {{
+        fun _ -> !(%reset) ();
+        %reset := fun () -> () }}
+      in
 
       let oc (i : int) =
         {{ fun _ ->
@@ -145,6 +159,14 @@ let exercise_page exo =
     in
 
     let grader_as_html expected_file =
+
+      let expected_extension = Str.(
+        if string_match (regexp ".*\\(\\..*\\)") expected_file 0 then
+          matched_group 1 expected_file
+        else
+          ""
+      )
+      in
       lwt answer =
         try_lwt
           lwt a = Answers.answer_of_question answers name in
@@ -158,8 +180,13 @@ let exercise_page exo =
           | Some (Questions.File a) ->
             (Answers.resource answers a >>= function
               | `OK (r, _) -> return r
-              | `KO _ -> return blank_resource)
-          | _ -> return blank_resource
+              | `KO _ -> (Exercise.resource exo a >>= function
+                  | `OK (r, _) -> return r
+                  | `KO _ -> return blank_resource
+                ))
+          | _ -> Exercise.resource exo expected_file >>= function
+              | `OK (r, _) -> return r
+              | `KO _ -> return blank_resource
       in
       let answer_str = Resource.content answer_resource in
 
@@ -175,7 +202,7 @@ let exercise_page exo =
         {{ fun _ ->
           let open EditorHTML in
           !(%reset) ();
-          let editor = %editor_maker () in
+          let editor = %editor_maker %expected_extension in
           let submit () =
             let src = editor.get_value () in
             Lwt.async (fun () ->
@@ -225,7 +252,7 @@ let exercise_page exo =
         List.map (fun t -> span ~a:[a_class ["tag"]] [pcdata t]) tags
       )
     in
-    return (div (
+    return (!codes, div (
       [ h1 [pcdata (title ^ " (" ^ stars difficulty ^ ")")];
         tags_as_html tags
       ]
@@ -245,9 +272,11 @@ let exercise_page exo =
             return ()
           | _ ->
             %focus := Some %name;
-            lwt div = %new_statement_div () in
+            lwt codes, div = %new_statement_div () in
             Manip.replaceChildren %statement_div [div];
-            return (WidgetHTML.display_math ["'central_column'"])
+            WidgetHTML.display_math ["'central_column'"];
+            WidgetHTML.highlight codes;
+            return ()
       )
     }}
   in

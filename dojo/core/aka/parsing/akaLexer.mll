@@ -130,12 +130,15 @@ rule main = parse
 
 (** Literal. *)
 
-| ("[" | "[:") as opening {
+| (("[" | "[:") as opening '\n'?) as all {
   let closing = match opening with
     | "[" -> "]"
     | "[:" -> ":]"
     | _ -> assert false (* By rule regexp. *)
   in
+  if opening <> all then (
+    Lexing.new_line lexbuf;
+  );
   template opening closing 1 (next lexbuf []) lexbuf
 }
 
@@ -185,7 +188,9 @@ and template osym csym level accu = parse
     template osym csym level (push_string lexbuf opening accu) lexbuf
 }
 | ";" {
-  template osym csym level (cons lexbuf accu) lexbuf
+  let accu = cons lexbuf accu in
+  let accu = cons lexbuf (push_string lexbuf ";" accu) in
+  template osym csym level accu lexbuf
 }
 | "\\;" {
   template osym csym level (push_string lexbuf ";" accu) lexbuf
