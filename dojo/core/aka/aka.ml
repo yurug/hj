@@ -25,7 +25,6 @@ let parse source_code = AkaCST.(
     substitute_template_in_term aux_term ast
   and aux_term = function
     | RawCode s ->
-      Printf.eprintf "Parsing '%s'\n%!" (Position.value s);
       let spos = Position.(start_of_position (position s)) in
       let ast = aux (step (Position.value s)) in
       let change_pos t =
@@ -41,7 +40,7 @@ let typecheck module_name cst =
   lwt ast = AkaCST.to_ast module_name cst in
 (*  Printf.printf "Implicit:\n %s\n%!" (ASTio.(to_string IAST.pprint_program ast));*)
   let typed_ast = InferTypes.program ast in
-(*  Printf.printf "Explicit:\n %s\n%!" (ASTio.(to_string XAST.pprint_program typed_ast));*)
+(*  Printf.printf "Explicit:\n %s\n%!" (ASTio.(to_string XAST.pprint_program typed_ast)); *)
   return typed_ast
 
 let compile module_name source_code =

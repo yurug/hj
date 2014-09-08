@@ -3,6 +3,9 @@
 (** Wrap common UNIX commands. *)
 open ExtProcess
 
+(** [quote s] *)
+val quote : string -> string
+
 type ('a, 'b) raiser = ([> `SystemError of string ] as 'a) -> 'b Lwt.t
 
 (** [mkdir path]. *)

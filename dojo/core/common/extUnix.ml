@@ -122,13 +122,19 @@ let split c delim =
 let now lraise =
   (read (!% "date") >-> fun (s, stop) _ -> stop (); Lwt_stream.next s) lraise
 
+let quote s =
+  let s = Str.(global_replace (regexp "\\") "\\\\" s) in
+  let s = Str.(global_replace (regexp "'") "\\'" s) in
+  Printf.sprintf "$'%s'" s
+
 let ssh ?timeout username private_key addr port cmd observer =
   let os = "-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null'" in
   handle_unix_error (fun () ->
     let p, stop = exec ?timeout (!% (
       Printf.sprintf
-        "ssh -4 %s@%s %s -q -p %d -i %s '(%s)'"
-        username addr os port private_key cmd))
+        "ssh -4 %s@%s %s -q -p %d -i %s %s"
+        username addr os port private_key
+        (quote ("(" ^ cmd ^ ")"))))
     in
     observer p >>= fun _ -> return (fun () -> stop (); p#terminate)
   ) (fun () -> ())

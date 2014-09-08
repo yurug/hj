@@ -153,9 +153,21 @@ let push_new_choices_server_function =
   server_function Json.t<string * string * int list> (
     fun (name, qid, choices) ->
       let id = identifier_of_string name in
-      push_new_answer_function (id, (qid : string), Questions.Choices choices) >>= function
-      | `OK () -> return true
-      | `KO _ -> return false (* FIXME: Return an error message. *)
+      push_new_answer_function (id, (qid : string), Questions.Choices choices)
+      >>= function
+        | `OK () -> return true
+        | `KO _ -> return false (* FIXME: Return an error message. *)
+  )
+
+let push_new_values_server_function =
+  server_function Json.t<string * string * string array> (
+    fun (name, qid, vs) ->
+      let vs = Array.to_list vs in
+      let id = identifier_of_string name in
+      push_new_answer_function (id, (qid : string), Questions.GivenValues vs)
+      >>= function
+        | `OK () -> return true
+        | `KO _ -> return false (* FIXME: Return an error message. *)
   )
 
 let exercise_push_new_answer = HTTP.(
@@ -287,3 +299,5 @@ let exercise_evaluation_state = HTTP.(
          | `KO (`UndefinedEntity id) ->
            error ("undefined:" ^ (string_of_identifier id)))
 )
+
+

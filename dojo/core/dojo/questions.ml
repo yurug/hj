@@ -47,6 +47,7 @@ deriving (Json)
 type context =
 | QCM of text template list * int list
 | Grader of string * string list * string
+| WITV of text template list * string list * string
 deriving (Json)
 
 type string_t = string template
@@ -146,6 +147,10 @@ module ReifyFromAka = struct
       let import_files = words (template string import_files) in
       let command = flatten_string (template string command) in
       Grader (expected, import_files, command)
+    | VData (DName "WITV", [ expressions; values; comparator ]) ->
+      WITV (list (template text) expressions,
+            list string values,
+            flatten_string (template string comparator))
     | _ -> assert false
 
   let question = function
@@ -206,6 +211,13 @@ module Txt = struct
     | Grader (expected_file, _, _) ->
       sprintf "%s?" expected_file
 
+    | WITV (expressions, _, _) ->
+      String.concat "\n" (List.(
+        map
+          (fun x -> x)
+          (map flatten_text expressions)
+      ))
+
   let rec questions level = function
     | Question q ->
       Printf.sprintf "[%s] %s [%s / %d]\n%s\n%s\n"
@@ -230,6 +242,7 @@ type answer =
   | Invalid
   | Choices of int list
   | File of string
+  | GivenValues of string list
 deriving (Json)
 
 type answers = (identifier * answer) list
@@ -252,6 +265,9 @@ let string_of_answer = function
       (String.concat ", " (List.map string_of_int cs))
   | File s ->
     Printf.sprintf "file %s" s
+  | GivenValues vs ->
+    Printf.sprintf "given_values %s"
+      (String.concat ", " vs)
 
 let answer_to_string = function
   | Invalid -> "invalid_answer"
@@ -260,6 +276,8 @@ let answer_to_string = function
       (String.concat "," (List.map string_of_int cs))
   | File f ->
     Printf.sprintf "file:%s" f
+  | GivenValues vs ->
+    Printf.sprintf "given:%s" (String.concat "," vs)
 
 let string_to_answer s = Str.(
   try
@@ -270,6 +288,10 @@ let string_to_answer s = Str.(
         Choices (List.map int_of_string cs)
       | [ "file"; filename ] ->
         File (filename)
+      | ["given"; vs ] ->
+        let vs = split (regexp "[, \t]+") vs in
+        let vs = List.filter (fun x -> x <> "") vs in
+        GivenValues vs
       | _ ->
         Invalid
     end
@@ -390,6 +412,7 @@ let lookup_question qs qid =
 type context_descriptor =
   | CtxQCM of int list
   | CtxGrader of string * string list * string
+  | CtxWITV of string list * string
 
 let grade_qcm qid tags difficulty expected_choices cs =
   let automatic_score =
@@ -437,7 +460,7 @@ let grade_program qid tags difficulty files cmd update =
     | WriteStdout (_, s) -> process_stdout s
     | WriteStderr (_, s) -> process_stderr s
     | Exited s ->
-    (* Generate score and trace. *)
+      (* Generate score and trace. *)
       let scores =
         [ (Automatic, (!automatic_score, !automatic_potential_score)) ]
       in
@@ -446,7 +469,6 @@ let grade_program qid tags difficulty files cmd update =
   ) in
   (* Run the command. *)
   let cmd = Str.(global_replace (regexp "%seed") (Seed.to_string secret) cmd) in
-  Printf.eprintf "Files: %s\n" (String.concat ", " files);
   Sandbox.(exec files cmd observer)
   >>= function
     | `OK (job, persistence_id) ->
@@ -454,6 +476,79 @@ let grade_program qid tags difficulty files cmd update =
     | `KO e ->
       (* FIXME: Provide a more detailed diagnostic. *)
       return (EvaluationError ErrorDuringGraderExecution)
+
+let import_files exo_real_path filenames =
+  let externs, locals =
+    List.partition (fun f -> String.length f >= 1 && f.[0] = '#') filenames
+  in
+  let resolve filename =
+    let len = String.length filename in
+    let path = String.sub filename 1 (len - 1) in
+    let id = Identifier.identifier_of_string (Filename.dirname path) in
+    let basename = Filename.basename path in
+    OnDisk.resource_real_path id basename
+  in
+  List.map exo_real_path locals
+  @ List.map resolve externs
+
+let grade_witv
+    exo_real_path
+    qid tags difficulty comparator_script
+    expected_values values update
+= List.(
+  let failure () =
+    let scores = [ (Automatic, (0, length expected_values)) ] in
+    let trace = [] in
+    EvaluationDone (qid, tags, difficulty, { scores; trace })
+  in
+  if length expected_values <> length values then
+    return (failure ())
+  else (
+    let trace                     = ref [] in
+    let puts s = return (trace := Message s :: !trace) in
+    let putline s = puts (s ^ "\n") in
+
+    let shell_argument x y =
+      ExtUnix.quote Str.(global_replace (regexp "%a") y x)
+    in
+    let arguments = combine expected_values values in
+    let arguments =
+      fold_left
+        (fun a (x, y) -> a ^ " " ^ shell_argument x y)
+        ""
+        arguments
+    in
+    let observer = Sandbox.(function
+      | WaitingForSandbox _ -> putline "Waiting..."
+      | FileModification _ -> return ()
+      | WriteStdout (_, s) -> return ()
+      | WriteStderr (_, s) -> return ()
+      | Exited (Unix.WEXITED k) when k >= 0 ->
+        Printf.eprintf "Exited with %d\n%!" k;
+        (* Generate score and trace. *)
+        let scores =
+          [ (Automatic, (k, length expected_values)) ]
+        in
+        let trace = List.rev !trace in
+        update (EvaluationDone (qid, tags, difficulty, { scores; trace }))
+      | Exited _ ->
+        update (failure ())
+    ) in
+    (* Run the command. *)
+    let files = import_files exo_real_path [ comparator_script ] in
+    let comparator_script_bname = Filename.basename comparator_script in
+    let cmd = Printf.sprintf
+      "chmod u+rx %s && ./%s %s"
+      comparator_script_bname comparator_script_bname arguments
+    in
+    Sandbox.(exec files cmd observer)
+    >>= function
+      | `OK (job, persistence_id) ->
+        return (EvaluationHandled job)
+      | `KO e ->
+      (* FIXME: Provide a more detailed diagnostic. *)
+        return (EvaluationError ErrorDuringGraderExecution)
+  ))
 
 let evaluate_using_context
     qid tags difficulty
@@ -465,10 +560,15 @@ let evaluate_using_context
     | CtxGrader (expected_file, imported_files, command), File filename ->
       let files =
         answer_real_path expected_file
-        :: List.map exo_real_path imported_files
+        :: import_files exo_real_path imported_files
       in
       (* FIXME: Check that filename' = expected_file. *)
       grade_program qid tags difficulty files command update
+    | CtxWITV (expected_values, comparator), GivenValues vs ->
+      grade_witv
+        exo_real_path
+        qid tags difficulty
+        comparator expected_values vs update
     | _, Invalid ->
       return (EvaluationError SyntaxErrorInAnswer)
     | _, _ ->
@@ -481,7 +581,9 @@ let make_context ctx_makers =
       Some (CtxQCM xchoices)
     | None, Grader (expected_file, imported_files, command) ->
       Some (CtxGrader (expected_file, imported_files, command))
-    | Some _, (QCM _ | Grader _) ->
+    | None, WITV (_, xvalues, comparator) ->
+      Some (CtxWITV (xvalues, comparator))
+    | Some _, (QCM _ | Grader _ | WITV _) ->
       None
   in
   flatten None (fun accu _ -> accu) aux ctx_makers

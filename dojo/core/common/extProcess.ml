@@ -19,6 +19,8 @@ let ( @@ ) at c = Printf.sprintf "(cd %s && %s)" at c
 
 type command = Lwt_process.command * string
 
+let shell cmd = ("", [|"/bin/bash"; "-c"; cmd|])
+
 let ( !% ) s = (shell s, s)
 
 let strace_descriptor = Log.make_event_descriptor "strace" Facts.string
@@ -31,6 +33,7 @@ let strace_lwt f (cmd, s) =
   return ret
 
 let strace f (cmd, s) =
+  Printf.eprintf "%s\n%!" s;
   let stop = Log.log_process system strace_descriptor s in
   (f cmd, (fun () -> ignore (stop ())))
 

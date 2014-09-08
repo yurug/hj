@@ -14,6 +14,10 @@ open WidgetHTML
 open ExerciseHTTP
 open ExtPervasives
 
+let fresh_id =
+  let r = ref 0 in
+  fun () -> incr r; "i" ^ string_of_int !r
+
 let exercise_page exo =
 
   let reset = {(unit -> unit) ref{ref (fun () -> ()) }} in
@@ -227,6 +231,47 @@ let exercise_page exo =
       ])
     in
 
+    let witv_as_html expressions =
+
+      let nb = List.length expressions in
+
+      let values = {string array{ Array.make %nb "" }} in
+
+      let onload = {{
+        fun _ -> !(%reset) ();
+        %reset := fun () -> () }}
+      in
+
+      let onchange (i : int) (id : id) =
+        {{ fun _ ->
+          let elt = ExtDom.get_input_by_id %id in
+          %values.(%i) <- Js.to_string (elt##value)
+         }}
+      in
+      let item (i : int) expression =
+        let id = fresh_id () in
+        p [
+          span (template_text_as_html [] expression);
+          input ~input_type:`Text ~a:[a_id id; a_onchange (onchange i id)] ()
+        ]
+      in
+      return (div ~a:[a_onload onload] (List.mapi item expressions @ [
+        small_button ["OK"] {unit -> unit{ fun () ->
+          Lwt.async (fun () ->
+            %push_new_values_server_function (%exo_str, %name_str, %values)
+              (* FIXME: Why is the gif not displayed here? *)
+            >> (
+              Manip.replaceChildren %grade_div [p [
+                pcdata "..."; EntityHTML.get_progress ()
+              ]];
+              Lwt_js.sleep 1.
+            ) >> %display_evaluation_state None
+          )
+        }}
+      ]))
+
+    in
+
     let context_as_html context =
       let rec aux accu = function
         | TNil -> return (List.rev accu)
@@ -236,6 +281,8 @@ let exercise_page exo =
               return (qcm_as_html statements)
             | Grader (expected_file, _, _) ->
               grader_as_html expected_file
+            | WITV (expressions, _, _) ->
+              witv_as_html expressions
           in
           aux (h :: accu) t
         | TAtom (_, t) -> aux accu t
