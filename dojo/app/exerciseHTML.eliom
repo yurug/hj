@@ -264,11 +264,57 @@ let exercise_page exo =
               Manip.replaceChildren %grade_div [p [
                 pcdata "..."; EntityHTML.get_progress ()
               ]];
-              Lwt_js.sleep 1.
+              Lwt_js.sleep 0.5
             ) >> %display_evaluation_state None
           )
         }}
       ]))
+
+    in
+    let chooser_as_html choices =
+      let onload = {{
+        fun _ -> !(%reset) ();
+        %reset := fun () -> () }}
+      in
+
+      let previous =
+        (* FIXME *)
+        ""
+      in
+      let submit = server_function Json.t<string> (fun choice ->
+        let idx = ExtPervasives.list_index_of choice choices in
+        push_new_choice_function (exo_str, name_str, idx)
+        (* FIXME: Why is the gif not displayed here? *)
+      )
+      in
+      let property_selector =
+        Raw.select ~a:[a_onload onload] (
+          List.map (fun s ->
+            let a = if s = previous then [a_selected `Selected] else [] in
+            Raw.option ~a (pcdata s)
+          ) choices
+        )
+      in
+      {unit{
+        let e = To_dom.of_select %property_selector in
+        let select = fun _ ->
+          Lwt.async (fun () ->
+            %submit (Js.to_string e##value)
+            >> (
+              Manip.replaceChildren %grade_div [p [
+                pcdata "..."; EntityHTML.get_progress ()
+              ]];
+              Lwt_js.sleep 0.5
+            ) >> %display_evaluation_state None
+          );
+          Js._true
+        in
+        Dom_html.(
+          ignore (addEventListener e Event.change (handler select) Js._true)
+        );
+      }};
+      return (div ~a:[a_class ["user_answer"]] [property_selector])
+
 
     in
 
@@ -283,6 +329,8 @@ let exercise_page exo =
               grader_as_html expected_file
             | WITV (expressions, _, _) ->
               witv_as_html expressions
+            | Chooser choices ->
+              chooser_as_html choices
           in
           aux (h :: accu) t
         | TAtom (_, t) -> aux accu t

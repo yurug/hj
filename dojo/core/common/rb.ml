@@ -477,24 +477,34 @@ module Dict (S : sig
 end) = struct
 
   module Set = Make (struct
-    type t = S.key * S.image deriving (Json)
+    type t = S.key * S.image option deriving (Json)
     let compare (k, _) (k', _) = S.compare k k'
   end)
 
   type t = Set.t deriving (Json)
 
-  let empty = Set.empty
+  let empty =
+    Set.empty
 
-  let add k v d = Set.add (k, v) d
+  let add k v d =
+    Set.add (k, Some v) d
+
+  let remove k d =
+    Set.remove (k, None) d
 
   let update k v d =
-    let d' = Set.remove (k, v) d in
+    let d' = Set.remove (k, None) d in
     add k v d'
 
-  let lookup k d = snd (Set.find (fun (k', _) -> S.compare k k') d)
+  let lookup k d =
+    match snd (Set.find (fun (k', _) -> S.compare k k') d) with
+      | None -> assert false
+      | Some x -> x
 
-  let to_set s = s
+  let to_set s =
+    s
 
-  let iter f =  Set.iter f
+  let iter f =
+    Set.iter (fun (k, v) -> match v with Some x -> f (k, x) | _ -> assert false)
 
 end

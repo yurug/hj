@@ -149,6 +149,16 @@ let push_new_answer_function (id, (qid : string), answer) =
   let uid = User.identifier user in
   Exercise.answer id uid qid answer
 
+let push_new_choice_function (name, qid, choice) =
+  let id = identifier_of_string name in
+  push_new_answer_function (id, (qid : string), Questions.Choice choice)
+  >>= function
+    | `OK () -> return true
+    | `KO _ -> return false (* FIXME: Return an error message. *)
+
+let push_new_choice_server_function =
+  server_function Json.t<string * string * int> push_new_choice_function
+
 let push_new_choices_server_function =
   server_function Json.t<string * string * int list> (
     fun (name, qid, choices) ->

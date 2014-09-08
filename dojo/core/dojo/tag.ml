@@ -12,8 +12,20 @@ end)
 
 type set = Set.t deriving (Json)
 
+let abs_of_neg t =
+  String.(sub t 1 (length t - 1))
+
+let negate t =
+  if t = "" then t
+  else if t.[0] = '-' then abs_of_neg t
+  else "-" ^ t
+
 let tag who tags difficulty tagset =
   List.fold_left (fun tagset t ->
-    let taggers = try Set.lookup t tagset with Not_found -> [] in
-    Set.update t (update_assoc who difficulty taggers) tagset
+    if t = "" then tagset
+    else if t.[0] = '-' then
+      Set.remove (abs_of_neg t) tagset
+    else
+      let taggers = try Set.lookup t tagset with Not_found -> [] in
+      Set.update t (update_assoc who difficulty taggers) tagset
   ) tagset tags

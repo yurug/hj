@@ -48,6 +48,7 @@ type context =
 | QCM of text template list * int list
 | Grader of string * string list * string
 | WITV of text template list * string list * string
+| Chooser of string list
 deriving (Json)
 
 type string_t = string template
@@ -71,6 +72,12 @@ deriving (Json)
 type t = questions deriving (Json)
 
 type identifier = string deriving (Json)
+
+let word s =
+  Str.(global_replace (regexp " \\|\n\\|\t") "" s)
+
+let words l =
+  List.(filter (fun x -> x <> "") (map word (flatten_list l)))
 
 (* FIXME: The following code could be generated from std.aka to improve
    FIXME: robustness. *)
@@ -133,12 +140,6 @@ module ReifyFromAka = struct
       CodeBlock (template string l, template string t)
     | _ -> assert false
 
-  let word s =
-    Str.(global_replace (regexp " ") "" s)
-
-  let words l =
-    List.(filter (fun x -> x <> "") (map word (flatten_list l)))
-
   let context = function
     | VData (DName "QCM", [choices; expected_choices]) ->
       QCM (list (template text) choices, list int expected_choices)
@@ -151,6 +152,8 @@ module ReifyFromAka = struct
       WITV (list (template text) expressions,
             list string values,
             flatten_string (template string comparator))
+    | VData (DName "Chooser", [ choices ]) ->
+      Chooser (list string choices)
     | _ -> assert false
 
   let question = function
@@ -218,6 +221,13 @@ module Txt = struct
           (map flatten_text expressions)
       ))
 
+    | Chooser (choices) ->
+      String.concat "\n" (List.(
+        mapi
+          (fun i -> (sprintf "%d. %s") (i + 1))
+          (map string choices)
+      ))
+
   let rec questions level = function
     | Question q ->
       Printf.sprintf "[%s] %s [%s / %d]\n%s\n%s\n"
@@ -241,6 +251,7 @@ end
 type answer =
   | Invalid
   | Choices of int list
+  | Choice of int
   | File of string
   | GivenValues of string list
 deriving (Json)
@@ -263,6 +274,8 @@ let string_of_answer = function
   | Choices cs ->
     Printf.sprintf "choices %s"
       (String.concat ", " (List.map string_of_int cs))
+  | Choice c ->
+    Printf.sprintf "choice %d" c
   | File s ->
     Printf.sprintf "file %s" s
   | GivenValues vs ->
@@ -272,8 +285,10 @@ let string_of_answer = function
 let answer_to_string = function
   | Invalid -> "invalid_answer"
   | Choices cs ->
-    Printf.sprintf "choose:%s"
+    Printf.sprintf "choices:%s"
       (String.concat "," (List.map string_of_int cs))
+  | Choice c ->
+    Printf.sprintf "choice:%d" c
   | File f ->
     Printf.sprintf "file:%s" f
   | GivenValues vs ->
@@ -282,10 +297,12 @@ let answer_to_string = function
 let string_to_answer s = Str.(
   try
     begin match split (regexp ":") s with
-      | [ "choose" ; cs ] ->
+      | [ "choices" ; cs ] ->
         let cs = split (regexp "[, \t]+") cs in
         let cs = List.filter (fun x -> x <> "") cs in
         Choices (List.map int_of_string cs)
+      | [ "choice" ; c ] ->
+        Choice (int_of_string (word c))
       | [ "file"; filename ] ->
         File (filename)
       | ["given"; vs ] ->
@@ -413,6 +430,7 @@ type context_descriptor =
   | CtxQCM of int list
   | CtxGrader of string * string list * string
   | CtxWITV of string list * string
+  | CtxChooser of string list
 
 let grade_qcm qid tags difficulty expected_choices cs =
   let automatic_score =
@@ -550,6 +568,14 @@ let grade_witv
         return (EvaluationError ErrorDuringGraderExecution)
   ))
 
+let make_choice qid choices x =
+  let choice = List.nth choices x in
+  let scores = [ (Automatic, (1, 1)) ] in
+  let trace = [] in
+  let others = List.filter (( <> ) choice) choices in
+  let tags = choice :: List.map Tag.negate others  in
+  return (EvaluationDone (qid, tags, 1, { scores; trace }))
+
 let evaluate_using_context
     qid tags difficulty
     exo_real_path answer_real_path context answer update
@@ -569,6 +595,8 @@ let evaluate_using_context
         exo_real_path
         qid tags difficulty
         comparator expected_values vs update
+    | CtxChooser choices, Choice x ->
+      make_choice qid choices x
     | _, Invalid ->
       return (EvaluationError SyntaxErrorInAnswer)
     | _, _ ->
@@ -583,7 +611,9 @@ let make_context ctx_makers =
       Some (CtxGrader (expected_file, imported_files, command))
     | None, WITV (_, xvalues, comparator) ->
       Some (CtxWITV (xvalues, comparator))
-    | Some _, (QCM _ | Grader _ | WITV _) ->
+    | None, Chooser choices ->
+      Some (CtxChooser choices)
+    | Some _, (QCM _ | Grader _ | WITV _ | Chooser _) ->
       None
   in
   flatten None (fun accu _ -> accu) aux ctx_makers

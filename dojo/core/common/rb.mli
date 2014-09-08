@@ -73,12 +73,10 @@ end) : sig
 
   val add : S.key -> S.image -> t -> t
 
+  val remove : S.key -> t -> t
+
   val update : S.key -> S.image -> t -> t
 
   val lookup : S.key -> t -> S.image
-
-  module Set : S with type elt = S.key * S.image
-
-  val to_set : t -> Set.t
 
 end
