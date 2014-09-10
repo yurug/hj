@@ -29,3 +29,10 @@ let tag who tags difficulty tagset =
       let taggers = try Set.lookup t tagset with Not_found -> [] in
       Set.update t (update_assoc who difficulty taggers) tagset
   ) tagset tags
+
+let has_tag t tags =
+  try
+    let taggers = Set.lookup t tags in
+    List.exists (fun (_, v) -> v > 0) taggers
+  with Not_found ->
+    false

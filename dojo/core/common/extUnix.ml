@@ -54,6 +54,13 @@ let tar_create dst srcs lraise =
   success ~lraise (!% cmd)
   >>= fun _ -> return ()
 
+let tar_expand tarball dst lraise =
+  let dst     = Filename.quote dst in
+  let tarball = Filename.quote tarball in
+  let cmd     = Printf.sprintf "tar xvfz %s -C %s" tarball dst in
+  success ~lraise (!% cmd)
+  >>= fun _ -> return ()
+
 let read c =
   handle_unix_error (fun () -> return (
     strace (Lwt_process.pread_lines ~stdin:`Dev_null ~stderr:`Dev_null) c
@@ -169,7 +176,8 @@ let pdflatex content outputfile = Filename.(
       !% ((get_temp_dir_name ()) @@ (Printf.sprintf "rm %s.*" base))
     )
   in
-  !>> pdflatex
+  !>> (echo content source)
+  >>> pdflatex
   (* FIXME: If the compilation failed, we want to create a diagnostic and
    * FIXME: send a bug report to us. Indeed, we shall make sure that our
    * FIXME: generated LaTeX is always well-formed. By the way, user-written

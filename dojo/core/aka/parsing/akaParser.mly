@@ -54,7 +54,7 @@
 
 (** Punctation. *)
 %token EOF EQUAL LBRACE RBRACE LPAREN RPAREN COMMA COLON SEMICOLON PIPE DOT
-%token LLPAREN RRPAREN
+%token LLPAREN RRPAREN BACKQUOTE
 
 (** Symbols. *)
 %token RARROW DRARROW UNDERSCORE QMARK
@@ -84,7 +84,7 @@ top_term: t=located(term) EOF {
   error $startpos $endpos
 }
 
-%inline define : DEF { () } | EQUAL { () }
+%inline define : DEF { () }
 
 declaration:
 define
@@ -110,7 +110,7 @@ x=name ty=ty_ascription EQUAL t=located(term) {
 | AKA LBRACE t=located(term) RBRACE {
   let pos = Position.lex_join $startpos $endpos in
   ValueDecl ((pos, Name "__questions__", None,
-              with_pos pos (Lam (Name "__target__", None, t))))
+              with_pos pos (Lam (Name "target", None, t))))
 }
 | EXTERNAL
   ts=type_parameters
@@ -141,6 +141,13 @@ x=tname ts=type_parameters EQUAL datadef=datatype_definition {
   let rty = TyApp (pos, x, List.map (fun t -> TyVar (pos, t)) ts) in
   TypeDef (pos, kind, x, datadef ts rty)
 }
+| x=tname
+  ts=type_parameters
+{
+  let pos = Position.lex_join $startpos $endpos in
+  ExternalType (pos, ts, x)
+}
+
 
 datatype_definition: PIPE? ds=separated_list(PIPE, datacon_definition) {
   fun ts rty -> DAlgebraic (List.map (fun d -> d ts rty) ds)
@@ -192,6 +199,10 @@ a=located(term) b=located(term0) {
   RBRACE
 {
   Case (t, bs)
+}
+| l=located(term0) BACKQUOTE x=name r=located(term0) {
+  let loc = with_pos (Position.lex_join $startpos $endpos) in
+  App (loc (App (loc (Variable x), l)), r)
 }
 | t=term0 {
   t

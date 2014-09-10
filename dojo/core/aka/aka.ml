@@ -56,8 +56,13 @@ let extract_questions env uid = XAST.(
   let user =
     EPrimitive (dummy, PStringConstant (string_of_identifier uid))
   in
+  let questions_id =
+    fst (List.(hd (
+      AkaInterpreter.lookup_all_matching (Str.regexp "__questions__") env)
+    ))
+  in
   let questions_fun =
-    EVar (dummy, Name.Name "__questions__", [])
+    EVar (dummy, questions_id, [])
   in
   let target =
     EDCon (dummy, Name.DName "ForUser", [], [ user ])

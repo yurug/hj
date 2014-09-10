@@ -109,6 +109,7 @@ rule main = parse
 | "external"                            { EXTERNAL }
 
 (** Punctuations. *)
+| "`"                                   { BACKQUOTE }
 | "?"                                   { QMARK }
 | "."                                   { DOT }
 | "_"                                   { UNDERSCORE }

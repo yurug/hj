@@ -6,13 +6,15 @@ open ExtUnix
 open Identifier
 open HTTP
 
+let _ = Random.self_init ()
+
 (* FIXME: Access control is missing for the moment. *)
 let create_resource_management_api
     ?(make_identifier = fun s -> return (`OK (identifier_of_string s)))
     (type d)
     (type c)
     (module E : Entity.S with type data = d and type change = c)
-    upload_name download_name ls_name
+    upload_name upload_tar_name download_name ls_name
     module_name
 =
   api_service upload_name module_name
@@ -26,6 +28,39 @@ let create_resource_management_api
        let resource = Resource.make resource_name content in
        E.import_resource e resource
        >>>= return_completed
+      ) >>= handle_error
+    ),
+
+  api_service upload_tar_name module_name
+    (string "identifier" ** file "file")
+    (string "status")
+    "Upload resources using a tarball."
+    (fun (id, file) ->
+      Printf.eprintf "upload tar for %s\n%!" id;
+      (make_identifier id >>>= fun id ->
+       E.make id >>>= (fun e ->
+         let tar_tmp = Filename.(
+           concat (get_temp_dir_name ()) (
+             Printf.sprintf "hj%d.tar.dir" (Random.bits ())
+           )
+         )
+         in
+         ltry (mkdir tar_tmp) >>
+           ltry (tar_expand file.Ocsigen_extensions.tmp_filename tar_tmp) >>
+           ltry (ls tar_tmp) >>>= function filenames ->
+             let uploaded = ref [] in
+             let import filename =
+               let resource_name = Filename.basename filename in
+               ltry (cat filename) >>= function
+                 | `OK content ->
+                   let resource = Resource.make resource_name content in
+                   E.import_resource e resource >>
+                     return (uploaded := resource_name :: !uploaded)
+                 | `KO _ -> return () (* FIXME *)
+             in
+             Lwt_list.iter_s import filenames
+             >> ltry (rmdir ~content:true tar_tmp)
+             >> return_success "uploaded")
       ) >>= handle_error
     ),
 

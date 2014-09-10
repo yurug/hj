@@ -20,8 +20,8 @@ type editor_maker =
 }}
 
 type page_descriptor =
-  (editor_maker -> [ div_content ] elt)
-* (editor_maker -> [ body_content ] elt)
+  (editor_maker -> [ div_content ] elt Lwt.t)
+* (editor_maker -> [ body_content ] elt Lwt.t)
 
 type page_maker =
     (identifier -> bool) * (identifier -> page_descriptor Lwt.t)
@@ -33,8 +33,8 @@ let register_page_maker detect retrieve =
   page_makers := (detect, retrieve) :: !page_makers
 
 let empty_page =
-  ((fun _ -> div []),
-   (fun _ -> div []))
+  ((fun _ -> return (div [])),
+   (fun _ -> return (div [])))
 
 let get_page id =
   try_lwt
@@ -72,15 +72,15 @@ let creation_page lid sid creation_service =
         menu_button ~xa:[a_class ["right_side"]] root (cap no) ()
       ])))))
   ) >>= function
-    | `OK e -> return ((fun _ -> div []), fun _ -> e)
-    | `KO _ -> return ((fun _ -> div []), fun _ -> denied)
+    | `OK e -> return ((fun _ -> return (div [])), fun _ -> return e)
+    | `KO _ -> return ((fun _ -> return (div [])), fun _ -> return denied)
 
 let error_page msg =
-  (fun _ -> div []),
-  fun _ ->
-  div ~a:[a_class ["message_box"]] I18N.String.([
-    p [ pcdata msg ]
-  ])
+  (fun _ -> return (div [])),
+  (fun _ ->
+    return (div ~a:[a_class ["message_box"]] I18N.String.([
+      p [ pcdata msg ]
+  ])))
 
 let offer_creation emake creation_service page id =
   let lid = string_list_of_identifier id in

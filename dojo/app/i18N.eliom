@@ -136,6 +136,8 @@ module Fr : I18N_sig.Text = struct
 
   let identifier = "identifier"
 
+  let master_corner = "Coin du maître"
+
   let new_submission = "Nouvelle soumission :"
 
   let sorry_autotesting_is_disabled =
@@ -295,6 +297,9 @@ module Fr : I18N_sig.Text = struct
 
   let relaunch_all =
     "tout réévaluer"
+
+  let edit =
+    "modifier"
 
   let download_all =
     "tout télécharger"

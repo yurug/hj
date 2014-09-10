@@ -115,7 +115,7 @@ div.editorbutton {
     width: 100%;
     background-size:100%;
     height: 64px;
-    z-index: 1;
+    z-index: 100;
 }
 
 #hrule {

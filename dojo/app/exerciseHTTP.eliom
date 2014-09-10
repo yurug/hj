@@ -29,10 +29,11 @@ let exercise_create = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
-let (upload_resource, download_resource, ls_resource) =
+let (upload_resource, upload_tar, download_resource, ls_resource) =
   EntityHTTP.create_resource_management_api
     (module Exercise)
     "exercise_upload"
+    "exercise_upload_tar"
     "exercise_download"
     "exercise_ls"
     "exercise"
@@ -72,6 +73,7 @@ let exercise_refresh_evaluations = HTTP.(
         | `OK _ -> completed ()
         | `KO (`InvalidCode e) -> success e
         | `KO `NotLogged -> error "not_logged"
+        | `KO (`InvalidModule _ ) -> error "module_loading"
         | `KO `FailedLogin -> error "login_failed"
         | `KO (`AlreadyExists _) -> error "already_exists"
         | `KO (`SystemError e) -> error ("system:" ^ e)
@@ -94,7 +96,31 @@ let exercise_questions = HTTP.(
     "Return the questions for the logged user."
     (fun name ->
       (exercise_questions_function (identifier_of_string name) >>>= fun qs ->
-       return  (`OK (Questions.Txt.questions qs))
+       return  (`OK (Questions.Txt.exercise qs))
+      ) >>= function
+        | `OK e -> success e
+        | `KO (`InvalidModule id) ->
+          error ("invalid_module:" ^ string_of_identifier id)
+        | `KO (`InvalidCode e) -> success e
+        | `KO `FailedLogin -> error "login_failed"
+        | `KO `NotLogged -> error "not_logged"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+        | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+        | `KO `ForbiddenService -> error "teacher_only"
+        | `KO (`UndefinedEntity id) ->
+          error ("undefined:" ^ (string_of_identifier id)))
+)
+
+let exercise_questions_latex = HTTP.(
+  api_service "exercise_questions_latex" "exercise"
+    (string "identifier")
+    (string "status")
+    "Return the questions for the logged user (as a LaTeX file)."
+    (fun name ->
+      (exercise_questions_function (identifier_of_string name) >>>= fun qs ->
+       return  (`OK (QuestionsLaTeX.make qs))
       ) >>= function
         | `OK e -> success e
         | `KO (`InvalidModule id) ->

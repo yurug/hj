@@ -126,12 +126,12 @@ let homepage u =
   (*   notifications; *)
   (*   assignments *)
   (* ]) *)
-  fun _ -> div [p [pcdata "TODO"]]
+  fun _ -> return (div [p [pcdata "TODO"]])
 
 let homepage_div id =
   logged_user () >>= (function
   | `KO _ ->
-    return (fun _ -> div [p [pcdata I18N.String.please_login]])
+    return (fun _ -> return (div [p [pcdata I18N.String.please_login]]))
   | `OK user ->
     return (homepage user)
   )
@@ -176,7 +176,7 @@ let homepage root_service =
         )
        }}
     in
-    div [
+    return (div [
       div ~a:[a_id "connection_box"] [
         div ~a:[a_id "connection_form"] [
           div ~a:[a_id "connection_login"] [
@@ -194,7 +194,7 @@ let homepage root_service =
         ];
         div ~a:[a_id "connection_box_message"] [pcdata message]
       ]
-    ]
+    ])
   in
   logged_user () >>= (function
     | `KO `FailedLogin ->
@@ -207,5 +207,6 @@ let homepage root_service =
 
     | `OK u ->
       lwt menu = user_menu u in
-      HTML.set_menu menu >>= fun _ -> homepage_div u
+      HTML.set_menu menu
+      >>= fun _ -> homepage_div u
   )

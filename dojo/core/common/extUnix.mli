@@ -23,6 +23,9 @@ val cp : string -> string -> ('a, 'b) raiser -> unit Lwt.t
 (** [tar cvfz dest files]. *)
 val tar_create : string -> string list -> ('a, 'b) raiser -> unit Lwt.t
 
+(** [tar xvfz tarfile dest]. *)
+val tar_expand : string -> string -> ('a, 'b) raiser -> unit Lwt.t
+
 (** [grep cmd regexp] returns the stream of lines produces by [cmd]
     that match [regexp]. *)
 val grep : command -> string -> ('a, 'b) raiser -> string Lwt_stream.t Lwt.t

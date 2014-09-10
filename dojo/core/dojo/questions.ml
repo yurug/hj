@@ -36,6 +36,9 @@ type text =
   | String of string template
   | Code of string template
   | LaTeX of string template
+  | Hlink of string template * string template
+  | RawHTML of string template
+  | RawLaTeX of string template
 deriving (Json)
 
 type statement =
@@ -49,6 +52,7 @@ type context =
 | Grader of string * string list * string
 | WITV of text template list * string list * string
 | Chooser of string list
+| NoGrade
 deriving (Json)
 
 type string_t = string template
@@ -69,7 +73,14 @@ type questions =
 | Section  of string_t * questions template
 deriving (Json)
 
-type t = questions deriving (Json)
+type exercise = {
+  etitle : string_t;
+  group_tags : string list;
+  questions : questions template
+}
+deriving (Json)
+
+type t = exercise deriving (Json)
 
 type identifier = string deriving (Json)
 
@@ -129,6 +140,12 @@ module ReifyFromAka = struct
       Code (template string s)
     | VData (DName "LaTeX", [ s ]) ->
       LaTeX (template string s)
+    | VData (DName "Hlink", [ url; label]) ->
+      Hlink (template string url, template string label)
+    | VData (DName "RawHTML", [ s ]) ->
+      RawHTML (template string s)
+    | VData (DName "RawLaTeX", [ s ]) ->
+      RawLaTeX (template string s)
     | _ -> assert false
 
   let statement = function
@@ -154,6 +171,8 @@ module ReifyFromAka = struct
             flatten_string (template string comparator))
     | VData (DName "Chooser", [ choices ]) ->
       Chooser (list string choices)
+    | VData (DName "NoGrade", [])->
+      NoGrade
     | _ -> assert false
 
   let question = function
@@ -176,6 +195,15 @@ module ReifyFromAka = struct
       Section (template string n, template questions q)
     | _ -> assert false
 
+  let exercise = function
+    | VRecord e ->
+      {
+        etitle     = template string (lookup "etitle" e);
+        group_tags = words (template string (lookup "group_tags" e));
+        questions  = template questions (lookup "questions" e)
+      }
+    | _ -> assert false
+
 end
 
 module Txt = struct
@@ -187,10 +215,20 @@ module Txt = struct
   let rec flatten_text t = flatten "" ( ^ ) (fun s t -> s ^ text t) t
 
   and text = function
-    | Bold t | Italic t -> flatten_text t
-    | String s -> flatten_string s
-    | Code s -> "[" ^ flatten_string s ^ "]"
-    | LaTeX s -> "$" ^ flatten_string s ^ "$"
+    | Bold t | Italic t ->
+      flatten_text t
+    | String s ->
+      flatten_string s
+    | Code s ->
+      "[" ^ flatten_string s ^ "]"
+    | LaTeX s ->
+      "$" ^ flatten_string s ^ "$"
+    | RawHTML s ->
+      "\n<raw_html>\n" ^ flatten_string s ^ "\n</raw_html>\n"
+    | RawLaTeX s ->
+      "\n<raw_latex>\n" ^ flatten_string s ^ "\n</raw_latex>\n"
+    | Hlink (url, caption) ->
+      "[" ^ flatten_string url ^ " | " ^ flatten_string caption ^ "]"
 
   let paragraph t = text t
 
@@ -228,6 +266,9 @@ module Txt = struct
           (map string choices)
       ))
 
+    | NoGrade ->
+      ""
+
   let rec questions level = function
     | Question q ->
       Printf.sprintf "[%s] %s [%s / %d]\n%s\n%s\n"
@@ -245,6 +286,12 @@ module Txt = struct
         (vcat (questions (level + 1)) q)
 
   let questions = questions 1
+
+  let exercise e =
+    Printf.sprintf "%s [%s]\n%s\n"
+      (flatten_string e.etitle)
+      (String.concat ", " e.group_tags)
+      (vcat questions e.questions)
 
 end
 
@@ -431,6 +478,7 @@ type context_descriptor =
   | CtxGrader of string * string list * string
   | CtxWITV of string list * string
   | CtxChooser of string list
+  | CtxNoGrade
 
 let grade_qcm qid tags difficulty expected_choices cs =
   let automatic_score =
@@ -597,6 +645,9 @@ let evaluate_using_context
         comparator expected_values vs update
     | CtxChooser choices, Choice x ->
       make_choice qid choices x
+    | CtxNoGrade, _ ->
+      let scores = [] and trace = [] in
+      return (EvaluationDone (qid, tags, 0, { scores; trace }))
     | _, Invalid ->
       return (EvaluationError SyntaxErrorInAnswer)
     | _, _ ->
@@ -613,7 +664,9 @@ let make_context ctx_makers =
       Some (CtxWITV (xvalues, comparator))
     | None, Chooser choices ->
       Some (CtxChooser choices)
-    | Some _, (QCM _ | Grader _ | WITV _ | Chooser _) ->
+    | None, NoGrade ->
+      Some CtxNoGrade
+    | Some _, (QCM _ | Grader _ | WITV _ | Chooser _ | NoGrade) ->
       None
   in
   flatten None (fun accu _ -> accu) aux ctx_makers
@@ -645,6 +698,7 @@ let update_evaluation qid evaluation_state evaluations =
 let update_evaluations
     exo_real_path answer_real_path evaluations questions qid answer update
 =
+  let questions = Section (TNil, questions) in
   lwt state =
     evaluate exo_real_path answer_real_path questions qid answer update
   in

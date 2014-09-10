@@ -29,10 +29,11 @@ let machinist_create = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
-let (upload_resource, download_resource, ls_resource) =
+let (upload_resource, upload_tar, download_resource, ls_resource) =
   EntityHTTP.create_resource_management_api
     (module Machinist)
     "machinist_upload"
+    "machinist_upload_tar"
     "machinist_download"
     "machinist_ls"
     "machinist"

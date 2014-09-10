@@ -69,12 +69,14 @@ sig
   val notifications : string
   val read : [`Male | `Female] -> string
   val update : string
+  val edit : string
 
   (** Forms. *)
   val not_ : string -> string
   val many : string -> string
 
   (** Sentences. *)
+  val master_corner: string
   val relaunch_all: string
   val download_all: string
   val download_pdf: string

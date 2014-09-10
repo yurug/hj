@@ -92,6 +92,8 @@ let hackojo_page left_column central_column =
      %EditorHTML.make "editor_column" ext
   }}
   in
+  lwt left_column = left_column editor_interface in
+  lwt central_column = central_column editor_interface in
   return (
     Eliom_tools.F.html
       ~title:I18N.String.the_hacking_dojo
@@ -102,8 +104,8 @@ let hackojo_page left_column central_column =
           :: [
             div ~a:[a_id "bar_space"] [];
             div ~a:[a_id "contents"] ([
-              div ~a:[a_id "left_column"] [left_column editor_interface];
-              div ~a:[a_id "central_column"] [central_column editor_interface];
+              div ~a:[a_id "left_column"] [left_column];
+              div ~a:[a_id "central_column"] [central_column];
               div ~a:[a_id "editor_column"] []
             ])
           ]))

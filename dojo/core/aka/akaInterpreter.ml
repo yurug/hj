@@ -1,32 +1,56 @@
 open ExtPervasives
 open XAST
 open Name
+open Lwt
 
 type value =
   | VClosure of env * name * expression
-  | VPrimitiveFun of (value -> value)
+  | VPrimitiveFun of (value -> value Lwt.t)
   | VData    of dname * value list
   | VRecord  of (lname * value) list
   | VPrimitive of primitive
 
 and env = (name * value ref) list
 
+let lookup_all_matching regexp env =
+  List.filter (fun (Name x, v) -> Str.string_match regexp x 0) env
+
 exception UnboundIdentifier of string
 exception UnboundLabel of string
 
-let lookup_primitive = function
-  | "string_append" -> VPrimitiveFun (function
-      | VPrimitive (PStringConstant s) ->
-        VPrimitiveFun (function
-          | VPrimitive (PStringConstant s') ->
-            VPrimitive (PStringConstant (s ^ s'))
-          | _ -> assert false (* By typing .*)
-        )
-      | _ -> assert false (* By typing .*)
-  )
-  | _ -> raise Not_found
+(** To be set by {!User}. *)
+let user_has_tag = ref (fun _ _ -> assert false)
 
-let lookup ((Name n) as x) env = try ! (List.assoc x env)
+(* FIXME: Use GADT to lift the following functions
+   FIXME: in a cleaner way. *)
+
+let lookup_primitive = function
+  | "string_append" -> return (VPrimitiveFun (function
+      | VPrimitive (PStringConstant s) ->
+        return (VPrimitiveFun (function
+          | VPrimitive (PStringConstant s') ->
+            return (VPrimitive (PStringConstant (s ^ s')))
+          | _ -> assert false (* By typing .*)
+        ))
+      | _ -> assert false (* By typing .*)
+  ))
+
+  | "user_has_tag" -> return (VPrimitiveFun (function
+      | VPrimitive (PStringConstant s) ->
+        return (VPrimitiveFun (function
+          | VPrimitive (PStringConstant t) ->
+            !user_has_tag s t >>= (function
+              | true -> return (VData (DName "True", []))
+              | false -> return (VData (DName "False", []))
+            )
+          | _ -> assert false (* By typing. *)
+        ))
+      | _ -> assert false (* By typing. *)
+  ))
+  | _ -> raise_lwt Not_found
+
+let lookup ((Name n) as x) env =
+  try return (!(List.assoc x env))
   with Not_found ->
     try lookup_primitive n
     with Not_found ->
@@ -39,51 +63,56 @@ let update ((Name n) as x) v (env : env) = try ((List.assoc x env) := v)
 
 let empty = []
 
-let rec program env bs = List.fold_left block env bs
+let rec program env bs = Lwt_list.fold_left_s block env bs
 
 and block env = function
   | BDefinition vb -> value_binding env vb
-  | _ -> env
+  | _ -> return env
 
 and value_binding env = function
   | BindValue (_, vdefs) ->
-    let env, _ = list_foldmap value_definition env vdefs in
-    env
+    lwt env, _ = lwt_list_foldmap value_definition env vdefs in
+    return env
 
   | BindRecValue (_, vdefs) ->
-    let env, vs = list_foldmap value_definition env vdefs in
+    lwt env, vs = lwt_list_foldmap value_definition env vdefs in
     List.iter (fun (x, v) ->
       match v with
         | VClosure (_, y, e) -> update x (VClosure (env, y, e)) env
         | _ -> assert false (* We only have recursive immediate functions. *)
     ) vs;
-    env
+    return env
 
   | ExternalValue (_, _, (x, _), p) ->
-    bind x (lookup_primitive p) env
+    lwt p = lookup_primitive p in
+    return (bind x p env)
 
 and value_definition env (ValueDef (_, _, _, (x, _), t)) =
-  let v = expression env t in
-  (bind x v env, (x, v))
+  lwt v = expression env t in
+  return (bind x v env, (x, v))
 
 
 and expression env = function
     (** Core ML. *)
-    | EVar (_, x, _) -> lookup x env
-    | ELambda (_, (x, _), t) -> VClosure (env, x, t)
-    | EApp (_, a, b) -> begin match expression env a with
+    | EVar (_, x, _) ->
+      lookup x env
+    | ELambda (_, (x, _), t) ->
+      return (VClosure (env, x, t))
+    | EApp (_, a, b) -> begin expression env a >>= function
         | VClosure (env', x, e) ->
-          expression (bind x (expression env b) env') e
+          lwt v = expression env b in
+          expression (bind x v env') e
         | VPrimitiveFun f ->
-          f (expression env b)
+          expression env b >>= f
         | _ -> assert false (* By typing. *)
     end
 
     | EBinding (_, b, t) ->
-      expression (value_binding env b) t
+      lwt env = value_binding env b in
+      expression env t
 
     | EPrimitive (_, p) ->
-      VPrimitive p
+      return (VPrimitive p)
 
     (** Type abstraction. *)
     | EForall (_, _, t) | EExists (_, _, t) | ETypeConstraint (_, t, _) ->
@@ -91,22 +120,25 @@ and expression env = function
 
     (** Algebraic datatypes. *)
     | EDCon (_, k, _, es) ->
-      VData (k, List.map (expression env) es)
+      lwt vs = Lwt_list.map_s (expression env) es in
+      return (VData (k, vs))
 
     | EMatch (_, e, bs) ->
-      branches env (expression env e) bs
+      lwt v = expression env e in
+      branches env v bs
 
     (** Records. *)
     | ERecordAccess (_, e, ((LName n) as l)) ->
-      begin match expression env e with
-        | VRecord vs -> begin try List.assoc l vs
-          with Not_found -> raise (UnboundLabel n)
+      begin expression env e >>= function
+        | VRecord vs -> begin try_lwt return (List.assoc l vs)
+          with Not_found -> raise_lwt (UnboundLabel n)
         end
         | _ -> assert false (* By typing. *)
       end
 
     | ERecordCon (_, _, _, rs) ->
-      VRecord (List.map (record_binding env) rs)
+      lwt fs = Lwt_list.map_s (record_binding env) rs in
+      return (VRecord fs)
 
 (** Pattern matching branch. *)
 and branches env sv = function
@@ -119,7 +151,8 @@ and branches env sv = function
     end
 
 and record_binding env (RecordBinding (l, e)) =
-  (l, expression env e)
+  lwt v = expression env e in
+  return (l, v)
 
 and pattern (env : env option) sv p =
   match env with
@@ -154,4 +187,4 @@ and first_match env sv = function
       | Some env -> Some env
     end
 
-let program t = Lwt.return (program empty t)
+let program t = program empty t

@@ -64,6 +64,9 @@ include Entity.Make (struct
                return_error (Position.string_of_pos pos ^ ": Syntax error.")
              | Errors.AkaError (msg) ->
                return_error (msg)
+             | e ->
+               (* FIXME: Should be removed. *)
+               return_error (Printexc.to_string e)
           )
 
         | `KO _ ->
@@ -151,8 +154,8 @@ let questions id uid =
       (* FIXME: The following environment could be cached since it
          FIXME: only depends on [cst]. *)
       lwt final_env = Aka.execute id cst in
-      let questions = Aka.extract_questions final_env uid in
-      let questions = Questions.ReifyFromAka.questions questions in
+      lwt questions = Aka.extract_questions final_env uid in
+      let questions = Questions.ReifyFromAka.exercise questions in
       return (`OK questions)
 
     | `KO _ ->

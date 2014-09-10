@@ -179,3 +179,15 @@ let tag uid exoid qid tags difficulty =
   make uid >>= function
     | `OK user -> change user (Tagged (exoid, qid, tags, difficulty))
     | _ -> return () (* FIXME *)
+
+let has_tag uid tag =
+  make uid >>= function
+    | `OK user ->
+      observe user (fun state ->
+        return (Tag.has_tag tag (content state).tags)
+      )
+    | `KO _ -> return false (* FIXME *)
+
+let _ =
+  AkaInterpreter.user_has_tag :=
+    fun s t -> has_tag (identifier_of_string s) t

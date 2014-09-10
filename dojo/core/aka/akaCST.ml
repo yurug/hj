@@ -10,11 +10,11 @@ open Name
 type t = declaration located list
 
 and declaration =
-  | External   of position * name * ty_scheme
-  | ValueDecl  of value_definition
-  | RecFunDecl of value_definition list
-  | TypeDecl   of position * type_definition list
-  | Import     of identifier
+  | External     of position * name * ty_scheme
+  | ValueDecl    of value_definition
+  | RecFunDecl   of value_definition list
+  | TypeDecl     of position * type_definition list
+  | Import       of identifier
 
 and value_definition =
     position * name * ty_scheme option * term'
@@ -77,7 +77,7 @@ and mltype = Types.t
 
 and type_definition =
   | TypeDef of position * mltypekind * tname * datatype_definition
-  | ExternalType of position * tnames * tname * string
+  | ExternalType of position * tnames * tname
 
 and datatype_definition =
   | DAlgebraic  of (position * dname * tnames * mltype) list
@@ -157,12 +157,14 @@ let to_ast : identifier -> t -> IAST.program Lwt.t = fun module_name program ->
 
     | ValueDecl vdef ->
       return [
-        I.(BDefinition (BindValue (pos, [value_definition vdef])))
+        I.(BDefinition (BindValue (pos, value_definition vdef)))
       ]
 
     | RecFunDecl (vdefs) ->
       return [
-        I.(BDefinition (BindRecValue (pos, List.map value_definition vdefs)))
+        I.(BDefinition (
+          BindRecValue (pos, List.(flatten (map value_definition vdefs)))
+        ))
       ]
 
     | TypeDecl (pos, tdefs) ->
@@ -183,13 +185,13 @@ let to_ast : identifier -> t -> IAST.program Lwt.t = fun module_name program ->
 
   and value_definition (pos, l, a, t) =
       let ts, ty = destruct_tyscheme_option a in
-      I.ValueDef (pos, ts, [], vbinding pos l ty, term' t)
+      [I.ValueDef (pos, ts, [], vbinding pos l ty, term' t)]
 
   and type_definition = function
     | TypeDef (pos, k, a, datadef) ->
       I.TypeDef (pos, k, a, datatype_definition datadef)
-    | ExternalType (pos, ts, a, def) ->
-      I.ExternalType (pos, ts, a, def)
+    | ExternalType (pos, ts, (TName s as a)) ->
+      I.ExternalType (pos, ts, a, s)
 
   and datatype_definition = function
     | DAlgebraic (kdefs) ->

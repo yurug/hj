@@ -1,5 +1,7 @@
 (* -*- tuareg -*- *)
 
+(* FIXME: This is a huge module that should be split! *)
+
 {shared{
 open Lwt
 open Eliom_content.Html5
@@ -101,6 +103,28 @@ let exercise_page exo =
       | LaTeX s -> [string_template_as_html_latex classes s]
       | Bold t -> template_text_as_html ("bold" :: classes) t
       | Italic t -> template_text_as_html ("italic" :: classes) t
+      | RawHTML s ->
+        (* FIXME: This pattern of mutual recursion between an element
+           FIXME: and its onload event is very common. Make it a
+           FIXME: combinator! .*)
+        let s = flatten_string s in
+        let self = ref None in
+        let set_inner_html =
+          {{ fun _ ->
+            match !(%self) with
+              | None -> ()
+              | Some x -> (To_dom.of_span x)##innerHTML <- Js.string %s
+           }}
+        in
+        let s = span ~a:[a_onload set_inner_html] [] in
+        self := Some s;
+        [s]
+      | RawLaTeX _ -> []
+      | Hlink (url, caption) ->
+        let url = flatten_string url
+        and caption = string_template_as_html_code [] caption in
+        [Raw.a ~a:[a_href (Xml.uri_of_string url)] [caption]]
+
     in
     let statement_as_html = function
       | Paragraph t ->
@@ -295,7 +319,7 @@ let exercise_page exo =
           ) choices
         )
       in
-      {unit{
+      ignore {unit{
         let e = To_dom.of_select %property_selector in
         let select = fun _ ->
           Lwt.async (fun () ->
@@ -314,8 +338,6 @@ let exercise_page exo =
         );
       }};
       return (div ~a:[a_class ["user_answer"]] [property_selector])
-
-
     in
 
     let context_as_html context =
@@ -331,6 +353,8 @@ let exercise_page exo =
               witv_as_html expressions
             | Chooser choices ->
               chooser_as_html choices
+            | NoGrade ->
+              return (span [])
           in
           aux (h :: accu) t
         | TAtom (_, t) -> aux accu t
@@ -359,7 +383,7 @@ let exercise_page exo =
 
   let focus = {string option ref{ ref None }} in
 
-  let focus_on_question =
+  let focus_on =
     fun (name : string) new_statement_div -> {{ fun _ ->
       Lwt.async (fun () ->
         match !(%focus) with
@@ -376,7 +400,7 @@ let exercise_page exo =
     }}
   in
 
-  let navigation_sidebar questions answers editor_maker = Questions.(
+  let navigation_sidebar description answers editor_maker = Questions.(
     let rec aux = function
       | Question q ->
         let name = Questions.flatten_string q.id in
@@ -390,7 +414,7 @@ let exercise_page exo =
         )
         in
         [li
-            ~a:[a_onclick (focus_on_question name d)]
+            ~a:[a_onclick (focus_on name d)]
             [pcdata title]
         ]
 
@@ -402,23 +426,91 @@ let exercise_page exo =
         flatten [] (fun a s -> li [pcdata s] :: a) (fun a s -> aux s @ a) qs
       )
     in
-    ul (aux questions)
+
+    let download_as_pdf questions =
+      let export_as_pdf = server_function Json.t<unit> (fun () ->
+        let tex = QuestionsLaTeX.make questions in
+        let tmp = Filename.temp_file "hj" ".pdf" in
+        (ltry (ExtUnix.pdflatex tex tmp)) >>= function
+          | `OK _ -> FileHTTP.send tmp >>= fun url -> return (Some url)
+          | `KO _ -> return None
+      )
+      in
+      small_button [I18N.(String.(cap download_pdf))] {unit -> unit{
+        fun _ -> Lwt.async (fun () ->
+           %export_as_pdf () >>= function
+             | None ->
+               return ()
+             | Some url ->
+               return (Dom_html.window##location##assign (Js.string url))
+        )
+      }}
+    in
+
+    lwt master_divs = UserHTTP.teacher_only () >>= function
+      | `OK user ->
+        let submit_new_src = server_function Json.t<string> (fun s ->
+          let r = Resource.make "source.aka" s in
+          Exercise.import_resource exo r >>= function
+            | `OK _ -> Exercise.update user exo
+            | `KO e -> (* FIXME *) return (`KO e)
+        )
+        in
+        let edit = server_function Json.t<unit> (fun () ->
+          lwt exo_src =
+            Exercise.resource exo "source.aka" >>= function
+              | `OK (r, _) -> return (Resource.content r)
+              | `KO _ -> return "" (* FIXME *)
+          in
+          let onload =
+            {#Dom_html.event Js.t -> unit{ fun _ ->
+              let open EditorHTML in
+              !(%reset) ();
+              let editor = %editor_maker ".aka" in
+              let submit () =
+                let src = editor.get_value () in
+                Lwt.async (fun () ->
+                  %submit_new_src src
+                  >> return (editor.console_clear ())
+                )
+              in
+              %reset := editor.EditorHTML.dispose;
+              editor.EditorHTML.set_value %exo_src;
+              editor.EditorHTML.set_ok_cb submit
+             }}
+          in
+          return ([], div ~a:[a_onload onload] [])
+        )
+        in
+        return [
+          p ~a:[a_onclick (focus_on "__edit_source" edit)] [
+            pcdata I18N.String.master_corner
+          ]
+        ]
+      | `KO _ -> return []
+    in
+
+    return (div ([
+      ul (questions_template description.questions);
+      download_as_pdf description
+    ] @ master_divs))
   )
   in (
     ExerciseHTTP.exercise_questions_function (Exercise.identifier exo)
-    >>>= fun questions ->
+    >>>= fun description ->
     ExerciseHTTP.get_user_answers exo_str
     >>>= fun answers ->
-    let links = navigation_sidebar questions answers in
+    let links = navigation_sidebar description answers in
     let statement_viewer editor_maker =
-      statement_div
+      return statement_div
     in
     return (`OK (links, statement_viewer))
   ) >>= function
-    | `OK v -> return v
+    | `OK v ->
+      return v
     | `KO e ->
-      return ((fun _ -> div []),
-              (fun _ -> div [pcdata "error"])) (* FIXME *)
+      return ((fun _ -> return (div [])),
+              (fun _ -> return (div [pcdata "error"]))) (* FIXME *)
 
 let create_service user ok_page ko_page =
   Eliom_registration.Redirection.register_service

@@ -19,7 +19,7 @@ let answers_identifier exercise_identifier user_identifier =
 type internal_state = {
   contributors : User.identifier list;
   exercise     : Identifier.t;
-  questions    : Questions.t;
+  description  : Questions.t;
   answers      : Questions.answers;
   evaluations  : Questions.evaluations;
 } deriving (Json)
@@ -85,7 +85,8 @@ include Entity.Make (struct
         lwt evaluations, evaluation_state =
           update_evaluations
             exo_real_path answer_real_path
-            content.evaluations content.questions
+            content.evaluations
+            content.description.questions
             qid answer update
         in
         update_tags qid evaluation_state
@@ -99,14 +100,14 @@ include Entity.Make (struct
             Questions.update_evaluation qid evaluation_state content.evaluations
         }
 
-      | NewQuestions questions ->
+      | NewQuestions description ->
         (* FIXME: We must implement a caching system not to evaluate
            FIXME: twice the same answers on the same questions.
            FIXME: Yet, this caching process should be bypassable... *)
         iter_answers_s (fun (qid, a) ->
           later (NewEvaluation (qid, List.hd content.contributors, a))
         ) content.answers
-        >> return { content with questions }
+        >> return { content with description }
       )
 
     in
@@ -124,14 +125,14 @@ include Entity.Make (struct
 
 end)
 
-let answers_for id uid questions =
+let answers_for id uid description =
   let answers_id = answers_identifier id uid in
   make answers_id >>= function
     | `OK answers ->
       return (`OK answers)
     | `KO (`UndefinedEntity _ | `SystemError _) ->
       let content = {
-        questions;
+        description;
         exercise = id;
         answers = Questions.empty_answers;
         contributors = [uid];

@@ -128,6 +128,8 @@ let completed () = success "completed"
 
 let return_completed _ = return (`OK "completed")
 
+let return_success s = return (`OK s)
+
 let handle_error = function
   | `OK x -> return x
   | `KO (`AlreadyExists _) -> assert false
