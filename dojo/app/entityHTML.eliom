@@ -55,7 +55,7 @@ let () =
       HTML.hackojo_page links body
     )
 
-let url_of id _ =
+let url_of id =
   preapply ServicesHTML.page_of (string_list_of_identifier id)
 
 let creation_page lid sid creation_service =

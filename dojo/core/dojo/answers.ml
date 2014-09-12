@@ -104,6 +104,7 @@ include Entity.Make (struct
         (* FIXME: We must implement a caching system not to evaluate
            FIXME: twice the same answers on the same questions.
            FIXME: Yet, this caching process should be bypassable... *)
+        Printf.eprintf "New questions!\n%!";
         iter_answers_s (fun (qid, a) ->
           later (NewEvaluation (qid, List.hd content.contributors, a))
         ) content.answers
@@ -144,6 +145,9 @@ let answers_for id uid description =
     | `KO err ->
       return (`KO err)
 
+let push_new_description answers d =
+  change answers (NewQuestions d)
+
 let push_new_answer answers qid uid a =
   change answers (NewAnswer (qid, uid, a))
 
@@ -158,3 +162,8 @@ let answer_of_question answers qid =
 
 let refresh_questions a qs =
   change a (NewQuestions qs)
+
+let contributors answers =
+  observe answers (fun state ->
+    return (content state).contributors
+  )

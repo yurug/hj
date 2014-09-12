@@ -25,15 +25,25 @@ type code_state =
   | Error of Timestamp.t * string
 deriving (Json)
 
+module UserAnswers = Rb.Dict (struct
+  type key = identifier deriving (Json)
+  type image = Answers.identifier deriving (Json)
+  let compare = Identifier.compare
+end)
+
 type internal_state = {
   contributors : User.identifier list;
   code         : code_state;
-  user_answers : Answers.identifier Dict.t
+  user_answers : UserAnswers.t
 } deriving (Json)
 
 type public_change =
   | UpdateCode
   | NewAnswers of User.identifier * Answers.identifier
+
+let questions_of_final_env uid final_env =
+  lwt questions = Aka.extract_questions final_env uid in
+  return (Questions.ReifyFromAka.exercise questions)
 
 include Entity.Make (struct
 
@@ -53,7 +63,16 @@ include Entity.Make (struct
         | `OK (source, _) ->
           (try_lwt
              lwt r = Aka.compile (identifier state) (Resource.content source) in
-             return_valid (fst r)
+             let description = fst r in
+             lwt final_env = Aka.execute (identifier state) description in
+             Aka.perform_notifications final_env
+             >> UserAnswers.lwt_iter content.user_answers (fun uid a ->
+               Answers.make a >>= function
+                 | `OK a ->
+                   lwt questions = questions_of_final_env uid final_env in
+                   Answers.push_new_description a questions
+                 | `KO _ -> return () (* FIXME *)
+             ) >> return_valid description
            with
              (* FIXME: The following lacks consistency. *)
              | AkaError.LoadModule m ->
@@ -74,7 +93,7 @@ include Entity.Make (struct
           return_error "internal error while loading source.aka"
     in
     let new_answers uid aid content =
-      let user_answers = Dict.add uid aid content.user_answers in
+      let user_answers = UserAnswers.add uid aid content.user_answers in
       return { content with user_answers }
     in
 
@@ -115,7 +134,7 @@ let create who name =
           let data = {
             contributors = [ User.identifier who ];
             code = NoCode;
-            user_answers = Dict.empty
+            user_answers = UserAnswers.empty
           }
           in
           let init = (data, empty_dependencies, []) in
@@ -143,33 +162,50 @@ let load_module ?(relative=true) id =
   make id >>= function
     | `OK exo -> begin observe exo
       (fun data -> return (content data).code) >>= function
-        | Valid (_, a) -> return (`OK a)
+        | Valid (_, a) -> return (`OK (exo, a))
         | _ -> return (`KO id)
     end
     | `KO _ -> return (`KO id)
 
+let lookup_user_answers exo uid =
+  lwt user_answers =
+    observe exo (fun data ->
+      return (content data).user_answers)
+  in
+  let answers_id = UserAnswers.lookup uid user_answers in
+  Answers.make answers_id
+
+let check_answers_consistency exo uid questions =
+  try_lwt
+    lookup_user_answers exo uid >>= function
+    | `OK answers -> Answers.(
+      lwt q = observe answers (fun data -> return (content data).description) in
+      if q <> questions then (
+        Printf.eprintf "Questions changed! Update!\n%!";
+        push_new_description answers questions
+      ) else
+        return ()
+    )
+    | `KO _ -> return () (* FIXME *)
+  with _ -> return () (* FIXME *)
+
 let questions id uid =
   load_module ~relative:false id >>= function
-    | `OK cst ->
+    | `OK (exo, cst) ->
       (* FIXME: The following environment could be cached since it
          FIXME: only depends on [cst]. *)
       lwt final_env = Aka.execute id cst in
-      lwt questions = Aka.extract_questions final_env uid in
-      let questions = Questions.ReifyFromAka.exercise questions in
-      return (`OK questions)
+      lwt questions = questions_of_final_env uid final_env in
+      check_answers_consistency exo uid questions
+      >> return (`OK questions)
 
     | `KO _ ->
       return (`KO (`InvalidModule id))
 
 let user_answers exo uid =
   let id = identifier exo in
-  lwt user_answers =
-    observe exo (fun data ->
-      return (content data).user_answers)
-  in
-  try
-    let answers_id = Dict.find uid user_answers in
-    Answers.make answers_id
+  try_lwt
+    lookup_user_answers exo uid
   with Not_found ->
     questions id uid >>>= fun questions ->
     Answers.answers_for id uid questions >>>= fun answers ->
@@ -184,14 +220,14 @@ let answer id uid qid a =
 let refresh_evaluations id =
   make id >>>= fun exo ->
   (observe exo (fun data -> return (content data).user_answers)
-   >>= fun answers -> Dict.fold_s (fun ret (uid, a_id) ->
+   >>= fun answers -> UserAnswers.lwt_fold answers (fun uid a_id ret ->
      match ret with
        | `KO e -> return (`KO e)
        | `OK () ->
          questions id uid >>>= fun questions -> Answers.(
            make a_id >>>= fun a ->
            refresh_questions a questions >> return (`OK ()))
-   ) (`OK ()) answers)
+   ) (`OK ()))
 
 let evaluation_state id uid qid =
   make id >>>= fun exo ->
@@ -200,4 +236,45 @@ let evaluation_state id uid qid =
   return (`OK s)
 
 let initialization =
-  AkaCST.set_loader load_module
+  AkaCST.set_loader (fun id -> load_module id >>= function
+    | `OK (_, t) -> return (`OK t)
+    | `KO e -> return (`KO e)
+  )
+
+let user_has_subscribed user_id exo_id =
+  make exo_id >>= function
+    | `KO _ -> return false (* FIXME *)
+    | `OK exo ->
+      lwt user_answers =
+        observe exo (fun data ->
+          return (content data).user_answers)
+      in
+      try_lwt
+        ignore (UserAnswers.lookup user_id user_answers);
+        return true
+      with Not_found -> return false
+
+let results_of_question exo_id qid =
+  make exo_id >>= function
+    | `KO _ -> return [] (* FIXME *)
+    | `OK exo ->
+      lwt user_answers =
+        observe exo (fun data ->
+          return (content data).user_answers)
+      in
+      let rs = ref [] in
+      UserAnswers.lwt_iter user_answers (fun user answers_id ->
+        Answers.make answers_id >>= function
+          | `OK answers ->
+            begin try_lwt
+              lwt answer = Answers.answer_of_question answers qid in
+              lwt evaluation_state = Answers.evaluation_state answers qid in
+              lwt friends = Answers.contributors answers in
+              list_push rs (user, friends, answer, evaluation_state, answers);
+              return ()
+              with _ -> return ()
+            end
+          | `KO _ ->
+            return () (* FIXME *)
+      )
+      >> return !rs

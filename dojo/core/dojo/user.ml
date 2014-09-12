@@ -10,6 +10,13 @@ let path = Identifier.from_strings [ "users" ]
 let user_identifier username =
   Identifier.(identifier_of_path (concat path (make [label username])))
 
+let all_user_ids () =
+  ltry (ExtUnix.ls ~relative:true (VFS.real_path path)) >>= function
+    | `OK l ->
+      let l = List.filter (fun s -> s <> "." && s <> "..") l in
+      return (List.map user_identifier l)
+    | `KO _ -> return [] (* FIXME *)
+
 let admin_username = "admin"
 
 let admin_id = user_identifier admin_username
@@ -49,6 +56,8 @@ type internal_state = {
   surname         : string;
   email           : string;
   tags            : Tag.set;
+  active          : Notifications.folder;
+  hidden          : Notifications.folder;
 } deriving (Json)
 
 type public_change =
@@ -56,6 +65,8 @@ type public_change =
   | Login
   | Logout
   | Tagged of Identifier.t * Questions.identifier * string list * int
+  | NewNotification of Notifications.notification_identifier
+  | HideNotification of Notifications.notification_identifier
 
 include Entity.Make (struct
 
@@ -74,6 +85,13 @@ include Entity.Make (struct
       | Tagged (exo_id, q_id, tags, difficulty) ->
         let who = string_of_identifier exo_id ^ "/" ^ q_id in
         { content with tags = Tag.tag who tags difficulty content.tags }
+      | NewNotification id ->
+        let active = Notifications.push content.active id in
+        { content with active }
+      | HideNotification id ->
+        let active = Notifications.remove content.active id in
+        let hidden = Notifications.push content.hidden id in
+        { content with active; hidden }
     in
     let content = List.fold_left make_change (content state) cs in
     return (UpdateContent content)
@@ -92,6 +110,11 @@ include Entity.Make (struct
         difficulty
         (string_of_identifier exo_id)
         q_id
+    | NewNotification id ->
+      Printf.sprintf "New notification %s\n" id
+    | HideNotification id ->
+      Printf.sprintf "Hide notification %s\n" id
+
 
 end)
 
@@ -101,6 +124,13 @@ let login           e = observe e (fun u -> return (content u).login)
 let firstname       e = observe e (fun u -> return (content u).firstname)
 let surname         e = observe e (fun u -> return (content u).surname)
 let email           e = observe e (fun u -> return (content u).email)
+let active          e = observe e (fun u -> return (content u).active)
+let hidden          e = observe e (fun u -> return (content u).hidden)
+
+let fullname e =
+  lwt firstname = firstname e in
+  lwt surname = surname e in
+  return (firstname ^ " " ^ surname)
 
 let user_module = "hackojo.user <here@hackojo.org>"
 
@@ -160,6 +190,8 @@ let register login password =
         lwt firstname = get_user_info login "firstname" in
         lwt surname = get_user_info login "surname" in
         lwt email = get_user_info login "email" in
+        let active = Notifications.empty in
+        let hidden = Notifications.empty in
         let data = {
           login;
           logged = false;
@@ -168,7 +200,9 @@ let register login password =
           firstname;
           surname;
           email;
-          tags = Tag.Set.empty
+          tags = Tag.Set.empty;
+          active;
+          hidden
         }
         in
         make ~init:(data, empty_dependencies, []) id
@@ -188,6 +222,41 @@ let has_tag uid tag =
       )
     | `KO _ -> return false (* FIXME *)
 
+let get_notifications_folder filename user = Notifications.(
+  resource user filename >>= function
+    | `OK (res, _) -> return (`OK (res, read res))
+    | `KO e -> return (`KO e)
+)
+
+let push_notification uid notification_id =
+  make uid >>= function
+    | `OK user -> change user (NewNotification notification_id)
+    | `KO e -> return () (* FIXME *)
+
+let hide_notification uid notification_id =
+  make uid >>= function
+    | `OK user -> change user (HideNotification notification_id)
+    | `KO e -> return () (* FIXME *)
+
+let get_active_notifications uid =
+  make uid >>>= Notifications.(fun user ->
+    lwt active = active user in
+    lwt now_hidden, still_active =
+      Lwt_list.partition_s (to_be_automatically_hidden uid) active
+    in
+    Lwt_list.iter_s (hide_notification uid) now_hidden
+    >> return (`OK still_active)
+  )
+
+let notify if_has_tags notification uid =
+  Lwt_list.for_all_s (has_tag uid) if_has_tags >>= function
+    | true -> push_notification uid notification
+    | false -> return ()
+
+let notify_all if_has_tags notification =
+  all_user_ids () >>= Lwt_list.iter_s (notify if_has_tags notification)
+
 let _ =
-  AkaInterpreter.user_has_tag :=
-    fun s t -> has_tag (identifier_of_string s) t
+  let open AkaInterpreter in
+      user_has_tag    := (fun s t -> has_tag (identifier_of_string s) t);
+      notify_all_user := notify_all

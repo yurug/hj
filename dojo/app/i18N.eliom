@@ -36,6 +36,8 @@ module Fr : I18N_sig.Text = struct
 
   let name_label = "Nom"
 
+  let friends = "amis"
+
   let filename_label = "Fichier"
 
   let upload_label = "OK"
@@ -53,6 +55,8 @@ module Fr : I18N_sig.Text = struct
   let link = "lien"
 
   let answer = "réponse"
+
+  let evaluation = "évaluation"
 
   let score = "score"
 
@@ -240,6 +244,9 @@ module Fr : I18N_sig.Text = struct
   let parse_error =
     "Erreur de syntaxe."
 
+  let invalid_answer =
+    "Réponse invalide."
+
   let lexing_unexpected_character =
     "Caractère surprenant."
 
@@ -300,6 +307,9 @@ module Fr : I18N_sig.Text = struct
 
   let edit =
     "modifier"
+
+  let download =
+    "télécharger"
 
   let download_all =
     "tout télécharger"

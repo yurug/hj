@@ -72,3 +72,16 @@ let extract_questions env uid = XAST.(
   in
   AkaInterpreter.expression env extractor
 )
+
+let perform_notifications env = XAST.(
+  try_lwt
+    let notify =
+      fst (List.(hd (
+        AkaInterpreter.lookup_all_matching (Str.regexp "notify") env)
+      ))
+    in
+    AkaInterpreter.expression env (
+      EApp (dummy, EVar (dummy, notify, []), EPrimitive (dummy, PUnit))
+    ) >> return ()
+  with _ -> return ()
+)

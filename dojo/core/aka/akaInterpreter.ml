@@ -19,34 +19,63 @@ exception UnboundIdentifier of string
 exception UnboundLabel of string
 
 (** To be set by {!User}. *)
-let user_has_tag = ref (fun _ _ -> assert false)
+let user_has_tag    = ref (fun _ _ -> assert false)
+let notify_all_user = ref (fun _ _ -> assert false)
+let message         = ref (fun _ -> assert false)
+let goto_exercise   = ref (fun _ _ -> assert false)
 
 (* FIXME: Use GADT to lift the following functions
    FIXME: in a cleaner way. *)
 
-let lookup_primitive = function
-  | "string_append" -> return (VPrimitiveFun (function
-      | VPrimitive (PStringConstant s) ->
-        return (VPrimitiveFun (function
-          | VPrimitive (PStringConstant s') ->
-            return (VPrimitive (PStringConstant (s ^ s')))
-          | _ -> assert false (* By typing .*)
-        ))
-      | _ -> assert false (* By typing .*)
-  ))
+let as_string = function
+  | VPrimitive (PStringConstant s) -> s
+  | _ -> assert false
 
-  | "user_has_tag" -> return (VPrimitiveFun (function
-      | VPrimitive (PStringConstant s) ->
-        return (VPrimitiveFun (function
-          | VPrimitive (PStringConstant t) ->
-            !user_has_tag s t >>= (function
-              | true -> return (VData (DName "True", []))
-              | false -> return (VData (DName "False", []))
-            )
-          | _ -> assert false (* By typing. *)
-        ))
-      | _ -> assert false (* By typing. *)
-  ))
+let rec as_list f = function
+  | VData (DName "Nil", []) -> []
+  | VData (DName "Cons", [x; xs]) -> f x :: as_list f xs
+  | _ -> assert false
+
+let lift_string_fun f =
+  return (VPrimitiveFun (fun v -> f (as_string v)))
+
+let lift_string_list_fun f =
+  return (VPrimitiveFun (fun v -> f (as_list as_string v)))
+
+let lookup_primitive = function
+  | "string_append" ->
+    lift_string_fun (fun s ->
+      lift_string_fun (fun s' ->
+        return (VPrimitive (PStringConstant (s ^ s')))))
+
+  | "user_has_tag" ->
+    lift_string_fun (fun s ->
+      lift_string_fun (fun t ->
+        !user_has_tag s t >>= (function
+          | true -> return (VData (DName "True", []))
+          | false -> return (VData (DName "False", []))
+        )
+      ))
+
+  | "notify_all_user" ->
+    lift_string_list_fun (fun l ->
+      lift_string_fun (fun n ->
+        !notify_all_user l n
+        >>= fun () -> return (VPrimitive PUnit))
+    )
+
+  | "message" ->
+    return (VPrimitiveFun (fun s ->
+      !message s >>= fun id ->
+      return (VPrimitive (PStringConstant id))
+    ))
+
+  | "goto_exercise" ->
+    return (VPrimitiveFun (fun eid -> return (VPrimitiveFun (fun s ->
+      !goto_exercise eid s >>= fun id ->
+      return (VPrimitive (PStringConstant id))
+    ))))
+
   | _ -> raise_lwt Not_found
 
 let lookup ((Name n) as x) env =

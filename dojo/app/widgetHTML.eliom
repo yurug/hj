@@ -482,6 +482,25 @@ let fileuploader width height import =
     {{ fun () -> () }}
     (pcdata "↑")
 
+let active_div (freq : float) (f : unit -> [ div_content ] elt list Lwt.t) =
+  let sf = server_function Json.t<unit> f in
+  let d = div [] in
+  let onload =
+    {{ fun _ ->
+      let m = ref [] in
+      let rec aux () =
+        lwt m' = %sf () in
+        (if !m <> m' then (
+          Manip.replaceChildren %d m';
+          return (m := m')
+        ) else return ())
+        >> Lwt_js.sleep %freq >> aux ()
+      in
+      Lwt.async aux
+     }}
+  in
+  div ~a:[a_onload onload] [d]
+
 {client{
 let display_math elements =
   Lwt.async (fun () ->

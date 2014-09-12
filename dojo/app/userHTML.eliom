@@ -20,6 +20,7 @@ open HTML
 open I18N
 open WidgetHTML
 open UserHTTP
+open StatementHTML
 
 let homepage u =
   (* let uid = CORE_user.identifier u in *)
@@ -126,7 +127,41 @@ let homepage u =
   (*   notifications; *)
   (*   assignments *)
   (* ]) *)
-  fun _ -> return (div [p [pcdata "TODO"]])
+  fun _ ->
+    let uid = User.identifier u in
+    let codes = ref [] in
+    let notification_as_html id =
+      let notification_box = div ~a:[a_class ["notification_box"]] in
+      Notifications.(load_notification id >>= function
+        | `OK n ->
+          begin match n.message with
+            | EphemeralMessage (_, s) | Message s ->
+              return (notification_box [
+                statement_as_html codes s
+              ])
+            | GotoExercise (id, s) ->
+              return (notification_box [
+                a ~service:(EntityHTML.url_of id) [
+                  pcdata ("▹ " ^ string_of_identifier id)
+                ] ();
+                statement_as_html codes s
+              ])
+          end
+        | `KO _ ->
+          return (span []) (* FIXME *)
+      )
+    in
+    lwt notifications =
+      User.get_active_notifications uid >>= function
+        | `OK ns -> Lwt_list.map_s notification_as_html ns
+        | `KO _ -> return [] (* FIXME *)
+    in
+    let onload =
+      {{
+        fun _ -> WidgetHTML.highlight !(%codes)
+       }}
+    in
+    return (div ~a:[a_onload onload] notifications)
 
 let homepage_div id =
   logged_user () >>= (function

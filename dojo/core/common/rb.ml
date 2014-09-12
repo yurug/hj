@@ -14,6 +14,7 @@
 (**************************************************************************)
 
 (*i $Id$ i*)
+open Lwt
 
 (*s Sets interface. *)
 
@@ -51,7 +52,9 @@ module type S =
     val choose : t -> elt
     val split : elt -> t -> t * bool * t
     val iter : (elt -> unit) -> t -> unit
+    val lwt_iter : (elt -> unit Lwt.t) -> t -> unit Lwt.t
     val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val lwt_fold : (elt -> 'a -> 'a Lwt.t) -> t -> 'a -> 'a Lwt.t
   end
 
 (*s Sets implemented as reb-black trees. *)
@@ -455,9 +458,27 @@ module Make(Ord : OrderedType) : (S with type elt = Ord.t) = struct
     | Empty -> ()
     | Black (l, v, r) | Red (l, v, r) -> iter f l; f v; iter f r
 
+  let rec lwt_iter f = function
+    | Empty ->
+      return ()
+    | Black (l, v, r)
+    | Red (l, v, r) ->
+      lwt_iter f l
+      >> f v
+      >> lwt_iter f r
+
   let rec fold f s accu = match s with
     | Empty -> accu
     | Black (l, v, r) | Red (l, v, r) -> fold f l (f v (fold f r accu))
+
+  let rec lwt_fold f s accu = match s with
+    | Empty ->
+      return accu
+    | Black (l, v, r)
+    | Red (l, v, r) ->
+      lwt accu = lwt_fold f r accu in
+      lwt accu = f v accu in
+      lwt_fold f l accu
 
   let split x s =
     let coll k (l, b, r) =
@@ -504,7 +525,17 @@ end) = struct
   let to_set s =
     s
 
-  let iter f =
-    Set.iter (fun (k, v) -> match v with Some x -> f (k, x) | _ -> assert false)
+  let iter x f =
+    Set.iter (fun (k, v) -> match v with Some x -> f k x | _ -> assert false) x
+
+  let lwt_iter x f =
+    Set.lwt_iter (fun (k, v) ->
+      match v with Some x -> f k x | _ -> assert false
+    ) x
+
+  let lwt_fold x f init =
+    Set.lwt_fold (fun (k, v) accu ->
+      match v with Some x -> f k x accu | _ -> assert false
+    ) x init
 
 end

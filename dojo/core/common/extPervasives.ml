@@ -2,6 +2,8 @@
 
 open Lwt
 
+let list_push l x = l := x :: !l
+
 let ( $> ) f g () = f (); g ()
 
 let ( !$ ) f x = f ()
@@ -291,6 +293,9 @@ module ExtFilename = struct
     let fname = Filename.temp_file ~temp_dir prefix suffix in
     Lwt_unix.unlink fname
     >>= fun _ -> return fname
+
+  let fresh_filename dir =
+    temp_filename ~temp_dir:dir
 
 end
 

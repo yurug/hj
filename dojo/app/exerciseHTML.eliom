@@ -12,9 +12,11 @@ open Eliom_service
 
 open Identifier
 open Questions
+open Statement
 open WidgetHTML
 open ExerciseHTTP
 open ExtPervasives
+open StatementHTML
 
 let fresh_id =
   let r = ref 0 in
@@ -79,75 +81,7 @@ let exercise_page exo =
         wait ()
       }}
     in
-    let string_template_as_html classes s =
-      span ~a:[a_class classes] [pcdata (flatten_string s)]
-    in
-    let string_template_as_html_code classes s =
-      code [pcdata (flatten_string s)]
-    in
-    let string_template_as_html_latex classes s =
-      span [pcdata ("\\(" ^ flatten_string s ^ "\\)")]
-    in
-    let string_as_html classes s =
-      span ~a:(if classes = [] then [] else [a_class classes]) [pcdata s]
-    in
-    let rec template_text_as_html classes t =
-      List.rev (
-        flatten []
-          (fun a s -> string_as_html classes s :: a)
-          (fun a s -> text_as_html classes s @ a) t
-      )
-    and text_as_html classes = function
-      | String s -> [string_template_as_html classes s]
-      | Code s -> [string_template_as_html_code classes s]
-      | LaTeX s -> [string_template_as_html_latex classes s]
-      | Bold t -> template_text_as_html ("bold" :: classes) t
-      | Italic t -> template_text_as_html ("italic" :: classes) t
-      | RawHTML s ->
-        (* FIXME: This pattern of mutual recursion between an element
-           FIXME: and its onload event is very common. Make it a
-           FIXME: combinator! .*)
-        let s = flatten_string s in
-        let self = ref None in
-        let set_inner_html =
-          {{ fun _ ->
-            match !(%self) with
-              | None -> ()
-              | Some x -> (To_dom.of_span x)##innerHTML <- Js.string %s
-           }}
-        in
-        let s = span ~a:[a_onload set_inner_html] [] in
-        self := Some s;
-        [s]
-      | RawLaTeX _ -> []
-      | Hlink (url, caption) ->
-        let url = flatten_string url
-        and caption = string_template_as_html_code [] caption in
-        [Raw.a ~a:[a_href (Xml.uri_of_string url)] [caption]]
 
-    in
-    let statement_as_html = function
-      | Paragraph t ->
-        p (template_text_as_html [] t)
-      | Verbatim t ->
-        pre [pcdata (flatten_string t)]
-      | CodeBlock (l, t) ->
-        let elt =
-          pre [code ~a:[a_class [flatten_string l]] [
-            pcdata (flatten_string t)
-          ]]
-        in
-        codes := elt :: !codes;
-        elt
-    in
-    let statements_as_html t =
-      List.rev (
-        flatten []
-          (fun a s -> p [string_as_html [] s] :: a)
-          (fun a s -> statement_as_html s :: a)
-          t
-      )
-    in
     let qcm_as_html statements =
 
       let choices = {int list ref{ ref [] }} in
@@ -371,13 +305,39 @@ let exercise_page exo =
         List.map (fun t -> span ~a:[a_class ["tag"]] [pcdata t]) tags
       )
     in
+
+    let results_table rows = I18N.(String.(
+      let columns = [ name_label; cap friends; cap answer; cap state ] in
+      let thead = thead [ tr (List.map (fun f -> th [pcdata f]) columns) ] in
+      let row (l, u, f, a, e) =
+        let fields = List.map (fun s -> td [s]) in
+        let a =
+          match a with
+            | Text s -> pcdata s
+            | URL u -> Raw.a ~a:[a_href (Xml.uri_of_string u)] [pcdata (cap download)]
+        in
+        tr (fields [pcdata l; pcdata u; pcdata f; a; pcdata e])
+      in
+      let rows = List.map row rows in
+      tablex ~thead [tbody rows]
+      ))
+    in
+
+    let teacher_space =
+      active_div 1. (fun () ->
+        exercise_results_of_question_function exo_id name_str >>= function
+          | `OK rows -> return [results_table rows]
+          | `KO _ -> return [] (* FIXME *)
+      )
+    in
+
     return (!codes, div (
       [ h1 [pcdata (title ^ " (" ^ stars difficulty ^ ")")];
         tags_as_html tags
       ]
-      @ statements_as_html statements
+      @ statements_as_html codes statements
       @ context
-      @ [ grade_div ]
+      @ [ grade_div ; teacher_space ]
     ))
   in
 
@@ -403,8 +363,8 @@ let exercise_page exo =
   let navigation_sidebar description answers editor_maker = Questions.(
     let rec aux = function
       | Question q ->
-        let name = Questions.flatten_string q.id in
-        let title = Questions.flatten_string q.title in
+        let name = Statement.flatten_string q.id in
+        let title = Statement.flatten_string q.title in
         let d = server_function Json.t<unit> (fun () ->
           statement_as_html
             name title

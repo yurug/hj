@@ -23,13 +23,14 @@ let mkdir ps lraise =
   success ~lraise (!% cmd)
   >>= fun _ -> return ()
 
-let ls ps =
+let ls ?(relative = false) ps =
   handle_unix_error Lwt_unix.(fun () ->
     lwt dh = opendir ps in
     let rec all ls =
       try_lwt
         lwt file = readdir dh in
-        all (Filename.concat ps file :: ls)
+        let file = if relative then file else Filename.concat ps file in
+        all (file :: ls)
       with End_of_file -> return ls
     in
     lwt y = all [] in

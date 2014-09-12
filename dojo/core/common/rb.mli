@@ -56,7 +56,9 @@ module type S =
     val choose : t -> elt
     val split : elt -> t -> t * bool * t
     val iter : (elt -> unit) -> t -> unit
+    val lwt_iter : (elt -> unit Lwt.t) -> t -> unit Lwt.t
     val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val lwt_fold : (elt -> 'a -> 'a Lwt.t) -> t -> 'a -> 'a Lwt.t
   end
 
 module Make(Ord : OrderedType) : (S with type elt = Ord.t)
@@ -78,5 +80,11 @@ end) : sig
   val update : S.key -> S.image -> t -> t
 
   val lookup : S.key -> t -> S.image
+
+  val iter : t -> (S.key -> S.image -> unit) -> unit
+
+  val lwt_iter : t -> (S.key -> S.image -> unit Lwt.t) -> unit Lwt.t
+
+  val lwt_fold : t -> (S.key -> S.image -> 'a -> 'a Lwt.t) -> 'a -> 'a Lwt.t
 
 end

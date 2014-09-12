@@ -76,6 +76,8 @@ dojo/user
 dojo/admin
 dojo/exercise
 dojo/seed
+dojo/statement
 dojo/questions
 dojo/questionsLaTeX
 dojo/answers
+dojo/notifications

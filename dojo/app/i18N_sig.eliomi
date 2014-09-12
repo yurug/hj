@@ -12,6 +12,7 @@ sig
   val submission : string
   val submissions : string
   val name_label : string
+  val friends : string
   val filename_label : string
   val upload_label : string
   val not_yet_submitted : string
@@ -21,6 +22,7 @@ sig
   val diagnostic : string
   val link : string
   val answer : string
+  val evaluation : string
   val state : string
   val waiting_state : string
   val processing_state : string
@@ -78,6 +80,7 @@ sig
   (** Sentences. *)
   val master_corner: string
   val relaunch_all: string
+  val download: string
   val download_all: string
   val download_pdf: string
   val last_connection: string
@@ -108,6 +111,7 @@ sig
   val do_you_really_want_to_create_a_question_named : string -> string
   val no_title: string
   val answer_expected : string -> string
+  val invalid_answer : string
   val in_a_file_named : string -> string
   val no_such_sandbox : string
   val type_error : string -> string -> string

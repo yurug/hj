@@ -273,7 +273,8 @@ let make_public_grade g =
   }
 
 let make_public_evaluation_state = function
-  | Questions.EvaluationError _ ->
+  | Questions.EvaluationError e ->
+    Printf.eprintf "%s\n%!" (Questions.string_of_evaluation_error e);
     EvaluationFailed
   | Questions.EvaluationDone (id, tags, level, g) ->
     EvaluationDone (id, tags, level, make_public_grade g)
@@ -291,9 +292,35 @@ let exercise_evaluation_state_function (name, (qid : string)) =
 let exercise_evaluation_state_server_function =
   server_function Json.t<string * string> (fun (name, qid) ->
     exercise_evaluation_state_function (name, qid) >>= function
-      | `OK s -> return (make_public_evaluation_state s)
-      | `KO _ -> return EvaluationFailed
+      | `OK s ->
+        Printf.eprintf "%s\n%!" (Questions.string_of_evaluation_state s);
+        return (make_public_evaluation_state s)
+      | `KO _ ->
+        Printf.eprintf "This one\n%!";
+        return EvaluationFailed
   )
+
+let gen_string_of_evaluation_state f = Questions.(function
+  | EvaluationError _ -> assert false
+  | EvaluationDone (_, _, _, grade) -> f grade
+  | EvaluationWaits -> "waiting..."
+  | EvaluationHandled _ -> "processing..."
+)
+
+let small_string_of_evaluation_state =
+  gen_string_of_evaluation_state Questions.string_of_grade
+
+let string_of_evaluation_state =
+  gen_string_of_evaluation_state Questions.string_of_grade
+
+let string_of_evaluation_error = Questions.(function
+  | UnboundQuestion e -> "unbound_question_(" ^ e ^ ")"
+  | SyntaxErrorInAnswer -> "syntax_error_in_answer"
+  | InvalidContextDescription -> "invalid_context_description"
+  | NoAnswer -> "no_answer"
+  | IncompatibleAnswer -> "incompatible_answer"
+  | ErrorDuringGraderExecution -> "error_during_grader_execution"
+)
 
 let exercise_evaluation_state = HTTP.(
   api_service "exercise_evaluation_state" "exercise"
@@ -301,22 +328,6 @@ let exercise_evaluation_state = HTTP.(
     (string "status")
     "Return the state of the evaluation for a question."
     (fun (name, qid) ->
-       let string_of_evaluation_state = Questions.(function
-         | EvaluationError _ -> assert false
-         | EvaluationDone (_, _, _, grade) -> Questions.string_of_grade grade
-         | EvaluationWaits -> "waiting..."
-         | EvaluationHandled _ -> "processing..."
-       )
-       in
-       let string_of_evaluation_error = Questions.(function
-         | UnboundQuestion -> "unbound_question"
-         | SyntaxErrorInAnswer -> "syntax_error_in_answer"
-         | InvalidContextDescription -> "invalid_context_description"
-         | NoAnswer -> "no_answer"
-         | IncompatibleAnswer -> "incompatible_answer"
-         | ErrorDuringGraderExecution -> "error_during_grader_execution"
-       )
-       in
        exercise_evaluation_state_function (name, qid) >>= function
          | `OK (Questions.EvaluationError e) ->
            error (string_of_evaluation_error e)
@@ -336,4 +347,75 @@ let exercise_evaluation_state = HTTP.(
            error ("undefined:" ^ (string_of_identifier id)))
 )
 
+type answer_output =
+  | Text of string
+  | URL of string
 
+let text s = return (Text s)
+
+let output_answer answers = Questions.(function
+  | Invalid -> text (I18N.(String.(invalid_answer)))
+  | Choices s -> text (String.concat ", " (List.map string_of_int s))
+  | Choice c -> text (string_of_int c)
+  | GivenValues vs -> text (String.concat ", " vs)
+  | File f ->
+    let path = OnDisk.resource_real_path (Answers.identifier answers) f in
+    lwt uri = FileHTTP.send path in
+    return (URL uri)
+)
+
+type results_output = (string * string * string * answer_output * string) list
+
+let output_result (user, friends, answer, evaluation_state, answers) =
+  let login = string_of_identifier user in
+  let fullname_of_id id =
+    User.make id >>= function
+      | `OK user -> User.fullname user
+      | `KO _ -> return "" (* FIXME *)
+  in
+  lwt user = fullname_of_id user in
+  lwt friends =
+    lwt friends_names = Lwt_list.map_s fullname_of_id friends in
+    return (String.concat ", " friends_names)
+  in
+  lwt answer = output_answer answers answer in
+  let evaluation_state = small_string_of_evaluation_state evaluation_state in
+  return (login, user, friends, answer, evaluation_state)
+
+let exercise_results_of_question_function name qid =
+  teacher_only () >>>= fun user ->
+  Exercise.results_of_question name qid >>= (fun rs ->
+    lwt rs = Lwt_list.map_s output_result rs in
+    return (`OK rs)
+  )
+
+let results_output_to_string rs =
+  return (`OK (String.concat "\n" (List.map (fun (l, u, f, a, e) ->
+    let a = match a with Text s -> s | URL s -> s in
+    Printf.sprintf "%10s %20s %30s %10s %10s" l u f a e
+  ) rs)))
+
+let exercise_results_of_question = HTTP.(
+  api_service "exercise_results_of_question" "exercise"
+    (string "identifier" ** string "question_identifier")
+    (string "status")
+    "Return the global results for a question."
+    (fun (name, qid) ->
+      (exercise_results_of_question_function (identifier_of_string name) qid
+       >>>= results_output_to_string
+      ) >>= function
+         | `OK s -> success s
+         | `KO (`InvalidModule id) ->
+           error ("invalid_module:" ^ string_of_identifier id)
+         | `KO (`InvalidCode e) -> success e
+         | `KO `NotLogged -> error "not_logged"
+         | `KO `FailedLogin -> error "login_failed"
+         | `KO (`AlreadyExists _) -> error "already_exists"
+         | `KO (`SystemError e) -> error ("system:" ^ e)
+         | `KO (`InternalError e) ->
+           error ("internal:" ^ (Printexc.to_string e))
+         | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+         | `KO `ForbiddenService -> error "teacher_only"
+         | `KO (`UndefinedEntity id) ->
+           error ("undefined:" ^ (string_of_identifier id)))
+)
