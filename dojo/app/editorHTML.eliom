@@ -111,10 +111,12 @@ let make = {string -> string -> interface{ fun container_id ext ->
   let container_elt = ExtDom.get_element_by_id container_id in
   let onclick_cb = ref (fun () -> ()) in
   let console_div = div [] in
-  let console = To_dom.of_div console_div in
+  let console = (To_dom.of_div console_div :> Dom.node Js.t) in
   let button_div = WidgetHTML.small_button ["OK"] (fun _ -> !onclick_cb ()) in
   let button = To_dom.of_div (div ~a:[a_class ["editorbutton"]] [button_div]) in
+  let button = (button :> Dom.node Js.t) in
   elt##id <- Js.string editor_id;
+  let elt = (elt :> Dom.node Js.t) in
   ignore (container_elt##appendChild (elt));
   ignore (container_elt##appendChild (button));
   ignore (container_elt##appendChild (console));
@@ -122,7 +124,7 @@ let make = {string -> string -> interface{ fun container_id ext ->
   let get_value () = Js.to_string (editor##getValue ()) in
   let set_value s  = editor##setValue (Js.string s) in
   let dispose () =
-    editor##toTextArea ();
+    ignore (editor##toTextArea ());
     ignore (container_elt##removeChild (elt));
     ignore (container_elt##removeChild (button));
     ignore (container_elt##removeChild (console))
