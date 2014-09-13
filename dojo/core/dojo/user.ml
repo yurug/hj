@@ -134,10 +134,60 @@ let fullname e =
 
 let user_module = "hackojo.user <here@hackojo.org>"
 
+let user_info_command = ref (fun login what -> !% "echo 1")
+
+let set_user_info_command cmd =
+  user_info_command := fun login what ->
+    !% Str.(
+      let cmd = global_replace (regexp "%login") login cmd in
+      global_replace (regexp "%what") what cmd
+    )
+
+let get_user_info login what =
+  let remove_trailing_newline s = Str.(global_replace (regexp "\n") "" s) in
+  ltry (fun lraise -> pread ~lraise (!user_info_command login what))
+  >>= function
+    | `OK s -> return (remove_trailing_newline s)
+    | `KO e -> return "get_user_info_failed" (* FIXME: Critical. *)
+
+let create_user_account login password =
+  let id = user_identifier login in
+  let password_digest =
+    match password with
+      | `Digest d -> d
+      | `Text password -> digest password
+  in
+  lwt status = get_user_info login "status" in
+  let teacher = (status = "teacher") in
+  lwt firstname = get_user_info login "firstname" in
+  lwt surname = get_user_info login "surname" in
+  lwt email = get_user_info login "email" in
+  let active = Notifications.empty in
+  let hidden = Notifications.empty in
+  let data = {
+    login;
+    logged = false;
+    password_digest;
+    teacher;
+    firstname;
+    surname;
+    email;
+    tags = Tag.Set.empty;
+    active;
+    hidden
+  }
+  in
+  make ~init:(data, empty_dependencies, []) id
+
+let create_admin_account () =
+  create_user_account admin_username (`Digest (get_admin_password ()))
+
 let up () = VFS.(
-  if not (exists path) then
+  if not (exists path) then (
     create user_module path
-  else
+    >> create_admin_account ()
+    >> return (`OK ())
+  ) else
     return (`OK ())
 )
 
@@ -161,51 +211,13 @@ let authenticate login password =
   else
     authenticate_standard_user login password
 
-let user_info_command = ref (fun login what -> !% "echo 1")
-
-let set_user_info_command cmd =
-  user_info_command := fun login what ->
-    !% Str.(
-      let cmd = global_replace (regexp "%login") login cmd in
-      global_replace (regexp "%what") what cmd
-    )
-
-let get_user_info login what =
-  let remove_trailing_newline s = Str.(global_replace (regexp "\n") "" s) in
-  ltry (fun lraise -> pread ~lraise (!user_info_command login what))
-  >>= function
-    | `OK s -> return (remove_trailing_newline s)
-    | `KO e -> return "get_user_info_failed" (* FIXME: Critical. *)
-
 let register login password =
   get_user_info login "exists" >>= function
     | "1" ->
       if login = admin_username then
         return (`KO (`AlreadyExists (path_of_identifier admin_id)))
       else
-        let id = user_identifier login in
-        let password_digest = digest password in
-        lwt status = get_user_info login "status" in
-        let teacher = (status = "teacher") in
-        lwt firstname = get_user_info login "firstname" in
-        lwt surname = get_user_info login "surname" in
-        lwt email = get_user_info login "email" in
-        let active = Notifications.empty in
-        let hidden = Notifications.empty in
-        let data = {
-          login;
-          logged = false;
-          password_digest;
-          teacher;
-          firstname;
-          surname;
-          email;
-          tags = Tag.Set.empty;
-          active;
-          hidden
-        }
-        in
-        make ~init:(data, empty_dependencies, []) id
+        create_user_account login (`Text password)
     | r ->
       return (`KO `UnauthorizedLogin)
 

@@ -101,8 +101,32 @@ let register = HTTP.(
     (string "status")
     "Register a user."
     (fun (login, password) ->
-      User.register login password >>= (function
+      root_only (fun () ->
+        User.register login password
+      ) () >>= (function
         | `OK _ -> success "registered"
+        | `KO (`UndefinedEntity id) -> assert false
+        | `KO `UnauthorizedLogin -> error "login_cannot_register"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+      ))
+
+)
+
+let update_password_function login =
+  lwt email = User.get_user_info login "email" in
+  Printf.eprintf "Sending email to %s\n%!" email;
+  return (`OK ())
+
+let update_password = HTTP.(
+  api_service "update_password" "user"
+    (string "login")
+    (string "status")
+    "Update user password."
+    (fun login ->
+      update_password_function login >>= (function
+        | `OK () -> success "email_sent"
         | `KO (`UndefinedEntity id) -> assert false
         | `KO `UnauthorizedLogin -> error "login_cannot_register"
         | `KO (`AlreadyExists _) -> error "already_exists"
