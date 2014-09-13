@@ -43,7 +43,7 @@ let set_admin_email  =
      ))
 
 let set_mailer_command =
-  api_service "set_mailer_command" "admin" (string "cmd") (string "status")
+  api_service "set_mailer" "admin" (string "cmd") (string "status")
 
     "Define the system mailer command (default is: /usr/sbin/sendmail)."
 

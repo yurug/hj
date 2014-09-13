@@ -22,6 +22,9 @@ read -s password
 echo ''
 $HJC login    --dojo https://localhost --username admin --password $password
 
+$HJC set_admin_email "root@yoursite.com"
+$HJC set_mailer "/usr/sbin/sendmail"
+
 ####################
 # User information #
 ####################
