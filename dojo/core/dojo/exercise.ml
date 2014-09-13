@@ -32,9 +32,10 @@ module UserAnswers = Rb.Dict (struct
 end)
 
 type internal_state = {
-  contributors : User.identifier list;
-  code         : code_state;
-  user_answers : UserAnswers.t
+  contributors  : User.identifier list;
+  code          : code_state;
+  user_answers  : UserAnswers.t;
+  collaborative : bool;
 } deriving (Json)
 
 type public_change =
@@ -42,10 +43,12 @@ type public_change =
   | NewAnswers of User.identifier * Answers.identifier
   | ShareAnswers of User.identifier * User.identifier
   | ImportAnswer of User.identifier * Questions.identifier * User.identifier
+  | SetCollaborativeMode of bool
 
 let questions_of_final_env uid final_env =
-  lwt questions = Aka.extract_questions final_env uid in
-  return (Questions.ReifyFromAka.exercise questions)
+  Aka.extract_questions final_env uid >>= function
+    | Some questions -> return (Questions.ReifyFromAka.exercise questions)
+    | None -> return Questions.empty_exercise (* FIXME *)
 
 include Entity.Make (struct
 
@@ -67,7 +70,11 @@ include Entity.Make (struct
              lwt r = Aka.compile (identifier state) (Resource.content source) in
              let description = fst r in
              lwt final_env = Aka.execute (identifier state) description in
-             Aka.perform_notifications final_env
+
+             Aka.perform_initialization final_env
+             >> Aka.perform_notifications final_env
+
+
              >> UserAnswers.lwt_iter content.user_answers (fun uid a ->
                Answers.make a >>= function
                  | `OK a ->
@@ -124,9 +131,13 @@ include Entity.Make (struct
       | NewAnswers (uid, aid) ->
         new_answers uid aid content
       | ShareAnswers (sharer_uid, uid) ->
-        share_answers content sharer_uid uid
+        if content.collaborative then share_answers content sharer_uid uid
+        else return content (* FIXME *)
       | ImportAnswer (dst_uid, qid, src_uid) ->
-        import_answer content dst_uid qid src_uid
+        if content.collaborative then import_answer content dst_uid qid src_uid
+        else return content (* FIXME *)
+      | SetCollaborativeMode collaborative ->
+        return { content with collaborative }
     in
 
     (* FIXME: Common pattern to be factorized out. *)
@@ -155,6 +166,8 @@ include Entity.Make (struct
         (string_of_identifier dst_uid)
         qid
         (string_of_identifier src_uid)
+    | SetCollaborativeMode mode ->
+      Printf.sprintf "collaborative mode is set to %B" mode
 
 end)
 
@@ -166,9 +179,10 @@ let create who name =
       User.is_teacher who >>= function
         | true ->
           let data = {
-            contributors = [ User.identifier who ];
-            code = NoCode;
-            user_answers = UserAnswers.empty
+            contributors  = [ User.identifier who ];
+            code          = NoCode;
+            user_answers  = UserAnswers.empty;
+            collaborative = false
           }
           in
           let init = (data, empty_dependencies, []) in
@@ -311,3 +325,23 @@ let results_of_question exo_id qid =
             return () (* FIXME *)
       )
       >> return !rs
+
+let new_contributor exo_id user_id contributor_id =
+  make exo_id >>>= fun exo ->
+  change exo (ShareAnswers (user_id, contributor_id))
+  >> return (`OK ())
+
+let import_answer exo_id user_id question_id source_id =
+  make exo_id >>>= fun exo ->
+  change exo (ImportAnswer (user_id, question_id, source_id))
+  >> return (`OK ())
+
+let set_exercise_collaborative exo_id mode =
+  make (identifier_of_string exo_id) >>= function
+    | `OK exo ->
+      change exo (SetCollaborativeMode mode)
+    | `KO e ->
+      return () (* FIXME *)
+
+let _ =
+  AkaInterpreter.set_exercise_collaborative := set_exercise_collaborative

@@ -50,34 +50,37 @@ let compile module_name source_code =
 
 let execute module_name cst =
   lwt typed_ast = typecheck module_name cst in
-  AkaInterpreter.program typed_ast
+  AkaInterpreter.program module_name typed_ast
 
 let extract_questions env uid = XAST.(
-  let user =
-    EPrimitive (dummy, PStringConstant (string_of_identifier uid))
-  in
-  let questions_id =
-    fst (List.(hd (
-      AkaInterpreter.lookup_all_matching (Str.regexp "__questions__") env)
-    ))
-  in
-  let questions_fun =
-    EVar (dummy, questions_id, [])
-  in
-  let target =
-    EDCon (dummy, Name.DName "ForUser", [], [ user ])
-  in
-  let extractor =
-    EApp (dummy, questions_fun, target)
-  in
-  AkaInterpreter.expression env extractor
+  try_lwt
+    let user =
+      EPrimitive (dummy, PStringConstant (string_of_identifier uid))
+    in
+    let questions_id =
+      fst (List.(hd (
+        AkaInterpreter.lookup_all_matching (Str.regexp "__questions__") env)
+      ))
+    in
+    let questions_fun =
+      EVar (dummy, questions_id, [])
+    in
+    let target =
+      EDCon (dummy, Name.DName "ForUser", [], [ user ])
+    in
+    let extractor =
+      EApp (dummy, questions_fun, target)
+    in
+    lwt v = AkaInterpreter.expression env extractor in
+    return (Some v)
+  with _ -> return None
 )
 
-let perform_notifications env = XAST.(
+let perform regexp env = XAST.(
   try_lwt
     let notify =
       fst (List.(hd (
-        AkaInterpreter.lookup_all_matching (Str.regexp "notify") env)
+        AkaInterpreter.lookup_all_matching (Str.regexp regexp) env)
       ))
     in
     AkaInterpreter.expression env (
@@ -85,3 +88,6 @@ let perform_notifications env = XAST.(
     ) >> return ()
   with _ -> return ()
 )
+
+let perform_notifications  = perform "notify"
+let perform_initialization = perform "initialize"

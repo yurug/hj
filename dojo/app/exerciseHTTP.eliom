@@ -419,3 +419,64 @@ let exercise_results_of_question = HTTP.(
          | `KO (`UndefinedEntity id) ->
            error ("undefined:" ^ (string_of_identifier id)))
 )
+
+let exercise_new_contributor_function exo contributor_id =
+  logged_user () >>>= fun user ->
+  Exercise.new_contributor exo (User.identifier user) contributor_id
+
+let exercise_new_contributor = HTTP.(
+  api_service "exercise_new_contributor" "exercise"
+    (string "identifier" ** string "contributor_identifier")
+    (string "status")
+    "Declare a new contributor to a set of answers."
+    (fun (exo, contributor) ->
+      (exercise_new_contributor_function
+         (identifier_of_string exo)
+         (identifier_of_string contributor)
+      ) >>= function
+         | `OK s -> completed ()
+         | `KO (`InvalidModule id) ->
+           error ("invalid_module:" ^ string_of_identifier id)
+         | `KO (`InvalidCode e) -> success e
+         | `KO `NotLogged -> error "not_logged"
+         | `KO `FailedLogin -> error "login_failed"
+         | `KO (`AlreadyExists _) -> error "already_exists"
+         | `KO (`SystemError e) -> error ("system:" ^ e)
+         | `KO (`InternalError e) ->
+           error ("internal:" ^ (Printexc.to_string e))
+         | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+         | `KO `ForbiddenService -> error "teacher_only"
+         | `KO (`UndefinedEntity id) ->
+           error ("undefined:" ^ (string_of_identifier id)))
+)
+
+let exercise_import_answer_function exo_id source_id question_id =
+  logged_user () >>>= fun user ->
+  Exercise.import_answer exo_id (User.identifier user) question_id source_id
+
+let exercise_import_answer = HTTP.(
+  api_service "exercise_import_answer" "exercise"
+    (string "identifier" ** string "source" ** string "question")
+    (string "status")
+    "Import a new answer from another user answers."
+    (fun (exo_id, (source_id, question_id)) ->
+      exercise_import_answer_function
+        (identifier_of_string exo_id)
+        (identifier_of_string source_id)
+        question_id
+      >>= function
+      | `OK s -> completed ()
+      | `KO (`InvalidModule id) ->
+        error ("invalid_module:" ^ string_of_identifier id)
+      | `KO (`InvalidCode e) -> success e
+      | `KO `NotLogged -> error "not_logged"
+      | `KO `FailedLogin -> error "login_failed"
+      | `KO (`AlreadyExists _) -> error "already_exists"
+      | `KO (`SystemError e) -> error ("system:" ^ e)
+      | `KO (`InternalError e) ->
+        error ("internal:" ^ (Printexc.to_string e))
+      | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+      | `KO `ForbiddenService -> error "teacher_only"
+      | `KO (`UndefinedEntity id) ->
+        error ("undefined:" ^ (string_of_identifier id)))
+)

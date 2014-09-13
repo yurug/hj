@@ -18,11 +18,12 @@ let lookup_all_matching regexp env =
 exception UnboundIdentifier of string
 exception UnboundLabel of string
 
-(** To be set by {!User}. *)
-let user_has_tag    = ref (fun _ _ -> assert false)
-let notify_all_user = ref (fun _ _ -> assert false)
-let message         = ref (fun _ -> assert false)
-let goto_exercise   = ref (fun _ _ -> assert false)
+(** To be set by Dojo logic modules. *)
+let user_has_tag               = ref (fun _ _ -> assert false)
+let notify_all_user            = ref (fun _ _ -> assert false)
+let message                    = ref (fun _ -> assert false)
+let goto_exercise              = ref (fun _ _ -> assert false)
+let set_exercise_collaborative = ref (fun _ _ -> assert false)
 
 (* FIXME: Use GADT to lift the following functions
    FIXME: in a cleaner way. *)
@@ -34,6 +35,11 @@ let as_string = function
 let rec as_list f = function
   | VData (DName "Nil", []) -> []
   | VData (DName "Cons", [x; xs]) -> f x :: as_list f xs
+  | _ -> assert false
+
+let rec as_bool = function
+  | VData (DName "True", []) -> true
+  | VData (DName "False", []) -> false
   | _ -> assert false
 
 let lift_string_fun f =
@@ -76,6 +82,13 @@ let lookup_primitive = function
       return (VPrimitive (PStringConstant id))
     ))))
 
+  | "set_exercise_collaborative" ->
+    lift_string_fun (fun exo ->
+      return (VPrimitiveFun (fun b ->
+        !set_exercise_collaborative exo (as_bool b)
+        >>= fun () -> return (VPrimitive PUnit))
+      )
+    )
   | _ -> raise_lwt Not_found
 
 let lookup ((Name n) as x) env =
@@ -216,4 +229,9 @@ and first_match env sv = function
       | Some env -> Some env
     end
 
-let program t = program empty t
+let program module_name t =
+  let module_name = Identifier.string_of_identifier module_name in
+  let initial_env =
+    bind (Name "this") (VPrimitive (PStringConstant module_name)) empty
+  in
+  program initial_env t

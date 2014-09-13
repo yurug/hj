@@ -36,6 +36,12 @@ deriving (Json)
 
 type t = exercise deriving (Json)
 
+let empty_exercise = {
+  etitle = TNil;
+  group_tags = [];
+  questions = TNil;
+}
+
 type identifier = string deriving (Json)
 
 let word s =
