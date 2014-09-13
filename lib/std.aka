@@ -1,0 +1,184 @@
+data list ('a) =
+| Nil
+| Cons ('a, list ('a))
+
+data template ('a) =
+| TAtom (string, template ('a))
+| TCode ('a, template ('a))
+| TNil
+
+data boolean =
+| True
+| False
+
+data text =
+| String   (template (string))
+| Bold     (template (text))
+| Italic   (template (text))
+| Code     (template (string))
+| LaTeX    (template (string))
+| Hlink    (template (string), template (string))
+| RawHTML  (template (string))
+| RawLaTeX (template (string))
+
+data statement =
+| Paragraph (template (text))
+| Verbatim  (template (string))
+| CodeBlock (template (string), template (string))
+
+data context =
+| QCM     (list (template (text)), list (int))
+| WITV    (list (template (text)), list (string), template (string))
+| Grader  (template (string), template (string), template (string))
+| Chooser (list (string))
+| NoGrade
+
+data question = {
+  id         : template (string);
+  title      : template (string);
+  tags       : template (string);
+  difficulty : int;
+  statement  : template (statement);
+  context    : template (context)
+}
+
+data questions =
+| Question (question)
+| Section (template (string), template (questions))
+
+data exercise = {
+  etitle     : template (string);
+  group_tags : template (string);
+  questions  : template (questions)
+}
+
+def exercise t gt qs = {
+  etitle = t;
+  group_tags = gt;
+  questions = qs
+}
+
+def bold x = Bold x
+
+def italic x = Italic x
+
+def code x = Code x
+
+def latex x = LaTeX x
+
+def hlink url caption = Hlink url caption
+
+def raw_html x = RawHTML x
+
+def raw_latex x = RawLaTeX x
+
+def section title questions = Section title questions
+
+def question id title tags difficulty statement context = Question {
+  id = id;
+  title = title;
+  tags = tags;
+  difficulty = difficulty;
+  statement = statement;
+  context = context
+}
+
+def paragraph t = Paragraph t
+
+def codeblock l t = CodeBlock l t
+
+def verbatim t = Verbatim t
+
+def text t =
+  t ? {
+  | TAtom s t => TCode (String (TCode s TNil)) (text t)
+  | TCode s t => TCode s (text t)
+  | TNil => TNil
+  }
+
+def text_template_template_to_text_template_list t =
+  t ? {
+  | TAtom s t =>
+    Cons (TCode (String (TAtom s TNil)) TNil) (
+      text_template_template_to_text_template_list t
+    )
+  | TCode s t =>
+    Cons s (text_template_template_to_text_template_list t)
+
+  | TNil =>
+    Nil
+  }
+
+def string_template_to_string_list t =
+  t ? {
+  | TAtom s t => Cons s (string_template_to_string_list t)
+  | TCode s t => Cons s (string_template_to_string_list t)
+  | TNil => Nil
+  }
+
+def choices t = text_template_template_to_text_template_list t
+
+def expected_choices t =
+  t ? {
+  {* We ignore trailing strings, since we are expecting a list of
+     integers. *}
+  | TAtom s t => expected_choices t
+  | TCode s t => Cons s (expected_choices t)
+  | TNil      => Nil
+  }
+
+def grader expected_file imported_files command =
+    Grader expected_file imported_files command
+
+external string_append : string -> string -> string
+
+def flatten_string t =
+    t ? {
+    | TAtom s t => string_append s (flatten_string t)
+    | TCode s t => string_append s (flatten_string t)
+    | TNil => ""
+    }
+
+def what_is_the_value_of es vs cmp = WITV es vs cmp
+
+def expressions x = text_template_template_to_text_template_list x
+
+def values x = string_template_to_string_list x
+
+def compare_with x = x
+
+def choose_between x = Chooser x
+
+def alternatives t = string_template_to_string_list t
+
+def no_grade = NoGrade
+
+def document id title statement =
+    question id title [] 0 statement [[no_grade]]
+
+data user
+
+external user_has_tag : user -> string -> boolean
+
+def user_has_one_tag_in_this_tag_list u l =
+  l ? {
+  | Nil => False
+  | Cons t ts => u `user_has_tag t ? {
+    | True => True
+    | False => u `user_has_one_tag_in_this_tag_list ts
+    }
+  }
+
+def user_has_one_of_these_tags u l =
+    u `user_has_one_tag_in_this_tag_list (string_template_to_string_list l)
+
+data questions_target =
+| ForUser (user)
+
+data notification
+
+external notify_all_user : list (string) -> notification -> unit
+
+external message : statement -> notification
+
+external goto_exercise : template (string) -> statement -> notification
