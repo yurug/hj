@@ -23,7 +23,7 @@ make -C $topdir/dojo/core install
 #############################
 # Compilation of the webapp #
 #############################
-cp $topdir/etc/hackojo.conf.local $topdir/dojo/apphackojo.conf.in
+cp $topdir/etc/hackojo.conf.local $topdir/dojo/app/hackojo.conf.in
 make -C $topdir/dojo/app
 
 #########################################
