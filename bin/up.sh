@@ -16,8 +16,7 @@ HJC=hjc
 ###################################
 # Compilation of the hackojo-core #
 ###################################
-make -C $topdir/dojo/core all
-make -C $topdir/dojo/core install
+make -C $topdir/dojo/core reinstall
 
 #############################
 # Compilation of the webapp #
