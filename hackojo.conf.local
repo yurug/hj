@@ -1,0 +1,37 @@
+%%% This is the template for your configuration file. The %%VALUES%% below are
+%%% taken from the Makefile to generate the actual configuration files.
+%%% This comment will disappear.
+<!-- %%WARNING%% -->
+<ocsigen>
+  <server>
+    <port protocol="HTTP">%%UPORT%%</port>
+    <port protocol="HTTPS">%%PORT%%</port>
+    <ssl>
+       <certificate>%%SSLCERT%%</certificate>
+       <privatekey>%%SSLKEY%%</privatekey>
+    </ssl>
+
+    %%% Only set for running, not for testing
+    %%USERGROUP%%
+    <logdir>%%LOGDIR%%</logdir>
+    <datadir>%%DATADIR%%</datadir>
+    <uploaddir>%%PREFIX%%var/upload</uploaddir>
+    <charset>utf-8</charset>
+    %%% Only set when debugging
+    %%DEBUGMODE%%
+    <commandpipe>%%CMDPIPE%%</commandpipe>
+    <extension findlib-package="ocsigenserver.ext.staticmod"/>
+    <extension findlib-package="ocsigenserver.ext.ocsipersist-%%PERSISTENT_DATA_BACKEND%%"/>
+    <extension findlib-package="eliom.server"/>
+    %%% This will include the packages defined as SERVER_PACKAGES in your Makefile:
+    %%PACKAGES%%
+    <host hostfilter="*" defaulthostname="hackojo.org">
+      <static dir="%%STATICDIR%%" />
+      <static dir="%%ELIOMSTATICDIR%%" />
+      <eliommodule module="%%LIBDIR%%/%%PROJECT_NAME%%.cma">
+      <development />
+      </eliommodule>
+      <eliom/>
+    </host>
+  </server>
+</ocsigen>
