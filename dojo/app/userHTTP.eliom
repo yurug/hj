@@ -118,16 +118,20 @@ let get_fresh_password_reset_url = ref (fun _ ->
 )
 
 let update_password_function login =
-  lwt email = User.get_user_info login "email" in
-  let url = !get_fresh_password_reset_url login in
-  ExtUnix.mail
-    ~mailer:(Config.get_mailer ())
-    ~domain:Ocsigen_config.server_name
-    ~target_email:email
-    ~target_name:login
-    ~subject:I18N.String.password_reset_email_subject
-    ~message:(I18N.String.password_reset_email_body login url);
-  return (`OK ())
+  Use.get_user_info login "exists" >>= function
+    | "1" ->
+      lwt email = User.get_user_info login "email" in
+      let url = !get_fresh_password_reset_url login in
+      ExtUnix.mail
+        ~mailer:(Config.get_mailer ())
+        ~domain:Ocsigen_config.server_name
+        ~target_email:email
+        ~target_name:login
+        ~subject:I18N.String.password_reset_email_subject
+        ~message:(I18N.String.password_reset_email_body login url);
+      return (`OK ())
+    | _ ->
+      return (`KO `UnauthorizedLogin)
 
 let update_password = HTTP.(
   api_service "update_password" "user"
