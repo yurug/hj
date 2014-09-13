@@ -5,6 +5,9 @@
 {client{
 open Eliom_client
 open ExtDom
+open Eliom_content.Html5
+open Eliom_content.Html5.D
+open Lwt
 }}
 
 module X = Xml
@@ -198,8 +201,17 @@ let connection_box
     ?(supercow_connection=(None : string option))
     ?(message="") () _ =
 
-  let login_id = "connection_box_login"
-  and password_id = "connection_box_password"
+  let login_id       = "connection_box_login"
+  and password_id    = "connection_box_password"
+  and message_box_id = "connection_box_message"
+
+  in
+
+  let message = div ~a:[a_id message_box_id] [pcdata message] in
+
+  let say = {string -> unit{
+    fun b -> Manip.replaceChildren %message [pcdata b]
+  }}
   in
 
   let connect =
@@ -225,6 +237,21 @@ let connection_box
       )
      }}
   in
+
+  let reset_cb =
+    let admin_email = Config.administrator_email () in
+    {{ fun _ ->
+      Lwt.async (fun () ->
+        let login = Js.to_string (ExtDom.get_input_by_id %login_id)##value in
+        %update_password_server_function login >>= function
+          | Some email -> return (%say (
+            I18N.String.password_reset_sent_by_email email %admin_email
+          ))
+          | None -> return (%say (I18N.String.you_do_not_exist %admin_email))
+      )
+    }}
+  in
+
   return (div [
     div ~a:[a_id "connection_box"] [
       div ~a:[a_id "connection_form"] [
@@ -237,7 +264,10 @@ let connection_box
           | Some login ->
             div ~a:[a_id "connection_login"] [
               H.label [pcdata I18N.(cap String.username)];
-              H.Raw.input ~a:[a_id login_id; a_value (login); a_readonly `ReadOnly] ()
+              H.Raw.input ~a:[a_id login_id;
+                              a_value (login);
+                              a_readonly `ReadOnly
+                             ] ()
             ]
         end;
         div ~a:[a_id "connection_password"] [
@@ -248,8 +278,11 @@ let connection_box
       div ~a:[a_id "connection_box_actions"] [
         string_input ~a:[a_id "connection_box_signin"; a_onclick login_cb]
           ~input_type:`Submit ~value:I18N.String.connect ();
+
+        string_input ~a:[a_id "connection_box_reset_password"; a_onclick reset_cb]
+          ~input_type:`Submit ~value:I18N.String.reset_password ();
       ];
-      div ~a:[a_id "connection_box_message"] [pcdata message]
+      message
     ]
   ])
 

@@ -129,6 +129,10 @@ sig
   val password_reset_email_body : string -> string -> string
   val password_reset_email_subject : string
   val choose_a_password : string
+  val password_reset_sent_by_email : string -> string -> string
+  val reset_password : string
+  val password_reset_sent_by_email : string -> string -> string
+  val you_do_not_exist : string -> string
 end
 
 }}

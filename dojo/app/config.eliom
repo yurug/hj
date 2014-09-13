@@ -5,6 +5,11 @@ let mailer = ref "/usr/sbin/sendmail"
 let set_mailer = ( := ) mailer
 let get_mailer () = !mailer
 
+(** Administrator email. *)
+let root_email = ref "root@hackojo.org"
+let administrator_email () = !root_email
+let set_administrator_email = ( := ) root_email
+
 (** Use the root of the data directory to store our ressources. *)
 let absolute_data_dir () =
   let ocs = Ocsigen_config.get_datadir () in

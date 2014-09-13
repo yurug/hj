@@ -30,3 +30,24 @@ let set_user_info_command =
       User.set_user_info_command cmd;
       completed ()
      ))
+
+
+let set_admin_email  =
+  api_service "set_admin_email" "admin" (string "email") (string "status")
+
+    "Define the administrator email."
+
+    (root_only (fun s ->
+      Config.set_administrator_email s;
+      completed ()
+     ))
+
+let set_mailer_command =
+  api_service "set_mailer_command" "admin" (string "cmd") (string "status")
+
+    "Define the system mailer command (default is: /usr/sbin/sendmail)."
+
+    (root_only (fun s ->
+      Config.set_mailer s;
+      completed ()
+     ))

@@ -356,6 +356,17 @@ module Fr : I18N_sig.Text = struct
   let choose_a_password =
     "Choisissez un mot de passe."
 
+  let reset_password =
+    "Nouveau mot de passe"
+
+  let password_reset_sent_by_email =
+    Printf.sprintf "
+    Un message a été envoyé à `%s'. \
+    Si ce n'est pas votre email, écrivez à `%s'."
+
+  let you_do_not_exist =
+    Printf.sprintf "Vous n'existez pas... Contactez donc `%s'!"
+
 end
 
 module String = (val

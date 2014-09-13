@@ -118,7 +118,7 @@ let get_fresh_password_reset_url = ref (fun _ ->
 )
 
 let update_password_function login =
-  Use.get_user_info login "exists" >>= function
+  User.get_user_info login "exists" >>= function
     | "1" ->
       lwt email = User.get_user_info login "email" in
       let url = !get_fresh_password_reset_url login in
@@ -129,9 +129,16 @@ let update_password_function login =
         ~target_name:login
         ~subject:I18N.String.password_reset_email_subject
         ~message:(I18N.String.password_reset_email_body login url);
-      return (`OK ())
+      return (`OK email)
     | _ ->
       return (`KO `UnauthorizedLogin)
+
+let update_password_server_function =
+  server_function Json.t<string> (fun login ->
+    update_password_function login >>= function
+      | `OK email -> return (Some email)
+      | `KO `UnauthorizedLogin -> return None
+  )
 
 let update_password = HTTP.(
   api_service "update_password" "user"
@@ -140,7 +147,7 @@ let update_password = HTTP.(
     "Update user password."
     (fun login ->
       update_password_function login >>= (function
-        | `OK () -> success "email_sent"
+        | `OK e -> success ("email_sent_to:" ^ e)
         | `KO (`UndefinedEntity id) -> assert false
         | `KO `UnauthorizedLogin -> error "login_cannot_register"
         | `KO (`AlreadyExists _) -> error "already_exists"

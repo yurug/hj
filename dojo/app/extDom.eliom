@@ -2,14 +2,16 @@
 
 {client{
 
-  let get_element_by_id id =
-    Js.coerce_opt (
-      Dom_html.document##getElementById (Js.string id)
-    ) (fun x -> Js.some x) (fun _ -> assert false)
+  open Dom_html
 
-  let get_input_by_id id =
-    Js.coerce_opt (
-      Dom_html.document##getElementById (Js.string id)
-    ) Dom_html.CoerceTo.input (fun _ -> assert false)
+  let get_node_by_id f id =
+    Js.coerce_opt
+      (document##getElementById (Js.string id))
+      f
+      (fun _ -> assert false)
+
+  let get_element_by_id = get_node_by_id (fun x -> Js.some x)
+  let get_div_by_id     = get_node_by_id CoerceTo.div
+  let get_input_by_id   = get_node_by_id CoerceTo.input
 
 }}
