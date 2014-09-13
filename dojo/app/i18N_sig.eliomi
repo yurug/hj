@@ -126,6 +126,9 @@ sig
   val access_denied : string
   val provided_file : string
   val please_reload_the_page : string
+  val password_reset_email_body : string -> string -> string
+  val password_reset_email_subject : string
+  val choose_a_password : string
 end
 
 }}

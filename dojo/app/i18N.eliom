@@ -334,6 +334,28 @@ module Fr : I18N_sig.Text = struct
   let please_reload_the_page =
     "Veuillez recharger la page, s'il vous plait."
 
+  let password_reset_email_body login url =
+    Printf.sprintf "\
+    Bonjour,
+
+    vous avez demandé la mise à jour du mot de passe pour l'identifiant `%s'.
+
+    Pour accomplir cette procédure, suivez humblement le lien suivant:
+
+    %s
+
+    Bonne programmation à vous!
+    -- Hackojo
+    "
+      login
+      url
+
+  let password_reset_email_subject =
+    "Mise à jour du mot de passe"
+
+  let choose_a_password =
+    "Choisissez un mot de passe."
+
 end
 
 module String = (val

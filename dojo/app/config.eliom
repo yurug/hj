@@ -1,5 +1,10 @@
 (* -*- tuareg -*- *)
 
+(** Use the following mailer. *)
+let mailer = ref "/usr/sbin/sendmail"
+let set_mailer = ( := ) mailer
+let get_mailer () = !mailer
+
 (** Use the root of the data directory to store our ressources. *)
 let absolute_data_dir () =
   let ocs = Ocsigen_config.get_datadir () in

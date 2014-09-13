@@ -186,3 +186,15 @@ let pdflatex content outputfile = Filename.(
   >>> cp (base ^ ".pdf") outputfile
   >>> cleanup
 )
+
+let mail ~mailer ~domain ~target_email ~target_name ~subject ~message =
+  Netsendmail.(
+    let msg = compose
+      ~in_charset:`Enc_utf8
+      ~from_addr:("Hackojo", (Printf.sprintf "noreply@%s" domain))
+      ~to_addrs:[(target_name, target_email)]
+      ~subject
+      message
+    in
+    sendmail ~mailer msg
+  )

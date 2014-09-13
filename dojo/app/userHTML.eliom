@@ -194,43 +194,66 @@ let user_menu u =
 (** Everyone must fill the connection box if she is not already
     connected. Once connected, it will be redirected to her
     homepage. *)
-let homepage root_service =
-  let connection_box ?(message="") () _ =
+let connection_box
+    ?(supercow_connection=(None : string option))
+    ?(message="") () _ =
 
-    let login_id = "connection_box_login"
-    and password_id = "connection_box_password"
-    in
-
-    let login_cb =
-      {{ fun _ ->
-        Lwt.async (fun () ->
-          let login = (ExtDom.get_input_by_id %login_id)##value
-          and password = (ExtDom.get_input_by_id %password_id)##value in
-          %login_server_function (Js.to_string login, Js.to_string password)
-          >> change_page ~service:%root () ()
-        )
-       }}
-    in
-    return (div [
-      div ~a:[a_id "connection_box"] [
-        div ~a:[a_id "connection_form"] [
-          div ~a:[a_id "connection_login"] [
-            H.label [pcdata I18N.(cap String.username)];
-            H.Raw.input ~a:[a_id login_id] ()
-          ];
-          div ~a:[a_id "connection_password"] [
-            H.label [pcdata I18N.(cap String.password)];
-            H.Raw.input ~a:[a_id password_id] ()
-          ];
-        ];
-        div ~a:[a_id "connection_box_actions"] [
-          string_input ~a:[a_id "connection_box_signin"; a_onclick login_cb]
-            ~input_type:`Submit ~value:I18N.String.connect ();
-        ];
-        div ~a:[a_id "connection_box_message"] [pcdata message]
-      ]
-    ])
+  let login_id = "connection_box_login"
+  and password_id = "connection_box_password"
   in
+
+  let connect =
+    match supercow_connection with
+      | None ->
+        login_server_function
+      | Some login ->
+        server_function ~timeout:300. ~max_use:1 Json.t<string * string> (
+          fun (_, password) ->
+            User.register login password
+            >> UserHTTP.login_function (login, password)
+            >> return ()
+        )
+  in
+
+  let login_cb =
+    {{ fun _ ->
+      Lwt.async (fun () ->
+        let login = (ExtDom.get_input_by_id %login_id)##value
+        and password = (ExtDom.get_input_by_id %password_id)##value in
+        %connect (Js.to_string login, Js.to_string password)
+        >> change_page ~service:%root () ()
+      )
+     }}
+  in
+  return (div [
+    div ~a:[a_id "connection_box"] [
+      div ~a:[a_id "connection_form"] [
+        begin match supercow_connection with
+          | None ->
+            div ~a:[a_id "connection_login"] [
+              H.label [pcdata I18N.(cap String.username)];
+              H.Raw.input ~a:[a_id login_id] ()
+            ]
+          | Some login ->
+            div ~a:[a_id "connection_login"] [
+              H.label [pcdata I18N.(cap String.username)];
+              H.Raw.input ~a:[a_id login_id; a_value (login); a_readonly `ReadOnly] ()
+            ]
+        end;
+        div ~a:[a_id "connection_password"] [
+          H.label [pcdata I18N.(cap String.password)];
+          H.Raw.input ~a:[a_id password_id] ()
+        ];
+      ];
+      div ~a:[a_id "connection_box_actions"] [
+        string_input ~a:[a_id "connection_box_signin"; a_onclick login_cb]
+          ~input_type:`Submit ~value:I18N.String.connect ();
+      ];
+      div ~a:[a_id "connection_box_message"] [pcdata message]
+    ]
+  ])
+
+let homepage root_service =
   logged_user () >>= (function
     | `KO `FailedLogin ->
       HTML.default_menu ()
@@ -245,3 +268,28 @@ let homepage root_service =
       HTML.set_menu menu
       >>= fun _ -> homepage_div u
   )
+
+let reset_urls = Hashtbl.create 13
+let get_fresh_password_reset_url (login : string) =
+  let secret = Random.(Printf.sprintf "%d%d%d" (bits ()) (bits ()) (bits ())) in
+  Hashtbl.add reset_urls secret login;
+  Printf.sprintf "http://%s:%d/passwordreset/%s"
+    (Eliom_config.get_default_hostname ())
+    (Eliom_config.get_default_port ())
+    secret
+
+let _ =
+  UserHTTP.get_fresh_password_reset_url := get_fresh_password_reset_url;
+  HTML.Hackojo_app.register_service
+    ~secure_session:true
+    ~path:["passwordreset"]
+    ~get_params:Eliom_parameter.(suffix (string "secret"))
+    (fun secret () ->
+      let login = try Hashtbl.find reset_urls secret with Not_found -> "" in
+      HTML.default_menu ()
+      >> HTML.hackojo_page
+        (fun _ -> return (div []))
+        (connection_box
+           ~message:I18N.String.choose_a_password
+           ~supercow_connection:(Some login) ())
+    )

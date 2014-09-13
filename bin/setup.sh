@@ -32,7 +32,7 @@ $HJC login    --dojo https://localhost --username admin --password $password
 read -d '' SCRIPT <<EOF
 case %what in
  exists) echo 1;;
- email) echo foo@bar.com;;
+ email) echo yrg@pps.univ-paris-diderot.fr;;
  status) echo teacher;;
 esac
 EOF

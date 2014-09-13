@@ -75,3 +75,11 @@ val scp :
 val pdflatex
   : string -> string
   -> ([> `SystemError of string ], 'b) raiser -> bool Lwt.t
+
+val mail:
+  mailer:string ->
+  domain:string ->
+  target_email:string ->
+  target_name:string ->
+  subject:string ->
+  message:string -> unit

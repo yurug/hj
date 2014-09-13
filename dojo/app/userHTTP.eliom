@@ -111,12 +111,22 @@ let register = HTTP.(
         | `KO (`SystemError e) -> error ("system:" ^ e)
         | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
       ))
+)
 
+let get_fresh_password_reset_url = ref (fun _ ->
+  "<Please report a bug if you see this.>"
 )
 
 let update_password_function login =
   lwt email = User.get_user_info login "email" in
-  Printf.eprintf "Sending email to %s\n%!" email;
+  let url = !get_fresh_password_reset_url login in
+  ExtUnix.mail
+    ~mailer:(Config.get_mailer ())
+    ~domain:Ocsigen_config.server_name
+    ~target_email:email
+    ~target_name:login
+    ~subject:I18N.String.password_reset_email_subject
+    ~message:(I18N.String.password_reset_email_body login url);
   return (`OK ())
 
 let update_password = HTTP.(

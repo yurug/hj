@@ -9,6 +9,8 @@ SCRIPTPATH=`pwd`
 popd > /dev/null
 topdir=$SCRIPTPATH/..
 
+if [ x$1 != x"fast" ]; then
+
 ###################################
 # Compilation of the hackojo-core #
 ###################################
@@ -22,6 +24,8 @@ make -C $topdir/dojo/core install
 cp $topdir/etc/hackojo.conf.local $topdir/dojo/app/hackojo.conf.in
 make -C $topdir/dojo/app clean
 make -C $topdir/dojo/app
+
+fi
 
 #########################################
 # Web app deployment (you must be root) #
