@@ -51,7 +51,7 @@ let make q =
           puts "\\item[$\\square$]";
           template text t
         ) choices;
-        puts "\\end{itemize}\n"
+        puts "\\end{itemize}\n\n"
 
       | Grader (expected_file, _, _) ->
         puts (sprintf "\\hfill$\\triangleright$ \\verb!%s!"
@@ -65,7 +65,7 @@ let make q =
           puts "& \\hspace{4cm} \\\\"
         ) values;
         puts "\\hline\n";
-        puts "\\end{tabular}\n"
+        puts "\\end{tabular}\n\n"
 
       | Chooser _ ->
         ()
@@ -82,14 +82,14 @@ let make q =
         puts "\\begin{verbatim}\n";
         puts (flatten_string t);
         puts "\\end{verbatim}\n";
-        puts "\\end{code}\n"
+        puts "\\end{code}\n\n"
       | CodeBlock (language, code) ->
         puts "\\begin{code}\n";
         puts (sprintf "\\begin{lstlisting}[language=%s]\n"
                 (flatten_string language));
         puts (flatten_string code);
         puts "\\end{lstlisting}\n";
-        puts "\\end{code}\n";
+        puts "\\end{code}\n\n";
 
     and text = function
       | Bold t ->
@@ -131,6 +131,9 @@ let make q =
         \\usepackage{graphics}
         \\usepackage{listings}
         \\title{%s}
+        \\date{}
+        \\usepackage{eurosym}
+        \\DeclareUnicodeCharacter{20AC}{\\euro}
 
         \\hypersetup{
             bookmarks=true,

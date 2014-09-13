@@ -181,7 +181,6 @@ let check_answers_consistency exo uid questions =
     | `OK answers -> Answers.(
       lwt q = observe answers (fun data -> return (content data).description) in
       if q <> questions then (
-        Printf.eprintf "Questions changed! Update!\n%!";
         push_new_description answers questions
       ) else
         return ()

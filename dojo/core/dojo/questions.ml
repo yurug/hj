@@ -497,7 +497,6 @@ let grade_witv
       | WriteStdout (_, s) -> return ()
       | WriteStderr (_, s) -> return ()
       | Exited (Unix.WEXITED k) when k >= 0 ->
-        Printf.eprintf "Exited with %d\n%!" k;
         (* Generate score and trace. *)
         let scores =
           [ (Automatic, (k, length expected_values)) ]
@@ -590,7 +589,6 @@ let evaluate exo_real_path answer_real_path questions qid answer update =
             exo_real_path answer_real_path context answer update
       end
     | None ->
-      Printf.eprintf "Unbound %s\n%!" qid;
       return (EvaluationError (UnboundQuestion qid))
 
 let update_evaluation qid evaluation_state evaluations =

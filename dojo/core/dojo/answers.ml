@@ -16,6 +16,7 @@ let answers_identifier exercise_identifier user_identifier =
   let path = path_of_exercise_answers exercise_identifier in
   identifier_of_path (concat path (path_of_identifier user_identifier))
 
+(* Rajouter "history" et "forked_from" *)
 type internal_state = {
   contributors : User.identifier list;
   exercise     : Identifier.t;
@@ -104,7 +105,6 @@ include Entity.Make (struct
         (* FIXME: We must implement a caching system not to evaluate
            FIXME: twice the same answers on the same questions.
            FIXME: Yet, this caching process should be bypassable... *)
-        Printf.eprintf "New questions!\n%!";
         iter_answers_s (fun (qid, a) ->
           later (NewEvaluation (qid, List.hd content.contributors, a))
         ) content.answers

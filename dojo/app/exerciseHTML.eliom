@@ -29,7 +29,7 @@ let exercise_page exo =
   let exo_id = Exercise.identifier exo in
   let exo_str = Identifier.string_of_identifier exo_id in
 
-  let statement_div = div [pcdata I18N.String.please_navigate] in
+  let statement_div = div [] in
 
   let statement_as_html
       name title
@@ -343,22 +343,46 @@ let exercise_page exo =
 
   let focus = {string option ref{ ref None }} in
 
+  let focus_eref =
+    Eliom_reference.eref
+      ~scope:Eliom_common.default_session_scope
+      ~persistent:("focus_" ^ (Str.(global_replace (regexp "/") "__" exo_str)))
+      None
+  in
+
+  let save_focus = server_function Json.t<string> (fun name ->
+    Eliom_reference.set focus_eref (Some name)
+  )
+  in
+
+  let questions_div = {
+    (string,
+     (unit, (([ pre ]) elt list * [ div_content ] elt)) server_function
+    ) Hashtbl.t
+    {
+      Hashtbl.create 13
+    }}
+  in
+
   let focus_on =
-    fun (name : string) new_statement_div -> {{ fun _ ->
-      Lwt.async (fun () ->
-        match !(%focus) with
-          | Some name' when %name = name' ->
-            return ()
-          | _ ->
-            %focus := Some %name;
-            lwt codes, div = %new_statement_div () in
+    {string -> bool Lwt.t{ fun (name : string) ->
+      match !(%focus) with
+        | Some name' when name' = name ->
+          return true
+        | _ ->
+          try_lwt
+            %save_focus name >>
+            let div = Hashtbl.find %questions_div name in
+            lwt codes, div = div () in
+            %focus := Some name;
             Manip.replaceChildren %statement_div [div];
             WidgetHTML.display_math ["'central_column'"];
             WidgetHTML.highlight codes;
-            return ()
-      )
-    }}
+            return true
+          with Not_found -> return false (* Inconsistent name. *)
+     }}
   in
+  let first_question = ref None in
 
   let navigation_sidebar description answers editor_maker = Questions.(
     let rec aux = function
@@ -373,8 +397,13 @@ let exercise_page exo =
             answers editor_maker
         )
         in
+        if !first_question = None then first_question := Some name;
+        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %d }} in
+        let onclick =
+          {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
+        in
         [li
-            ~a:[a_onclick (focus_on name d)]
+            ~a:[a_onclick onclick; a_onload onload]
             [pcdata title]
         ]
 
@@ -416,7 +445,8 @@ let exercise_page exo =
             | `KO e -> (* FIXME *) return (`KO e)
         )
         in
-        let edit = server_function Json.t<unit> (fun () ->
+        let edit : (unit, [ pre ] elt list * [div_content] elt) server_function =
+          server_function Json.t<unit> (fun () ->
           lwt exo_src =
             Exercise.resource exo "source.aka" >>= function
               | `OK (r, _) -> return (Resource.content r)
@@ -442,15 +472,40 @@ let exercise_page exo =
           return ([], div ~a:[a_onload onload] [])
         )
         in
+        let name = "__edit_source__" in
+        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %edit }} in
+        let onclick =
+          {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
+        in
         return [
-          p ~a:[a_onclick (focus_on "__edit_source" edit)] [
-            pcdata I18N.String.master_corner
-          ]
+          p ~a:[a_onclick onclick; a_onload onload]
+            [pcdata I18N.String.master_corner]
         ]
+
       | `KO _ -> return []
     in
-
-    return (div ([
+    let get_focus_eref = server_function Json.t<unit> (
+      fun () -> Eliom_reference.get focus_eref
+    )
+    in
+    let onload =
+      {{
+        fun _ ->
+          Lwt.async (fun () ->
+            let load_first () =
+              match !(%first_question) with
+                | None -> return () (* FIXME: absurd, right? *)
+                | Some name -> %focus_on name >> return ()
+            in
+            %get_focus_eref () >>= function
+            | None -> load_first ()
+            | Some name -> %focus_on name >>= function
+                | true -> return ()
+                | false -> load_first ()
+          )
+      }}
+    in
+    return (div ~a:[a_onload onload] ([
       ul (questions_template description.questions);
       download_as_pdf description
     ] @ master_divs))
