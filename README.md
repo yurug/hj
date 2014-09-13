@@ -48,7 +48,7 @@ bin/initialize.sh
 
 - Run the deployment script from `$(ROOT)`.
 ```Shell
-bin/deploy.sh
+bin/up.sh
 ```
 
 [ocsigen]: http://www.ocsigen.org
