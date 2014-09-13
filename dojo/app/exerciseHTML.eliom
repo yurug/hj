@@ -131,15 +131,15 @@ let exercise_page exo =
       in
       lwt answer =
         try_lwt
-          lwt a = Answers.answer_of_question answers name in
-          return (Some a)
+          lwt a, author = Answers.answer_of_question answers name in
+          return (Some (a, author))
         with Not_found ->
           return None
       in
       lwt answer_resource =
         let blank_resource = Resource.make expected_file "" in
         match answer with
-          | Some (Questions.File a) ->
+          | Some (Questions.File a, author) ->
             (Answers.resource answers a >>= function
               | `OK (r, _) -> return r
               | `KO _ -> (Exercise.resource exo a >>= function

@@ -30,6 +30,7 @@ type public_change =
   | NewAnswer of Questions.identifier * User.identifier * Questions.answer
   | NewEvaluation of Questions.identifier * User.identifier * Questions.answer
   | UpdateEvaluationState of Questions.identifier * Questions.evaluation_state
+  | NewContributor of Identifier.t
 
 include Entity.Make (struct
 
@@ -56,6 +57,9 @@ include Entity.Make (struct
     | NewQuestions qs ->
       Printf.sprintf "new questions"
 
+    | NewContributor u ->
+      Printf.sprintf "new contributor %s" (string_of_identifier u)
+
   let react state mdeps cs later =
     let apply_change content =
       let update_tags qid evaluation_state =
@@ -77,7 +81,7 @@ include Entity.Make (struct
         let update new_evaluation_state =
           later (UpdateEvaluationState (qid, new_evaluation_state))
         in
-        let answers = new_answer content.answers qid answer in
+        let answers = new_answer content.answers qid answer uid in
         let exo_identifier = (InMemory.content state).exercise in
         let exo_real_path = OnDisk.resource_real_path exo_identifier in
         let answer_real_path =
@@ -105,11 +109,20 @@ include Entity.Make (struct
         (* FIXME: We must implement a caching system not to evaluate
            FIXME: twice the same answers on the same questions.
            FIXME: Yet, this caching process should be bypassable... *)
-        iter_answers_s (fun (qid, a) ->
-          later (NewEvaluation (qid, List.hd content.contributors, a))
+        iter_answers_s (fun qid (a, uid) ->
+          later (NewEvaluation (qid, uid, a))
         ) content.answers
         >> return { content with description }
+
+      | NewContributor uid ->
+        return (
+          if List.mem uid content.contributors then
+            content
+          else
+            { content with contributors = uid :: content.contributors }
+        )
       )
+
 
     in
     (* FIXME: Common pattern to be factorized out. *)
@@ -167,3 +180,26 @@ let contributors answers =
   observe answers (fun state ->
     return (content state).contributors
   )
+
+let add_contributor answers uid =
+  make answers >>= function
+    | `OK answers -> change answers (NewContributor uid)
+    | `KO e -> return () (* FIXME *)
+
+let import_contributor_answer dst_answers dst_uid src_answers qid =
+  make src_answers >>= function
+    | `OK src_answers ->
+      lwt src_contributors = contributors src_answers in
+      if List.mem dst_uid src_contributors then
+        (** Yes, dst_uid is an official contributor to src_answers *)
+        make dst_answers >>= function
+          | `OK dst_answers ->
+            lwt src_answer, src_author = answer_of_question src_answers qid in
+            push_new_answer dst_answers qid src_author src_answer
+          | `KO _ ->
+            return () (* FIXME *)
+      else
+        return () (* FIXME *)
+
+    | `KO e ->
+      return () (* FIXME *)

@@ -40,6 +40,8 @@ type internal_state = {
 type public_change =
   | UpdateCode
   | NewAnswers of User.identifier * Answers.identifier
+  | ShareAnswers of User.identifier * User.identifier
+  | ImportAnswer of User.identifier * Questions.identifier * User.identifier
 
 let questions_of_final_env uid final_env =
   lwt questions = Aka.extract_questions final_env uid in
@@ -97,11 +99,34 @@ include Entity.Make (struct
       return { content with user_answers }
     in
 
+    let share_answers content sharer_uid uid =
+      try_lwt
+        let shared_answers = UserAnswers.lookup uid content.user_answers in
+        Answers.add_contributor shared_answers uid
+        >> return content
+      with Not_found ->
+        return content (* FIXME *)
+    in
+
+    let import_answer content dst_uid qid src_uid =
+      try_lwt
+        let dst_answers = UserAnswers.lookup dst_uid content.user_answers in
+        let src_answers = UserAnswers.lookup src_uid content.user_answers in
+        Answers.import_contributor_answer dst_answers dst_uid src_answers qid
+        >> return content
+      with Not_found ->
+        return content (* FIXME *)
+    in
+
     let apply_change content = function
       | UpdateCode ->
         update_code content
       | NewAnswers (uid, aid) ->
         new_answers uid aid content
+      | ShareAnswers (sharer_uid, uid) ->
+        share_answers content sharer_uid uid
+      | ImportAnswer (dst_uid, qid, src_uid) ->
+        import_answer content dst_uid qid src_uid
     in
 
     (* FIXME: Common pattern to be factorized out. *)
@@ -121,6 +146,15 @@ include Entity.Make (struct
       "update code"
     | NewAnswers (uid, aid) ->
       Printf.sprintf "new answers for %s" (string_of_identifier uid)
+    | ShareAnswers (sharer_uid, uid) ->
+      Printf.sprintf "%s contributes to %s"
+        (string_of_identifier uid)
+        (string_of_identifier sharer_uid)
+    | ImportAnswer (dst_uid, qid, src_uid) ->
+      Printf.sprintf "%s imports answer for %s from %s"
+        (string_of_identifier dst_uid)
+        qid
+        (string_of_identifier src_uid)
 
 end)
 

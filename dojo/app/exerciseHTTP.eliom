@@ -366,7 +366,7 @@ let output_answer answers = Questions.(function
 
 type results_output = (string * string * string * answer_output * string) list
 
-let output_result (user, friends, answer, evaluation_state, answers) =
+let output_result (user, friends, (answer, author), evaluation_state, answers) =
   let login = string_of_identifier user in
   let fullname_of_id id =
     User.make id >>= function

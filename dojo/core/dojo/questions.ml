@@ -199,18 +199,28 @@ type answer =
   | GivenValues of string list
 deriving (Json)
 
-type answers = (identifier * answer) list
+module AnswersStore = Rb.Dict (struct
+  type key = identifier (* Question identifier *)
+  deriving (Json)
+
+  type image = answer * Identifier.identifier (* User identifier *)
+  deriving (Json)
+
+  let compare = String.compare
+end)
+
+type answers = AnswersStore.t
 deriving (Json)
 
-let empty_answers = []
+let empty_answers = AnswersStore.empty
 
-let new_answer answers qid answer =
-  update_assoc qid answer answers
+let new_answer answers qid answer author =
+  AnswersStore.update qid (answer, author) answers
 
 let lookup_answer answers qid =
-  List.assoc qid answers
+  AnswersStore.lookup qid answers
 
-let iter_answers_s = Lwt_list.iter_s
+let iter_answers_s f s = AnswersStore.lwt_iter s f
 
 let string_of_answer = function
   | Invalid -> "invalid answer"
