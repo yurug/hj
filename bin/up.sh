@@ -13,15 +13,20 @@ topdir=$SCRIPTPATH/..
 # (clone it from https://github.com/yurug/hjc)
 HJC=hjc
 
-###############
-# Compilation #
-###############
-cp $topdir/etc/hackojo.conf.local $topdir/dojo/hackojo.conf.in
-make -C $topdir/dojo
+###################################
+# Compilation of the hackojo-core #
+###################################
+make -C $topdir/dojo/core all install
 
-#################################
-# Deployment (you must be root) #
-#################################
+#############################
+# Compilation of the webapp #
+#############################
+cp $topdir/etc/hackojo.conf.local $topdir/dojo/apphackojo.conf.in
+make -C $topdir/dojo/app
+
+#########################################
+# Web app deployment (you must be root) #
+#########################################
 sudo mkdir -p /var/upload
 sudo chown www-data:www-data /var/upload
 
@@ -32,7 +37,7 @@ sudo \
   OCAMLPATH=$OCAMLPATH \
   CAML_LD_LIBRARY_PATH=$CAML_LD_LIBRARY_PATH \
   LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
-  make -C $topdir/dojo install run.opt
+  make -C $topdir/dojo/app install run.opt
 
 #########
 # Setup #
