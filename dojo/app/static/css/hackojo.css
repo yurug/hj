@@ -534,6 +534,7 @@ span.report {
    bottom: 0;
    left: 0;
    width: 65em;
+   min-height: 25em;
  }
 
 .editor_message {
