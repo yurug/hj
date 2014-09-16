@@ -29,13 +29,16 @@ let exercise_create = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
-let (upload_resource, upload_tar, download_resource, ls_resource) =
+let (upload_resource, upload_tar, download_resource,
+     ls_resource, publish_resource, download_public_resource) =
   EntityHTTP.create_resource_management_api
     (module Exercise)
     "exercise_upload"
     "exercise_upload_tar"
     "exercise_download"
     "exercise_ls"
+    "exercise_publish"
+    "epub"
     "exercise"
 
 let exercise_update = HTTP.(
@@ -250,7 +253,7 @@ type public_grade = {
 
 type public_evaluation_state =
   | NoEvaluation
-  | EvaluationDone of string * string list * int * public_grade
+  | EvaluationDone of string * string list * int * public_grade * string list
   | EvaluationBeingProcessed
   | EvaluationFailed
 
@@ -277,7 +280,7 @@ let make_public_evaluation_state = function
     Printf.eprintf "%s\n%!" (Questions.string_of_evaluation_error e);
     EvaluationFailed
   | Questions.EvaluationDone (id, tags, level, g) ->
-    EvaluationDone (id, tags, level, make_public_grade g)
+    EvaluationDone (id, tags, level, make_public_grade g, g.Questions.commands)
   | Questions.EvaluationWaits ->
     EvaluationBeingProcessed
   | Questions.EvaluationHandled _ ->
@@ -300,18 +303,23 @@ let exercise_evaluation_state_server_function =
         return EvaluationFailed
   )
 
-let gen_string_of_evaluation_state f = Questions.(function
+let gen_string_of_evaluation_state f g = Questions.(function
   | EvaluationError _ -> assert false
-  | EvaluationDone (_, _, _, grade) -> f grade
-  | EvaluationWaits -> "waiting..."
-  | EvaluationHandled _ -> "processing..."
+  | EvaluationDone (_, _, _, grade) -> (f grade, g grade)
+  | EvaluationWaits -> ("waiting...", "")
+  | EvaluationHandled _ -> ("processing...", "")
 )
 
-let small_string_of_evaluation_state =
-  gen_string_of_evaluation_state Questions.string_of_grade
+let small_string_of_evaluation_state = Questions.(
+  gen_string_of_evaluation_state small_string_of_grade string_of_grade_trace
+)
 
-let string_of_evaluation_state =
-  gen_string_of_evaluation_state Questions.string_of_grade
+let string_of_evaluation_state s =
+  let (s1, s2) = Questions.(
+    gen_string_of_evaluation_state string_of_grade string_of_grade_trace s
+  )
+  in
+  s1 ^ s2
 
 let string_of_evaluation_error = Questions.(function
   | UnboundQuestion e -> "unbound_question_(" ^ e ^ ")"
@@ -379,8 +387,10 @@ let output_result (user, friends, (answer, author), evaluation_state, answers) =
     return (String.concat ", " friends_names)
   in
   lwt answer = output_answer answers answer in
-  let evaluation_state = small_string_of_evaluation_state evaluation_state in
-  return (login, user, friends, answer, evaluation_state)
+  let evaluation_state, trace =
+    small_string_of_evaluation_state evaluation_state
+  in
+  return (login, user, friends, answer, evaluation_state, trace)
 
 let exercise_results_of_question_function name qid =
   teacher_only () >>>= fun user ->
@@ -390,9 +400,9 @@ let exercise_results_of_question_function name qid =
   )
 
 let results_output_to_string rs =
-  return (`OK (String.concat "\n" (List.map (fun (l, u, f, a, e) ->
+  return (`OK (String.concat "\n" (List.map (fun (l, u, f, a, e, t) ->
     let a = match a with Text s -> s | URL s -> s in
-    Printf.sprintf "%10s %20s %30s %10s %10s" l u f a e
+    Printf.sprintf "%10s %20s %30s %10s %10s %10s" l u f a e t
   ) rs)))
 
 let exercise_results_of_question = HTTP.(

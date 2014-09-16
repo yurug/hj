@@ -24,6 +24,7 @@ let fresh_id =
 
 let exercise_page exo =
 
+  let focus = {string option ref{ ref None }} in
   let reset = {(unit -> unit) ref{ref (fun () -> ()) }} in
 
   let exo_id = Exercise.identifier exo in
@@ -39,23 +40,37 @@ let exercise_page exo =
 
     let codes = ref [] in
 
-    let grade_div = div [] in
+    let grade_div = div ~a:[a_class ["score_div"]] [] in
+
+    let editor = {EditorHTML.interface option ref{ ref None }} in
+    let get_editor = {unit -> EditorHTML.interface{ fun () -> match !(%editor) with
+      | None -> raise Not_found
+      | Some e -> e
+    }}
+    in
+
+    let score_box = {string -> [p_content] elt list -> div elt{ fun score criteria ->
+      div ~a:[a_class ["score_box"]] [
+        p ~a:[a_class ["score"]] [pcdata score];
+        p ~a:[a_class ["criteria"]] criteria
+      ]
+     }} in
 
     let display_evaluation_state =
       {([Html5_types.div_content_fun] elt list -> unit) option -> unit Lwt.t{
         fun console_write ->
         let open ExerciseHTTP in
         let criteria_as_html = function
-          | Automatic -> pcdata "Dojo:"
-          | UserDefined s -> pcdata (s ^ ":")
+          | Automatic -> pcdata "Dojo"
+          | UserDefined s -> pcdata s
         in
         let scores_as_html scores =
-          List.(flatten (map (fun (c, (i, o)) ->
-            [ criteria_as_html c; pcdata (Printf.sprintf "%d/%d" i o) ]
-          ) scores))
+            List.map (fun (c, (i, o)) ->
+              %score_box (Printf.sprintf "%d/%d" i o) [criteria_as_html c]
+            ) scores
         in
         let update_grade_div h =
-          Manip.replaceChildren %grade_div [p h]
+          Manip.replaceChildren %grade_div h
         in
         let write_trace_on_console trace =
           match console_write with
@@ -63,19 +78,23 @@ let exercise_page exo =
             | Some write ->
               List.iter (function Message s -> write [p [pcdata s]]) trace
         in
+        let process_command cmd =
+          Js.Unsafe.eval_string cmd
+        in
         let rec wait () = ExerciseHTTP.(
           %exercise_evaluation_state_server_function (%exo_str, %name_str)
           >>= function
             | EvaluationBeingProcessed ->
-              update_grade_div [pcdata "..."];
+              update_grade_div [%score_box "..." []];
               Lwt_js.sleep 1. >> wait ()
-            | EvaluationDone (_, _, _, grade) ->
+            | EvaluationDone (_, _, _, grade, commands) ->
               write_trace_on_console grade.trace;
+              List.iter process_command commands;
               return (update_grade_div (scores_as_html grade.scores))
             | EvaluationFailed ->
-              return (update_grade_div [pcdata "!"])
+              return (update_grade_div [%score_box "!" []])
             | NoEvaluation ->
-              return (update_grade_div [pcdata "?"])
+              return (update_grade_div [%score_box "?" []])
         )
         in
         wait ()
@@ -88,7 +107,9 @@ let exercise_page exo =
 
       let onload = {{
         fun _ -> !(%reset) ();
-        %reset := fun () -> () }}
+        %reset := (fun () -> ());
+        %editor := None;
+      }}
       in
 
       let oc (i : int) =
@@ -108,11 +129,8 @@ let exercise_page exo =
         small_button ["OK"] {unit -> unit{ fun () ->
           Lwt.async (fun () ->
             %push_new_choices_server_function (%exo_str, %name_str, !(%choices))
-              (* FIXME: Why is the gif not displayed here? *)
             >> (
-              Manip.replaceChildren %grade_div [p [
-                pcdata "..."; EntityHTML.get_progress ()
-              ]];
+              Manip.replaceChildren %grade_div [%score_box "..." []];
               Lwt_js.sleep 1.
             ) >> %display_evaluation_state None
           )
@@ -164,14 +182,13 @@ let exercise_page exo =
         {{ fun _ ->
           let open EditorHTML in
           !(%reset) ();
-          let editor = %editor_maker %expected_extension in
+          %editor := Some (%editor_maker %expected_extension);
+          let editor = %get_editor () in
           let submit () =
             let src = editor.get_value () in
             Lwt.async (fun () ->
               %submit_answer src >> (
-                Manip.replaceChildren %grade_div [p [
-                  pcdata "..."; EntityHTML.get_progress ()
-                ]];
+                Manip.replaceChildren %grade_div [%score_box "..." []];
                 Lwt_js.sleep 1.
               ) >> (
                 editor.console_clear ();
@@ -197,7 +214,9 @@ let exercise_page exo =
 
       let onload = {{
         fun _ -> !(%reset) ();
-        %reset := fun () -> () }}
+        %reset := (fun () -> ());
+        %editor := None;
+      }}
       in
 
       let onchange (i : int) (id : id) =
@@ -298,7 +317,7 @@ let exercise_page exo =
     lwt context = context_as_html context in
     let rec stars = function
       | 0 -> ""
-      | n -> "★" ^ stars (n - 1)
+      | n -> "*" ^ stars (n - 1)
     in
     let tags_as_html tags =
       p ~a:[a_class ["tags"]] (
@@ -307,19 +326,50 @@ let exercise_page exo =
     in
 
     let results_table rows = I18N.(String.(
-      let columns = [ name_label; cap friends; cap answer; cap state ] in
-      let thead = thead [ tr (List.map (fun f -> th [pcdata f]) columns) ] in
-      let row (l, u, f, a, e) =
-        let fields = List.map (fun s -> td [s]) in
+      let columns =
+        [
+          cap identifier, "table_id_column";
+          name_label, "table_name_column";
+          cap friends, "table_friends_column";
+          cap answer, "table_answer_column";
+          cap state, "table_state_column";
+          cap trace, "table_trace_column"
+        ]
+      in
+      let class_of_col i = snd (List.nth columns i) in
+      let thead = thead [
+        tr (List.map (fun (f, c) -> th ~a:[a_class [c]] [pcdata f]) columns)
+      ]
+      in
+      let row (l, u, f, a, e, t) =
+        let fields =
+          List.mapi (fun i s -> td ~a:[a_class [class_of_col i]] [s])
+        in
         let a =
           match a with
-            | Text s -> pcdata s
-            | URL u -> Raw.a ~a:[a_href (Xml.uri_of_string u)] [pcdata (cap download)]
+            | Text s ->
+              pcdata s
+            | URL u ->
+              Raw.a ~a:[a_href (Xml.uri_of_string u)] [pcdata (cap download)]
         in
-        tr (fields [pcdata l; pcdata u; pcdata f; a; pcdata e])
+        let show_trace_button t =
+          let t = Str.(split (regexp "\n") t) in
+          link_button [I18N.String.see]
+            {unit -> unit{ fun () ->
+              try
+                let editor= %get_editor () in
+                editor.EditorHTML.console_clear ();
+                editor.EditorHTML.console_write (
+                  List.map (fun s -> p [pcdata s]) %t
+                )
+              with Not_found -> ()
+             }}
+        in
+        tr (fields [pcdata l; pcdata u; pcdata f; a; pcdata e;
+                    show_trace_button t])
       in
       let rows = List.map row rows in
-      tablex ~thead [tbody rows]
+      tablex ~a:[a_class ["results_table"]] ~thead [tbody rows]
       ))
     in
 
@@ -340,8 +390,6 @@ let exercise_page exo =
       @ [ grade_div ; teacher_space ]
     ))
   in
-
-  let focus = {string option ref{ ref None }} in
 
   let focus_eref =
     Eliom_reference.eref
@@ -385,7 +433,13 @@ let exercise_page exo =
   let first_question = ref None in
 
   let navigation_sidebar description answers editor_maker = Questions.(
-    let rec aux = function
+    let indent level s =
+      let indent =
+        Printf.sprintf "padding-left:%fem;" (0.5 *. float_of_int level)
+      in
+      span ~a:[a_style indent] [pcdata s]
+    in
+    let rec aux level = function
       | Question q ->
         let name = Statement.flatten_string q.id in
         let title = Statement.flatten_string q.title in
@@ -402,18 +456,21 @@ let exercise_page exo =
         let onclick =
           {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
         in
-        [li
-            ~a:[a_onclick onclick; a_onload onload]
-            [pcdata title]
-        ]
+        [p ~a:[
+          a_class ["navigation_question"];
+          a_onclick onclick;
+          a_onload onload
+        ] [indent level title]]
 
       | Section (title, qs) ->
-        [li [pcdata (flatten_string title); ul (questions_template qs)]]
+        p ~a:[a_class ["navigation_section"]]
+          [indent level (flatten_string title)]
+        :: questions_template (level + 1) qs
 
-    and questions_template qs =
-      List.rev (
-        flatten [] (fun a s -> li [pcdata s] :: a) (fun a s -> aux s @ a) qs
-      )
+    and questions_template level qs =
+      flatten []
+        (fun a s -> a)
+        (fun a s -> aux level s @ a) qs
     in
 
     let download_as_pdf questions =
@@ -478,8 +535,11 @@ let exercise_page exo =
           {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
         in
         return [
-          p ~a:[a_onclick onclick; a_onload onload]
-            [pcdata I18N.String.master_corner]
+          p ~a:[
+            a_class ["master_corner"];
+            a_onclick onclick;
+            a_onload onload
+          ] [pcdata I18N.String.master_corner]
         ]
 
       | `KO _ -> return []
@@ -506,7 +566,9 @@ let exercise_page exo =
       }}
     in
     return (div ~a:[a_onload onload] ([
-      ul (questions_template description.questions);
+      div ~a:[a_class ["navigation_exo"]] (
+        questions_template 0 description.questions
+      );
       download_as_pdf description
     ] @ master_divs))
   )

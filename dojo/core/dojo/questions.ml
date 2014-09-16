@@ -143,6 +143,10 @@ module Txt = struct
       "codeblock [" ^ flatten_string l ^ "] {\n" ^ vcat string s ^ "\n}"
     | Verbatim  s ->
       "verbatim  {\n" ^ vcat string s ^ "\n}"
+    | RawHTMLBlock s ->
+      "raw_html_block [" ^ flatten_string s ^ "]"
+    | RawLaTeXBlock s ->
+      "raw_latex_block [" ^ flatten_string s ^ "]"
 
   let context = function
     | QCM (choices, _) ->
@@ -297,8 +301,9 @@ type criteria =
 deriving (Json)
 
 type grade = {
-  scores : (criteria * score) list;
-  trace  : trace
+  scores   : (criteria * score) list;
+  trace    : trace;
+  commands : string list
 }
 deriving (Json)
 
@@ -326,6 +331,12 @@ let string_of_grade grade =
     (string_of_scores grade.scores)
     (string_of_trace grade.trace)
 
+let small_string_of_grade grade =
+  string_of_scores grade.scores
+
+let string_of_grade_trace grade =
+  string_of_trace grade.trace
+
 type evaluation_job_identifier = int deriving (Json)
 
 type evaluation_error =
@@ -351,6 +362,12 @@ type evaluation_state =
   | EvaluationWaits
   | EvaluationHandled of evaluation_job_identifier
 deriving (Json)
+
+let is_completed = function
+  | EvaluationDone (_, _, _, g) ->
+    List.for_all (fun (_, (i, o)) -> i = o) g.scores
+  | _ ->
+    false
 
 type evaluations =
   (identifier * evaluation_state) list
@@ -412,15 +429,19 @@ let grade_qcm qid tags difficulty expected_choices cs =
   in
   EvaluationDone (qid, tags, difficulty, {
     scores = [ (Automatic, automatic_score) ];
-    trace  = []
+    trace  = [];
+    commands = []
   })
 
 let grade_regexp = Str.regexp "GRADE \\([0-9]+\\) \\([0-9]+\\)/\\([0-9]+\\)"
+
+let command_regexp = Str.regexp "COMMAND \\([0-9]+\\) \\(.*\\)$"
 
 let grade_program qid tags difficulty files cmd update =
   let trace                     = ref [] in
   let automatic_score           = ref 0 in
   let automatic_potential_score = ref 0 in
+  let commands                  = ref [] in
 
   let puts s = return (trace := Message s :: !trace) in
   let putline s = puts (s ^ "\n") in
@@ -436,6 +457,12 @@ let grade_program qid tags difficulty files cmd update =
       if Seed.compare seed secret = 0 then return (
         automatic_score := int_of_string (matched_group 2 s);
         automatic_potential_score := int_of_string (matched_group 3 s)
+      ) else
+        return ()
+    else if string_match command_regexp s 0 then
+      let seed = Seed.of_string (matched_group 1 s) in
+      if Seed.compare seed secret = 0 then return (
+        commands := matched_group 2 s :: !commands
       ) else
         return ()
     else
@@ -454,7 +481,9 @@ let grade_program qid tags difficulty files cmd update =
         [ (Automatic, (!automatic_score, !automatic_potential_score)) ]
       in
       let trace = List.rev !trace in
-      update (EvaluationDone (qid, tags, difficulty, { scores; trace }))
+      let commands = List.rev !commands in
+      update (EvaluationDone (qid, tags, difficulty,
+                              { scores; trace; commands }))
   ) in
   (* Run the command. *)
   let cmd = Str.(global_replace (regexp "%seed") (Seed.to_string secret) cmd) in
@@ -488,7 +517,8 @@ let grade_witv
   let failure () =
     let scores = [ (Automatic, (0, length expected_values)) ] in
     let trace = [] in
-    EvaluationDone (qid, tags, difficulty, { scores; trace })
+    let commands = [] in
+    EvaluationDone (qid, tags, difficulty, { scores; trace; commands })
   in
   if length expected_values <> length values then
     return (failure ())
@@ -518,7 +548,9 @@ let grade_witv
           [ (Automatic, (k, length expected_values)) ]
         in
         let trace = List.rev !trace in
-        update (EvaluationDone (qid, tags, difficulty, { scores; trace }))
+        let commands = [] in
+        update (EvaluationDone (qid, tags, difficulty,
+                                { scores; trace; commands }))
       | Exited _ ->
         update (failure ())
     ) in
@@ -544,7 +576,8 @@ let make_choice qid choices x =
   let trace = [] in
   let others = List.filter (( <> ) choice) choices in
   let tags = choice :: List.map Tag.negate others  in
-  return (EvaluationDone (qid, tags, 1, { scores; trace }))
+  let commands = [] in
+  return (EvaluationDone (qid, tags, 1, { scores; trace; commands }))
 
 let evaluate_using_context
     qid tags difficulty
@@ -568,8 +601,8 @@ let evaluate_using_context
     | CtxChooser choices, Choice x ->
       make_choice qid choices x
     | CtxNoGrade, _ ->
-      let scores = [] and trace = [] in
-      return (EvaluationDone (qid, tags, 0, { scores; trace }))
+      let scores = [] and trace = [] and commands = [] in
+      return (EvaluationDone (qid, tags, 0, { scores; trace; commands }))
     | _, Invalid ->
       return (EvaluationError SyntaxErrorInAnswer)
     | _, _ ->

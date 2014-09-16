@@ -42,18 +42,21 @@ let all_dependencies d k =
   with Not_found -> []
 
 type 'a meta = {
-  identifier      : identifier;
-  dependencies    : dependencies;
-  resources       : Resource.name list;
-  content         : 'a;
-  tick            : Timestamp.t;
+  identifier       : identifier;
+  dependencies     : dependencies;
+  resources        : Resource.name list;
+  public_resources : Resource.name list;
+  content          : 'a;
+  tick             : Timestamp.t;
 } deriving (Json)
 
 let now e = { e with tick = Timestamp.current () }
 
 let make identifier dependencies resources content =
   let resources = List.map Resource.name resources in
-  { identifier; dependencies; content; resources; tick = Timestamp.current () }
+  let public_resources = [] in
+  { identifier; dependencies; content; resources; public_resources;
+    tick = Timestamp.current () }
 
 let resources e = e.resources
 
@@ -74,11 +77,26 @@ let update_resources e s =
   let resources = ns @ List.(filter (fun x -> not (mem x ns)) e.resources) in
   now { e with resources }
 
+let update_resource_status e r s =
+  let public_resources =
+    if s && not (List.mem r e.public_resources) then
+      r :: e.public_resources
+    else if not s then
+      List.filter (fun r' -> r <> r') e.public_resources
+    else
+      e.public_resources
+  in
+  now { e with public_resources }
+
+let is_public_resource e r =
+  List.mem r e.public_resources
+
 type 'a state_change =
-  | UpdateDependencies of dependencies
-  | UpdateResources    of Resource.t list
-  | UpdateContent      of 'a
-  | UpdateSequence     of 'a state_change * 'a state_change
+  | UpdateDependencies   of dependencies
+  | UpdateResources      of Resource.t list
+  | UpdateResourceStatus of Resource.name * bool
+  | UpdateContent        of 'a
+  | UpdateSequence       of 'a state_change * 'a state_change
   | NoUpdate
 (* FIXME: If state changes happen to be too large, we will move
    to a more intentional description, using diffs. *)
@@ -100,6 +118,7 @@ let rec update e = function
   | UpdateResources s -> update_resources e s
   | UpdateContent c -> update_content e c
   | UpdateSequence (c1, c2) -> update (update e c1) c2
+  | UpdateResourceStatus (r, s) -> update_resource_status e r s
   | NoUpdate -> e
 
 let rec string_of_state_change string_of_replacement = function
@@ -116,6 +135,8 @@ let rec string_of_state_change string_of_replacement = function
   | UpdateSequence (c1, c2) ->
     string_of_state_change string_of_replacement c1 ^ "; "
     ^ string_of_state_change string_of_replacement c2
+  | UpdateResourceStatus (r, s) ->
+    (if s then "Publish " else "Unpublish ") ^ r
   | NoUpdate ->
     "No update"
 

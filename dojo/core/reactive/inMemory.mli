@@ -30,10 +30,11 @@ type dependencies
 (** A low-level change to the state of an entity is of
     the following form. *)
 type 'a state_change =
-  | UpdateDependencies of dependencies
-  | UpdateResources    of Resource.t list
-  | UpdateContent      of 'a
-  | UpdateSequence     of 'a state_change * 'a state_change
+  | UpdateDependencies   of dependencies
+  | UpdateResources      of Resource.t list
+  | UpdateResourceStatus of Resource.name * bool
+  | UpdateContent        of 'a
+  | UpdateSequence       of 'a state_change * 'a state_change
   | NoUpdate
 
 val state_changes : 'a state_change list -> 'a state_change
@@ -46,6 +47,9 @@ val content : 'a meta -> 'a
 
 (** [resources m] returns the names of [m]'s resources. *)
 val resources : 'a meta -> Resource.name list
+
+(** [is_public_resource m r] returns the status of the resource [r]. *)
+val is_public_resource : 'a meta -> Resource.name -> bool
 
 (** [dependencies m] returns the dependencies of [m]. *)
 val dependencies : 'a meta -> dependencies

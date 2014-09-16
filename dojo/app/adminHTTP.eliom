@@ -5,6 +5,7 @@ open Admin
 open Identifier
 open HTTP
 open UserHTTP
+open ExtPervasives
 
 let chroot =
   api_service "chroot" "admin" (string "path") (string "status")
@@ -12,9 +13,7 @@ let chroot =
     "Change the root of the system."
 
     (root_only (fun path ->
-      chroot path >>= function
-        | `OK () -> completed ()
-        | `KO e -> return "error" (* FIXME: give an error code. *)
+      (chroot path >>>= return_completed) >>= handle_error
      ))
 
 let set_user_info_command =

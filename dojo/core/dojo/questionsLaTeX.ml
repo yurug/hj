@@ -90,6 +90,10 @@ let make q =
         puts (flatten_string code);
         puts "\\end{lstlisting}\n";
         puts "\\end{code}\n\n";
+      | RawHTMLBlock _ ->
+        ()
+      | RawLaTeXBlock s ->
+        puts (flatten_string s)
 
     and text = function
       | Bold t ->

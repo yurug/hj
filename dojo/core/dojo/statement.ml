@@ -39,9 +39,11 @@ type text =
 deriving (Json)
 
 type statement =
-| Paragraph of text template
-| Verbatim  of string template
-| CodeBlock of string template * string template
+| Paragraph     of text template
+| Verbatim      of string template
+| CodeBlock     of string template * string template
+| RawHTMLBlock  of string template
+| RawLaTeXBlock of string template
 deriving (Json)
 
 type string_t = string template
@@ -110,6 +112,10 @@ module ReifyFromAka = struct
       Verbatim (template string t)
     | VData (DName "CodeBlock", [l; t]) ->
       CodeBlock (template string l, template string t)
+    | VData (DName "RawHTMLBlock", [t]) ->
+      RawHTMLBlock(template string t)
+    | VData (DName "RawLaTeXBlock", [t]) ->
+      RawLaTeXBlock(template string t)
     | _ -> assert false
 
 end

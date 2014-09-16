@@ -31,13 +31,14 @@ body {
 }
 
 #central_column, #central_column:before {
-    width: 45%;
+    width: 48%;
 }
 
 #central_column {
     float:left;
     padding: 10px 10px;
     height:100%;
+    overflow: auto;
 }
 
 #central_column:before {
@@ -57,6 +58,7 @@ body {
     width:15%;
     height:100%;
     margin: 0 0;
+    font-size: 0.8em;
 }
 
 ul {
@@ -143,6 +145,12 @@ div.editorbutton {
     float: right;
 }
 
+.link_button {
+    text-decoration: underline;
+    color: #ff0000;
+    cursor:pointer;
+}
+
 .menu_button {
     margin-top: 2em;
     margin-bottom: 2em;
@@ -169,7 +177,6 @@ div.editorbutton {
     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     box-shadow: 0 0 1px rgba(1, 1, 1, .75);
 }
-
 
 highlight {
     font-weight: bold;
@@ -322,6 +329,22 @@ h1 {
     font-color:#eeeeee;
 }
 
+/* #connection_box_signin:hover { */
+/* { */
+/*     background-color :#eeeeee; */
+/*     -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/*     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/*     box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/* } */
+
+/* #connection_box_signin:focus { */
+/* { */
+/*     background-color :#eeeeee; */
+/*     -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/*     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/*     box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/* } */
+
 #connection_box_reset_password {
     font-size:0.6em;
     font-weight:bold ;
@@ -339,21 +362,14 @@ h1 {
     font-color:#eeeeee;
 }
 
-#connection_box_signin:hover, connection_box_signin:focus {
-{
-    background-color :#eeeeee;
-    -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
-    -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
-    box-shadow: 0 0 1px rgba(1, 1, 1, .75);
-}
+/* #connection_box_reset_password:hover, #connection_box_reset_password:focus { */
+/* { */
+/*     background-color :#eeeeee; */
+/*     -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/*     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/*     box-shadow: 0 0 1px rgba(1, 1, 1, .75); */
+/* } */
 
-#connection_box_reset_password:hover, connection_box_reset_password:focus {
-{
-    background-color :#eeeeee;
-    -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
-    -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
-    box-shadow: 0 0 1px rgba(1, 1, 1, .75);
-}
 
 #connection_box_actions a {
     padding-left: 6em;
@@ -424,7 +440,6 @@ h1 {
     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     box-shadow: 0 0 1px rgba(1, 1, 1, .75);
 }
-
 
 table.results {
     border-collapse:collapse;
@@ -505,7 +520,7 @@ span.report {
 .editor_box {
    padding-left: 2em;
    width: 100%;
-   height: 50%;
+   height: 80%;
    position: relative;
    margin-top: 1em;
    margin-left: auto;
@@ -519,7 +534,6 @@ span.report {
    bottom: 0;
    left: 0;
    width: 65em;
-   height: 23em;
  }
 
 .editor_message {
@@ -531,6 +545,27 @@ span.report {
    height: 3em;
    padding-left: 1em;
    padding-top: 5px;
+}
+
+div.editor_console_box {
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    margin-top: 2em;
+    margin-down: 0.5em;
+    height: 20em;
+}
+
+div.editor_console {
+    position:relative;
+    font-family: courier;
+    font-size: 14px;
+    background: black;
+    color: #21f838;
+    padding: 5px;
+    overflow: hidden;
+    cursor:text;
+    height: 100%;
+    overflow-y: scroll;
 }
 
 span.tag {
@@ -658,4 +693,83 @@ div.user_input_file:hover, div.user_input_file:focus {
 
 div.context {
     margin-bottom: 1em;
+}
+
+.score_div {
+    margin-left: 1em;
+    min-height: 5em;
+}
+
+.score_box {
+    border:1px solid #171410;
+    padding: 0.1em;
+    text-align: center;
+    width: 4em;
+    min-height: 4em;
+}
+
+.score {
+    font-size: 1.2em;
+    margin-top: 0.5em;
+    margin-bottom: 0.3em;
+}
+
+.criteria {
+    margin-top: 0.3em;
+    margin-bottom: 0.3em;
+    font-size: 0.8em;
+}
+
+table.results_table {
+    width: 100%;
+    table-layout: fixed;
+    margin-top: 1em;
+}
+
+.table_id_column {
+    overflow: auto; text-align:center; min-width: 5%;
+}
+
+.table_name_column {
+    overflow: auto; text-align:center; min-width: 20%;
+}
+
+.table_friends_column {
+    overflow: auto; text-align:center; min-width: 30%;
+}
+
+.table_answer_column {
+    overflow: auto; text-align:center; min-width: 30%;
+}
+
+.table_state_column {
+    overflow: auto; text-align:center; min-width: 10%;
+}
+
+.table_trace_column {
+    overflow: auto; text-align:center; min-width: 5%;
+}
+
+.navigation_exo {
+    margin-left: 0.5em;
+    line-height: 80%;
+}
+
+.navigation_section {
+    font-weight:bold ;
+    margin-top: 1em;
+}
+
+.navigation_question {
+    cursor: pointer;
+}
+
+.navigation_question_done {
+    cursor: pointer;
+    color: #111111;
+}
+
+.master_corner {
+    margin-left: 0.5em;
+    cursor: pointer;
 }

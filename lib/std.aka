@@ -22,9 +22,11 @@ data text =
 | RawLaTeX (template (string))
 
 data statement =
-| Paragraph (template (text))
-| Verbatim  (template (string))
-| CodeBlock (template (string), template (string))
+| Paragraph     (template (text))
+| Verbatim      (template (string))
+| CodeBlock     (template (string), template (string))
+| RawHTMLBlock  (template (string))
+| RawLaTeXBlock (template (string))
 
 data context =
 | QCM     (list (template (text)), list (int))
@@ -86,6 +88,10 @@ def question id title tags difficulty statement context = Question {
 def paragraph t = Paragraph t
 
 def codeblock l t = CodeBlock l t
+
+def raw_html_block t = RawHTMLBlock t
+
+def raw_latex_block t = RawLaTeXBlock t
 
 def verbatim t = Verbatim t
 

@@ -14,7 +14,9 @@ let make_identifier exo_name =
   let user_id = User.identifier user in
   return (`OK (answers_identifier exo_id user_id))
 
-let (upload_resource, upload_tar, download_resource, ls_resource) =
+let (upload_resource, upload_tar, download_resource,
+     ls_resource, publish_resource, download_public_resource)
+=
   EntityHTTP.create_resource_management_api
     ~make_identifier
     (module Answers)
@@ -22,4 +24,6 @@ let (upload_resource, upload_tar, download_resource, ls_resource) =
     "answers_upload_tar"
     "answers_download"
     "answers_ls"
+    "answers_publish"
+    "answers_resources"
     "answers"

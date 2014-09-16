@@ -8,6 +8,11 @@ let cap s =
     s'.[1] <- '\128';
     s'
   )
+  else if s.[0] = '\195' && s.[1] = '\169' then (
+    let s' = String.copy s in
+    s'.[1] <- '\137';
+    s'
+  )
   else String.capitalize s
 
 module Fr : I18N_sig.Text = struct
@@ -59,6 +64,8 @@ module Fr : I18N_sig.Text = struct
   let evaluation = "évaluation"
 
   let score = "score"
+
+  let trace = "trace"
 
   let state = "état"
 
@@ -138,7 +145,7 @@ module Fr : I18N_sig.Text = struct
 
   let sandboxes = "Bacs à sable alloués"
 
-  let identifier = "identifier"
+  let identifier = "identifiant"
 
   let master_corner = "Coin du maître"
 

@@ -51,6 +51,7 @@ sig
   val firstname : string
   val surname : string
   val score : string
+  val trace : string
   val about : string
   val home : string
   val student: string

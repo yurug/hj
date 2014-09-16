@@ -139,16 +139,16 @@ let homepage u =
         | `OK n ->
           begin match n.message with
             | EphemeralMessage (_, s) | Message s ->
-              return (notification_box [
+              return (notification_box (
                 statement_as_html codes s
-              ])
+              ))
             | GotoExercise (id, s) ->
-              return (notification_box [
+              return (notification_box (
                 a ~service:(EntityHTML.url_of id) [
                   pcdata ("▹ " ^ string_of_identifier id)
-                ] ();
+                ] () ::
                 statement_as_html codes s
-              ])
+              ))
           end
         | `KO _ ->
           return (span []) (* FIXME *)

@@ -58,6 +58,7 @@ let message msg =
       method getValue : js_string t meth
       method setValue : js_string t -> unit meth
       method setOption : js_string t -> js_string t -> unit meth
+      method setSize : js_string t -> js_string t -> unit meth
       method setBooleanOption : js_string t -> boolean -> unit meth
       method toTextArea : unit -> unit meth
     end
@@ -108,10 +109,12 @@ let make = {string -> string -> interface{ fun container_id ext ->
   in
   let editor_id = fresh_editor_id () in
   let elt = Dom_html.(createTextarea document) in
+  elt##className <- Js.string "editor";
   let container_elt = ExtDom.get_element_by_id container_id in
   let onclick_cb = ref (fun () -> ()) in
-  let console_div = div [] in
-  let console = (To_dom.of_div console_div :> Dom.node Js.t) in
+  let console_div = div ~a:[a_class ["editor_console"]] [] in
+  let console_box_div = div ~a:[a_class ["editor_console_box"]] [console_div] in
+  let console = (To_dom.of_div console_box_div :> Dom.node Js.t) in
   let button_div = WidgetHTML.small_button ["OK"] (fun _ -> !onclick_cb ()) in
   let button = To_dom.of_div (div ~a:[a_class ["editorbutton"]] [button_div]) in
   let button = (button :> Dom.node Js.t) in
@@ -121,6 +124,7 @@ let make = {string -> string -> interface{ fun container_id ext ->
   ignore (container_elt##appendChild (button));
   ignore (container_elt##appendChild (console));
   let editor = CodeMirror.make editor_id mode in
+  editor##setSize ("100%", "50%");
   let get_value () = Js.to_string (editor##getValue ()) in
   let set_value s  = editor##setValue (Js.string s) in
   let dispose () =

@@ -200,6 +200,13 @@ module type S = sig
   | `OK of bool
   ] Lwt.t
 
+  val publish : t -> bool -> Resource.name -> [
+    `KO of [> `SystemError of string ]
+  | `OK of unit
+  ] Lwt.t
+
+  val is_public_resource : t -> Resource.name -> bool
+
 end
 
 (** The client must provide the following information
@@ -572,6 +579,15 @@ and type change = I.change
   let import_resource e s =
     e.description <- InMemory.(update e.description (UpdateResources [s]));
     OnDisk.save_resource (identifier e) s
+
+  let publish e f r =
+    e.description <- InMemory.(
+      update e.description (UpdateResourceStatus (r, f))
+    );
+    return (`OK ())
+
+  let is_public_resource e r =
+    InMemory.is_public_resource e.description r
 
   let resources e = InMemory.resources e.description
 

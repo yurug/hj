@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# set -x
+# set -e
+
 # Realpathing the script.
 pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd`

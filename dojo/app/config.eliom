@@ -30,7 +30,7 @@ let codemirror_editor_src () =
 
 let codemirror_editor_modes () = [
   Eliom_content.Xml.uri_of_string "/codemirror/mode/clike/clike.js";
-  Eliom_content.Xml.uri_of_string "/codemirror/mode/clike/mllike.js"
+  Eliom_content.Xml.uri_of_string "/codemirror/mode/mllike/mllike.js"
 ]
 
 (** codemirror editor css location. *)

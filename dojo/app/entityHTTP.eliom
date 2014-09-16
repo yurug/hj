@@ -14,7 +14,8 @@ let create_resource_management_api
     (type d)
     (type c)
     (module E : Entity.S with type data = d and type change = c)
-    upload_name upload_tar_name download_name ls_name
+    upload_name upload_tar_name download_name
+    ls_name publish_name download_public_name
     module_name
 =
   api_service upload_name module_name
@@ -36,7 +37,6 @@ let create_resource_management_api
     (string "status")
     "Upload resources using a tarball."
     (fun (id, file) ->
-      Printf.eprintf "upload tar for %s\n%!" id;
       (make_identifier id >>>= fun id ->
        E.make id >>>= (fun e ->
          let tar_tmp = Filename.(
@@ -120,4 +120,37 @@ let create_resource_management_api
        lwt infos = Lwt_list.map_s info (E.resources e) in
        return (`OK (List.flatten infos))
       ) >>= handle_error
-     ))
+     )),
+
+  api_service publish_name module_name
+    (string "identifier" ** string "resource_name" ** string "status")
+    (string "status")
+    "Publish or unpublish a resource."
+    (fun (id, (resource_name, status)) ->
+      (make_identifier id >>>= fun id ->
+       E.make id >>>= fun e -> begin
+         match status with
+           | "1" -> return (`OK (E.publish e true resource_name))
+           | "0" -> return (`OK (E.publish e false resource_name))
+           | _ -> return (`KO `InvalidParameter)
+       end
+       >>>= return_completed
+      ) >>= handle_error
+    ),
+
+  Eliom_registration.File.register_service
+    ~path:[download_public_name]
+    ~get_params:Eliom_parameter.(suffix (all_suffix "id"))
+    (fun id () ->
+      let resource_name = List.(hd (rev id)) in
+      let id = List.(rev (tl (rev id))) in
+      let id = identifier_of_path (make (List.map label id)) in
+      E.make id >>= function
+        | `OK e ->
+          if E.is_public_resource e resource_name then
+            Lwt.return (OnDisk.resource_real_path id resource_name)
+          else
+            Lwt.return "/dev/null" (* FIXME: Right way to say go away? *)
+        | `KO _ ->
+          Lwt.return "/dev/null"
+    )

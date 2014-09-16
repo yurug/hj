@@ -194,6 +194,16 @@ module type S = sig
     `KO of [> `SystemError of string ]
   | `OK of bool
   ] Lwt.t
+
+  (** [publish e flag r] makes the resource [r] of [e] public if
+      [flag = true], private otherwise. *)
+  val publish : t -> bool -> Resource.name -> [
+    `KO of [> `SystemError of string ]
+  | `OK of unit
+  ] Lwt.t
+
+  (** [is_public_resource e r] returns [true] if [r] is published by [e]. *)
+  val is_public_resource : t -> Resource.name -> bool
 end
 
 (** The following module interface has to be implemented to instantiate

@@ -29,6 +29,7 @@
     div ~a:[a_onclick {{ fun _ -> %onclick () }};
             a_class ("inlined" :: classes) ] [caption]
 
+  let link_button ls = generic_button ["link_button"] (List.map pcdata ls)
   let small_button ls = generic_button ["menu_button"] (List.map pcdata ls)
   let button ls = generic_button ["button"] (List.map pcdata ls)
   let icon x = generic_button ["icon"] x

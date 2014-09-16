@@ -41,21 +41,11 @@ and text_as_html classes = function
   | Bold t -> template_text_as_html ("bold" :: classes) t
   | Italic t -> template_text_as_html ("italic" :: classes) t
   | RawHTML s ->
-        (* FIXME: This pattern of mutual recursion between an element
-           FIXME: and its onload event is very common. Make it a
-           FIXME: combinator! .*)
+    let span = span [] in
     let s = flatten_string s in
-    let self = ref None in
-    let set_inner_html =
-      {{ fun _ ->
-        match !(%self) with
-          | None -> ()
-          | Some x -> (To_dom.of_span x)##innerHTML <- Js.string %s
-       }}
-    in
-    let s = span ~a:[a_onload set_inner_html] [] in
-    self := Some s;
-    [s]
+    ignore ({unit{ (To_dom.of_element %span)##innerHTML <- Js.string %s }});
+    [span]
+
   | RawLaTeX _ -> []
   | Hlink (url, caption) ->
     let url = flatten_string url
@@ -64,9 +54,9 @@ and text_as_html classes = function
 
 let statement_as_html codes = function
   | Paragraph t ->
-    p (template_text_as_html [] t)
+    [p (template_text_as_html [] t)]
   | Verbatim t ->
-    pre [pcdata (flatten_string t)]
+    [pre [pcdata (flatten_string t)]]
   | CodeBlock (l, t) ->
     let elt =
       pre [code ~a:[a_class [flatten_string l]] [
@@ -74,12 +64,20 @@ let statement_as_html codes = function
       ]]
     in
     codes := elt :: !codes;
-    elt
+    [elt]
+  | RawHTMLBlock s ->
+    let s = flatten_string s in
+    let div = div [] in
+    ignore ({unit{ (To_dom.of_element %div)##innerHTML <- Js.string %s }});
+    [div]
+  | RawLaTeXBlock s ->
+    []
+
 
 let statements_as_html codes t =
   List.rev (
     flatten []
       (fun a s -> p [string_as_html [] s] :: a)
-      (fun a s -> statement_as_html codes s :: a)
+      (fun a s -> statement_as_html codes s @ a)
       t
   )
