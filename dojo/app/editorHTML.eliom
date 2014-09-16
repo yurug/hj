@@ -124,7 +124,7 @@ let make = {string -> string -> interface{ fun container_id ext ->
   ignore (container_elt##appendChild (button));
   ignore (container_elt##appendChild (console));
   let editor = CodeMirror.make editor_id mode in
-  editor##setSize ("100%", "50%");
+  editor##setSize ("100%", "25em");
   let get_value () = Js.to_string (editor##getValue ()) in
   let set_value s  = editor##setValue (Js.string s) in
   let dispose () =
