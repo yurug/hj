@@ -272,7 +272,7 @@ let connection_box
         end;
         div ~a:[a_id "connection_password"] [
           H.label [pcdata I18N.(cap String.password)];
-          H.Raw.input ~a:[a_id password_id] ()
+          H.Raw.input ~a:[a_input_type `Password; a_id password_id] ()
         ];
       ];
       div ~a:[a_id "connection_box_actions"] [
