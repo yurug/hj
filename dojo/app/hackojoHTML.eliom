@@ -25,5 +25,5 @@ let root_service =
     ~service:ServicesHTML.root
     (fun () () ->
       lwt homepage = UserHTML.homepage ServicesHTML.root in
-      HTML.hackojo_page (fun _ -> return (div [pcdata "links"])) homepage
+      HTML.hackojo_page (fun _ -> return (div [])) homepage
     )
