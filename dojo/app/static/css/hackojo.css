@@ -774,3 +774,8 @@ table.results_table {
     margin-left: 0.5em;
     cursor: pointer;
 }
+
+code {
+     color: #991111;
+     font-style: italic;
+}

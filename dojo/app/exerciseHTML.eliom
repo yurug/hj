@@ -470,7 +470,7 @@ let exercise_page exo =
     and questions_template level qs =
       flatten []
         (fun a s -> a)
-        (fun a s -> aux level s @ a) qs
+        (fun a s -> a @ aux level s) qs
     in
 
     let download_as_pdf questions =
