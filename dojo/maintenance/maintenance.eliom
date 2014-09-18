@@ -11,12 +11,12 @@ module Maintenance_app =
     end)
 
 let main_service =
-  Eliom_service.App.service ~path:[] ~get_params:Eliom_parameter.unit ()
+  Eliom_service.App.service ~path:[] ~get_params:Eliom_parameter.(suffix (all_suffix "all")) ()
 
 let () =
   Maintenance_app.register
     ~service:main_service
-    (fun () () ->
+    (fun _ () ->
       Lwt.return
         (Eliom_tools.F.html
            ~title:"maintenance"
