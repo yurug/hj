@@ -725,6 +725,7 @@ table.results_table {
     width: 100%;
     table-layout: fixed;
     margin-top: 1em;
+    border: 1px solid #000000;
 }
 
 .table_id_column {
