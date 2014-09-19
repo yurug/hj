@@ -19,4 +19,5 @@ let running () =
 
 let _ =
   admin_password ();
+  Log.callback := Ocsigen_messages.errlog;
   running ()

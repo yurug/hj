@@ -125,8 +125,6 @@ let set_datadir s =
   statements_chunks := [];
   datadir := Some s
 
-
-
 let unload c =
   c.loaded <- false;
   c.data <- M.make 0

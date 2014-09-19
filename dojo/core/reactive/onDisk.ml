@@ -97,6 +97,12 @@ module Make (D : sig
 end)
 : S with type data = D.data = struct
 
+  let ondisk_entity_descriptor =
+    Log.make_event_descriptor "ondisk_entity" Facts.string
+
+  let log id msg =
+    Log.log_string id ondisk_entity_descriptor msg
+
   type data = D.data
 
   type versioned_data = {
@@ -149,11 +155,17 @@ end)
     >>>= VFS.read
     >>>= fun raw ->
     let vd = from_string Json.t<versioned_data> raw in
-    if vd.version = D.current_version then
-      return (`OK (from_string Json.t<D.data meta> vd.content))
-    else
+    try_lwt
+      if vd.version = D.current_version then
+        return (`OK (from_string Json.t<D.data meta> vd.content))
+      else
       (** The stored file does not contain data of the current version.
           We convert it on-the-fly. *)
-      convert vd D.converters
+        convert vd D.converters
+    with _ ->
+      let msg = "Problem when reading " ^ string_of_identifier id in
+      log id msg;
+      return (`KO (`SystemError msg))
+
 
 end
