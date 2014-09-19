@@ -14,7 +14,7 @@ let log who (p, s) x =
   ignore (state who p (s, x))
 
 let log_string who (p, s) x =
-  !callback s;
+  !callback (s ^ " " ^ x);
   log who (p, s) x
 
 let log_process who (p, s) x =
