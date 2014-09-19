@@ -154,8 +154,8 @@ end)
     >>>= (fun () -> VFS.latest (metafile path))
     >>>= VFS.read
     >>>= fun raw ->
-    let vd = from_string Json.t<versioned_data> raw in
     try_lwt
+      let vd = from_string Json.t<versioned_data> raw in
       if vd.version = D.current_version then
         return (`OK (from_string Json.t<D.data meta> vd.content))
       else
