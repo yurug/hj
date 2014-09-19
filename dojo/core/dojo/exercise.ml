@@ -215,15 +215,7 @@ let load_module ?(relative=true) id =
     end
     | `KO _ -> return (`KO id)
 
-let lookup_user_answers exo uid =
-  lwt user_answers =
-    observe exo (fun data ->
-      return (content data).user_answers)
-  in
-  let answers_id = UserAnswers.lookup uid user_answers in
-  Answers.make answers_id
-
-let check_answers_consistency exo uid questions =
+let rec check_answers_consistency exo uid questions =
   try_lwt
     lookup_user_answers exo uid >>= function
     | `OK answers -> Answers.(
@@ -236,7 +228,7 @@ let check_answers_consistency exo uid questions =
     | `KO _ -> return () (* FIXME *)
   with _ -> return () (* FIXME *)
 
-let questions id uid =
+and questions id uid =
   load_module ~relative:false id >>= function
     | `OK (exo, cst) ->
       (* FIXME: The following environment could be cached since it
@@ -249,15 +241,38 @@ let questions id uid =
     | `KO _ ->
       return (`KO (`InvalidModule id))
 
+and fresh_user_answers exo uid =
+  let exoid = identifier exo in
+  questions exoid uid >>>= fun questions ->
+  Answers.answers_for exoid uid questions >>>= fun answers ->
+  change exo (NewAnswers (uid, Answers.identifier answers))
+  >> return (`OK answers)
+
+and lookup_user_answers exo uid =
+  lwt user_answers =
+    observe exo (fun data ->
+      return (content data).user_answers)
+  in
+  let answers_id = UserAnswers.lookup uid user_answers in
+  Answers.make answers_id >>= function
+    | `OK answers -> return (`OK answers)
+    | `KO _ ->
+      (* This means that the exercise table contains
+         a dangling reference to an answers entity that
+         does not exist anymore. (Something nasty
+         probably happened. A file might have been
+         removed for instance.
+
+         In that case, we decide to automatically
+         generate a fresh answers entity.
+      *)
+      fresh_user_answers exo uid
+
 let user_answers exo uid =
-  let id = identifier exo in
   try_lwt
     lookup_user_answers exo uid
   with Not_found ->
-    questions id uid >>>= fun questions ->
-    Answers.answers_for id uid questions >>>= fun answers ->
-    change exo (NewAnswers (uid, Answers.identifier answers))
-    >> return (`OK answers)
+    fresh_user_answers exo uid
 
 let answer id uid qid a =
   make id >>>= fun exo ->
