@@ -227,8 +227,8 @@ let connection_box
         )
   in
 
-  let login_cb =
-    {{ fun _ ->
+  let connect_cb =
+    {unit -> unit{ fun () ->
       Lwt.async (fun () ->
         let login = (ExtDom.get_input_by_id %login_id)##value
         and password = (ExtDom.get_input_by_id %password_id)##value in
@@ -237,7 +237,13 @@ let connection_box
       )
      }}
   in
-
+  let login_cb =
+    {Dom_html.mouseEvent Js.t -> unit{fun _ -> %connect_cb ()}}
+  and password_entered_cb =
+    {Dom_html.keyboardEvent Js.t -> unit{ fun e ->
+      if e##keyCode = 13 then %connect_cb ()
+    }}
+  in
   let reset_cb =
     let admin_email = Config.administrator_email () in
     {{ fun _ ->
@@ -272,14 +278,17 @@ let connection_box
         end;
         div ~a:[a_id "connection_password"] [
           H.label [pcdata I18N.(cap String.password)];
-          H.Raw.input ~a:[a_input_type `Password; a_id password_id] ()
+          H.Raw.input ~a:[a_onkeydown password_entered_cb;
+                          a_input_type `Password;
+                          a_id password_id] ()
         ];
       ];
       div ~a:[a_id "connection_box_actions"] [
         string_input ~a:[a_id "connection_box_signin"; a_onclick login_cb]
           ~input_type:`Submit ~value:I18N.String.connect ();
 
-        string_input ~a:[a_id "connection_box_reset_password"; a_onclick reset_cb]
+        string_input ~a:[a_id "connection_box_reset_password";
+                         a_onclick reset_cb]
           ~input_type:`Submit ~value:I18N.String.reset_password ();
       ];
       message
