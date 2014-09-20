@@ -330,7 +330,7 @@ let _ =
       let login = try Hashtbl.find reset_urls secret with Not_found -> "" in
       HTML.default_menu ()
       >> HTML.hackojo_page
-        (fun _ -> return (div [pcdata " "]))
+        (fun _ -> return (div [pcdata "."]))
         (connection_box
            ~message:I18N.String.choose_a_password
            ~supercow_connection:(Some login) ())
