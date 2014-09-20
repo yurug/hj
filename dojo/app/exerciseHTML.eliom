@@ -392,12 +392,14 @@ let exercise_page exo =
             )
         }}
       in
-      return (
-        div [
-          Raw.input ~a:[a_id import_id] ();
-          small_button [I18N.String.import] ocb
-        ]
-      )
+      Exercise.is_collaborative exo >>= function
+        | true ->
+          return (
+            div ~a:[a_class ["import_div"]] [
+              Raw.input ~a:[a_class ["import_input"]; a_id import_id] ();
+              small_button [I18N.String.import] ocb
+            ])
+        | false -> return (div [])
     in
 
     let teacher_space =
@@ -588,12 +590,14 @@ let exercise_page exo =
             )
         }}
       in
-      return (
-        div [
-          Raw.input ~a:[a_id share_id] ();
-          small_button [I18N.String.share] ocb
-        ]
-      )
+      Exercise.is_collaborative exo >>= function
+        | true ->
+          return (
+            div ~a:[a_class ["share_div"]] [
+              Raw.input ~a:[a_class ["share_input"]; a_id share_id] ();
+              small_button [I18N.String.share] ocb
+            ])
+        | false -> return (div [])
     in
 
     let get_focus_eref = server_function Json.t<unit> (

@@ -351,5 +351,8 @@ let set_exercise_collaborative exo_id mode =
     | `KO e ->
       return () (* FIXME *)
 
+let is_collaborative exo =
+  observe exo (fun state -> return (content state).collaborative)
+
 let _ =
   AkaInterpreter.set_exercise_collaborative := set_exercise_collaborative

@@ -155,7 +155,7 @@ div.editorbutton {
     margin-top: 2em;
     margin-bottom: 2em;
     text-decoration:none;
-    font-size:0.6em;
+    font-size:0.7em;
     font-weight:bold ;
     cursor:pointer;
     margin-right: 1em;
@@ -697,7 +697,11 @@ div.context {
 }
 
 .score_div {
+    float: right;
+    margin-top: 1em;
+    margin-bottom: 1em;
     margin-left: 1em;
+    margin-right: 0.5em;
     min-height: 5em;
 }
 
@@ -707,6 +711,8 @@ div.context {
     text-align: center;
     width: 4em;
     min-height: 4em;
+    margin-top: 1em;
+    float: right;
 }
 
 .score {
@@ -779,4 +785,32 @@ table.results_table {
 code {
      color: #991111;
      font-style: italic;
+}
+
+.share_div {
+    margin-top: 1em;
+}
+
+.share_input {
+    padding: 5px 25px;
+    width: 8em;
+    font-size: 1em;
+    border: 2px solid #dadada;
+    border-radius: 7px;
+    margin-right: 0.5em;
+}
+
+.import_div {
+    margin-left: 0.5em;
+    margin-top: 1em;
+    float: left;
+}
+
+.import_input {
+    padding:5px 25px;
+    width: 6em;
+    font-size: 1em;
+    border: 2px solid #dadada;
+    border-radius: 7px;
+    margin-right: 0.5em;
 }
