@@ -36,3 +36,8 @@ let has_tag t tags =
     List.exists (fun (_, v) -> v > 0) taggers
   with Not_found ->
     false
+
+let folder_as_list tags =
+  let l = ref [] in
+  Set.iter tags (fun k _ -> l := k :: !l);
+  !l

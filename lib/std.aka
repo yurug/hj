@@ -1,6 +1,18 @@
+data void = Void
+
+def nothing = Void
+
+def let x f = f x
+
 data list ('a) =
 | Nil
 | Cons ('a, list ('a))
+
+def list_iter f l =
+  l ? {
+  | Nil => nothing
+  | Cons x xs => let (f x) { y => list_iter f xs }
+  }
 
 data template ('a) =
 | TAtom (string, template ('a))

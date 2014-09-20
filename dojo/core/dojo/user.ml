@@ -48,10 +48,15 @@ let authenticate_admin password =
     `KO
 
 type all_notifications =
-    (string list * Notifications.identifier) list
+    (string list * Notifications.notification_identifier) list
 deriving (Json)
 
-let all_notifications = ref []
+let all_notifications : all_notifications ref = ref []
+
+let push_new_notification has_tags l =
+  let c = (List.sort String.compare has_tags, l) in
+  if not (List.mem c !all_notifications) then
+    all_notifications := c :: !all_notifications
 
 let all_notifications_filename () =
   Filename.concat (VFS.real_path path) "_all_notifications.json"
@@ -78,6 +83,13 @@ let save_all_notifications () =
   with _ ->
     (** happens during logic_shutdown () trigered by the first chroot. *)
     return (`OK ())
+
+let get_current_notifications utags folder = List.(
+  let included tags = for_all (fun t -> mem t utags) tags in
+  fold_left (fun s (_, n) -> Notifications.push s n) folder (
+    filter (fun (tags, _) -> included tags) !all_notifications
+  )
+)
 
 type internal_state = {
   login           : string;
@@ -116,7 +128,10 @@ include Entity.Make (struct
         { content with logged = false }
       | Tagged (exo_id, q_id, tags, difficulty) ->
         let who = string_of_identifier exo_id ^ "/" ^ q_id in
-        { content with tags = Tag.tag who tags difficulty content.tags }
+        let tags = Tag.tag who tags difficulty content.tags in
+        let ltags = Tag.folder_as_list tags in
+        let active = get_current_notifications ltags content.active in
+        { content with tags; active }
       | NewNotification id ->
         let active = Notifications.push content.active id in
         { content with active }
@@ -194,7 +209,7 @@ let create_user_account login password =
   lwt firstname = get_user_info login "firstname" in
   lwt surname = get_user_info login "surname" in
   lwt email = get_user_info login "email" in
-  let active = Notifications.empty in
+  let active = get_current_notifications [] Notifications.empty in
   let hidden = Notifications.empty in
   let data = {
     login;
@@ -299,6 +314,7 @@ let get_active_notifications uid =
   )
 
 let notify if_has_tags notification uid =
+  push_new_notification if_has_tags notification;
   Lwt_list.for_all_s (has_tag uid) if_has_tags >>= function
     | true -> push_notification uid notification
     | false -> return ()
