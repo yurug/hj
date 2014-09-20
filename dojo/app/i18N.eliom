@@ -109,6 +109,10 @@ module Fr : I18N_sig.Text = struct
 
   let run_all = "tout"
 
+  let share = "partager"
+
+  let import = "importer"
+
   let status = "status"
 
   let description = "description"

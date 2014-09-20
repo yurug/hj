@@ -108,7 +108,7 @@ include Entity.Make (struct
 
     let share_answers content sharer_uid uid =
       try_lwt
-        let shared_answers = UserAnswers.lookup uid content.user_answers in
+        let shared_answers = UserAnswers.lookup sharer_uid content.user_answers in
         Answers.add_contributor shared_answers uid
         >> return content
       with Not_found ->
@@ -182,7 +182,7 @@ let create who name =
             contributors  = [ User.identifier who ];
             code          = NoCode;
             user_answers  = UserAnswers.empty;
-            collaborative = false
+            collaborative = false;
           }
           in
           let init = (data, empty_dependencies, []) in
@@ -345,7 +345,7 @@ let import_answer exo_id user_id question_id source_id =
   >> return (`OK ())
 
 let set_exercise_collaborative exo_id mode =
-  make (identifier_of_string exo_id) >>= function
+  make (exercise_identifier (identifier_of_string exo_id)) >>= function
     | `OK exo ->
       change exo (SetCollaborativeMode mode)
     | `KO e ->

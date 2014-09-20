@@ -39,6 +39,8 @@ sig
   val email : string
   val run : string
   val run_all : string
+  val share : string
+  val import : string
   val description : string
   val status : string
   val connect : string

@@ -1,6 +1,4 @@
-data void = Void
-
-def nothing = Void
+external nothing : unit
 
 def let x f = f x
 
@@ -22,6 +20,10 @@ data template ('a) =
 data boolean =
 | True
 | False
+
+def true = True
+
+def false = False
 
 data text =
 | String   (template (string))
@@ -200,3 +202,6 @@ external notify_all_user : list (string) -> notification -> unit
 external message : statement -> notification
 
 external goto_exercise : template (string) -> statement -> notification
+
+external set_exercise_collaborative : string -> boolean -> unit
+

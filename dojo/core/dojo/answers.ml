@@ -122,8 +122,6 @@ include Entity.Make (struct
             { content with contributors = uid :: content.contributors }
         )
       )
-
-
     in
     (* FIXME: Common pattern to be factorized out. *)
     let content0 = content state in
@@ -186,19 +184,33 @@ let add_contributor answers uid =
     | `OK answers -> change answers (NewContributor uid)
     | `KO e -> return () (* FIXME *)
 
-let import_contributor_answer dst_answers dst_uid src_answers qid =
-  make src_answers >>= function
+let import_contributor_answer dst_answers_id dst_uid src_answers_id qid =
+  make src_answers_id >>= function
     | `OK src_answers ->
       lwt src_contributors = contributors src_answers in
-      if List.mem dst_uid src_contributors then
+      if List.mem dst_uid src_contributors then (
         (** Yes, dst_uid is an official contributor to src_answers *)
-        make dst_answers >>= function
+        make dst_answers_id >>= function
           | `OK dst_answers ->
             lwt src_answer, src_author = answer_of_question src_answers qid in
-            push_new_answer dst_answers qid src_author src_answer
+            begin
+              match src_answer with
+                | Questions.File f ->
+                  begin resource src_answers f >>= function
+                    | `OK (r, _) ->
+                      import_resource dst_answers r
+                      >> return () (* FIXME *)
+                    | `KO _ ->
+                      return () (* FIXME *)
+                  end
+                | _ -> return ()
+            end
+            >> (
+              push_new_answer dst_answers qid src_author src_answer
+            )
           | `KO _ ->
             return () (* FIXME *)
-      else
+      ) else
         return () (* FIXME *)
 
     | `KO e ->

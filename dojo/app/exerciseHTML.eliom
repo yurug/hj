@@ -373,6 +373,33 @@ let exercise_page exo =
       ))
     in
 
+    (* FIXME: The following pattern occurs multiple time.
+       FIXME: Define a combinator! *)
+    let name_str : string = name in
+
+    lwt import_div =
+      let import_id = "import_id" in
+      let ocb =
+        {unit -> unit{
+          fun _ ->
+            Lwt.async (fun () ->
+              let id = (ExtDom.get_input_by_id %import_id)##value in
+              let id = Js.to_string id in
+              if id <> "" then (
+                %exercise_import_answer_server_function (%exo_str, id, %name_str)
+                >> %display_evaluation_state None
+              ) else return ()
+            )
+        }}
+      in
+      return (
+        div [
+          Raw.input ~a:[a_id import_id] ();
+          small_button [I18N.String.import] ocb
+        ]
+      )
+    in
+
     let teacher_space =
       active_div 1. (fun () ->
         exercise_results_of_question_function exo_id name_str >>= function
@@ -387,7 +414,9 @@ let exercise_page exo =
       ]
       @ statements_as_html codes statements
       @ context
-      @ [ grade_div ; teacher_space ]
+      @ [ grade_div ;
+          import_div;
+          teacher_space ]
     ))
   in
 
@@ -544,6 +573,29 @@ let exercise_page exo =
 
       | `KO _ -> return []
     in
+
+    lwt share_with =
+      let share_id = "share_id" in
+      let ocb =
+        {unit -> unit{
+          fun _ ->
+            Lwt.async (fun () ->
+              let id = (ExtDom.get_input_by_id %share_id)##value in
+              let id = Js.to_string id in
+              if id <> "" then (
+                %exercise_new_contributor_server_function (%exo_str, id)
+              ) else return ()
+            )
+        }}
+      in
+      return (
+        div [
+          Raw.input ~a:[a_id share_id] ();
+          small_button [I18N.String.share] ocb
+        ]
+      )
+    in
+
     let get_focus_eref = server_function Json.t<unit> (
       fun () -> Eliom_reference.get focus_eref
     )
@@ -569,7 +621,8 @@ let exercise_page exo =
       div ~a:[a_class ["navigation_exo"]] (
         questions_template 0 description.questions
       );
-      download_as_pdf description
+      download_as_pdf description;
+      share_with;
     ] @ master_divs))
   )
   in (

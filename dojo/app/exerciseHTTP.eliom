@@ -385,7 +385,7 @@ let output_result (user, friends, (answer, author), evaluation_state, answers) =
   in
   lwt user = fullname_of_id user in
   lwt friends =
-    lwt friends_names = Lwt_list.map_s fullname_of_id friends in
+    let friends_names = List.map string_of_identifier friends in
     return (String.concat ", " friends_names)
   in
   lwt answer = output_answer answers answer in
@@ -434,7 +434,18 @@ let exercise_results_of_question = HTTP.(
 
 let exercise_new_contributor_function exo contributor_id =
   logged_user () >>>= fun user ->
-  Exercise.new_contributor exo (User.identifier user) contributor_id
+  Ocsigen_messages.errlog (Printf.sprintf "New contributor for %s is %s\n"
+                             exo contributor_id);
+  Exercise.new_contributor
+    (identifier_of_string exo)
+    (User.identifier user)
+    (User.user_identifier contributor_id)
+
+let exercise_new_contributor_server_function =
+  server_function Json.t<string * string> (fun (exo, contributor_id) ->
+    exercise_new_contributor_function exo contributor_id
+    >>= fun _ -> return () (* FIXME *)
+  )
 
 let exercise_new_contributor = HTTP.(
   api_service "exercise_new_contributor" "exercise"
@@ -442,9 +453,7 @@ let exercise_new_contributor = HTTP.(
     (string "status")
     "Declare a new contributor to a set of answers."
     (fun (exo, contributor) ->
-      (exercise_new_contributor_function
-         (identifier_of_string exo)
-         (identifier_of_string contributor)
+      (exercise_new_contributor_function exo contributor
       ) >>= function
          | `OK s -> completed ()
          | `KO (`InvalidModule id) ->
@@ -462,9 +471,18 @@ let exercise_new_contributor = HTTP.(
            error ("undefined:" ^ (string_of_identifier id)))
 )
 
-let exercise_import_answer_function exo_id source_id question_id =
+let exercise_import_answer_function exo_id source_id (question_id : string) =
   logged_user () >>>= fun user ->
   Exercise.import_answer exo_id (User.identifier user) question_id source_id
+
+let exercise_import_answer_server_function =
+  server_function Json.t<string * string * string> (
+    fun (exo_str, source_str, question_str) ->
+      let source_id = User.user_identifier source_str in
+      let exo_id = identifier_of_string exo_str in
+      exercise_import_answer_function exo_id source_id question_str
+      >>= fun _ -> return () (* FIXME *)
+  )
 
 let exercise_import_answer = HTTP.(
   api_service "exercise_import_answer" "exercise"
@@ -492,3 +510,4 @@ let exercise_import_answer = HTTP.(
       | `KO (`UndefinedEntity id) ->
         error ("undefined:" ^ (string_of_identifier id)))
 )
+

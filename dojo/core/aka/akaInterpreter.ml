@@ -82,6 +82,9 @@ let lookup_primitive = function
       return (VPrimitive (PStringConstant id))
     ))))
 
+  | "nothing" ->
+    return (VPrimitive PUnit)
+
   | "set_exercise_collaborative" ->
     lift_string_fun (fun exo ->
       return (VPrimitiveFun (fun b ->

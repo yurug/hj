@@ -417,6 +417,7 @@ and type change = I.change
           wait_to_be_observer_free e (fun () ->
             let old = e.description in
             e.description <- InMemory.update e.description llc;
+            List.iter (fun c -> Log.debug (identifier e) (I.string_of_change c)) cs;
             (* FIXME: The following optimization is unsafe: we must ensure *)
             (* FIXME: that every entity is finally saved. *)
             save_on_disk e >>= function
@@ -429,8 +430,6 @@ and type change = I.change
           ) >>= fun () -> return (propagate_change (identifier e))
 
   and save_on_disk ?(now=false) e =
-    Log.debug (identifier e) "save_on_disk";
-
     (* 60. must be a parameter. *)
     if now ||
       (Timestamp.compare (timestamp e.description) e.last_save <> 0

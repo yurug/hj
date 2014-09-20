@@ -14,7 +14,7 @@ let log who (p, s) x =
   ignore (state who p (s, x))
 
 let log_string who (p, s) x =
-  !callback (s ^ " " ^ x);
+  !callback (Identifier.string_of_identifier who ^ ":" ^ s ^ ":" ^ x);
   log who (p, s) x
 
 let debug =
