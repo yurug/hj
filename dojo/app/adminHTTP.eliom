@@ -16,6 +16,16 @@ let chroot =
       (chroot path >>>= return_completed) >>= handle_error
      ))
 
+let shutdown =
+  api_service "shutdown" "admin" unit (string "status")
+
+    "Shut the system down."
+
+    (root_only (fun () ->
+      shutdown ();
+      completed ()
+     ))
+
 let set_user_info_command =
   api_service "get_user_info" "admin" (string "cmd") (string "status")
 

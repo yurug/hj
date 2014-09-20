@@ -27,9 +27,7 @@ let get_answers_channel = server_function Json.t<string> (fun id ->
 {client{
 let on_each_update id =
   %get_answers_channel id >>= function
-  | Some s ->
-    Eliom_comet.(Configuration.(set_time_between_requests (new_configuration ()) 1.));
-    return (fun f -> Lwt_stream.iter_s f s)
+  | Some s -> return (fun f -> Lwt_stream.iter_s f s)
   | None -> return (fun f -> return ())
 }}
 

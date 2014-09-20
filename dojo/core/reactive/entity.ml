@@ -275,7 +275,18 @@ and type change = I.change
     let clear () = IdHashtbl.clear pool in
     (IdHashtbl.get pool, IdHashtbl.add pool, iter, clear)
 
-  let shutdown () =
+  (* FIXME: A quick a dirty code. We should wait for all the processes
+     FIXME: to be finished for the saving process to be completed for
+     FIXME: sure.  *)
+
+  let active = ref true
+
+  let rec save_pool () =
+    iter_on_pool (fun id e ->
+      Lwt.async (fun () -> save_on_disk e >>= fun _ -> return ())
+    )
+
+  and shutdown () =
     (* FIXME: We should properly stop, that is:
        1. Reject all new "external changes"
        2. Wait for all the "internal changes" to have converged.
@@ -286,11 +297,13 @@ and type change = I.change
        checked the result by itself. In other words, between two updates
        the internal state of an entity is always consistent because its
        consistency does not depend on the other entities' states. *)
+    active := false;
+    save_pool ();
     empty_pool ()
 
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
-  let rec wakeup id reaction =
+  and wakeup id reaction =
     OTD.load id >>>= fun description ->
     (** Notice that the following sequence of operations are
         atomic w.r.t. the concurrency model. *)
@@ -411,14 +424,14 @@ and type change = I.change
                 (* FIXME: Warn in the log. *)
                 return (e.description <- old)
               | `OK _ ->
-                Log.debug (identifier e) (Printf.sprintf "%s Push!\n%!"
-                  (string_of_identifier (identifier e)));
                 e.push HasChanged;
                 return ()
           ) >>= fun () -> return (propagate_change (identifier e))
 
   and save_on_disk e =
-    (* FIXME: 60. must be a parameter. *)
+    Log.debug (identifier e) "save_on_disk";
+
+    (* 60. must be a parameter. *)
     if Timestamp.compare (timestamp e.description) e.last_save <> 0
       && Timestamp.older_than 60. e.last_save then begin
       e.last_save <- timestamp e.description;
@@ -599,12 +612,9 @@ and type change = I.change
   let _ =
     Lwt.async (fun () ->
       let rec forever () =
-        return (
-          iter_on_pool (fun id e ->
-            Lwt.async (fun () -> save_on_disk e >>= fun _ -> return ()))
-        )
+        return (save_pool ())
         >> Lwt_unix.sleep 10.
-        >> forever ()
+        >> if !active then forever () else return ()
       in
       forever ()
     )

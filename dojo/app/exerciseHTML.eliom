@@ -85,7 +85,6 @@ let exercise_page exo =
         in
         lwt on_update = AnswersHTTP.on_each_update %answers_str in
         on_update (fun _ ->
-          Firebug.console##log (Js.string "Update!");
           %exercise_evaluation_state_server_function (%exo_str, %name_str)
           >>= function
             | EvaluationBeingProcessed ->

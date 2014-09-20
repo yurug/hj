@@ -47,6 +47,38 @@ let authenticate_admin password =
   else
     `KO
 
+type all_notifications =
+    (string list * Notifications.identifier) list
+deriving (Json)
+
+let all_notifications = ref []
+
+let all_notifications_filename () =
+  Filename.concat (VFS.real_path path) "_all_notifications.json"
+
+let load_all_notifications () = Deriving_Json.(
+  ltry (ExtUnix.cat (all_notifications_filename ())) >>= function
+    | `OK content ->
+      begin try_lwt
+        all_notifications := from_string Json.t<all_notifications> content;
+        return ()
+      with _ -> return () (* FIXME *)
+      end
+    | `KO _ ->
+      return ()
+)
+
+let save_all_notifications () =
+  try_lwt
+    ltry (
+      ExtUnix.echo
+        (Deriving_Json.to_string Json.t<all_notifications> !all_notifications)
+        (all_notifications_filename ())
+    )
+  with _ ->
+    (** happens during logic_shutdown () trigered by the first chroot. *)
+    return (`OK ())
+
 type internal_state = {
   login           : string;
   logged          : bool;
@@ -183,13 +215,19 @@ let create_admin_account () =
   create_user_account admin_username (`Digest (get_admin_password ()))
 
 let up () = VFS.(
-  if not (exists path) then (
+  load_all_notifications ()
+  >> if not (exists path) then (
     create user_module path
     >> create_admin_account ()
     >> return (`OK ())
   ) else
     return (`OK ())
 )
+
+let shutdown () =
+  Printf.eprintf "Saving all notifications\n%!";
+  shutdown ();
+  Lwt.async save_all_notifications
 
 let authenticate_standard_user login password =
   let id = user_identifier login in
