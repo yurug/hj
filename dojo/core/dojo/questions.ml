@@ -514,60 +514,27 @@ let grade_witv
     qid tags difficulty comparator_script
     expected_values values update
 = List.(
+  let trace = [] in
+  let commands = [] in
+
   let failure () =
     let scores = [ (Automatic, (0, length expected_values)) ] in
-    let trace = [] in
-    let commands = [] in
     EvaluationDone (qid, tags, difficulty, { scores; trace; commands })
   in
   if length expected_values <> length values then
     return (failure ())
   else (
-    let trace                     = ref [] in
-    let puts s = return (trace := Message s :: !trace) in
-    let putline s = puts (s ^ "\n") in
-
-    let shell_argument x y =
-      ExtUnix.quote Str.(global_replace (regexp "%a") y x)
+    let score = ref 0 in
+    let normalize s = Str.(
+      global_replace (regexp " \\|\t") "" s
+    )
     in
-    let arguments = combine expected_values values in
-    let arguments =
-      fold_left
-        (fun a (x, y) -> a ^ " " ^ shell_argument x y)
-        ""
-        arguments
+    let check_value xvalue value =
+      if normalize value = normalize xvalue then incr score
     in
-    let observer = Sandbox.(function
-      | WaitingForSandbox _ -> putline "Waiting..."
-      | FileModification _ -> return ()
-      | WriteStdout (_, s) -> return ()
-      | WriteStderr (_, s) -> return ()
-      | Exited (Unix.WEXITED k) when k >= 0 ->
-        (* Generate score and trace. *)
-        let scores =
-          [ (Automatic, (k, length expected_values)) ]
-        in
-        let trace = List.rev !trace in
-        let commands = [] in
-        update (EvaluationDone (qid, tags, difficulty,
-                                { scores; trace; commands }))
-      | Exited _ ->
-        update (failure ())
-    ) in
-    (* Run the command. *)
-    let files = import_files exo_real_path [ comparator_script ] in
-    let comparator_script_bname = Filename.basename comparator_script in
-    let cmd = Printf.sprintf
-      "chmod u+rx %s && ./%s %s"
-      comparator_script_bname comparator_script_bname arguments
-    in
-    Sandbox.(exec files cmd observer)
-    >>= function
-      | `OK (job, persistence_id) ->
-        return (EvaluationHandled job)
-      | `KO e ->
-      (* FIXME: Provide a more detailed diagnostic. *)
-        return (EvaluationError ErrorDuringGraderExecution)
+    List.iter2 check_value expected_values values;
+    let scores = [ (Automatic, (!score, length expected_values)) ] in
+    return (EvaluationDone (qid, tags, difficulty, { scores; trace; commands }))
   ))
 
 let make_choice qid choices x =
