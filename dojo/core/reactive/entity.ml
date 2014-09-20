@@ -16,9 +16,9 @@ open ExtPervasives
 
 (** Two kinds of events are possibly happening to an entity. *)
 type event =
-    (** A dependency of the entity has been updated, so at
-        some point, the entity will be asked to update itself
-        if necessary. *)
+  (** A dependency of the entity has been updated, so at
+      some point, the entity will be asked to update itself
+      if necessary. *)
   | MayChange
 
    (** The entity has been updated. *)
@@ -411,6 +411,8 @@ and type change = I.change
                 (* FIXME: Warn in the log. *)
                 return (e.description <- old)
               | `OK _ ->
+                Log.debug (identifier e) (Printf.sprintf "%s Push!\n%!"
+                  (string_of_identifier (identifier e)));
                 e.push HasChanged;
                 return ()
           ) >>= fun () -> return (propagate_change (identifier e))

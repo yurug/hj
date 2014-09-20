@@ -37,6 +37,8 @@ let exercise_page exo =
       tags difficulty
       statements context answers editor_maker =
     let name_str : string = name in
+    let answers_str = string_of_identifier (Answers.identifier answers) in
+
 
     let codes = ref [] in
 
@@ -81,12 +83,13 @@ let exercise_page exo =
         let process_command cmd =
           Js.Unsafe.eval_string cmd
         in
-        let rec wait () = ExerciseHTTP.(
+        lwt on_update = AnswersHTTP.on_each_update %answers_str in
+        on_update (fun _ ->
+          Firebug.console##log (Js.string "Update!");
           %exercise_evaluation_state_server_function (%exo_str, %name_str)
           >>= function
             | EvaluationBeingProcessed ->
-              update_grade_div [%score_box "..." []];
-              Lwt_js.sleep 1. >> wait ()
+              return (update_grade_div [%score_box "..." []])
             | EvaluationDone (_, _, _, grade, commands) ->
               write_trace_on_console grade.trace;
               List.iter process_command commands;
@@ -96,8 +99,6 @@ let exercise_page exo =
             | NoEvaluation ->
               return (update_grade_div [%score_box "?" []])
         )
-        in
-        wait ()
       }}
     in
 

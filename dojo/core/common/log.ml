@@ -17,6 +17,10 @@ let log_string who (p, s) x =
   !callback (s ^ " " ^ x);
   log who (p, s) x
 
+let debug =
+  let descriptor = make_event_descriptor "debug" TString in
+  fun who s -> log_string who descriptor s
+
 let log_process who (p, s) x =
   let start = state who p (s, x) in
   fun () -> state who end_of_process start

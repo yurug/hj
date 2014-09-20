@@ -1,6 +1,8 @@
 (* -*- tuareg -*- *)
 
+{shared{
 open Lwt
+}}
 open ExtPervasives
 open User
 open Exercise
