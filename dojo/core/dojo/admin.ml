@@ -10,11 +10,7 @@ let logic_shutdown () =
   Machinist.shutdown ()
 
 let shutdown () =
-  logic_shutdown ();
-  Lwt.async (fun () ->
-    blind_exec (!% "echo shutdown 3 > /var/run/ocsigenserver_command")
-    >>= fun _ -> return ()
-  )
+  logic_shutdown ()
 
 let facts_up path =
   let facts_dir = Filename.concat path "facts" in

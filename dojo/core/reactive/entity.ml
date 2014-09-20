@@ -283,7 +283,7 @@ and type change = I.change
 
   let rec save_pool () =
     iter_on_pool (fun id e ->
-      Lwt.async (fun () -> save_on_disk e >>= fun _ -> return ())
+      Lwt.async (fun () -> save_on_disk ~now:true e >>= fun _ -> return ())
     )
 
   and shutdown () =
@@ -428,12 +428,14 @@ and type change = I.change
                 return ()
           ) >>= fun () -> return (propagate_change (identifier e))
 
-  and save_on_disk e =
+  and save_on_disk ?(now=false) e =
     Log.debug (identifier e) "save_on_disk";
 
     (* 60. must be a parameter. *)
-    if Timestamp.compare (timestamp e.description) e.last_save <> 0
-      && Timestamp.older_than 60. e.last_save then begin
+    if now ||
+      (Timestamp.compare (timestamp e.description) e.last_save <> 0
+      && Timestamp.older_than 60. e.last_save)
+    then begin
       e.last_save <- timestamp e.description;
       OTD.save e.description
     end
