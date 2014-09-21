@@ -22,6 +22,10 @@ let fresh_id =
   let r = ref 0 in
   fun () -> incr r; "i" ^ string_of_int !r
 
+{client{
+exception Done
+}}
+
 let exercise_page exo =
 
   let focus = {string option ref{ ref None }} in
@@ -84,20 +88,23 @@ let exercise_page exo =
           Js.Unsafe.eval_string cmd
         in
         lwt on_update = AnswersHTTP.on_each_update %answers_str in
-        on_update (fun _ ->
-          %exercise_evaluation_state_server_function (%exo_str, %name_str)
-          >>= function
-            | EvaluationBeingProcessed ->
-              return (update_grade_div [%score_box "..." []])
-            | EvaluationDone (_, _, _, grade, commands) ->
-              write_trace_on_console grade.trace;
-              List.iter process_command commands;
-              return (update_grade_div (scores_as_html grade.scores))
-            | EvaluationFailed ->
-              return (update_grade_div [%score_box "!" []])
-            | NoEvaluation ->
-              return (update_grade_div [%score_box "?" []])
+        try_lwt
+          on_update (fun _ ->
+             %exercise_evaluation_state_server_function (%exo_str, %name_str)
+             >>= function
+               | EvaluationBeingProcessed ->
+                 return (update_grade_div [%score_box "..." []])
+               | EvaluationDone (_, _, _, grade, commands) ->
+                 write_trace_on_console grade.trace;
+                 List.iter process_command commands;
+                 update_grade_div (scores_as_html grade.scores);
+                 raise_lwt Done
+               | EvaluationFailed ->
+                 return (update_grade_div [%score_box "!" []])
+               | NoEvaluation ->
+                 return (update_grade_div [%score_box "?" []])
         )
+        with Done -> return ()
       }}
     in
 
