@@ -181,12 +181,13 @@ let exercise_page exo =
 
       let initial_answer_str = Resource.content initial_answer in
 
-      let submit_answer = server_function Json.t<string> (fun src ->
-        Resource.set_content answer_resource src;
-        OnDisk.save_resource (Answers.identifier answers) answer_resource
-        >> Lwt_unix.sleep 1.
-        >> push_new_answer_function (exo_id, name, File expected_file)
-        >> return ()
+      let submit_answer =
+        server_function ~timeout:600. Json.t<string> (fun src ->
+          Resource.set_content answer_resource src;
+          OnDisk.save_resource (Answers.identifier answers) answer_resource
+          >> Lwt_unix.sleep 1.
+          >> push_new_answer_function (exo_id, name, File expected_file)
+          >> return ()
       )
       in
       let onload =
@@ -274,7 +275,7 @@ let exercise_page exo =
         (* FIXME *)
         ""
       in
-      let submit = server_function Json.t<string> (fun choice ->
+      let submit = server_function ~timeout:600. Json.t<string> (fun choice ->
         let idx = ExtPervasives.list_index_of choice choices in
         push_new_choice_function (exo_str, name_str, idx)
         (* FIXME: Why is the gif not displayed here? *)
@@ -445,7 +446,7 @@ let exercise_page exo =
       None
   in
 
-  let save_focus = server_function Json.t<string> (fun name ->
+  let save_focus = server_function ~timeout:600. Json.t<string> (fun name ->
     Eliom_reference.set focus_eref (Some name)
   )
   in
@@ -490,7 +491,7 @@ let exercise_page exo =
       | Question q ->
         let name = Statement.flatten_string q.id in
         let title = Statement.flatten_string q.title in
-        let d = server_function Json.t<unit> (fun () ->
+        let d = server_function ~timeout:1000. Json.t<unit> (fun () ->
           statement_as_html
             name title
             q.tags q.difficulty
@@ -521,7 +522,7 @@ let exercise_page exo =
     in
 
     let download_as_pdf questions =
-      let export_as_pdf = server_function Json.t<unit> (fun () ->
+      let export_as_pdf = server_function ~timeout:1000. Json.t<unit> (fun () ->
         let tex = QuestionsLaTeX.make questions in
         let tmp = Filename.temp_file "hj" ".pdf" in
         (ltry (ExtUnix.pdflatex tex tmp)) >>= function
@@ -542,7 +543,8 @@ let exercise_page exo =
 
     lwt master_divs = UserHTTP.teacher_only () >>= function
       | `OK user ->
-        let submit_new_src = server_function Json.t<string> (fun s ->
+        let submit_new_src =
+          server_function ~timeout:600. Json.t<string> (fun s ->
           let r = Resource.make "source.aka" s in
           Exercise.import_resource exo r >>= function
             | `OK _ -> Exercise.update user exo
@@ -550,7 +552,7 @@ let exercise_page exo =
         )
         in
         let edit : (unit, [ pre ] elt list * [div_content] elt) server_function =
-          server_function Json.t<unit> (fun () ->
+          server_function ~timeout:600. Json.t<unit> (fun () ->
           lwt exo_src =
             Exercise.resource exo "source.aka" >>= function
               | `OK (r, _) -> return (Resource.content r)
@@ -616,7 +618,7 @@ let exercise_page exo =
         | false -> return (div [])
     in
 
-    let get_focus_eref = server_function Json.t<unit> (
+    let get_focus_eref = server_function ~timeout:600. Json.t<unit> (
       fun () -> Eliom_reference.get focus_eref
     )
     in
