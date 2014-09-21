@@ -89,6 +89,7 @@ type interface = {
   set_value : string -> unit;
   dispose   : unit -> unit;
   set_ok_cb : (unit -> unit) -> unit;
+  set_reset_cb : (unit -> unit) -> unit;
   console_clear : unit -> unit;
   console_write : [ Html5_types.div_content_fun ] elt list -> unit;
 }
@@ -97,6 +98,8 @@ type interface = {
 {client{
 exception NoEditor
 }}
+
+open WidgetHTML
 
 let make = {string -> string -> interface{ fun container_id ext ->
   let mode =
@@ -112,16 +115,25 @@ let make = {string -> string -> interface{ fun container_id ext ->
   elt##className <- Js.string "editor";
   let container_elt = ExtDom.get_element_by_id container_id in
   let onclick_cb = ref (fun () -> ()) in
+  let onreset_cb = ref (fun () -> ()) in
+
   let console_div = div ~a:[a_class ["editor_console"]] [] in
   let console_box_div = div ~a:[a_class ["editor_console_box"]] [console_div] in
   let console = (To_dom.of_div console_box_div :> Dom.node Js.t) in
-  let button_div = WidgetHTML.small_button ["OK"] (fun _ -> !onclick_cb ()) in
-  let button = To_dom.of_div (div ~a:[a_class ["editorbutton"]] [button_div]) in
-  let button = (button :> Dom.node Js.t) in
+
+  let ok_b = WidgetHTML.small_button ["OK"] (fun _ -> !onclick_cb ()) in
+  let ok_b = div ~a:[a_class ["editor_button"]] [ok_b] in
+
+  let reset_b = WidgetHTML.small_button ["Reset"] (fun _ -> !onreset_cb ()) in
+  let reset_b = div ~a:[a_class ["editor_reset_button"]] [reset_b] in
+
+  let buttons = div ~a:[a_class ["editor_buttons"]] [ok_b; reset_b] in
+  let buttons = (To_dom.of_div buttons :> Dom.node Js.t) in
+
   elt##id <- Js.string editor_id;
   let elt = (elt :> Dom.node Js.t) in
   ignore (container_elt##appendChild (elt));
-  ignore (container_elt##appendChild (button));
+  ignore (container_elt##appendChild (buttons));
   ignore (container_elt##appendChild (console));
   let editor = CodeMirror.make editor_id mode in
   editor##setSize ("100%", "30em");
@@ -130,7 +142,7 @@ let make = {string -> string -> interface{ fun container_id ext ->
   let dispose () =
     ignore (editor##toTextArea ());
     ignore (container_elt##removeChild (elt));
-    ignore (container_elt##removeChild (button));
+    ignore (container_elt##removeChild (buttons));
     ignore (container_elt##removeChild (console))
   in
 
@@ -141,6 +153,7 @@ let make = {string -> string -> interface{ fun container_id ext ->
     Manip.replaceChildren console_div []
   in
   let set_ok_cb f = onclick_cb := f in
-  { get_value; set_value; dispose; set_ok_cb;
+  let set_reset_cb f = onreset_cb := f in
+  { get_value; set_value; dispose; set_ok_cb; set_reset_cb;
     console_write; console_clear }
 }}

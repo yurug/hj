@@ -98,8 +98,18 @@ div.reactive {
     position: relative;
 }
 
-div.editorbutton {
+div.editor_buttons {
     margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    height: 1.5em;
+}
+
+div.editor_button {
+    float: left;
+}
+
+div.editor_reset_button {
+    float: right;
 }
 
 #loader {

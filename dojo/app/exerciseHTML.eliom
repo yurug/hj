@@ -154,21 +154,25 @@ let exercise_page exo =
         with Not_found ->
           return None
       in
+      let blank_resource = Resource.make expected_file "" in
+      let get_exercise_initial_answer a =
+        Exercise.resource exo a >>= function
+          | `OK (r, _) -> return r
+          | `KO _ -> return blank_resource
+      in
+      lwt initial_answer = get_exercise_initial_answer expected_file in
+
       lwt answer_resource =
-        let blank_resource = Resource.make expected_file "" in
         match answer with
           | Some (Questions.File a, author) ->
             (Answers.resource answers a >>= function
               | `OK (r, _) -> return r
-              | `KO _ -> (Exercise.resource exo a >>= function
-                  | `OK (r, _) -> return r
-                  | `KO _ -> return blank_resource
-                ))
-          | _ -> Exercise.resource exo expected_file >>= function
-              | `OK (r, _) -> return r
-              | `KO _ -> return blank_resource
+              | `KO _ -> return initial_answer)
+          | _ -> return initial_answer
       in
       let answer_str = Resource.content answer_resource in
+
+      let initial_answer_str = Resource.content initial_answer in
 
       let submit_answer = server_function Json.t<string> (fun src ->
         Resource.set_content answer_resource src;
@@ -195,9 +199,14 @@ let exercise_page exo =
                 %display_evaluation_state (Some editor.console_write)
               ))
           in
+          let reset_answer () =
+            editor.set_value %initial_answer_str
+          in
+
           %reset := editor.EditorHTML.dispose;
           editor.EditorHTML.set_value %answer_str;
-          editor.EditorHTML.set_ok_cb submit
+          editor.EditorHTML.set_ok_cb submit;
+          editor.EditorHTML.set_reset_cb reset_answer;
         }}
       in
       return (div ~a:[a_onload onload] [
