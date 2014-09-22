@@ -448,6 +448,8 @@ let grade_program qid tags difficulty files cmd update =
 
   let process_stdout s = puts s in
 
+  let debug = Log.debug (Identifier.identifier_of_string "questions") in
+
   (* Generate a secret seed. *)
   let secret = Seed.generate () in
 
@@ -465,9 +467,11 @@ let grade_program qid tags difficulty files cmd update =
         commands := matched_group 2 s :: !commands
       ) else
         return ()
-    else
+    else (
+      debug s;
       (* FIXME: put this on the teacher only side. *)
       return ()
+    )
   )
   in
 
@@ -485,8 +489,7 @@ let grade_program qid tags difficulty files cmd update =
     | WriteStdout (_, s) -> process_stdout s
     | WriteStderr (_, s) -> process_stderr s
     | Exited s ->
-      Log.debug (Identifier.identifier_of_string "questions")
-        (Printf.sprintf "[%s] %s\n" (string_of_status s) cmd);
+      debug (Printf.sprintf "[%s] %s\n" (string_of_status s) cmd);
       (* Generate score and trace. *)
       let scores =
         [ (Automatic, (!automatic_score, !automatic_potential_score)) ]
