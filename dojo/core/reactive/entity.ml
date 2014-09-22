@@ -283,7 +283,14 @@ and type change = I.change
 
   let rec save_pool () =
     iter_on_pool (fun id e ->
-      Lwt.async (fun () -> save_on_disk ~now:true e >>= fun _ -> return ())
+      let nb = ref 0 in
+      Lwt.async (fun () ->
+        incr nb;
+        save_on_disk ~now:true e
+        >>= fun _ ->
+        decr nb;
+        if !nb = 0 then Log.debug (identifier e) "Saving pool done.";
+        return (decr nb))
     )
 
   and shutdown () =

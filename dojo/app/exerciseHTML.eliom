@@ -133,14 +133,19 @@ let exercise_page exo =
         ]
       in
       div ~a:[a_onload onload] (List.mapi qcm_item statements @ [
-        small_button ["OK"] {unit -> unit{ fun () ->
-          Lwt.async (fun () ->
-            %push_new_choices_server_function (%exo_str, %name_str, !(%choices))
-            >> (
-              Manip.replaceChildren %grade_div [%score_box "..." []];
-              Lwt_js.sleep 1.
-            ) >> %display_evaluation_state None
-          )
+        small_button ["OK"] {unit -> unit{
+          let ready = ref true in
+          fun () ->
+          if !ready then
+            Lwt.async (fun () ->
+              ready := false;
+              %push_new_choices_server_function (%exo_str, %name_str, !(%choices))
+              >> (
+                Manip.replaceChildren %grade_div [%score_box "..." []];
+                Lwt_js.sleep 1.
+              ) >> %display_evaluation_state None
+              >> (return (ready := true))
+            )
         }}
       ])
     in
@@ -196,16 +201,20 @@ let exercise_page exo =
           !(%reset) ();
           %editor := Some (%editor_maker %expected_extension);
           let editor = %get_editor () in
+          let ready = ref true in
           let submit () =
-            let src = editor.get_value () in
-            Lwt.async (fun () ->
-              %submit_answer src >> (
-                Manip.replaceChildren %grade_div [%score_box "..." []];
-                Lwt_js.sleep 1.
-              ) >> (
-                editor.console_clear ();
-                %display_evaluation_state (Some editor.console_write)
-              ))
+            if !ready then
+              let src = editor.get_value () in
+              Lwt.async (fun () ->
+                ready := false;
+                %submit_answer src >> (
+                  Manip.replaceChildren %grade_div [%score_box "..." []];
+                  Lwt_js.sleep 1.
+                ) >> (
+                  editor.console_clear ();
+                  %display_evaluation_state (Some editor.console_write)
+                  >> return (ready := true)
+                ))
           in
           let reset_answer () =
             editor.set_value %initial_answer_str
@@ -250,17 +259,21 @@ let exercise_page exo =
         ]
       in
       return (div ~a:[a_onload onload] (List.mapi item expressions @ [
-        small_button ["OK"] {unit -> unit{ fun () ->
-          Lwt.async (fun () ->
-            %push_new_values_server_function (%exo_str, %name_str, %values)
+        small_button ["OK"] {unit -> unit{
+          let ready = ref true in
+          fun () ->
+            if !ready then Lwt.async (fun () ->
+              ready := false;
+              %push_new_values_server_function (%exo_str, %name_str, %values)
               (* FIXME: Why is the gif not displayed here? *)
-            >> (
-              Manip.replaceChildren %grade_div [p [
-                pcdata "..."; EntityHTML.get_progress ()
-              ]];
-              Lwt_js.sleep 0.5
-            ) >> %display_evaluation_state None
-          )
+              >> (
+                Manip.replaceChildren %grade_div [p [
+                  pcdata "..."; EntityHTML.get_progress ()
+                ]];
+                Lwt_js.sleep 0.5
+              ) >> %display_evaluation_state None
+              >> return (ready := true)
+            )
         }}
       ]))
 
