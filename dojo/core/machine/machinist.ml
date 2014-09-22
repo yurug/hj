@@ -110,15 +110,17 @@ let copy_using_scp login_information addr =
         >>= fun _ -> return (fun () -> ())
 
 type sandbox_interface = {
-  execute : execute;
-  copy    : copy;
-  release : unit -> unit Lwt.t
+  login_information : login_information;
+  address           : address;
+  execute           : execute;
+  copy              : copy;
+  release           : unit -> unit Lwt.t
 }
 
 let build_sandbox_interface login_information address release =
   let execute = execute_using_ssh login_information address in
   let copy = copy_using_scp login_information address in
-  { execute; release; copy }
+  { execute; release; copy; address; login_information }
 
 type allocation_result =
   | AllocatedSandbox of sandbox_interface
@@ -140,8 +142,19 @@ include Entity.Make (struct
   type change = public_change
 
   let string_of_change = function
-    | AllocateSandbox _ -> "Request sandbox"
-    | ReleaseSandbox _ -> "Release sandbox"
+    | AllocateSandbox (Some (addr, t), _) ->
+      Printf.sprintf "Allocate sandbox : %s:%d [%d]"
+        (fst addr)
+        (snd addr)
+        t
+    | AllocateSandbox (None, _) ->
+      Printf.sprintf "Allocate sandbox : No information"
+
+    | ReleaseSandbox (addr, r) ->
+      Printf.sprintf "Release sandbox : %s@%s:%d"
+        (snd r).username
+        (fst addr)
+        (snd addr)
     | SetLogins _ -> "Set logins"
     | SetAddresses _ -> "Set addresses"
 
@@ -150,9 +163,17 @@ include Entity.Make (struct
     let get_wl addr content =
       List.assoc addr content.available_addresses
     and set_wl addr wl content =
-      { content with
-        available_addresses = update_assoc addr wl content.available_addresses
-      }
+      let content =
+        { content with
+          available_addresses = update_assoc addr wl content.available_addresses
+        }
+      in
+      Log.debug (InMemory.identifier state) (
+        Printf.sprintf "%s:%d %s"
+          (fst addr)
+          (snd addr)
+          (WaitingList.string_of_wl wl));
+      content
     in
 
     let make_change content =
@@ -357,7 +378,6 @@ let create id =
   )
   in
   make ~init id
-
 
 (* FIXME: This should be moved elsewhere. *)
 let all_identifiers_at path =

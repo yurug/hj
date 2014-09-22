@@ -177,6 +177,7 @@ let exec
     >>= fun job -> return (`OK (job, persistence))
 
   with NoSuchSandbox ->
+    Log.debug (Identifier.identifier_of_string "sandbox") "No such sandbox.";
     let e = `NoSuchSandbox in
     return (`KO e)
 
