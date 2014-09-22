@@ -470,12 +470,23 @@ let grade_program qid tags difficulty files cmd update =
       return ()
   )
   in
+
+  (* Run the command. *)
+  let cmd = Str.(global_replace (regexp "%seed") (Seed.to_string secret) cmd) in
+
+  let string_of_status = function
+    | Unix.WEXITED d -> Printf.sprintf "exited(%d)" d
+    | Unix.WSIGNALED d -> Printf.sprintf "interrupted(%d)" d
+    | Unix.WSTOPPED d -> Printf.sprintf "stopped(%d)" d
+  in
   let observer = Sandbox.(function
     | WaitingForSandbox _ -> putline "Waiting..."
     | FileModification _ -> return ()
     | WriteStdout (_, s) -> process_stdout s
     | WriteStderr (_, s) -> process_stderr s
     | Exited s ->
+      Log.debug (Identifier.identifier_of_string "questions")
+        (Printf.sprintf "[%s] %s\n" (string_of_status s) cmd);
       (* Generate score and trace. *)
       let scores =
         [ (Automatic, (!automatic_score, !automatic_potential_score)) ]
@@ -485,9 +496,7 @@ let grade_program qid tags difficulty files cmd update =
       update (EvaluationDone (qid, tags, difficulty,
                               { scores; trace; commands }))
   ) in
-  (* Run the command. *)
-  let cmd = Str.(global_replace (regexp "%seed") (Seed.to_string secret) cmd) in
-  Sandbox.(exec files cmd observer)
+  Sandbox.(exec files cmd observer ~limitations:[TimeOut 180.])
   >>= function
     | `OK (job, persistence_id) ->
       return (EvaluationHandled job)

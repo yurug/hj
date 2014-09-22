@@ -200,6 +200,7 @@ include Entity.Make (struct
             | [] ->
               return None
             | l ->
+              (* FIXME: Replace this by list_min ! *)
               return (Some (List.(hd (sort smallest_waiting_list l))))
         in
 
