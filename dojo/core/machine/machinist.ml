@@ -94,6 +94,7 @@ let copy_using_scp login_information addr =
           execute_using_ssh login_information addr "cleanup" observer
        else
           return (fun () -> ()))
+      >> Lwt_unix.sleep 0.5
       >> ExtUnix.scp
         ~timeout
         login_information.username login_information.ssh_key
