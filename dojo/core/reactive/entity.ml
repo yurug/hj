@@ -271,7 +271,11 @@ and type change = I.change
       to maintain the set of alive entities. *)
   let (loaded, load, iter_on_pool, empty_pool) =
     let pool = IdHashtbl.create 13 in
-    let iter f = IdHashtbl.iter f pool in
+    let iter f =
+      let l = ref [] in
+      IdHashtbl.iter (fun k v -> l := (k, v) :: !l) pool;
+      Lwt_list.iter_s (fun (x, v) -> f x v) !l
+    in
     let clear () = IdHashtbl.clear pool in
     (IdHashtbl.get pool, IdHashtbl.add pool, iter, clear)
 
@@ -282,15 +286,13 @@ and type change = I.change
   let active = ref true
 
   let rec save_pool () =
+    let nb = ref 0 in
     iter_on_pool (fun id e ->
-      let nb = ref 0 in
-      Lwt.async (fun () ->
-        incr nb;
-        save_on_disk ~now:true e
-        >>= fun _ ->
-        decr nb;
-        if !nb = 0 then Log.debug (identifier e) "Saving pool done.";
-        return (decr nb))
+      save_on_disk ~now:true e
+      >>= fun _ ->
+      decr nb;
+      if !nb = 0 then Log.debug (identifier e) "Saving pool done.";
+      return (decr nb)
     )
 
   and shutdown () =
@@ -305,8 +307,9 @@ and type change = I.change
        the internal state of an entity is always consistent because its
        consistency does not depend on the other entities' states. *)
     active := false;
-    save_pool ();
-    empty_pool ()
+    Lwt.async (fun () ->
+      save_pool () >> return (empty_pool ())
+    )
 
   (** [awake id reaction] loads the entity named [id] from the
       file system and instantiate it in memory. *)
