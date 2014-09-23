@@ -288,6 +288,7 @@ and type change = I.change
   let rec save_pool () =
     let nb = ref 0 in
     iter_on_pool (fun id e ->
+      incr nb;
       save_on_disk ~now:true e
       >>= fun _ ->
       decr nb;
