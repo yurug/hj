@@ -94,13 +94,17 @@ let find_sandbox requirements waiter =
   with Not_found ->
     raise_lwt NoSuchSandbox
 
-let on_line oc w = Lwt.async (fun () ->
-  try_lwt
-    Lwt_stream.iter_s w (Lwt_io.read_lines oc)
-  with _ ->
+let on_line oc w =
+  let closed = ref false in
+  Lwt.async (fun () ->
+    try_lwt
+      Lwt_stream.iter_s w (Lwt_io.read_lines oc)
+    with _ ->
+      closed := true;
     (** We stop the process when the stream is not alive anymore. *)
-    return ()
-)
+      return ()
+  );
+  closed
 
 (** [sandboxing sb limitations command observer] *)
 let sandboxing command release_flag s limitations (observer : _ -> unit Lwt.t) =
@@ -110,10 +114,17 @@ let sandboxing command release_flag s limitations (observer : _ -> unit Lwt.t) =
   in
   let observer = function
     | Machinist.ObserveProcess p ->
-      on_line p#stdout (fun l -> observer (WriteStdout (job, l)));
-      on_line p#stderr (fun l -> observer (WriteStderr (job, l)));
+      let stdout_closed =
+        on_line p#stdout (fun l -> observer (WriteStdout (job, l)))
+      and stderr_closed =
+        on_line p#stderr (fun l -> observer (WriteStderr (job, l)))
+      in
       lwt status = p#status in
-      p#close
+      (if not (!stderr_closed && !stdout_closed) then
+        Lwt_unix.sleep 2.
+      else
+         return ()
+      ) >> p#close
       >> (if release_flag then (
         s.Machinist.execute "kill -9 -1" (fun _ -> return ())
         >> s.Machinist.release ()
