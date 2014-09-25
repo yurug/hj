@@ -20,7 +20,7 @@ let answers_identifier exercise_identifier user_identifier =
 type internal_state = {
   contributors : User.identifier list;
   exercise     : Identifier.t;
-  description  : Questions.t Hashcons.hash_consed;
+  description  : Questions.t;
   answers      : Questions.answers;
   evaluations  : Questions.evaluations;
 } deriving (Json)
@@ -31,8 +31,6 @@ type public_change =
   | NewEvaluation of Questions.identifier * User.identifier * Questions.answer
   | UpdateEvaluationState of Questions.identifier * Questions.evaluation_state
   | NewContributor of Identifier.t
-
-let description_table = Hashcons.create 13
 
 include Entity.Make (struct
 
@@ -93,7 +91,7 @@ include Entity.Make (struct
           update_evaluations
             exo_real_path answer_real_path
             content.evaluations
-            content.description.Hashcons.node.questions
+            content.description.questions
             qid answer update
         in
         update_tags qid evaluation_state
@@ -111,7 +109,6 @@ include Entity.Make (struct
         (* FIXME: We must implement a caching system not to evaluate
            FIXME: twice the same answers on the same questions.
            FIXME: Yet, this caching process should be bypassable... *)
-        let description = Hashcons.hashcons description_table description in
         iter_answers_s (fun qid (a, uid) ->
           later (NewEvaluation (qid, uid, a))
         ) content.answers
@@ -141,7 +138,6 @@ include Entity.Make (struct
 end)
 
 let answers_for id uid description =
-  let description = Hashcons.hashcons description_table description in
   let answers_id = answers_identifier id uid in
   make answers_id >>= function
     | `OK answers ->
