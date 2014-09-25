@@ -438,12 +438,21 @@ let grade_regexp = Str.regexp "GRADE \\([0-9]+\\) \\([0-9]+\\)/\\([0-9]+\\)"
 let command_regexp = Str.regexp "COMMAND \\([0-9]+\\) \\(.*\\)$"
 
 let grade_program qid tags difficulty files cmd update =
+  let trace_size                = ref 0 in
   let trace                     = ref [] in
   let automatic_score           = ref 0 in
   let automatic_potential_score = ref 0 in
   let commands                  = ref [] in
 
-  let puts s = return (trace := Message s :: !trace) in
+  let puts s =
+    incr trace_size;
+    if !trace_size < 1024 then
+      return (trace := Message s :: !trace)
+    else if !trace_size = 1024 then
+      return (trace := Message "-- too long trace --" :: !trace)
+    else
+      return ()
+  in
   let putline s = puts (s ^ "\n") in
 
   let process_stdout s = puts s in
