@@ -621,7 +621,7 @@ and type change = I.change
     Lwt.async (fun () ->
       let rec forever () =
         return (save_pool ())
-        >> Lwt_unix.sleep 600.
+        >> Lwt_unix.sleep 900.
         >> if !active then forever () else return ()
       in
       forever ()
