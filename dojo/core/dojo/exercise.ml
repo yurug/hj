@@ -228,6 +228,7 @@ let check_answers_consistency exo uid questions =
     lookup_user_answers exo uid >>= function
     | `OK answers -> Answers.(
       lwt q = observe answers (fun data -> return (content data).description) in
+      let q = q.Hashcons.node in
       if q <> questions then (
         push_new_description answers questions
       ) else
