@@ -18,7 +18,7 @@ let get_answers_channel = server_function Json.t<string> (fun id ->
     | `OK a ->
       let s = Lwt_stream.clone (Entity.channel a) in
       let s = Lwt_stream.map (fun _ -> ()) s in
-      let c = Eliom_comet.Channel.create s in
+      let c = Eliom_comet.Channel.create_newest s in
       Hashtbl.add channels id c;
       return (Some c)
     | `KO _ -> return None (* FIXME *)

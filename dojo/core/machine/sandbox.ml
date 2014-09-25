@@ -120,12 +120,16 @@ let sandboxing command release_flag s limitations (observer : _ -> unit Lwt.t) =
         on_line p#stderr (fun l -> observer (WriteStderr (job, l)))
       in
       lwt status = p#status in
-      (if not (!stderr_closed && !stdout_closed) then
-          (* FIXME: Should be clean (timeouted) wait... *)
-          Lwt_unix.sleep 2.
-       else
+      let rec wait_closed i =
+        if i = 0 then
           return ()
-      ) >> p#close
+        else if not (!stderr_closed && !stdout_closed) then (
+          Lwt_unix.sleep 0.1
+          >> wait_closed (i - 1)
+        ) else return ()
+      in
+      wait_closed 20
+      >> p#close
       >> (if release_flag then (
         s.Machinist.execute "kill -9 -1" (fun _ -> return ())
         >> s.Machinist.release ()

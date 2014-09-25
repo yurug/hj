@@ -11,6 +11,7 @@ common/extPervasives
 common/position
 common/syntacticAnalysis
 common/rb
+common/hashcons
 
 reactive/reactiveErrors
 reactive/VFS
