@@ -342,8 +342,7 @@ and type change = I.change
            FIXME: because it is not expansive but this is clearly
            FIXME: not satisfactory... *)
         (*        >> Lwt_condition.wait e.react_cond *)
-        >> Lwt_unix.yield ()
-        >> Lwt_unix.sleep 0.5
+        >> Lwt_unix.sleep 0.2
         >>= tick
       in
       tick ()
