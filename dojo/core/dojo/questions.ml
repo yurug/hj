@@ -36,7 +36,19 @@ deriving (Json)
 
 type t = exercise deriving (Json)
 
-let empty_exercise = {
+let hashconsed = ref []
+
+let table = Hashcons.create 13
+
+let make e =
+  let e = Hashcons.hashcons table e in
+  (** The following avoid Weak pointers to be active. *)
+  (* FIXME: Use a monotonic hashconsing module... *)
+  if not (List.memq e !hashconsed) then
+    hashconsed := e :: !hashconsed;
+  e.Hashcons.node
+
+let empty_exercise = make {
   etitle = TNil;
   group_tags = [];
   questions = TNil;
@@ -99,7 +111,7 @@ module ReifyFromAka = struct
 
   let exercise = function
     | VRecord e ->
-      {
+      make {
         etitle     = template string (lookup "etitle" e);
         group_tags = words (template string (lookup "group_tags" e));
         questions  = template questions (lookup "questions" e)
