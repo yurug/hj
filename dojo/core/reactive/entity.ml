@@ -286,14 +286,11 @@ and type change = I.change
   let active = ref true
 
   let rec save_pool () =
-    let nb = ref 0 in
     iter_on_pool (fun id e ->
-      incr nb;
       save_on_disk ~now:true e
-      >>= fun _ ->
-      decr nb;
-      if !nb = 0 then Log.debug (identifier e) "Saving pool done.";
-      return (decr nb)
+      >>= fun _ -> return ()
+    ) >> (
+      return (Log.debug (identifier_of_string "Entity") "Saving pool done.")
     )
 
   and shutdown () =
