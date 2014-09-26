@@ -383,17 +383,34 @@ let exercise_page exo =
               Raw.a ~a:[a_href (Xml.uri_of_string u)] [pcdata (cap download)]
         in
         let show_trace_button t =
-          let t = Str.(split (regexp "\n") t) in
           link_button [I18N.String.see]
             {unit -> unit{ fun () ->
-              try
-                let editor= %get_editor () in
-                editor.EditorHTML.console_clear ();
-                editor.EditorHTML.console_write (
-                  List.map (fun s -> p [pcdata s]) %t
-                )
-              with Not_found -> ()
-             }}
+              Lwt.async (fun () ->
+                try_lwt
+                  (* FIXME: Use a standard JS function. *)
+                  let split c s =
+                    let b = Buffer.create 23 in
+                    let l = ref [] in
+                    let flush () =
+                      l := Buffer.contents b :: !l;
+                      Buffer.clear b
+                    in
+                    String.iter (fun c' ->
+                      if c = c' then flush () else Buffer.add_char b c'
+                    ) s;
+                    flush ();
+                    List.rev !l
+                  in
+                  lwt trace = %ExerciseHTTP.trace_get_server_function %t in
+                  let editor= %get_editor () in
+                  editor.EditorHTML.console_clear ();
+                  editor.EditorHTML.console_write (
+                    let trace = split '\n' trace in
+                    List.map (fun s -> p [pcdata s]) trace
+                  );
+                  return ()
+                with Not_found -> return ())
+              }}
         in
         tr (fields [pcdata l; pcdata u; pcdata f; a; pcdata e;
                     show_trace_button t])
@@ -433,7 +450,7 @@ let exercise_page exo =
     in
 
     let teacher_space =
-      active_div 1. (fun () ->
+      active_div 5. (fun () ->
         exercise_results_of_question_function exo_id name_str >>= function
           | `OK rows -> return [results_table rows]
           | `KO _ -> return [] (* FIXME *)

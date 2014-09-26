@@ -12,6 +12,7 @@ common/position
 common/syntacticAnalysis
 common/rb
 common/hashcons
+common/proxy
 
 reactive/reactiveErrors
 reactive/VFS

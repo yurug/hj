@@ -312,8 +312,33 @@ let gen_string_of_evaluation_state f g = Questions.(function
   | EvaluationHandled _ -> ("processing...", "")
 )
 
-let small_string_of_evaluation_state = Questions.(
-  gen_string_of_evaluation_state small_string_of_grade string_of_grade_trace
+module TraceProxy = Proxy.Make (struct
+  type t = string
+  let hash = Hashtbl.hash
+  let equal x y = (x = y)
+end)
+let trace_table = TraceProxy.make ()
+let trace_cache = TraceProxy.cache trace_table
+
+{shared{
+type trace_key = int * float deriving (Json)
+}}
+let trace_get : trace_key -> string = TraceProxy.deref trace_table
+
+
+
+let small_string_of_evaluation_state s = Questions.(
+  let (s1, s2) =
+    gen_string_of_evaluation_state
+      small_string_of_grade
+      string_of_grade_trace
+      s
+  in
+  (s1, (trace_cache s2 : trace_key))
+)
+
+let trace_get_server_function = server_function Json.t<trace_key> (fun k ->
+  return (trace_get k)
 )
 
 let string_of_evaluation_state s =
@@ -404,7 +429,7 @@ let exercise_results_of_question_function name qid =
 let results_output_to_string rs =
   return (`OK (String.concat "\n" (List.map (fun (l, u, f, a, e, t) ->
     let a = match a with Text s -> s | URL s -> s in
-    Printf.sprintf "%10s %20s %30s %10s %10s %10s" l u f a e t
+    Printf.sprintf "%10s %20s %30s %10s %10s" l u f a e
   ) rs)))
 
 let exercise_results_of_question = HTTP.(

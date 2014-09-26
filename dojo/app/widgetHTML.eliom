@@ -484,7 +484,7 @@ let fileuploader width height import =
     (pcdata "↑")
 
 let active_div (freq : float) (f : unit -> [ div_content ] elt list Lwt.t) =
-  let sf = server_function Json.t<unit> f in
+  let sf = server_function ~timeout:3600. Json.t<unit> f in
   let d = div [] in
   let onload =
     {{ fun _ ->
