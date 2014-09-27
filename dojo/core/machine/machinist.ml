@@ -332,7 +332,7 @@ let provide_sandbox_interface mc exclusive waiting_rank =
       | InWaitingList (addr, rank, ticket) ->
         waiting_rank rank
         >> Lwt_unix.yield ()
-        >> Lwt_unix.sleep 1. (* FIXME: This should depend on rank...*)
+        >> Lwt_unix.sleep 0.1 (* FIXME: This should depend on rank...*)
         >> wait (Some (addr, ticket))
   in
   wait None
