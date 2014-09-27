@@ -134,6 +134,7 @@ let make q =
         \\usepackage{fullpage}
         \\usepackage{graphics}
         \\usepackage{listings}
+        \\usepackage{textcomp}
         \\title{%s}
         \\date{}
         \\usepackage{eurosym}
