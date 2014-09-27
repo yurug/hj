@@ -463,7 +463,9 @@ and type change = I.change
 
       | Modified (dependencies, queue) ->
         let cs = Queue.fold (fun cs c ->
-          if List.mem c cs then cs else c :: cs
+          match cs with
+            | [] -> [c]
+            | c' :: cs' -> if c = c' then cs else c :: cs
         ) [] queue
         in
         e.state <- UpToDate;
