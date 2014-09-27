@@ -26,7 +26,7 @@ let make q =
 
     let escape s0 = Str.(
       let s = global_replace (regexp "&") "\\&" s0 in
-      Printf.eprintf "%s -> %s\n%!" s0 s;
+      Log.debug (Identifier.identifier_of_string "Latex") (Printf.sprintf "%s -> %s\n%!" s0 s);
       s
     )
     in
