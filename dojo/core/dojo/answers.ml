@@ -51,8 +51,10 @@ include Entity.Make (struct
         (string_of_identifier uid)
         (Questions.string_of_answer a)
 
-    | UpdateEvaluationState (qid, _) ->
-      Printf.sprintf "update evaluation state of %s" qid
+    | UpdateEvaluationState (qid, s) ->
+      Printf.sprintf "update evaluation state of %s: %s"
+        qid
+        Questions.(string_of_evaluation_state s)
 
     | NewQuestions qs ->
       Printf.sprintf "new questions"

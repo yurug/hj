@@ -455,6 +455,7 @@ and type change = I.change
 
       | Modified (dependencies, queue) ->
         let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
+        Queue.clear queue;
         e.state <- UpToDate;
         apply dependencies e (List.rev cs)
 
