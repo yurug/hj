@@ -118,6 +118,9 @@ module type S = sig
       data and this type of external change. *)
   type t = (data, change) entity
 
+  (** A string representation of this kind of entity. *)
+  val kind : string
+
   (** [make ?init reaction id] returns a representation of the entity
       [id] in memory whose behavior is defined by [reaction].
 
@@ -216,6 +219,9 @@ module type U = sig
   (** Type high-level change type. *)
   type change
 
+  (** A string representation for this kind of entity. *)
+  val kind : string
+
   (** The reactive behavior of the entity. One can assume that
       the state of the entity will not change during the
       execution of [react]. *)
@@ -239,6 +245,7 @@ module Make (I : U)
 (** Data-only entity. *)
 module type D = sig
   type data deriving (Json)
+  val kind : string
   val string_of_replacement : data -> string
   val current_version : string
   val converters : (module OnDisk.Converter with type destination = data) list

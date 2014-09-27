@@ -160,6 +160,8 @@ module type S = sig
   type change
   type t = (data, change) entity
 
+  val kind : string
+
   val make:
     ?init:(data * dependencies * Resource.t list)
     -> ?reaction:(data, change) reaction
@@ -214,6 +216,7 @@ end
 module type U = sig
   type data deriving (Json)
   type change
+  val kind : string
   val react : (data, change) reaction
   val string_of_change : change -> string
   val current_version : string
@@ -223,6 +226,7 @@ end
 module type D =
 sig
   type data deriving (Json)
+  val kind : string
   val string_of_replacement : data -> string
   val current_version : string
   val converters : (module OnDisk.Converter with type destination = data) list
@@ -234,6 +238,8 @@ module Passive (I : D) : U
 = struct
   type data = I.data deriving (Json)
   type change = I.data InMemory.state_change
+
+  let kind = I.kind
 
   let react _ _ cs _ =
     return (InMemory.state_changes cs)
@@ -256,6 +262,8 @@ and type change = I.change
   type data = I.data
 
   type change = I.change
+
+  let kind = I.kind
 
   type t = (data, change) entity
 
@@ -290,7 +298,7 @@ and type change = I.change
       save_on_disk ~now:true e
       >>= fun _ -> return ()
     ) >> (
-      return (Log.debug (identifier_of_string "Entity") "Saving pool done.")
+      return (Log.debug (identifier_of_string I.kind) "Saving pool done.")
     )
 
   and shutdown () =
@@ -454,8 +462,10 @@ and type change = I.change
         return ()
 
       | Modified (dependencies, queue) ->
-        let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
-        Queue.clear queue;
+        let cs = Queue.fold (fun cs c ->
+          if List.mem c cs then cs else c :: cs
+        ) [] queue
+        in
         e.state <- UpToDate;
         apply dependencies e (List.rev cs)
 

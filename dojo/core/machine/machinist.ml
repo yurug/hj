@@ -140,6 +140,8 @@ include Entity.Make (struct
   let current_version = "1.0"
   let converters = []
 
+  let kind = "machinist"
+
   type change = public_change
 
   let string_of_change = function

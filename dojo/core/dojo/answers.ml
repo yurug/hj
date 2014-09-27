@@ -38,6 +38,8 @@ include Entity.Make (struct
 
   type change = public_change
 
+  let kind = "answers"
+
   let string_of_change = function
     | NewAnswer (qid, uid, a) ->
       Printf.sprintf "new answer to %s by %s : %s"

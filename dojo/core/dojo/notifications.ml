@@ -47,6 +47,8 @@ include Entity.Make (struct
   type data = internal_state deriving (Json)
   type change = public_change
 
+  let kind = "notifications"
+
   let react state mdeps cs later =
     let make_change content = function
       | NewNotification n ->

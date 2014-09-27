@@ -56,6 +56,8 @@ include Entity.Make (struct
 
   type change = public_change
 
+  let kind = "exercise"
+
   let react state mdeps cs later =
     let update_code content =
       let return_error msg =
