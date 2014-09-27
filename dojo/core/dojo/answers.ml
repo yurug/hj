@@ -99,12 +99,12 @@ include Entity.Make (struct
       )
 
       | UpdateEvaluationState (qid, evaluation_state) ->
-        let current_evaluation_state =
+ (*       let current_evaluation_state =
           Questions.evaluation_state content.evaluations qid
         in
         if evaluation_state = current_evaluation_state then
           return content
-        else (
+        else *) (
           update_tags qid evaluation_state
           >> return {
             content with evaluations =
