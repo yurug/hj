@@ -8,9 +8,15 @@ let make q =
     let buffer = Buffer.create 13 in
     let puts = Buffer.add_string buffer in
 
-    let rec template f = function
+    let escape s0 = Str.(
+      let s = global_replace (regexp "&") "\\&" s0 in
+      s
+    )
+    in
+
+    let rec template ?(escape_flag=true) f = function
       | TAtom (s, t) ->
-        puts s;
+        puts (if escape_flag then escape s else s);
         template f t
       | TCode (x, t) ->
         f x;
@@ -22,15 +28,6 @@ let make q =
     let rec stars = function
       | 0 -> ""
       | n -> "$\\star$" ^ stars (n - 1)
-    in
-
-    let debug = Log.debug (Identifier.identifier_of_string "Latex") in
-
-    let escape s0 = Str.(
-      let s = global_replace (regexp "&") "\\&" s0 in
-      debug (Printf.sprintf "%s -> %s\n%!" s0 s);
-      s
-    )
     in
 
     let rec questions level = function
@@ -116,8 +113,6 @@ let make q =
         puts "}"
       | String s ->
         let s = flatten_string s in
-        debug ("String:" ^ s);
-        debug ("Escape String:" ^ (escape s));
         puts (escape s)
       | Code t ->
         puts (sprintf "\\verb!%s!" (flatten_string t))
@@ -129,8 +124,8 @@ let make q =
         puts (flatten_string s)
       | Hlink (url, caption) ->
         puts (sprintf "\\url{%s}{%s}"
-                (flatten_string url)
-                (flatten_string caption))
+                (escape (flatten_string url))
+                (escape (flatten_string caption)))
 
     in
     template (questions 1) q.questions;
