@@ -99,11 +99,18 @@ include Entity.Make (struct
       )
 
       | UpdateEvaluationState (qid, evaluation_state) ->
-        update_tags qid evaluation_state
-        >> return {
-          content with evaluations =
-            Questions.update_evaluation qid evaluation_state content.evaluations
-        }
+        let current_evaluation_state =
+          Questions.evaluation_state content.evaluations qid
+        in
+        if evaluation_state = current_evaluation_state then
+          return content
+        else (
+          update_tags qid evaluation_state
+          >> return {
+            content with evaluations =
+              Questions.update_evaluation qid evaluation_state content.evaluations
+          }
+        )
 
       | NewQuestions description ->
         (* FIXME: We must implement a caching system not to evaluate
