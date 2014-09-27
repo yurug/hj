@@ -24,6 +24,13 @@ let make q =
       | n -> "$\\star$" ^ stars (n - 1)
     in
 
+    let escape s = Str.(
+      let s = global_replace (regexp "&") "\\&" s in
+      s
+    )
+    in
+    let flatten_string s = escape (flatten_string s) in
+
     let rec questions level = function
       | Section (title, q) ->
         begin match level with
