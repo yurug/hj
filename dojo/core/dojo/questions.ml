@@ -377,7 +377,7 @@ deriving (Json)
 
 let is_completed = function
   | EvaluationDone (_, _, _, g) ->
-    List.for_all (fun (_, (i, o)) -> i = o) g.scores
+    List.for_all (fun (_, (i, o)) -> i = o && o > 0) g.scores
   | _ ->
     false
 
