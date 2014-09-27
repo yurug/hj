@@ -462,12 +462,7 @@ and type change = I.change
         return ()
 
       | Modified (dependencies, queue) ->
-        let cs = Queue.fold (fun cs c ->
-          match cs with
-            | [] -> [c]
-            | c' :: cs' -> if c = c' then cs else c :: cs
-        ) [] queue
-        in
+        let cs = Queue.fold (fun cs c -> c :: cs) [] queue in
         e.state <- UpToDate;
         apply dependencies e (List.rev cs)
 
