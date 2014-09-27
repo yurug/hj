@@ -24,8 +24,9 @@ let make q =
       | n -> "$\\star$" ^ stars (n - 1)
     in
 
-    let escape s = Str.(
-      let s = global_replace (regexp "&") "\\&" s in
+    let escape s0 = Str.(
+      let s = global_replace (regexp "&") "\\&" s0 in
+      Printf.eprintf "%s -> %s\n%!" s0 s;
       s
     )
     in
@@ -55,9 +56,10 @@ let make q =
         puts "\\begin{itemize}\n";
         List.iter (fun t ->
           puts "\\item[$\\square$]";
-          template text t
+          template text t;
+          puts "\n"
         ) choices;
-        puts "\\end{itemize}\n\n"
+       puts "\\end{itemize}\n\n"
 
       | Grader (expected_file, _, _) ->
         puts (sprintf "\\hfill$\\triangleright$ \\verb!%s!"
