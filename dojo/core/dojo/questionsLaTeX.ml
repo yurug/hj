@@ -24,9 +24,11 @@ let make q =
       | n -> "$\\star$" ^ stars (n - 1)
     in
 
+    let debug = Log.debug (Identifier.identifier_of_string "Latex") in
+
     let escape s0 = Str.(
       let s = global_replace (regexp "&") "\\&" s0 in
-      Log.debug (Identifier.identifier_of_string "Latex") (Printf.sprintf "%s -> %s\n%!" s0 s);
+      debug (Printf.sprintf "%s -> %s\n%!" s0 s);
       s
     )
     in
@@ -113,7 +115,10 @@ let make q =
         template text t;
         puts "}"
       | String s ->
-        puts (escape (flatten_string s))
+        let s = flatten_string s in
+        debug ("String:" ^ s);
+        debug ("Escape String:" ^ (escape s));
+        puts (escape s)
       | Code t ->
         puts (sprintf "\\verb!%s!" (flatten_string t))
       | LaTeX t ->
