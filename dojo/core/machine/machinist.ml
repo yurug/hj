@@ -351,9 +351,6 @@ let lockable mc =
   (* FIXME *)
   return true
 
-let kind mc =
-  return ()
-
 let set_logins mc logins =
   change mc (SetLogins logins)
 
