@@ -29,7 +29,6 @@ let make q =
       s
     )
     in
-    let flatten_string s = escape (flatten_string s) in
 
     let rec questions level = function
       | Section (title, q) ->
@@ -112,7 +111,7 @@ let make q =
         template text t;
         puts "}"
       | String s ->
-        puts (flatten_string s)
+        puts (escape (flatten_string s))
       | Code t ->
         puts (sprintf "\\verb!%s!" (flatten_string t))
       | LaTeX t ->
