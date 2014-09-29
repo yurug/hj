@@ -449,7 +449,7 @@ let exercise_page exo =
     in
 
     let teacher_space =
-      active_div 5. (fun () ->
+      active_div 15. (fun () ->
         exercise_results_of_question_function exo_id name_str >>= function
           | `OK rows -> return [results_table rows]
           | `KO _ -> return [] (* FIXME *)
