@@ -188,8 +188,10 @@ let exec
     let release_when_finished = persistence <> RequirePersistence in
 
     (** Process command. *)
+    let iobserver = fun _ -> return () in
+
     (if files <> [] then
-        copy_on_sandbox files persistence false sandbox limitations observer
+        copy_on_sandbox files persistence false sandbox limitations iobserver
      else
         return 0
     ) >> exec_on_sandbox cmd release_when_finished sandbox limitations observer

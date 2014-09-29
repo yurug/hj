@@ -142,7 +142,6 @@ let exercise_page exo =
               %push_new_choices_server_function (%exo_str, %name_str, !(%choices))
               >> (
                 Manip.replaceChildren %grade_div [%score_box "..." []];
-                Lwt_js.sleep 1.
               ) >> %display_evaluation_state None
               >> (return (ready := true))
             )
