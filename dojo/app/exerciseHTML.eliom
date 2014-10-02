@@ -539,9 +539,9 @@ let exercise_page exo =
         | _ ->
           try_lwt
             Firebug.console##log (Js.string ("Focus " ^ name));
-            %save_focus (%exo_str, name) >>
-            let qdiv = Hashtbl.find %questions_div name in
+            %save_focus (%exo_str, name) >> (
             Firebug.console##log (Js.string ("Save focus done"));
+            let qdiv = Hashtbl.find %questions_div name in
             %focus := Some name;
             Manip.replaceChildren %statement_div [qdiv.content];
             Firebug.console##log (Js.string ("Replace children done"));
@@ -551,6 +551,7 @@ let exercise_page exo =
             WidgetHTML.highlight qdiv.codes;
             Firebug.console##log (Js.string ("Focus " ^ name ^ " done"));
             return true
+            )
           with Not_found ->
             Firebug.console##log (Js.string ("Focus " ^ name ^ " failed"));
             return false (* Inconsistent name. *)
