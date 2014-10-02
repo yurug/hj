@@ -504,13 +504,18 @@ let grade_program qid tags difficulty files cmd update =
     | Unix.WSIGNALED d -> Printf.sprintf "interrupted(%d)" d
     | Unix.WSTOPPED d -> Printf.sprintf "stopped(%d)" d
   in
+  let start = Unix.gettimeofday () in
+
   let observer = Sandbox.(function
     | WaitingForSandbox _ -> putline "Waiting..."
     | FileModification _ -> return ()
     | WriteStdout (_, s) -> process_stdout s
     | WriteStderr (_, s) -> process_stderr s
     | Exited s ->
-      debug (Printf.sprintf "[%s] %s\n" (string_of_status s) cmd);
+      let now = Unix.gettimeofday () in
+      debug (Printf.sprintf "[%s|%f] %s\n"
+               (string_of_status s)
+               (now -. start) cmd);
       (* Generate score and trace. *)
       let scores =
         [ (Automatic, (!automatic_score, !automatic_potential_score)) ]

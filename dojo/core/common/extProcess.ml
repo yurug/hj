@@ -26,14 +26,14 @@ let ( !% ) s = (shell s, s)
 let strace_descriptor = Log.make_event_descriptor "strace" Facts.string
 
 let strace_lwt f (cmd, s) =
-(*  Log.log_string system strace_descriptor s; *)
+  Log.log_string system strace_descriptor s;
   let stop = Log.log_process system strace_descriptor s in
   lwt ret = f cmd in
   ignore (stop ());
   return ret
 
 let strace f (cmd, s) =
-(*  Log.log_string system strace_descriptor s; *)
+  Log.log_string system strace_descriptor s;
   let stop = Log.log_process system strace_descriptor s in
   (f cmd, (fun () -> ignore (stop ())))
 
