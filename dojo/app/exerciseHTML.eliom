@@ -538,6 +538,7 @@ let exercise_page exo =
           return true
         | _ ->
           try_lwt
+            Firebug.console##log (Js.string ("Focus " ^ name));
             %save_focus (%exo_str, name) >>
             let qdiv = Hashtbl.find %questions_div name in
             %focus := Some name;
@@ -545,6 +546,7 @@ let exercise_page exo =
             qdiv.initialize ();
             WidgetHTML.display_math ["'central_column'"];
             WidgetHTML.highlight qdiv.codes;
+            Firebug.console##log (Js.string ("Focus " ^ name ^ " done"));
             return true
           with Not_found -> return false (* Inconsistent name. *)
      }}
