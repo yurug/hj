@@ -26,6 +26,41 @@ let fresh_id =
 exception Done
 }}
 
+let submit_src_answer =
+  server_function Json.t<string * string * string * string * string> (
+    fun (exo_str, (name : string), answers_str, (expected_file : string), src) ->
+      let exo_id = identifier_of_string exo_str in
+      let answers_id = identifier_of_string answers_str in
+      let resource = Resource.make expected_file src in
+      OnDisk.save_resource answers_id resource
+      >> Lwt_unix.sleep 1.
+      >> push_new_answer_function (exo_id, name, File expected_file)
+      >> return ()
+  )
+
+let focus_erefs = Hashtbl.create 13
+
+let focus_eref exo_str =
+  try Hashtbl.find focus_erefs exo_str
+  with Not_found ->
+    let eref = Eliom_reference.eref
+      ~scope:Eliom_common.default_session_scope
+      ~persistent:("focus_" ^ (Str.(global_replace (regexp "/") "__" exo_str)))
+      None
+    in
+    Hashtbl.add focus_erefs exo_str eref;
+    eref
+
+let get_focus = server_function Json.t<string> (fun exo_str ->
+  let eref = focus_eref exo_str in
+  Eliom_reference.get eref
+)
+
+let save_focus = server_function Json.t<string * string> (fun (exo_str, name) ->
+  let eref = focus_eref exo_str in
+  Eliom_reference.set eref (Some name)
+)
+
 let exercise_page exo =
 
   let focus = {string option ref{ ref None }} in
@@ -40,8 +75,10 @@ let exercise_page exo =
       name title
       tags difficulty
       statements context answers editor_maker =
-    let name_str : string = name in
-    let answers_str = string_of_identifier (Answers.identifier answers) in
+
+    let name_str : string = name
+    and answers_id = Answers.identifier answers in
+    let answers_str = string_of_identifier answers_id in
 
 
     let codes = ref [] in
@@ -49,13 +86,15 @@ let exercise_page exo =
     let grade_div = div ~a:[a_class ["score_div"]] [] in
 
     let editor = {EditorHTML.interface option ref{ ref None }} in
-    let get_editor = {unit -> EditorHTML.interface{ fun () -> match !(%editor) with
-      | None -> raise Not_found
-      | Some e -> e
+    let get_editor = {unit -> EditorHTML.interface{ fun () ->
+      match !(%editor) with
+        | None -> raise Not_found
+        | Some e -> e
     }}
     in
 
-    let score_box = {string -> [p_content] elt list -> div elt{ fun score criteria ->
+    let score_box = {string -> [p_content] elt list -> div elt{
+      fun score criteria ->
       div ~a:[a_class ["score_box"]] [
         p ~a:[a_class ["score"]] [pcdata score];
         p ~a:[a_class ["criteria"]] criteria
@@ -149,7 +188,7 @@ let exercise_page exo =
       ])
     in
 
-    let grader_as_html expected_file =
+    let grader_as_html (expected_file : string) =
 
       let expected_extension = Str.(
         if string_match (regexp ".*\\(\\..*\\)") expected_file 0 then
@@ -185,15 +224,6 @@ let exercise_page exo =
 
       let initial_answer_str = Resource.content initial_answer in
 
-      let submit_answer =
-        server_function ~timeout:600. Json.t<string> (fun src ->
-          Resource.set_content answer_resource src;
-          OnDisk.save_resource (Answers.identifier answers) answer_resource
-          >> Lwt_unix.sleep 1.
-          >> push_new_answer_function (exo_id, name, File expected_file)
-          >> return ()
-      )
-      in
       let onload =
         {{ fun _ ->
           let open EditorHTML in
@@ -206,7 +236,7 @@ let exercise_page exo =
               let src = editor.get_value () in
               Lwt.async (fun () ->
                 ready := false;
-                %submit_answer src >> (
+                %submit_src_answer (%exo_str, %name_str, %answers_str, %expected_file, src) >> (
                   Manip.replaceChildren %grade_div [%score_box "..." []];
                   Lwt_js.sleep 1.
                 ) >> (
@@ -287,12 +317,6 @@ let exercise_page exo =
         (* FIXME *)
         ""
       in
-      let submit = server_function ~timeout:600. Json.t<string> (fun choice ->
-        let idx = ExtPervasives.list_index_of choice choices in
-        push_new_choice_function (exo_str, name_str, idx)
-        (* FIXME: Why is the gif not displayed here? *)
-      )
-      in
       let property_selector =
         Raw.select ~a:[a_onload onload] (
           List.map (fun s ->
@@ -305,7 +329,17 @@ let exercise_page exo =
         let e = To_dom.of_select %property_selector in
         let select = fun _ ->
           Lwt.async (fun () ->
-            %submit (Js.to_string e##value)
+            (* FIXME: Move that elsewhere. *)
+            let list_index_of k =
+              let rec find i = function
+                | [] -> raise Not_found
+                | x :: xs when x = k -> i
+                | _ :: xs -> find (succ i) xs
+              in
+              find 0
+            in
+            let idx = list_index_of(Js.to_string e##value) %choices in
+            %push_new_choice_server_function (%exo_str, %name_str, idx)
             >> (
               Manip.replaceChildren %grade_div [p [
                 pcdata "..."; EntityHTML.get_progress ()
@@ -468,22 +502,8 @@ let exercise_page exo =
     ))
   in
 
-  let focus_eref =
-    Eliom_reference.eref
-      ~scope:Eliom_common.default_session_scope
-      ~persistent:("focus_" ^ (Str.(global_replace (regexp "/") "__" exo_str)))
-      None
-  in
-
-  let save_focus = server_function ~timeout:600. Json.t<string> (fun name ->
-    Eliom_reference.set focus_eref (Some name)
-  )
-  in
-
   let questions_div = {
-    (string,
-     (unit, (([ pre ]) elt list * [ div_content ] elt)) server_function
-    ) Hashtbl.t
+    (string, (([ pre ]) elt list * [ div_content ] elt)) Hashtbl.t
     {
       Hashtbl.create 13
     }}
@@ -496,9 +516,8 @@ let exercise_page exo =
           return true
         | _ ->
           try_lwt
-            %save_focus name >>
-            let div = Hashtbl.find %questions_div name in
-            lwt codes, div = div () in
+            %save_focus (%exo_str, name) >>
+            let codes, div = Hashtbl.find %questions_div name in
             %focus := Some name;
             Manip.replaceChildren %statement_div [div];
             WidgetHTML.display_math ["'central_column'"];
@@ -520,34 +539,39 @@ let exercise_page exo =
       | Question q ->
         let name = Statement.flatten_string q.id in
         let title = Statement.flatten_string q.title in
-        let d = server_function ~timeout:1000. Json.t<unit> (fun () ->
+        lwt statement_div =
           statement_as_html
             name title
             q.tags q.difficulty
             q.statement q.context
             answers editor_maker
-        )
         in
         if !first_question = None then first_question := Some name;
-        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %d }} in
+        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %statement_div }} in
         let onclick =
           {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
         in
-        [p ~a:[
+        return [p ~a:[
           a_class ["navigation_question"];
           a_onclick onclick;
           a_onload onload
         ] [indent level title]]
 
       | Section (title, qs) ->
-        p ~a:[a_class ["navigation_section"]]
-          [indent level (flatten_string title)]
-        :: questions_template (level + 1) qs
+        lwt o = questions_template (level + 1) qs in
+        return (
+          p ~a:[a_class ["navigation_section"]]
+            [indent level (flatten_string title)]
+          :: o
+        )
 
     and questions_template level qs =
-      flatten []
-        (fun a s -> a)
-        (fun a s -> a @ aux level s) qs
+      lwt_flatten []
+        (fun a s -> return a)
+        (fun a s ->
+          lwt d = aux level s in
+          return (a @ d)
+        ) qs
     in
 
     let download_as_pdf questions =
@@ -580,8 +604,7 @@ let exercise_page exo =
             | `KO e -> (* FIXME *) return (`KO e)
         )
         in
-        let edit : (unit, [ pre ] elt list * [div_content] elt) server_function =
-          server_function ~timeout:600. Json.t<unit> (fun () ->
+        lwt (edit : [ pre ] elt list * [div_content] elt) =
           lwt exo_src =
             Exercise.resource exo "source.aka" >>= function
               | `OK (r, _) -> return (Resource.content r)
@@ -590,14 +613,14 @@ let exercise_page exo =
           let onload =
             {#Dom_html.event Js.t -> unit{ fun _ ->
               let open EditorHTML in
-              !(%reset) ();
-              let editor = %editor_maker ".aka" in
-              let submit () =
-                let src = editor.get_value () in
-                Lwt.async (fun () ->
-                  %submit_new_src src
-                  >> return (editor.console_clear ())
-                )
+                  !(%reset) ();
+                  let editor = %editor_maker ".aka" in
+                  let submit () =
+                    let src = editor.get_value () in
+                    Lwt.async (fun () ->
+                      %submit_new_src src
+                      >> return (editor.console_clear ())
+                    )
               in
               %reset := editor.EditorHTML.dispose;
               editor.EditorHTML.set_value %exo_src;
@@ -605,7 +628,6 @@ let exercise_page exo =
              }}
           in
           return ([], div ~a:[a_onload onload] [])
-        )
         in
         let name = "__edit_source__" in
         let onload = {{ fun _ -> Hashtbl.add %questions_div %name %edit }} in
@@ -647,10 +669,6 @@ let exercise_page exo =
         | false -> return (div [])
     in
 
-    let get_focus_eref = server_function ~timeout:600. Json.t<unit> (
-      fun () -> Eliom_reference.get focus_eref
-    )
-    in
     let onload =
       {{
         fun _ ->
@@ -660,7 +678,7 @@ let exercise_page exo =
                 | None -> return () (* FIXME: absurd, right? *)
                 | Some name -> %focus_on name >> return ()
             in
-            %get_focus_eref () >>= function
+            %get_focus %exo_str >>= function
             | None -> load_first ()
             | Some name -> %focus_on name >>= function
                 | true -> return ()
@@ -668,9 +686,10 @@ let exercise_page exo =
           )
       }}
     in
+    lwt qdiv = questions_template 0 description.questions in
     return (div ~a:[a_onload onload] ([
       div ~a:[a_class ["navigation_exo"]] (
-        questions_template 0 description.questions
+        qdiv
       );
       download_as_pdf description;
       share_with;

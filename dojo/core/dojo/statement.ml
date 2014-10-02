@@ -1,10 +1,24 @@
 (* FIXME: Try not to reify [template] as it obfuscate the
    FIXME: client code. *)
+open Lwt
+
 type 'a template =
 | TAtom of string * 'a template
 | TCode of 'a * 'a template
 | TNil
 deriving (Json)
+
+let lwt_flatten init on_string on_code s =
+  let rec aux accu = function
+    | TNil -> return accu
+    | TAtom (s, t) ->
+      lwt y = on_string accu s in
+      aux y t
+    | TCode (s, t) ->
+      lwt y = on_code accu s in
+      aux y t
+  in
+  aux init s
 
 let flatten init on_string on_code s =
   let rec aux accu = function

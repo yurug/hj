@@ -27,7 +27,6 @@ let string_template_as_html_latex classes s =
 let string_as_html classes s =
   span ~a:(if classes = [] then [] else [a_class classes]) [pcdata s]
 
-
 let rec template_text_as_html classes t =
   List.rev (
     flatten []
