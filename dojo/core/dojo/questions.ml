@@ -456,11 +456,13 @@ let grade_program qid tags difficulty files cmd update =
   let automatic_potential_score = ref 0 in
   let commands                  = ref [] in
 
+  let trace_max_length = 1024 in
+
   let puts s =
     incr trace_size;
-    if !trace_size < 1024 then
+    if !trace_size < trace_max_length then
       return (trace := Message s :: !trace)
-    else if !trace_size = 1024 then
+    else if !trace_size = trace_max_length then
       return (trace := Message "-- too long trace --" :: !trace)
     else
       return ()
@@ -507,7 +509,7 @@ let grade_program qid tags difficulty files cmd update =
   let start = Unix.gettimeofday () in
 
   let observer = Sandbox.(function
-    | WaitingForSandbox _ -> putline "Waiting..."
+    | WaitingForSandbox _ -> return ()
     | FileModification _ -> return ()
     | WriteStdout (_, s) -> process_stdout s
     | WriteStderr (_, s) -> process_stderr s
