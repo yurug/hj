@@ -65,16 +65,20 @@ let load_resource id ?version fname =
 let resource_versions id name =
   VFS.versions (file (path_of_identifier id) name)
 
-let save_resource id s =
+let save_resource id s on_finished =
   let save () =
     let path = file (path_of_identifier id) (Resource.name s) in
     VFS.save (who id) path (Resource.content s)
-    >>>= fun _ -> return (`OK true)
+    >>>= fun _ ->
+    Lwt.async on_finished;
+    return (`OK true)
   in
   load_resource id (Resource.name s) >>= function
     | `OK (ls, _) ->
-      if ls = s then
+      if ls = s then (
+        Lwt.async on_finished;
         return (`OK false)
+      )
       else
         save ()
     | `KO _ ->

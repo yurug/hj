@@ -197,7 +197,8 @@ module type S = sig
   | `OK of Resource.t * Identifier.path
   ] Lwt.t
 
-  val import_resource : t -> Resource.t -> [
+  val import_resource : t -> Resource.t
+    -> (unit -> unit Lwt.t) -> [
     `KO of [> `SystemError of string ]
   | `OK of bool
   ] Lwt.t
@@ -608,9 +609,9 @@ and type change = I.change
   let resource e ?version x =
     OnDisk.load_resource (identifier e) ?version x
 
-  let import_resource e s =
+  let import_resource e s on_finished =
     e.description <- InMemory.(update e.description (UpdateResources [s]));
-    OnDisk.save_resource (identifier e) s
+    OnDisk.save_resource (identifier e) s on_finished
 
   let publish e f r =
     e.description <- InMemory.(
