@@ -48,10 +48,10 @@ let submit_src_answer =
       let exo_id = identifier_of_string exo_str in
       let answers_id = identifier_of_string answers_str in
       let resource = Resource.make expected_file src in
-      OnDisk.save_resource answers_id resource
-      >> Lwt_unix.sleep 1.
-      >> push_new_answer_function (exo_id, name, File expected_file)
-      >> return ()
+      OnDisk.save_resource answers_id resource (fun () ->
+        push_new_answer_function (exo_id, name, File expected_file)
+        >> return () (* FIXME *)
+      ) >> return ()
   )
 
 let focus_erefs = Hashtbl.create 13
@@ -625,9 +625,9 @@ let exercise_page exo =
         let submit_new_src =
           server_function ~timeout:600. Json.t<string> (fun s ->
           let r = Resource.make "source.aka" s in
-          Exercise.import_resource exo r >>= function
-            | `OK _ -> Exercise.update user exo
-            | `KO e -> (* FIXME *) return (`KO e)
+          Exercise.(import_resource exo r (fun () ->
+            update user exo >> return ())
+          ) >> return () (* FIXME *)
         )
         in
         lwt initialize, (edit : [div_content] elt) =

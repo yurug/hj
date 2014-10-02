@@ -209,16 +209,15 @@ let import_contributor_answer dst_answers_id dst_uid src_answers_id qid =
                 | Questions.File f ->
                   begin resource src_answers f >>= function
                     | `OK (r, _) ->
-                      import_resource dst_answers r
+                      import_resource dst_answers r (fun () ->
+                        push_new_answer dst_answers qid src_author src_answer
+                      )
                       >> return () (* FIXME *)
                     | `KO _ ->
                       return () (* FIXME *)
                   end
                 | _ -> return ()
             end
-            >> (
-              push_new_answer dst_answers qid src_author src_answer
-            )
           | `KO _ ->
             return () (* FIXME *)
       ) else
