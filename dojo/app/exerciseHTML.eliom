@@ -82,8 +82,6 @@ let get_focus = server_function Json.t<string> (fun exo_str ->
 )
 
 let save_focus = server_function Json.t<string * string> (fun (exo_str, name) ->
-  Log.debug (identifier_of_string exo_str)
-    (Printf.sprintf "save_focus %s %s\n" exo_str name);
   try_lwt
     let eref = focus_eref exo_str in
     Eliom_reference.set eref (Some name)
