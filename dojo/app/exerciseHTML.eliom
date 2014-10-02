@@ -186,7 +186,7 @@ let exercise_page exo =
       let initial_answer_str = Resource.content initial_answer in
 
       let submit_answer =
-        server_function ~timeout:600. Json.t<string> (fun src ->
+        server_function ~timeout:3600. Json.t<string> (fun src ->
           Resource.set_content answer_resource src;
           OnDisk.save_resource (Answers.identifier answers) answer_resource (fun () ->
             push_new_answer_function (exo_id, name, File expected_file)
@@ -208,7 +208,7 @@ let exercise_page exo =
                 ready := false;
                 %submit_answer src >> (
                   Manip.replaceChildren %grade_div [%score_box "..." []];
-                  Lwt_js.sleep 1.
+                  Lwt_js.sleep 0.5
                 ) >> (
                   editor.console_clear ();
                   %display_evaluation_state (Some editor.console_write)
