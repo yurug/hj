@@ -325,8 +325,6 @@ type trace_key = int * float deriving (Json)
 }}
 let trace_get : trace_key -> string = TraceProxy.deref trace_table
 
-
-
 let small_string_of_evaluation_state s = Questions.(
   let (s1, s2) =
     gen_string_of_evaluation_state
