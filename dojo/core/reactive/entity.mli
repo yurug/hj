@@ -192,9 +192,8 @@ module type S = sig
   | `OK of Resource.t * Identifier.path
   ] Lwt.t
 
-  (** [import_resource e r on_finished] inserts [r] in the resources of [e].
-      When import is done, [on_finished ()] is fired. *)
-  val import_resource : t -> Resource.t -> (unit -> unit Lwt.t) -> [
+  (** [import_resource e r] inserts [r] in the resources of [e]. *)
+  val import_resource : t -> Resource.t -> [
     `KO of [> `SystemError of string ]
   | `OK of bool
   ] Lwt.t

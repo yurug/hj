@@ -99,10 +99,10 @@ let on_line oc w =
   Lwt.async (fun () ->
     try_lwt
       Lwt_stream.iter_s w (Lwt_io.read_lines oc)
-      >> return (closed := true)
     with _ ->
-      (** We stop the process when the stream is not alive anymore. *)
-      return (closed := true)
+      closed := true;
+    (** We stop the process when the stream is not alive anymore. *)
+      return ()
   );
   closed
 
@@ -124,7 +124,7 @@ let sandboxing command release_flag s limitations (observer : _ -> unit Lwt.t) =
         if i = 0 then
           return ()
         else if not (!stderr_closed && !stdout_closed) then (
-          Lwt_unix.sleep 0.01
+          Lwt_unix.sleep 0.1
           >> wait_closed (i - 1)
         ) else return ()
       in
@@ -156,14 +156,13 @@ let exec_on_sandbox cmd =
 let copy_on_sandbox files persistence =
   sandboxing (fun ?timeout observer s ->
     let clean = (persistence = Ephemeral) in
-    s.Machinist.copy ~clean ?timeout files (fun _ -> return ())
+    s.Machinist.copy ~clean ?timeout files observer
   )
 
 (** [exec ?persistent ?limitations files command observer] first
     copies [files] from the server to the sandbox, then executes
     [command] asynchronously with some [limitations] and immediately
     returns a job descriptor as well as a persistence descriptor.  *)
-
 let exec
     ?(persistence = Ephemeral) ?(limitations = []) ?(requirements = [])
     files cmd observer =
@@ -190,17 +189,13 @@ let exec
 
     (** Process command. *)
     let iobserver = fun _ -> return () in
-    let start = Unix.gettimeofday () in
+
     (if files <> [] then
         copy_on_sandbox files persistence false sandbox limitations iobserver
      else
         return 0
-    ) >> (
-    let stop = Unix.gettimeofday () in
-    Log.debug (Identifier.identifier_of_string "sandbox")
-      (Printf.sprintf "Copy in %fs.\n" (stop -. start));
-    exec_on_sandbox cmd release_when_finished sandbox limitations observer
-     ) >>= fun job -> return (`OK (job, persistence))
+    ) >> exec_on_sandbox cmd release_when_finished sandbox limitations observer
+    >>= fun job -> return (`OK (job, persistence))
 
   with NoSuchSandbox ->
     Log.debug (Identifier.identifier_of_string "sandbox") "No such sandbox.";

@@ -6,17 +6,16 @@ type name = string deriving (Json)
 
 type t = {
   name : name;
-  content : string ref;
+  mutable content : string;
 }
-deriving (Json)
 
-let empty name = { name; content = ref "" }
+let empty name = { name; content = "" }
 
-let make name content_value = { name; content = ref content_value }
+let make name content = { name; content }
 
-let set_content s c = s.content := c
+let set_content s c = s.content <- c
 
-let content s = !(s.content)
+let content s = s.content
 
 let name s = s.name
 

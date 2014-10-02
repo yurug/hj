@@ -148,14 +148,14 @@ let ssh ?timeout username private_key addr port cmd observer =
   ) (fun () -> ())
 
 let scp ?timeout username private_key addr port srcs observer =
-  let os = "-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'Compression=no'" in
+  let os = "-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null'" in
   handle_unix_error (fun () ->
     let srcs =
       String.concat " " (List.map Filename.quote srcs)
     in
     let p, stop = exec ?timeout (!% (
       Printf.sprintf
-        "scp %s -c arcfour -4 -P %d -q -i %s %s %s@%s:"
+        "scp %s -C -4 -P %d -q -i %s %s %s@%s:"
         os port private_key srcs username addr))
     in
     observer p >>= fun _ -> return (fun () -> stop (); p#terminate)

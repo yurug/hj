@@ -27,7 +27,7 @@ let create_resource_management_api
        E.make id >>>= fun e ->
        ltry (cat file.Ocsigen_extensions.tmp_filename) >>>= fun content ->
        let resource = Resource.make resource_name content in
-       E.import_resource e resource (fun () -> return ())
+       E.import_resource e resource
        >>>= return_completed
       ) >>= handle_error
     ),
@@ -54,9 +54,8 @@ let create_resource_management_api
                ltry (cat filename) >>= function
                  | `OK content ->
                    let resource = Resource.make resource_name content in
-                   E.import_resource e resource (fun () ->
+                   E.import_resource e resource >>
                      return (uploaded := resource_name :: !uploaded)
-                   ) >> return ()
                  | `KO _ -> return () (* FIXME *)
              in
              Lwt_list.iter_s import filenames
