@@ -448,9 +448,8 @@ and type change = I.change
 
   and save_on_disk ?(now=false) e =
     (* 60. must be a parameter. *)
-    if now ||
-      (Timestamp.compare (timestamp e.description) e.last_save <> 0
-      && Timestamp.older_than 60. e.last_save)
+    if (Timestamp.compare (timestamp e.description) e.last_save <> 0
+        && (now || Timestamp.older_than 60. e.last_save))
     then begin
       e.last_save <- timestamp e.description;
       OTD.save e.description
