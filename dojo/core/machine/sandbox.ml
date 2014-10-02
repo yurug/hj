@@ -157,7 +157,7 @@ let copy_on_sandbox files persistence =
   sandboxing (fun ?timeout observer s ->
     let clean = (persistence = Ephemeral) in
     s.Machinist.copy ~clean ?timeout files (function
-      | Machinist.ObserveProcess p -> p#status >> return ()
+      | Machinist.ObserveProcess p -> p#status >> p#close >> return ()
       | _ -> return ())
   )
 
