@@ -87,13 +87,6 @@ type copy =
     -> (execution_observer -> unit Lwt.t)
     -> (unit -> unit) Lwt.t
 
-type retrieve =
-    ?timeout:float
-    -> string
-    -> string
-    -> (execution_observer -> unit Lwt.t)
-    -> (unit -> unit) Lwt.t
-
 let copy_using_scp login_information addr =
   fun ?(timeout = default_timeout) ~clean srcs observer ->
     ltry (fun lraise ->
@@ -117,39 +110,18 @@ let copy_using_scp login_information addr =
         observer (ObserveMessage "sandbox copy communication error")
         >>= fun _ -> return (fun () -> ())
 
-let retrieve_using_scp login_information addr =
-  fun ?(timeout = default_timeout) src dst observer ->
-    ltry (fun lraise ->
-      ExtUnix.rev_scp
-        ~timeout
-        login_information.username login_information.ssh_key
-        (fst addr) (snd addr)
-        src
-        dst
-        (fun p -> observer (ObserveProcess p))
-        lraise
-    ) >>= function
-      | `OK canceler ->
-        return canceler
-      | `KO e ->
-        (* FIXME *)
-        observer (ObserveMessage "sandbox retrieve communication error")
-        >>= fun _ -> return (fun () -> ())
-
 type sandbox_interface = {
   login_information : login_information;
   address           : address;
   execute           : execute;
   copy              : copy;
-  retrieve          : retrieve;
   release           : unit -> unit Lwt.t
 }
 
 let build_sandbox_interface login_information address release =
   let execute = execute_using_ssh login_information address in
   let copy = copy_using_scp login_information address in
-  let retrieve = retrieve_using_scp login_information address in
-  { execute; release; copy; address; retrieve; login_information }
+  { execute; release; copy; address; login_information }
 
 type allocation_result =
   | AllocatedSandbox of sandbox_interface

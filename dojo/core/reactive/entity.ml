@@ -197,8 +197,7 @@ module type S = sig
   | `OK of Resource.t * Identifier.path
   ] Lwt.t
 
-  val import_resource : t -> Resource.t
-    -> (unit -> unit Lwt.t) -> [
+  val import_resource : t -> Resource.t -> [
     `KO of [> `SystemError of string ]
   | `OK of bool
   ] Lwt.t
@@ -352,7 +351,7 @@ and type change = I.change
            FIXME: not satisfactory... *)
         (*        >> Lwt_condition.wait e.react_cond *)
         >> Lwt_unix.yield ()
-        >> Lwt_unix.sleep 0.1
+        >> Lwt_unix.sleep 0.001
         >>= tick
       in
       tick ()
@@ -448,8 +447,9 @@ and type change = I.change
 
   and save_on_disk ?(now=false) e =
     (* 60. must be a parameter. *)
-    if (Timestamp.compare (timestamp e.description) e.last_save <> 0
-        && (now || Timestamp.older_than 60. e.last_save))
+    if now ||
+      (Timestamp.compare (timestamp e.description) e.last_save <> 0
+      && Timestamp.older_than 60. e.last_save)
     then begin
       e.last_save <- timestamp e.description;
       OTD.save e.description
@@ -608,9 +608,9 @@ and type change = I.change
   let resource e ?version x =
     OnDisk.load_resource (identifier e) ?version x
 
-  let import_resource e s on_finished =
+  let import_resource e s =
     e.description <- InMemory.(update e.description (UpdateResources [s]));
-    OnDisk.save_resource (identifier e) s on_finished
+    OnDisk.save_resource (identifier e) s
 
   let publish e f r =
     e.description <- InMemory.(

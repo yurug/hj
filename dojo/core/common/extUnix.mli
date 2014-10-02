@@ -60,31 +60,14 @@ val ssh :
   -> ('a, 'b) raiser
   -> (unit -> unit) Lwt.t
 
-(** [scp ?timeout username key addr port srcs observer] runs a process
-    which copies a file through a secured connection from the local
-    machine to the remote machine.
-
+(** [scp ?timeout username key addr port src dst observer] runs a process
+    which copies a file through a secured connection.
     This function returns a function to cancel this command at any time. *)
 val scp :
   ?timeout:float
   -> string -> string
   -> string -> int
   -> string list
-  -> (Lwt_process.process_full -> unit Lwt.t)
-  -> ('a, 'b) raiser
-  -> (unit -> unit) Lwt.t
-
-(** [rev_scp ?timeout username key addr port src dst observer] runs a process
-    which copies a file through a secured connection from the remote machine
-    to the local machine.
-
-    This function returns a function to cancel this command at any time. *)
-val rev_scp :
-  ?timeout:float
-  -> string -> string
-  -> string -> int
-  -> string
-  -> string
   -> (Lwt_process.process_full -> unit Lwt.t)
   -> ('a, 'b) raiser
   -> (unit -> unit) Lwt.t

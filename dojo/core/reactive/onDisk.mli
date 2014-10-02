@@ -51,7 +51,7 @@ module Make (D : sig
 end)
 : S with type data = D.data
 
-val save_resource : Identifier.t -> Resource.t -> (unit -> unit Lwt.t) ->
+val save_resource : Identifier.t -> Resource.t ->
   [ `OK of bool
   | `KO of [> `SystemError of string ]
   ] Lwt.t

@@ -449,9 +449,7 @@ let grade_regexp = Str.regexp "GRADE \\([0-9]+\\) \\([0-9]+\\)/\\([0-9]+\\)"
 
 let command_regexp = Str.regexp "COMMAND \\([0-9]+\\) \\(.*\\)$"
 
-let export_file_regexp = Str.regexp "FILE \\([0-9]+\\) \\(.*\\) as \\(.*\\)$"
-
-let grade_program qid tags difficulty files cmd export_dir update =
+let grade_program qid tags difficulty files cmd update =
   let trace_size                = ref 0 in
   let trace                     = ref [] in
   let automatic_score           = ref 0 in
@@ -476,47 +474,25 @@ let grade_program qid tags difficulty files cmd export_dir update =
   (* Generate a secret seed. *)
   let secret = Seed.generate () in
 
-  let retrieve_fun : Machinist.retrieve option ref = ref None in
-
   let process_stderr s = Str.(
-    let rec match_commands = function
-      | [] ->
-        debug s;
-        return ()
-      | (regexp, f) :: cs ->
-        if string_match grade_regexp s 0 then
-          let seed = Seed.of_string (matched_group 1 s) in
-          if Seed.compare seed secret = 0 then
-            f ()
-          else
-            return (debug ("STRANGE: " ^ s))
-        else
-          match_commands cs
-    in
-    match_commands [
-      grade_regexp, (fun () ->
+    if string_match grade_regexp s 0 then
+      let seed = Seed.of_string (matched_group 1 s) in
+      if Seed.compare seed secret = 0 then return (
         automatic_score := int_of_string (matched_group 2 s);
-        automatic_potential_score := int_of_string (matched_group 3 s);
+        automatic_potential_score := int_of_string (matched_group 3 s)
+      ) else
         return ()
-      );
-
-      command_regexp, (fun () ->
-        commands := matched_group 2 s :: !commands;
+    else if string_match command_regexp s 0 then
+      let seed = Seed.of_string (matched_group 1 s) in
+      if Seed.compare seed secret = 0 then return (
+        commands := matched_group 2 s :: !commands
+      ) else
         return ()
-      );
-
-      export_file_regexp, (fun () ->
-        match !retrieve_fun with
-          | Some retrieve ->
-            let source = matched_group 2 s
-            and destination = matched_group 3 s in
-            retrieve source (export_dir destination) (fun _ -> return ());
-            >> return ()
-          | None ->
-            debug "Well... I have no retrieve function!";
-            return ()
-      )
-    ]
+    else (
+      debug s;
+      (* FIXME: put this on the teacher only side. *)
+      return ()
+    )
   )
   in
 
@@ -528,18 +504,13 @@ let grade_program qid tags difficulty files cmd export_dir update =
     | Unix.WSIGNALED d -> Printf.sprintf "interrupted(%d)" d
     | Unix.WSTOPPED d -> Printf.sprintf "stopped(%d)" d
   in
-  let start = Unix.gettimeofday () in
-
   let observer = Sandbox.(function
     | WaitingForSandbox _ -> putline "Waiting..."
     | FileModification _ -> return ()
     | WriteStdout (_, s) -> process_stdout s
     | WriteStderr (_, s) -> process_stderr s
     | Exited s ->
-      let now = Unix.gettimeofday () in
-      debug (Printf.sprintf "[%s|%f] %s\n"
-               (string_of_status s)
-               (now -. start) cmd);
+      debug (Printf.sprintf "[%s] %s\n" (string_of_status s) cmd);
       (* Generate score and trace. *)
       let scores =
         [ (Automatic, (!automatic_score, !automatic_potential_score)) ]
@@ -551,8 +522,7 @@ let grade_program qid tags difficulty files cmd export_dir update =
   ) in
   Sandbox.(exec files cmd observer ~limitations:[TimeOut 180.])
   >>= function
-    | `OK (job, persistence_id, retrieve) ->
-      retrieve_fun := Some retrieve;
+    | `OK (job, persistence_id) ->
       return (EvaluationHandled job)
     | `KO e ->
       (* FIXME: Provide a more detailed diagnostic. *)
@@ -622,7 +592,7 @@ let evaluate_using_context
         :: import_files exo_real_path imported_files
       in
       (* FIXME: Check that filename' = expected_file. *)
-      grade_program qid tags difficulty files command answer_real_path update
+      grade_program qid tags difficulty files command update
     | CtxWITV (expected_values, comparator), GivenValues vs ->
       grade_witv
         exo_real_path

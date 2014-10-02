@@ -161,17 +161,6 @@ let scp ?timeout username private_key addr port srcs observer =
     observer p >>= fun _ -> return (fun () -> stop (); p#terminate)
   ) (fun () -> ())
 
-let rev_scp ?timeout username private_key addr port src dst observer =
-  let os = "-o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null'" in
-  handle_unix_error (fun () ->
-    let p, stop = exec ?timeout (!% (
-      Printf.sprintf
-        "scp %s -C -4 -P %d -q -i %s %s@%s:%s %s"
-        os port private_key username addr src dst))
-    in
-    observer p >>= fun _ -> return (fun () -> stop (); p#terminate)
-  ) (fun () -> ())
-
 let pdflatex content outputfile = Filename.(
   let source = temp_file "hjd" ".tex" in
   let base = chop_extension source in

@@ -24,22 +24,6 @@ let fresh_id =
 
 {client{
 exception Done
-
-type question_div = {
-  initialize : (unit -> unit);
-  codes      : ([ pre ]) elt list;
-  content    : [ div_content ] elt;
-}
-
-}}
-
-{server{
-type question_div = {
-  initialize : (unit -> unit) client_value;
-  codes      : ([ pre ]) elt list;
-  content    : [ div_content ] elt;
-}
-
 }}
 
 let submit_src_answer =
@@ -48,20 +32,17 @@ let submit_src_answer =
       let exo_id = identifier_of_string exo_str in
       let answers_id = identifier_of_string answers_str in
       let resource = Resource.make expected_file src in
-      OnDisk.save_resource answers_id resource (fun () ->
-        push_new_answer_function (exo_id, name, File expected_file)
-        >> return () (* FIXME *)
-      ) >> return ()
+      OnDisk.save_resource answers_id resource
+      >> Lwt_unix.sleep 1.
+      >> push_new_answer_function (exo_id, name, File expected_file)
+      >> return ()
   )
 
 let focus_erefs = Hashtbl.create 13
 
 let focus_eref exo_str =
-  try
-    Log.debug (identifier_of_string exo_str) "Looking for eref..";
-    Hashtbl.find focus_erefs exo_str
+  try Hashtbl.find focus_erefs exo_str
   with Not_found ->
-    Log.debug (identifier_of_string exo_str) "Looking for eref.. notfound!";
     let eref = Eliom_reference.eref
       ~scope:Eliom_common.default_session_scope
       ~persistent:("focus_" ^ (Str.(global_replace (regexp "/") "__" exo_str)))
@@ -71,38 +52,19 @@ let focus_eref exo_str =
     eref
 
 let get_focus = server_function Json.t<string> (fun exo_str ->
-  try_lwt
-    let eref = focus_eref exo_str in
-    Eliom_reference.get eref
-  with exn ->
-    Log.debug
-      (identifier_of_string exo_str)
-      (Printf.sprintf "get focus failed: %s" (Printexc.to_string exn));
-    return None
+  let eref = focus_eref exo_str in
+  Eliom_reference.get eref
 )
 
 let save_focus = server_function Json.t<string * string> (fun (exo_str, name) ->
-  try_lwt
-    let eref = focus_eref exo_str in
-    Eliom_reference.set eref (Some name)
-  with exn ->
-    Log.debug
-      (identifier_of_string exo_str)
-      (Printf.sprintf "save focus failed: %s" (Printexc.to_string exn));
-    return ()
+  let eref = focus_eref exo_str in
+  Eliom_reference.set eref (Some name)
 )
 
 let exercise_page exo =
 
   let focus = {string option ref{ ref None }} in
   let reset = {(unit -> unit) ref{ref (fun () -> ()) }} in
-
-  let fire_reset = {unit -> unit{
-    fun _ ->
-      !(%reset) ();
-      %reset := fun () -> ()
-  }}
-  in
 
   let exo_id = Exercise.identifier exo in
   let exo_str = Identifier.string_of_identifier exo_id in
@@ -117,6 +79,7 @@ let exercise_page exo =
     let name_str : string = name
     and answers_id = Answers.identifier answers in
     let answers_str = string_of_identifier answers_id in
+
 
     let codes = ref [] in
 
@@ -188,7 +151,7 @@ let exercise_page exo =
 
       let choices = {int list ref{ ref [] }} in
 
-      let onshow = {{
+      let onload = {{
         fun _ -> !(%reset) ();
         %reset := (fun () -> ());
         %editor := None;
@@ -208,7 +171,7 @@ let exercise_page exo =
           span (template_text_as_html [] statement)
         ]
       in
-      div ~a:[a_onshow onshow] (List.mapi qcm_item statements @ [
+      div ~a:[a_onload onload] (List.mapi qcm_item statements @ [
         small_button ["OK"] {unit -> unit{
           let ready = ref true in
           fun () ->
@@ -261,8 +224,8 @@ let exercise_page exo =
 
       let initial_answer_str = Resource.content initial_answer in
 
-      let initialize =
-        {unit -> unit{ fun () ->
+      let onload =
+        {{ fun _ ->
           let open EditorHTML in
           !(%reset) ();
           %editor := Some (%editor_maker %expected_extension);
@@ -292,7 +255,7 @@ let exercise_page exo =
           editor.EditorHTML.set_reset_cb reset_answer;
         }}
       in
-      return (initialize, div [
+      return (div ~a:[a_onload onload] [
         p [pcdata ("▶ " ^ I18N.String.(
           answer_expected (in_a_file_named expected_file)))]
       ])
@@ -303,6 +266,13 @@ let exercise_page exo =
       let nb = List.length expressions in
 
       let values = {string array{ Array.make %nb "" }} in
+
+      let onload = {{
+        fun _ -> !(%reset) ();
+        %reset := (fun () -> ());
+        %editor := None;
+      }}
+      in
 
       let onchange (i : int) (id : id) =
         {{ fun _ ->
@@ -317,7 +287,7 @@ let exercise_page exo =
           input ~input_type:`Text ~a:[a_id id; a_onchange (onchange i id)] ()
         ]
       in
-      return (div (List.mapi item expressions @ [
+      return (div ~a:[a_onload onload] (List.mapi item expressions @ [
         small_button ["OK"] {unit -> unit{
           let ready = ref true in
           fun () ->
@@ -338,12 +308,17 @@ let exercise_page exo =
 
     in
     let chooser_as_html choices =
+      let onload = {{
+        fun _ -> !(%reset) ();
+        %reset := fun () -> () }}
+      in
+
       let previous =
         (* FIXME *)
         ""
       in
       let property_selector =
-        Raw.select (
+        Raw.select ~a:[a_onload onload] (
           List.map (fun s ->
             let a = if s = previous then [a_selected `Selected] else [] in
             Raw.option ~a (pcdata s)
@@ -381,6 +356,28 @@ let exercise_page exo =
       return (div ~a:[a_class ["user_answer"]] [property_selector])
     in
 
+    let context_as_html context =
+      let rec aux accu = function
+        | TNil -> return (List.rev accu)
+        | TCode (s, t) ->
+          lwt h = match s with
+            | QCM (statements, _) ->
+              return (qcm_as_html statements)
+            | Grader (expected_file, _, _) ->
+              grader_as_html expected_file
+            | WITV (expressions, _, _) ->
+              witv_as_html expressions
+            | Chooser choices ->
+              chooser_as_html choices
+            | NoGrade ->
+              return (span [])
+          in
+          aux (h :: accu) t
+        | TAtom (_, t) -> aux accu t
+      in
+      aux [] context
+    in
+    lwt context = context_as_html context in
     let rec stars = function
       | 0 -> ""
       | n -> "*" ^ stars (n - 1)
@@ -438,7 +435,7 @@ let exercise_page exo =
                     List.rev !l
                   in
                   lwt trace = %ExerciseHTTP.trace_get_server_function %t in
-                  let editor = %get_editor () in
+                  let editor= %get_editor () in
                   editor.EditorHTML.console_clear ();
                   editor.EditorHTML.console_write (
                     let trace = split '\n' trace in
@@ -493,35 +490,7 @@ let exercise_page exo =
       )
     in
 
-    lwt initialize, context =
-      let return_html html =
-        return (fire_reset, html)
-      in
-      (* FIXME: There should only be exactly one context. *)
-      let rec aux initialize accu = function
-        | TNil ->
-          return (initialize, List.rev accu)
-        | TCode (s, t) ->
-          lwt initialize, h = match s with
-            | QCM (statements, _) ->
-              return_html (qcm_as_html statements)
-            | Grader (expected_file, _, _) ->
-              grader_as_html expected_file
-            | WITV (expressions, _, _) ->
-              witv_as_html expressions >>= return_html
-            | Chooser choices ->
-              chooser_as_html choices >>= return_html
-            | NoGrade ->
-              return_html (span [])
-          in
-          aux initialize (h :: accu) t
-        | TAtom (_, t) -> aux initialize accu t
-      in
-      aux ({{ fun () -> () }}) [] context
-    in
-
-
-    let content = div (
+    return (!codes, div (
       [ h1 [pcdata (title ^ " (" ^ stars difficulty ^ ")")];
         tags_as_html tags
       ]
@@ -530,19 +499,14 @@ let exercise_page exo =
       @ [ grade_div ;
           import_div;
           teacher_space ]
-      )
-    in
-    return {
-      codes = !codes;
-      content;
-      initialize
-    }
+    ))
   in
 
-  let questions_div = { (string, question_div) Hashtbl.t {
-    Hashtbl.create 13
-  }}
-
+  let questions_div = {
+    (string, (([ pre ]) elt list * [ div_content ] elt)) Hashtbl.t
+    {
+      Hashtbl.create 13
+    }}
   in
 
   let focus_on =
@@ -552,23 +516,14 @@ let exercise_page exo =
           return true
         | _ ->
           try_lwt
-            Firebug.console##log (Js.string ("Focus " ^ name));
-            (* %save_focus (%exo_str, name) >> *) (
-            Firebug.console##log (Js.string ("Save focus done"));
-            let qdiv = Hashtbl.find %questions_div name in
+            %save_focus (%exo_str, name) >>
+            let codes, div = Hashtbl.find %questions_div name in
             %focus := Some name;
-            Manip.replaceChildren %statement_div [qdiv.content];
-            Firebug.console##log (Js.string ("Replace children done"));
-            qdiv.initialize ();
-            Firebug.console##log (Js.string ("Initialization done"));
+            Manip.replaceChildren %statement_div [div];
             WidgetHTML.display_math ["'central_column'"];
-            WidgetHTML.highlight qdiv.codes;
-            Firebug.console##log (Js.string ("Focus " ^ name ^ " done"));
+            WidgetHTML.highlight codes;
             return true
-            )
-          with Not_found ->
-            Firebug.console##log (Js.string ("Focus " ^ name ^ " failed"));
-            return false (* Inconsistent name. *)
+          with Not_found -> return false (* Inconsistent name. *)
      }}
   in
   let first_question = ref None in
@@ -592,11 +547,7 @@ let exercise_page exo =
             answers editor_maker
         in
         if !first_question = None then first_question := Some name;
-        let onload = {{ fun _ ->
-          Firebug.console##log (Js.string ("Load " ^ %name));
-          Hashtbl.add %questions_div %name %statement_div
-        }}
-        in
+        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %statement_div }} in
         let onclick =
           {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
         in
@@ -648,19 +599,19 @@ let exercise_page exo =
         let submit_new_src =
           server_function ~timeout:600. Json.t<string> (fun s ->
           let r = Resource.make "source.aka" s in
-          Exercise.(import_resource exo r (fun () ->
-            update user exo >> return ())
-          ) >> return () (* FIXME *)
+          Exercise.import_resource exo r >>= function
+            | `OK _ -> Exercise.update user exo
+            | `KO e -> (* FIXME *) return (`KO e)
         )
         in
-        lwt initialize, (edit : [div_content] elt) =
+        lwt (edit : [ pre ] elt list * [div_content] elt) =
           lwt exo_src =
             Exercise.resource exo "source.aka" >>= function
               | `OK (r, _) -> return (Resource.content r)
               | `KO _ -> return "" (* FIXME *)
           in
-          let initialize =
-            {unit -> unit{ fun () ->
+          let onload =
+            {#Dom_html.event Js.t -> unit{ fun _ ->
               let open EditorHTML in
                   !(%reset) ();
                   let editor = %editor_maker ".aka" in
@@ -676,17 +627,10 @@ let exercise_page exo =
               editor.EditorHTML.set_ok_cb submit
              }}
           in
-          return (initialize, div [])
+          return ([], div ~a:[a_onload onload] [])
         in
         let name = "__edit_source__" in
-        let onload = {{ fun _ ->
-          let qdiv = {
-            content = %edit; initialize = %initialize; codes = []
-          }
-          in
-          Hashtbl.add %questions_div %name qdiv
-        }}
-        in
+        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %edit }} in
         let onclick =
           {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
         in
