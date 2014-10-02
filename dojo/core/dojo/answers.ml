@@ -99,6 +99,8 @@ include Entity.Make (struct
             qid answer update
         in
         update_tags qid evaluation_state
+        (* We must not trigger too many evaluations at the same time. *)
+        >> Lwt_unix.sleep 1.
         >> return { content with answers; evaluations }
       )
 
