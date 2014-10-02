@@ -188,11 +188,11 @@ let exercise_page exo =
       let submit_answer =
         server_function ~timeout:600. Json.t<string> (fun src ->
           Resource.set_content answer_resource src;
-          OnDisk.save_resource (Answers.identifier answers) answer_resource
-          >> Lwt_unix.sleep 1.
-          >> push_new_answer_function (exo_id, name, File expected_file)
-          >> return ()
-      )
+          OnDisk.save_resource (Answers.identifier answers) answer_resource (fun () ->
+            push_new_answer_function (exo_id, name, File expected_file)
+            >> return ()
+          )
+        )
       in
       let onload =
         {{ fun _ ->
@@ -575,9 +575,9 @@ let exercise_page exo =
         let submit_new_src =
           server_function ~timeout:600. Json.t<string> (fun s ->
           let r = Resource.make "source.aka" s in
-          Exercise.import_resource exo r >>= function
-            | `OK _ -> Exercise.update user exo
-            | `KO e -> (* FIXME *) return (`KO e)
+          Exercise.(import_resource exo r (fun () ->
+            update user exo >> return ())
+          ) >> return () (* FIXME *)
         )
         in
         let edit : (unit, [ pre ] elt list * [div_content] elt) server_function =

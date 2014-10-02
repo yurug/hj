@@ -99,10 +99,10 @@ let on_line oc w =
   Lwt.async (fun () ->
     try_lwt
       Lwt_stream.iter_s w (Lwt_io.read_lines oc)
+      >> return (closed := true)
     with _ ->
-      closed := true;
-    (** We stop the process when the stream is not alive anymore. *)
-      return ()
+      (** We stop the process when the stream is not alive anymore. *)
+      return (closed := true)
   );
   closed
 
@@ -124,7 +124,7 @@ let sandboxing command release_flag s limitations (observer : _ -> unit Lwt.t) =
         if i = 0 then
           return ()
         else if not (!stderr_closed && !stdout_closed) then (
-          Lwt_unix.sleep 0.1
+          Lwt_unix.sleep 0.01
           >> wait_closed (i - 1)
         ) else return ()
       in
