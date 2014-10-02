@@ -89,8 +89,6 @@ let exercise_page exo =
   }}
   in
 
-
-
   let exo_id = Exercise.identifier exo in
   let exo_str = Identifier.string_of_identifier exo_id in
 
@@ -104,7 +102,6 @@ let exercise_page exo =
     let name_str : string = name
     and answers_id = Answers.identifier answers in
     let answers_str = string_of_identifier answers_id in
-
 
     let codes = ref [] in
 
@@ -573,7 +570,11 @@ let exercise_page exo =
             answers editor_maker
         in
         if !first_question = None then first_question := Some name;
-        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %statement_div }} in
+        let onload = {{ fun _ ->
+          Firebug.console##log (Js.string ("Load " ^ %name));
+          Hashtbl.add %questions_div %name %statement_div
+        }}
+        in
         let onclick =
           {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
         in
