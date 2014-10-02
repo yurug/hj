@@ -541,14 +541,19 @@ let exercise_page exo =
             Firebug.console##log (Js.string ("Focus " ^ name));
             %save_focus (%exo_str, name) >>
             let qdiv = Hashtbl.find %questions_div name in
+            Firebug.console##log (Js.string ("Save focus done"));
             %focus := Some name;
             Manip.replaceChildren %statement_div [qdiv.content];
+            Firebug.console##log (Js.string ("Replace children done"));
             qdiv.initialize ();
+            Firebug.console##log (Js.string ("Initialization done"));
             WidgetHTML.display_math ["'central_column'"];
             WidgetHTML.highlight qdiv.codes;
             Firebug.console##log (Js.string ("Focus " ^ name ^ " done"));
             return true
-          with Not_found -> return false (* Inconsistent name. *)
+          with Not_found ->
+            Firebug.console##log (Js.string ("Focus " ^ name ^ " failed"));
+            return false (* Inconsistent name. *)
      }}
   in
   let first_question = ref None in
