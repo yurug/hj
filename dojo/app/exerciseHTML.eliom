@@ -24,6 +24,22 @@ let fresh_id =
 
 {client{
 exception Done
+
+type question_div = {
+  initialize : (unit -> unit);
+  codes      : ([ pre ]) elt list;
+  content    : [ div_content ] elt;
+}
+
+}}
+
+{server{
+type question_div = {
+  initialize : (unit -> unit) client_value;
+  codes      : ([ pre ]) elt list;
+  content    : [ div_content ] elt;
+}
+
 }}
 
 let submit_src_answer =
@@ -65,6 +81,15 @@ let exercise_page exo =
 
   let focus = {string option ref{ ref None }} in
   let reset = {(unit -> unit) ref{ref (fun () -> ()) }} in
+
+  let fire_reset = {unit -> unit{
+    fun _ ->
+      !(%reset) ();
+      %reset := fun () -> ()
+  }}
+  in
+
+
 
   let exo_id = Exercise.identifier exo in
   let exo_str = Identifier.string_of_identifier exo_id in
@@ -151,7 +176,7 @@ let exercise_page exo =
 
       let choices = {int list ref{ ref [] }} in
 
-      let onload = {{
+      let onshow = {{
         fun _ -> !(%reset) ();
         %reset := (fun () -> ());
         %editor := None;
@@ -171,7 +196,7 @@ let exercise_page exo =
           span (template_text_as_html [] statement)
         ]
       in
-      div ~a:[a_onload onload] (List.mapi qcm_item statements @ [
+      div ~a:[a_onshow onshow] (List.mapi qcm_item statements @ [
         small_button ["OK"] {unit -> unit{
           let ready = ref true in
           fun () ->
@@ -224,8 +249,9 @@ let exercise_page exo =
 
       let initial_answer_str = Resource.content initial_answer in
 
-      let onload =
-        {{ fun _ ->
+      let initialize =
+        {unit -> unit{ fun () ->
+          Firebug.console##log (Js.string "Onshow!");
           let open EditorHTML in
           !(%reset) ();
           %editor := Some (%editor_maker %expected_extension);
@@ -255,7 +281,7 @@ let exercise_page exo =
           editor.EditorHTML.set_reset_cb reset_answer;
         }}
       in
-      return (div ~a:[a_onload onload] [
+      return (initialize, div [
         p [pcdata ("▶ " ^ I18N.String.(
           answer_expected (in_a_file_named expected_file)))]
       ])
@@ -266,13 +292,6 @@ let exercise_page exo =
       let nb = List.length expressions in
 
       let values = {string array{ Array.make %nb "" }} in
-
-      let onload = {{
-        fun _ -> !(%reset) ();
-        %reset := (fun () -> ());
-        %editor := None;
-      }}
-      in
 
       let onchange (i : int) (id : id) =
         {{ fun _ ->
@@ -287,7 +306,7 @@ let exercise_page exo =
           input ~input_type:`Text ~a:[a_id id; a_onchange (onchange i id)] ()
         ]
       in
-      return (div ~a:[a_onload onload] (List.mapi item expressions @ [
+      return (div (List.mapi item expressions @ [
         small_button ["OK"] {unit -> unit{
           let ready = ref true in
           fun () ->
@@ -308,17 +327,12 @@ let exercise_page exo =
 
     in
     let chooser_as_html choices =
-      let onload = {{
-        fun _ -> !(%reset) ();
-        %reset := fun () -> () }}
-      in
-
       let previous =
         (* FIXME *)
         ""
       in
       let property_selector =
-        Raw.select ~a:[a_onload onload] (
+        Raw.select (
           List.map (fun s ->
             let a = if s = previous then [a_selected `Selected] else [] in
             Raw.option ~a (pcdata s)
@@ -356,28 +370,6 @@ let exercise_page exo =
       return (div ~a:[a_class ["user_answer"]] [property_selector])
     in
 
-    let context_as_html context =
-      let rec aux accu = function
-        | TNil -> return (List.rev accu)
-        | TCode (s, t) ->
-          lwt h = match s with
-            | QCM (statements, _) ->
-              return (qcm_as_html statements)
-            | Grader (expected_file, _, _) ->
-              grader_as_html expected_file
-            | WITV (expressions, _, _) ->
-              witv_as_html expressions
-            | Chooser choices ->
-              chooser_as_html choices
-            | NoGrade ->
-              return (span [])
-          in
-          aux (h :: accu) t
-        | TAtom (_, t) -> aux accu t
-      in
-      aux [] context
-    in
-    lwt context = context_as_html context in
     let rec stars = function
       | 0 -> ""
       | n -> "*" ^ stars (n - 1)
@@ -435,7 +427,7 @@ let exercise_page exo =
                     List.rev !l
                   in
                   lwt trace = %ExerciseHTTP.trace_get_server_function %t in
-                  let editor= %get_editor () in
+                  let editor = %get_editor () in
                   editor.EditorHTML.console_clear ();
                   editor.EditorHTML.console_write (
                     let trace = split '\n' trace in
@@ -490,7 +482,35 @@ let exercise_page exo =
       )
     in
 
-    return (!codes, div (
+    lwt initialize, context =
+      let return_html html =
+        return (fire_reset, html)
+      in
+      (* FIXME: There should only be exactly one context. *)
+      let rec aux initialize accu = function
+        | TNil ->
+          return (initialize, List.rev accu)
+        | TCode (s, t) ->
+          lwt initialize, h = match s with
+            | QCM (statements, _) ->
+              return_html (qcm_as_html statements)
+            | Grader (expected_file, _, _) ->
+              grader_as_html expected_file
+            | WITV (expressions, _, _) ->
+              witv_as_html expressions >>= return_html
+            | Chooser choices ->
+              chooser_as_html choices >>= return_html
+            | NoGrade ->
+              return_html (span [])
+          in
+          aux initialize (h :: accu) t
+        | TAtom (_, t) -> aux initialize accu t
+      in
+      aux ({{ fun () -> () }}) [] context
+    in
+
+
+    let content = div (
       [ h1 [pcdata (title ^ " (" ^ stars difficulty ^ ")")];
         tags_as_html tags
       ]
@@ -499,14 +519,19 @@ let exercise_page exo =
       @ [ grade_div ;
           import_div;
           teacher_space ]
-    ))
+      )
+    in
+    return {
+      codes = !codes;
+      content;
+      initialize
+    }
   in
 
-  let questions_div = {
-    (string, (([ pre ]) elt list * [ div_content ] elt)) Hashtbl.t
-    {
-      Hashtbl.create 13
-    }}
+  let questions_div = { (string, question_div) Hashtbl.t {
+    Hashtbl.create 13
+  }}
+
   in
 
   let focus_on =
@@ -517,11 +542,12 @@ let exercise_page exo =
         | _ ->
           try_lwt
             %save_focus (%exo_str, name) >>
-            let codes, div = Hashtbl.find %questions_div name in
+            let qdiv = Hashtbl.find %questions_div name in
             %focus := Some name;
-            Manip.replaceChildren %statement_div [div];
+            Manip.replaceChildren %statement_div [qdiv.content];
+            qdiv.initialize ();
             WidgetHTML.display_math ["'central_column'"];
-            WidgetHTML.highlight codes;
+            WidgetHTML.highlight qdiv.codes;
             return true
           with Not_found -> return false (* Inconsistent name. *)
      }}
@@ -604,14 +630,14 @@ let exercise_page exo =
             | `KO e -> (* FIXME *) return (`KO e)
         )
         in
-        lwt (edit : [ pre ] elt list * [div_content] elt) =
+        lwt initialize, (edit : [div_content] elt) =
           lwt exo_src =
             Exercise.resource exo "source.aka" >>= function
               | `OK (r, _) -> return (Resource.content r)
               | `KO _ -> return "" (* FIXME *)
           in
-          let onload =
-            {#Dom_html.event Js.t -> unit{ fun _ ->
+          let initialize =
+            {unit -> unit{ fun () ->
               let open EditorHTML in
                   !(%reset) ();
                   let editor = %editor_maker ".aka" in
@@ -627,10 +653,17 @@ let exercise_page exo =
               editor.EditorHTML.set_ok_cb submit
              }}
           in
-          return ([], div ~a:[a_onload onload] [])
+          return (initialize, div [])
         in
         let name = "__edit_source__" in
-        let onload = {{ fun _ -> Hashtbl.add %questions_div %name %edit }} in
+        let onload = {{ fun _ ->
+          let qdiv = {
+            content = %edit; initialize = %initialize; codes = []
+          }
+          in
+          Hashtbl.add %questions_div %name qdiv
+        }}
+        in
         let onclick =
           {{ fun _ -> Lwt.async (fun () -> %focus_on %name >> return ()) }}
         in
