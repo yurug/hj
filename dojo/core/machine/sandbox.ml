@@ -159,6 +159,13 @@ let copy_on_sandbox files persistence =
     s.Machinist.copy ~clean ?timeout files (fun _ -> return ())
   )
 
+(** [retrieve_from_sandbox src dst sandbox] imports a file from
+    the sandbox to the local file system. *)
+let retrieve_from_sandbox src dst =
+  sandboxing (fun ?timeout observer s ->
+    s.Machinist.retrieve ?timeout src dst (fun _ -> return ())
+  )
+
 (** [exec ?persistent ?limitations files command observer] first
     copies [files] from the server to the sandbox, then executes
     [command] asynchronously with some [limitations] and immediately
@@ -200,7 +207,8 @@ let exec
     Log.debug (Identifier.identifier_of_string "sandbox")
       (Printf.sprintf "Copy in %fs.\n" (stop -. start));
     exec_on_sandbox cmd release_when_finished sandbox limitations observer
-     ) >>= fun job -> return (`OK (job, persistence))
+     ) >>= fun job -> return (`OK (job, persistence,
+                                   sandbox.Machinist.retrieve))
 
   with NoSuchSandbox ->
     Log.debug (Identifier.identifier_of_string "sandbox") "No such sandbox.";

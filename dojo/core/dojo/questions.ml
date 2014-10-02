@@ -449,7 +449,9 @@ let grade_regexp = Str.regexp "GRADE \\([0-9]+\\) \\([0-9]+\\)/\\([0-9]+\\)"
 
 let command_regexp = Str.regexp "COMMAND \\([0-9]+\\) \\(.*\\)$"
 
-let grade_program qid tags difficulty files cmd update =
+let export_file_regexp = Str.regexp "FILE \\([0-9]+\\) \\(.*\\) as \\(.*\\)$"
+
+let grade_program qid tags difficulty files cmd export_dir update =
   let trace_size                = ref 0 in
   let trace                     = ref [] in
   let automatic_score           = ref 0 in
@@ -474,25 +476,47 @@ let grade_program qid tags difficulty files cmd update =
   (* Generate a secret seed. *)
   let secret = Seed.generate () in
 
+  let retrieve_fun : Machinist.retrieve option ref = ref None in
+
   let process_stderr s = Str.(
-    if string_match grade_regexp s 0 then
-      let seed = Seed.of_string (matched_group 1 s) in
-      if Seed.compare seed secret = 0 then return (
+    let rec match_commands = function
+      | [] ->
+        debug s;
+        return ()
+      | (regexp, f) :: cs ->
+        if string_match grade_regexp s 0 then
+          let seed = Seed.of_string (matched_group 1 s) in
+          if Seed.compare seed secret = 0 then
+            f ()
+          else
+            return (debug ("STRANGE: " ^ s))
+        else
+          match_commands cs
+    in
+    match_commands [
+      grade_regexp, (fun () ->
         automatic_score := int_of_string (matched_group 2 s);
-        automatic_potential_score := int_of_string (matched_group 3 s)
-      ) else
+        automatic_potential_score := int_of_string (matched_group 3 s);
         return ()
-    else if string_match command_regexp s 0 then
-      let seed = Seed.of_string (matched_group 1 s) in
-      if Seed.compare seed secret = 0 then return (
-        commands := matched_group 2 s :: !commands
-      ) else
+      );
+
+      command_regexp, (fun () ->
+        commands := matched_group 2 s :: !commands;
         return ()
-    else (
-      debug s;
-      (* FIXME: put this on the teacher only side. *)
-      return ()
-    )
+      );
+
+      export_file_regexp, (fun () ->
+        match !retrieve_fun with
+          | Some retrieve ->
+            let source = matched_group 2 s
+            and destination = matched_group 3 s in
+            retrieve source (export_dir destination) (fun _ -> return ());
+            >> return ()
+          | None ->
+            debug "Well... I have no retrieve function!";
+            return ()
+      )
+    ]
   )
   in
 
@@ -527,7 +551,8 @@ let grade_program qid tags difficulty files cmd update =
   ) in
   Sandbox.(exec files cmd observer ~limitations:[TimeOut 180.])
   >>= function
-    | `OK (job, persistence_id) ->
+    | `OK (job, persistence_id, retrieve) ->
+      retrieve_fun := Some retrieve;
       return (EvaluationHandled job)
     | `KO e ->
       (* FIXME: Provide a more detailed diagnostic. *)
@@ -597,7 +622,7 @@ let evaluate_using_context
         :: import_files exo_real_path imported_files
       in
       (* FIXME: Check that filename' = expected_file. *)
-      grade_program qid tags difficulty files command update
+      grade_program qid tags difficulty files command answer_real_path update
     | CtxWITV (expected_values, comparator), GivenValues vs ->
       grade_witv
         exo_real_path

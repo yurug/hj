@@ -57,8 +57,11 @@ let submit_src_answer =
 let focus_erefs = Hashtbl.create 13
 
 let focus_eref exo_str =
-  try Hashtbl.find focus_erefs exo_str
+  try
+    Log.debug (identifier_of_string exo_str) "Looking for eref..";
+    Hashtbl.find focus_erefs exo_str
   with Not_found ->
+    Log.debug (identifier_of_string exo_str) "Looking for eref.. notfound!";
     let eref = Eliom_reference.eref
       ~scope:Eliom_common.default_session_scope
       ~persistent:("focus_" ^ (Str.(global_replace (regexp "/") "__" exo_str)))
@@ -68,13 +71,25 @@ let focus_eref exo_str =
     eref
 
 let get_focus = server_function Json.t<string> (fun exo_str ->
-  let eref = focus_eref exo_str in
-  Eliom_reference.get eref
+  try_lwt
+    let eref = focus_eref exo_str in
+    Eliom_reference.get eref
+  with exn ->
+    Log.debug
+      (identifier_of_string exo_str)
+      (Printf.sprintf "get focus failed: %s" (Printexc.to_string exn));
+    return None
 )
 
 let save_focus = server_function Json.t<string * string> (fun (exo_str, name) ->
-  let eref = focus_eref exo_str in
-  Eliom_reference.set eref (Some name)
+  try_lwt
+    let eref = focus_eref exo_str in
+    Eliom_reference.set eref (Some name)
+  with exn ->
+    Log.debug
+      (identifier_of_string exo_str)
+      (Printf.sprintf "save focus failed: %s" (Printexc.to_string exn));
+    return ()
 )
 
 let exercise_page exo =
@@ -248,7 +263,6 @@ let exercise_page exo =
 
       let initialize =
         {unit -> unit{ fun () ->
-          Firebug.console##log (Js.string "Onshow!");
           let open EditorHTML in
           !(%reset) ();
           %editor := Some (%editor_maker %expected_extension);
