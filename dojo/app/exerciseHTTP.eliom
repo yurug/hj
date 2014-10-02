@@ -306,7 +306,7 @@ let exercise_evaluation_state_server_function =
   )
 
 let gen_string_of_evaluation_state f g = Questions.(function
-  | EvaluationError _ -> assert false
+  | EvaluationError _ -> ("error", "")
   | EvaluationDone (_, _, _, grade) -> (f grade, g grade)
   | EvaluationWaits -> ("waiting...", "")
   | EvaluationHandled _ -> ("processing...", "")
