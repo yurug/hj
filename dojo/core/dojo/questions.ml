@@ -459,6 +459,12 @@ let grade_program qid tags difficulty files cmd update =
   let trace_max_length = 1024 in
 
   let puts s =
+    let s =
+      if String.length s > trace_max_line_length then
+        String.sub s 0 trace_max_line_length
+      else
+        s
+    in
     incr trace_size;
     if !trace_size < trace_max_length then
       return (trace := Message s :: !trace)
