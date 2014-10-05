@@ -534,3 +534,32 @@ let exercise_import_answer = HTTP.(
         error ("undefined:" ^ (string_of_identifier id)))
 )
 
+let exercise_answers_of_user_function exo_id user_id =
+  teacher_only () >>
+    Answers.answers_to_string exo_id user_id
+
+let exercise_answers_of_user = HTTP.(
+  api_service "exercise_answers_of_user" "exercise"
+    (string "identifier" ** string "uid")
+    (string "status")
+    "Return the answers of a user."
+    (fun (name, uid) ->
+      exercise_answers_of_user_function
+        (identifier_of_string name)
+        (identifier_of_string uid)
+      >>= function
+         | `OK s -> success s
+         | `KO (`InvalidModule id) ->
+           error ("invalid_module:" ^ string_of_identifier id)
+         | `KO (`InvalidCode e) -> success e
+         | `KO `NotLogged -> error "not_logged"
+         | `KO `FailedLogin -> error "login_failed"
+         | `KO (`AlreadyExists _) -> error "already_exists"
+         | `KO (`SystemError e) -> error ("system:" ^ e)
+         | `KO (`InternalError e) ->
+           error ("internal:" ^ (Printexc.to_string e))
+         | `KO `StudentsCannotCreateExercise -> error "teacher_only"
+         | `KO `ForbiddenService -> error "teacher_only"
+         | `KO (`UndefinedEntity id) ->
+           error ("undefined:" ^ (string_of_identifier id))
+    ))

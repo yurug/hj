@@ -184,6 +184,20 @@ let answer_of_question answers qid =
   observe answers (fun state -> return (content state).answers)
   >>= fun answers -> return (Questions.lookup_answer answers qid)
 
+let answers_to_string id uid =
+  make (answers_identifier id uid) >>>= fun answers ->
+  observe answers (fun state -> return (content state).answers)
+  >>= fun answers ->
+  let b = Buffer.create 13 in
+  Questions.iter_answers_s (fun qid (answer, uid) ->
+    return (Buffer.add_string b (
+      qid ^ " -> "
+      ^ Questions.string_of_answer answer
+      ^ " (" ^ string_of_identifier uid ^ ")\n"
+    ))
+  ) answers
+  >> return (`OK (Buffer.contents b))
+
 let refresh_questions a qs =
   change a (NewQuestions qs)
 
