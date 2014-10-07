@@ -577,6 +577,7 @@ div.editor_console {
     cursor:text;
     height: 100%;
     overflow-y: scroll;
+    white-space: pre-wrap;
 }
 
 span.tag {
