@@ -69,6 +69,7 @@ let message msg =
         Printf.sprintf
           "CodeMirror.fromTextArea(document.getElementById(\"%s\"), {
            lineNumbers: true,
+           indentUnit: 4,
            mode: \"text/x-java\"
            });" ta)
 
