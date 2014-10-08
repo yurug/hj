@@ -825,3 +825,7 @@ code {
     border-radius: 7px;
     margin-right: 0.5em;
 }
+
+div.teacher_space {
+    clear : both;
+}
