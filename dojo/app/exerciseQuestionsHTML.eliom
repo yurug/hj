@@ -15,14 +15,11 @@ open WidgetHTML
 open ExerciseHTTP
 open ExtPervasives
 open StatementHTML
+open ExerciseEvaluationStateHTML
 
 let fresh_id =
   let r = ref 0 in
   fun () -> incr r; "i" ^ string_of_int !r
-
-{client{
-exception Done
-}}
 
 let question_as_html
     exo
@@ -31,84 +28,37 @@ let question_as_html
     (reset : (unit -> unit) ref client_value)
     (editor_maker : (string -> EditorHTML.interface) client_value) =
 
-  let exo_id = Exercise.identifier exo in
-  let exo_str = Identifier.string_of_identifier exo_id in
-  let answers_str = string_of_identifier (Answers.identifier answers) in
-
+  (** Shortcuts. *)
   let tags = question.tags
   and difficulty = question.difficulty
   and statements = question.statement
   and context = question.context
   and title = Statement.flatten_string question.title
-  and name = Statement.flatten_string question.id
-  in
+  and name = Statement.flatten_string question.id in
   let name_str : string = name in
+  let exo_id = Exercise.identifier exo in
+  let exo_str = Identifier.string_of_identifier exo_id in
+  let answers_str = string_of_identifier (Answers.identifier answers) in
 
   let codes = ref [] in
 
-  let grade_div = div ~a:[a_class ["score_div"]] [] in
-
   let editor = {EditorHTML.interface option ref{ ref None }} in
-  let get_editor = {unit -> EditorHTML.interface{ fun () -> match !(%editor) with
-    | None -> raise Not_found
-    | Some e -> e
+  let get_editor = {unit -> EditorHTML.interface{ fun () ->
+    match !(%editor) with
+      | None -> raise Not_found
+      | Some e -> e
   }}
   in
 
-  let score_box = {string -> [p_content] elt list -> div elt{ fun score criteria ->
-    div ~a:[a_class ["score_box"]] [
-      p ~a:[a_class ["score"]] [pcdata score];
-      p ~a:[a_class ["criteria"]] criteria
-    ]
-  }} in
+  let grade_div = div ~a:[a_class ["score_div"]] [] in
 
-  let display_evaluation_state =
-    {([Html5_types.div_content_fun] elt list -> unit) option -> unit Lwt.t{
-      fun console_write ->
-        let open ExerciseHTTP in
-        let criteria_as_html = function
-          | Automatic -> pcdata "Dojo"
-          | UserDefined s -> pcdata s
-        in
-        let scores_as_html scores =
-            List.map (fun (c, (i, o)) ->
-              %score_box (Printf.sprintf "%d/%d" i o) [criteria_as_html c]
-            ) scores
-        in
-        let update_grade_div h =
-          Manip.replaceChildren %grade_div h
-        in
-        let write_trace_on_console trace =
-          match console_write with
-            | None -> ()
-            | Some write ->
-              List.iter (function Message s -> write [p [pcdata s]]) trace
-        in
-        let process_command cmd =
-          Js.Unsafe.eval_string cmd
-        in
-        lwt on_update = AnswersHTTP.on_each_update %answers_str in
-        try_lwt
-          on_update (fun _ ->
-             %exercise_evaluation_state_server_function (%exo_str, %name_str)
-             >>= function
-               | EvaluationBeingProcessed ->
-                 return (update_grade_div [%score_box "..." []])
-               | EvaluationDone (_, _, _, grade, commands) ->
-                 write_trace_on_console grade.trace;
-                 List.iter process_command commands;
-                 update_grade_div (scores_as_html grade.scores);
-                 raise_lwt Done
-               | EvaluationFailed ->
-                 return (update_grade_div [%score_box "!" []])
-               | NoEvaluation ->
-                 return (update_grade_div [%score_box "?" []])
-        )
-        with Done -> return ()
-      }}
-    in
+  let display_evaluation_state_now =
+   {([Html5_types.div_content_fun] elt list -> unit) option -> unit Lwt.t{
+      %display_evaluation_state %exo_str %answers_str %name_str %grade_div
+   }}
+   in
 
-    let qcm_as_html statements =
+   let qcm_as_html statements =
 
       let choices = {int list ref{ ref [] }} in
 
@@ -141,8 +91,7 @@ let question_as_html
               ready := false;
               %push_new_choices_server_function (%exo_str, %name_str, !(%choices))
               >> (
-                Manip.replaceChildren %grade_div [%score_box "..." []];
-                %display_evaluation_state None
+                %display_evaluation_state_now None
               ) >> (return (ready := true))
             )
         }}
@@ -207,11 +156,8 @@ let question_as_html
                   Lwt.async (fun () ->
                     ready := false;
                     %submit_answer src >> (
-                      Manip.replaceChildren %grade_div [%score_box "..." []];
-                      Lwt_js.sleep 0.5
-                    ) >> (
                       editor.console_clear ();
-                      %display_evaluation_state (Some editor.console_write)
+                      %display_evaluation_state_now (Some editor.console_write)
                       >> return (ready := true)
                     ))
               in
@@ -270,7 +216,7 @@ let question_as_html
                   pcdata "..."; EntityHTML.get_progress ()
                 ]];
                 Lwt_js.sleep 0.5
-              ) >> %display_evaluation_state None
+              ) >> %display_evaluation_state_now None
               >> return (ready := true)
             )
         }}
@@ -311,7 +257,7 @@ let question_as_html
                 pcdata "..."; EntityHTML.get_progress ()
               ]];
               Lwt_js.sleep 0.5
-            ) >> %display_evaluation_state None
+            ) >> %display_evaluation_state_now None
           );
           Js._true
         in
@@ -433,7 +379,7 @@ let question_as_html
               let id = Js.to_string id in
               if id <> "" then (
                 %exercise_import_answer_server_function (%exo_str, id, %name_str)
-                >> %display_evaluation_state None
+                >> %display_evaluation_state_now None
               ) else return ()
             )
         }}
