@@ -26,6 +26,27 @@ let fresh_id =
 exception Done
 }}
 
+
+let focus_eref =
+  Eliom_reference.eref
+    ~scope:Eliom_common.default_session_scope
+    ~persistent:("focuses")
+    []
+
+let get_focus = server_function Json.t<string> (
+  fun exo_str ->
+    lwt list = Eliom_reference.get focus_eref in
+    try_lwt
+      return (Some (List.assoc exo_str list))
+    with Not_found ->
+      return None
+)
+
+let save_focus = server_function Json.t<string * string> (fun (exo_str, name) ->
+  lwt focuses = Eliom_reference.get focus_eref in
+  Eliom_reference.set focus_eref (update_assoc exo_str name focuses)
+)
+
 let exercise_page exo =
 
   let focus = {string option ref{ ref None }} in
@@ -468,18 +489,6 @@ let exercise_page exo =
     ))
   in
 
-  let focus_eref =
-    Eliom_reference.eref
-      ~scope:Eliom_common.default_session_scope
-      ~persistent:("focus_" ^ (Str.(global_replace (regexp "/") "__" exo_str)))
-      None
-  in
-
-  let save_focus = server_function ~timeout:600. Json.t<string> (fun name ->
-    Eliom_reference.set focus_eref (Some name)
-  )
-  in
-
   let questions_div = {
     (string,
      (unit, (([ pre ]) elt list * [ div_content ] elt)) server_function
@@ -496,7 +505,7 @@ let exercise_page exo =
           return true
         | _ ->
           try_lwt
-            %save_focus name >>
+            %save_focus (%exo_str, name) >>
             let div = Hashtbl.find %questions_div name in
             lwt codes, div = div () in
             %focus := Some name;
@@ -647,10 +656,6 @@ let exercise_page exo =
         | false -> return (div [])
     in
 
-    let get_focus_eref = server_function ~timeout:600. Json.t<unit> (
-      fun () -> Eliom_reference.get focus_eref
-    )
-    in
     let onload =
       {{
         fun _ ->
@@ -660,7 +665,7 @@ let exercise_page exo =
                 | None -> return () (* FIXME: absurd, right? *)
                 | Some name -> %focus_on name >> return ()
             in
-            %get_focus_eref () >>= function
+            %get_focus %exo_str >>= function
             | None -> load_first ()
             | Some name -> %focus_on name >>= function
                 | true -> return ()
