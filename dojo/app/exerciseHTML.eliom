@@ -59,31 +59,27 @@ let exercise_page exo =
   in
 
   let initialize_questions_div questions answers editor_maker =
-    let rec aux level = function
-      | Question q ->
-        let name = Statement.flatten_string q.id in
-        let title = Statement.flatten_string q.title in
+    let rec aux = function
+      | Question question ->
+        let name = Statement.flatten_string question.id in
         let d = server_function ~timeout:1000. Json.t<unit> (fun () ->
           question_as_html
             exo
-            focus reset
-            name title
-            q.tags q.difficulty
-            q.statement q.context
-            answers editor_maker
+            question
+            answers
+            reset
+            editor_maker
         )
         in
         ignore {unit{ Hashtbl.add %questions_div %name %d }};
 
-      | Section (title, qs) ->
-        questions_template (level + 1) qs
+      | Section (_, qs) ->
+        questions_template qs
 
-    and questions_template level qs =
-      flatten ()
-        (fun _ s -> ())
-        (fun _ s -> aux level s) qs
+    and questions_template qs =
+      flatten () (fun _ s -> ()) (fun _ s -> aux s) qs
     in
-    questions_template 0 questions
+    questions_template questions
 
   in ExerciseHTTP.(
     exercise_questions_function (Exercise.identifier exo) >>>= fun qdesc ->

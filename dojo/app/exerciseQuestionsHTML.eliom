@@ -26,18 +26,23 @@ exception Done
 
 let question_as_html
     exo
-    focus
+    question
+    answers
     (reset : (unit -> unit) ref client_value)
-    name title
-    tags difficulty
-    statements context answers
     (editor_maker : (string -> EditorHTML.interface) client_value) =
 
   let exo_id = Exercise.identifier exo in
   let exo_str = Identifier.string_of_identifier exo_id in
-
-  let name_str : string = name in
   let answers_str = string_of_identifier (Answers.identifier answers) in
+
+  let tags = question.tags
+  and difficulty = question.difficulty
+  and statements = question.statement
+  and context = question.context
+  and title = Statement.flatten_string question.title
+  and name = Statement.flatten_string question.id
+  in
+  let name_str : string = name in
 
   let codes = ref [] in
 
