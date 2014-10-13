@@ -54,7 +54,8 @@ let display_evaluation_state
           in
           lwt on_update = AnswersHTTP.on_each_update answers_str in
           try_lwt
-            on_update (fun _ ->
+            update_grade_div [score_box "..." []];
+            Lwt_js.sleep 0.1 >> on_update (fun _ ->
               %exercise_evaluation_state_server_function (exo_str, name_str)
               >>= function
                 | EvaluationBeingProcessed ->
