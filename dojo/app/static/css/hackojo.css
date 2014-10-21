@@ -829,3 +829,8 @@ code {
 div.teacher_space {
     clear : both;
 }
+
+div.editor_console > p {
+  margin: 0px;
+  padding: 0px;
+}
