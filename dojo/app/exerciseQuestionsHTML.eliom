@@ -17,11 +17,33 @@ open ExtPervasives
 open StatementHTML
 open ExerciseEvaluationStateHTML
 
+let theeditor = {EditorHTML.interface option ref{ ref None }}
+
+let get_editor = {unit -> EditorHTML.interface{ fun () ->
+  match !(%theeditor) with
+    | None -> raise Not_found
+    | Some e -> e
+}}
+
+let editor_maker = {(string -> EditorHTML.interface) ref{
+  ref (fun _ -> assert false)
+}}
+
+let reset = {(unit -> unit) ref{
+  ref (fun () -> ())
+}}
+
 let fresh_id =
   let r = ref 0 in
   fun () -> incr r; "i" ^ string_of_int !r
 
-let chooser_as_html display_evaluation_state_now reset editor exo_str name_str choices =
+type frame_editor =
+  | NoEditor
+  | Editor of string (* answers_str *) * string (* question_name *)
+
+let chooser_as_html
+    display_evaluation_state_now exo_str name_str choices
+=
   let onload = {{
     fun _ -> !(%reset) ();
     %reset := fun () -> () }}
@@ -34,7 +56,6 @@ let chooser_as_html display_evaluation_state_now reset editor exo_str name_str c
   let submit = server_function ~timeout:600. Json.t<string> (fun choice ->
     let idx = ExtPervasives.list_index_of choice choices in
     push_new_choice_function (exo_str, name_str, idx)
-      (* FIXME: Why is the gif not displayed here? *)
   )
   in
   let property_selector =
@@ -60,14 +81,16 @@ let chooser_as_html display_evaluation_state_now reset editor exo_str name_str c
   }};
   return (div ~a:[a_class ["user_answer"]] [property_selector])
 
-let qcm_as_html display_evaluation_state_now reset editor exo_str name_str statements =
+let qcm_as_html
+    display_evaluation_state_now
+    exo_str name_str statements =
 
   let choices = {int list ref{ ref [] }} in
 
   let onload = {{
     fun _ -> !(%reset) ();
     %reset := (fun () -> ());
-    %editor := None;
+    %theeditor := None;
   }}
   in
 
@@ -84,7 +107,7 @@ let qcm_as_html display_evaluation_state_now reset editor exo_str name_str state
       span (template_text_as_html [] statement)
     ]
   in
-  div ~a:[a_onload onload] (List.mapi qcm_item statements @ [
+  return (div ~a:[a_onload onload] (List.mapi qcm_item statements @ [
     small_button ["OK"] {unit -> unit{
       let ready = ref true in
       fun () ->
@@ -97,9 +120,11 @@ let qcm_as_html display_evaluation_state_now reset editor exo_str name_str state
             ) >> (return (ready := true))
           )
     }}
-  ])
+  ]))
 
-let witv_as_html display_evaluation_state_now reset editor exo_str name_str expressions =
+let witv_as_html
+    display_evaluation_state_now
+    exo_str name_str expressions =
 
   let nb = List.length expressions in
 
@@ -108,7 +133,7 @@ let witv_as_html display_evaluation_state_now reset editor exo_str name_str expr
   let onload = {{
     fun _ -> !(%reset) ();
     %reset := (fun () -> ());
-    %editor := None;
+    %theeditor := None;
   }}
   in
 
@@ -132,14 +157,15 @@ let witv_as_html display_evaluation_state_now reset editor exo_str name_str expr
         if !ready then Lwt.async (fun () ->
           ready := false;
           %push_new_values_server_function (%exo_str, %name_str, %values)
-          (* FIXME: Why is the gif not displayed here? *)
           >> %display_evaluation_state_now None
           >> return (ready := true)
         )
     }}
   ]))
 
-let grader_as_html exo answers editor_maker display_evaluation_state_now reset editor exo_str name_str expected_file =
+let grader_as_html
+    exo answers display_evaluation_state_now
+    exo_str name_str expected_file =
 
   let exo_id = Exercise.identifier exo in
   let expected_extension = Str.(
@@ -157,19 +183,25 @@ let grader_as_html exo answers editor_maker display_evaluation_state_now reset e
       return None
   in
   let blank_resource = Resource.make expected_file "" in
-  let get_exercise_initial_answer a =
-    Exercise.resource exo a >>= function
+  lwt initial_answer =
+    Exercise.resource exo expected_file >>= function
       | `OK (r, _) -> return r
       | `KO _ -> return blank_resource
   in
-  lwt initial_answer = get_exercise_initial_answer expected_file in
-
   lwt answer_resource =
     match answer with
       | Some (Questions.File a, author) ->
         (Answers.resource answers a >>= function
-          | `OK (r, _) -> return r
-          | `KO _ -> return initial_answer)
+          | `OK (r, _) ->
+            Ocsigen_messages.errlog (
+              Printf.sprintf "There is an answer in resource %s\n"
+                (Resource.name r));
+            return r
+          | `KO _ ->
+            Ocsigen_messages.errlog (
+              Printf.sprintf "There is no answer, use resource %s\n"
+                (Resource.name initial_answer));
+            return initial_answer)
       | _ -> return initial_answer
   in
   let answer_str = Resource.content answer_resource in
@@ -178,8 +210,9 @@ let grader_as_html exo answers editor_maker display_evaluation_state_now reset e
 
   let submit_answer =
     server_function ~timeout:3600. Json.t<string> (fun src ->
-      Resource.set_content answer_resource src;
-      OnDisk.save_resource (Answers.identifier answers) answer_resource (fun () ->
+      let answer_resource = Resource.make expected_file src in
+      let answers_id = Answers.identifier answers in
+      OnDisk.save_resource answers_id answer_resource (fun () ->
         push_new_answer_function (exo_id, name_str, File expected_file)
         >> return ()
       )
@@ -187,36 +220,35 @@ let grader_as_html exo answers editor_maker display_evaluation_state_now reset e
   in
   let onload =
     {{ fun _ ->
-          let open EditorHTML in
-              !(%reset) ();
-              let editor = %editor_maker %expected_extension in
-              %editor := Some editor;
-              let ready = ref true in
-              let submit () =
-                if !ready then
-                  let src = editor.get_value () in
-                  Lwt.async (fun () ->
-                    ready := false;
-                    %submit_answer src >> (
-                      editor.console_clear ();
-                      %display_evaluation_state_now (Some editor.console_write)
-                      >> return (ready := true)
-                    ))
-              in
-              let reset_answer () =
-                editor.set_value %initial_answer_str
-              in
-
-              %reset := editor.EditorHTML.dispose;
-              editor.EditorHTML.set_value %answer_str;
-              editor.EditorHTML.set_ok_cb submit;
-              editor.EditorHTML.set_reset_cb reset_answer;
-         }}
+      !(%reset) ();
+      let open EditorHTML in
+      let editor = !(%editor_maker) %expected_extension in
+      %theeditor := Some editor;
+      let ready = ref true in
+      let submit () =
+        if !ready then
+          let src = editor.get_value () in
+          Lwt.async (fun () ->
+            ready := false;
+            %submit_answer src >> (
+            editor.console_clear ();
+            %display_evaluation_state_now (Some editor.console_write)
+            >> return (ready := true)
+          ))
       in
-      return (div ~a:[a_onload onload] [
-        p [pcdata ("▶ " ^ I18N.String.(
-          answer_expected (in_a_file_named expected_file)))]
-      ])
+      let reset_answer () =
+        editor.set_value %initial_answer_str
+      in
+      %reset := editor.EditorHTML.dispose;
+      editor.EditorHTML.set_value %answer_str;
+      editor.EditorHTML.set_ok_cb submit;
+      editor.EditorHTML.set_reset_cb reset_answer;
+     }}
+  in
+  return (div ~a:[a_onload onload] [
+    p [pcdata ("▶ " ^ I18N.String.(
+      answer_expected (in_a_file_named expected_file)))]
+  ])
 
 let results_table get_editor rows = I18N.(String.(
   let columns =
@@ -264,8 +296,8 @@ let results_table get_editor rows = I18N.(String.(
                 flush ();
                 List.rev !l
               in
-              lwt trace = %ExerciseHTTP.trace_get_server_function %t in
-              let editor= %get_editor () in
+              lwt trace  = %ExerciseHTTP.trace_get_server_function %t in
+              let editor = %get_editor () in
               editor.EditorHTML.console_clear ();
               editor.EditorHTML.console_write (
                 let trace = split '\n' trace in
@@ -273,7 +305,7 @@ let results_table get_editor rows = I18N.(String.(
               );
               return ()
             with Not_found -> return ())
-                     }}
+       }}
     in
     tr (fields [pcdata l; pcdata u; pcdata f; a; pcdata e;
                 show_trace_button t])
@@ -282,12 +314,8 @@ let results_table get_editor rows = I18N.(String.(
   tablex ~a:[a_class ["results_table"]] ~thead [tbody rows]
 ))
 
-let question_as_html
-    exo
-    question
-    answers
-    (reset : (unit -> unit) ref client_value)
-    (editor_maker : (string -> EditorHTML.interface) client_value) =
+let question_as_html exo question answers
+: ([ pre ] elt list * [ div ] elt) Lwt.t =
 
   (** Shortcuts. *)
   let tags = question.tags
@@ -303,14 +331,6 @@ let question_as_html
 
   let codes = ref [] in
 
-  let editor = {EditorHTML.interface option ref{ ref None }} in
-  let get_editor = {unit -> EditorHTML.interface{ fun () ->
-    match !(%editor) with
-      | None -> raise Not_found
-      | Some e -> e
-  }}
-  in
-
   let grade_div = div ~a:[a_class ["score_div"]] [] in
   let display_evaluation_state_now =
    {([Html5_types.div_content_fun] elt list -> unit) option -> unit Lwt.t{
@@ -324,13 +344,18 @@ let question_as_html
       | TCode (s, t) ->
         lwt h = match s with
           | QCM (statements, _) ->
-            return (qcm_as_html display_evaluation_state_now reset editor exo_str name_str statements)
+            qcm_as_html display_evaluation_state_now
+              exo_str name_str statements
           | Grader (expected_file, _, _) ->
-            grader_as_html exo answers editor_maker display_evaluation_state_now reset editor exo_str name_str expected_file
+            grader_as_html
+              exo answers display_evaluation_state_now
+              exo_str name_str expected_file
           | WITV (expressions, _, _) ->
-            witv_as_html display_evaluation_state_now reset editor exo_str name_str expressions
+            witv_as_html display_evaluation_state_now
+              exo_str name_str expressions
           | Chooser choices ->
-            chooser_as_html display_evaluation_state_now reset editor exo_str name_str choices
+            chooser_as_html display_evaluation_state_now
+              exo_str name_str choices
           | NoGrade ->
             return (span [])
         in
@@ -359,8 +384,9 @@ let question_as_html
             let id = (ExtDom.get_input_by_id %import_id)##value in
             let id = Js.to_string id in
             if id <> "" then (
-                %exercise_import_answer_server_function (%exo_str, id, %name_str)
-                >> %display_evaluation_state_now None
+                %exercise_import_answer_server_function (
+                   %exo_str, id, %name_str
+                ) >> %display_evaluation_state_now None
               ) else return ()
             )
       }}

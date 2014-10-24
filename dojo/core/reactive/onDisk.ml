@@ -68,10 +68,8 @@ let resource_versions id name =
 let save_resource id s on_finished =
   let save () = (
     let path = file (path_of_identifier id) (Resource.name s) in
-    VFS.save (who id) path (Resource.content s)
-    >>>= fun _ ->
-    Lwt.async on_finished;
-    return (`OK true)
+    VFS.save (who id) path (Resource.content s) on_finished
+    >> return (`OK true)
   ) >>= function
     | `OK r -> return (`OK r)
     | `KO r  -> Lwt.async on_finished; return (`KO r)
@@ -138,7 +136,7 @@ end)
      else
       return (`OK ())
     )
-    >>>= fun _ -> VFS.save (who id) (metafile path) raw
+    >>>= fun _ -> VFS.save (who id) (metafile path) raw (fun () -> return ())
     >>>= fun _ -> return (`OK ())
 
   let rec convert vd = function

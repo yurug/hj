@@ -199,8 +199,10 @@ let latest = on_path (fun p _ fname where -> ltry (fun lraise ->
 let read v = ltry (fun lraise ->
   match v with
     | Latest (p, _) ->
+      Printf.eprintf "cat %s\n%!" (string_of_path p);
       cat (string_of_path p) lraise
     | Stored v ->
+      Printf.eprintf "git show %s %s\n%!" (string_of_path v.path) v.number;
       git_show v.number (string_of_path v.path) lraise
 )
 
@@ -211,16 +213,19 @@ let version_from_number path n =
       lwt nv = number v in
       return (nv = n)
     ) vs >>= fun x ->
-    return  (`OK x)
+    return (`OK x)
   with Not_found ->
     return (`KO `NoSuchVersion)
 
-let onfile f who = on_path (fun p ps fname where c -> ltry (
+let onfile f who = on_path (fun p ps fname where c on_finished -> ltry (
   !>> f c ps
   >>> git_add where [fname]
   >>> git_commit who where [fname] ps
   >>> lreturn ()
-))
+) >>= function
+  | `OK () -> on_finished () >> return (`OK ())
+  | `KO e -> return (`KO e)
+)
 
 let save   = onfile echo
 let append = onfile append

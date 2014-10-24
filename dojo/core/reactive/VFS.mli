@@ -60,9 +60,10 @@ val delete: string -> path
          | `SystemError of string ]
      ] Lwt.t
 
-(** [save who path content] stores the string [content] in the file
-    at [path]. If there is no file at [path], it is created. *)
-val save : string -> path -> string
+(** [save who path content on_finished] stores the string [content] in
+    the file at [path]. If there is no file at [path], it is
+    created. [on_finished ()] is finally executed. *)
+val save : string -> path -> string -> (unit -> unit Lwt.t)
   -> [ `OK of unit
      | `KO of
          (** Something went wrong at the system level.
@@ -70,10 +71,10 @@ val save : string -> path -> string
          [> `SystemError of string ]
      ] Lwt.t
 
-(** [append who path content] appends the string [content] at the end
-    of the file located at [path]. If there is no file at [path], it
-    is created. *)
-val append : string -> path -> string
+(** [append who path content on_finished] appends the string [content]
+    at the end of the file located at [path]. If there is no file at
+    [path], it is created. [on_finished ()] is finally executed. *)
+val append : string -> path -> string -> (unit -> unit Lwt.t)
   -> [ `OK of unit
      | `KO of
          (** Something went wrong at the system level.
