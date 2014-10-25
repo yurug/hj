@@ -61,7 +61,7 @@ let make q =
        puts "\\end{itemize}\n\n"
 
       | Grader (expected_file, _, _) ->
-        puts (sprintf "\\hfill$\\triangleright$ \\verb!%s!"
+        puts (sprintf "\\hfill$\\triangleright$ \\verb|%s|"
                 expected_file)
 
       | WITV (values, _, _) ->
@@ -115,7 +115,12 @@ let make q =
         let s = flatten_string s in
         puts (escape s)
       | Code t ->
-        puts (sprintf "\\verb!%s!" (flatten_string t))
+        let escape s = Str.(
+          let s = global_replace (regexp "|") "\\textbar" in
+          global_replace (regexp "\n") " "
+        )
+        in
+        puts (sprintf "\\verb|%s|" (escape (flatten_string t)))
       | LaTeX t ->
         puts (sprintf "$%s$" (flatten_string t))
       | RawHTML s ->
@@ -137,6 +142,7 @@ let make q =
         \\usepackage[french]{babel}
         \\usepackage[utf8]{inputenc}
         \\usepackage[T1]{fontenc}
+        \\usepackage{amsmath}
         \\usepackage{amssymb}
         \\usepackage{fancybox}
         \\usepackage{fullpage}
