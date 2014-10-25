@@ -487,6 +487,8 @@ let active_div
     ?(classes=[])
     (freq : float)
     (f : unit -> [ div_content ] elt list Lwt.t) =
+  (* FIXME: the server function should be taken as a parameter,
+     FIXME: for better resource usage control. *)
   let sf = server_function ~timeout:3600. Json.t<unit> f in
   let d = div ~a:[a_class classes] [] in
   let onload =
