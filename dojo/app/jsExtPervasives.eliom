@@ -1,3 +1,8 @@
+# 1 "jsExtPervasives.preliom"
+# 1 "<command-line>"
+# 1 "jsExtPervasives.preliom"
+{client{
+# 1 "../core/common/extPervasives.ml" 1
 (* -*- tuareg -*- *)
 
 open Lwt
@@ -317,7 +322,7 @@ let small_jump _ =
   raise_lwt SmallJump
 
 let warn_only w =
-(*  ignore (Log.log w); *)
+(* ignore (Log.log w); *)
   small_jump
 
 let ( @* ) f x = fun () -> f x
@@ -399,3 +404,5 @@ let how_long msg f =
   let y = f () in
   Printf.eprintf "%s took %f seconds.\n%!" msg (Unix.gettimeofday () -. t);
   y
+# 3 "jsExtPervasives.preliom" 2
+}}

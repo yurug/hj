@@ -115,8 +115,6 @@ val list_tl_cut : int -> 'a list -> 'a list
 
 val list_index_of : 'a -> 'a list -> int
 
-val lwt_condition_wait_timeout : int -> 'a Lwt_condition.t -> 'a option Lwt.t
-
 (** [natural_indices ()] returns a map from a set of values to
     natural numbers such that the image of the map is exactly the
     range [0..n] where [n] is the total number of identifiers in the
