@@ -287,18 +287,6 @@ let natural_indices () =
   ) in
   (indices_remove, indices_insert, Hashtbl.find indices, indices_fresh_for)
 
-module ExtFilename = struct
-
-  let temp_filename ?(temp_dir = Filename.get_temp_dir_name ()) prefix suffix =
-    let fname = Filename.temp_file ~temp_dir prefix suffix in
-    Lwt_unix.unlink fname
-    >>= fun _ -> return fname
-
-  let fresh_filename dir =
-    temp_filename ~temp_dir:dir
-
-end
-
 type ('a, 'e) exn_free =
   [`OK of 'a | `KO of 'e] Lwt.t
 

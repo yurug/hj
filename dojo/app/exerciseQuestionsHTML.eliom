@@ -53,11 +53,6 @@ let chooser_as_html
         (* FIXME *)
     ""
   in
-  let submit = server_function ~timeout:600. Json.t<string> (fun choice ->
-    let idx = ExtPervasives.list_index_of choice choices in
-    push_new_choice_function (exo_str, name_str, idx)
-  )
-  in
   let property_selector =
     Raw.select ~a:[a_onload onload] (
       List.map (fun s ->
@@ -70,7 +65,10 @@ let chooser_as_html
     let e = To_dom.of_select %property_selector in
     let select = fun _ ->
       Lwt.async (fun () ->
-        %submit (Js.to_string e##value)
+        let idx =
+          JsExtPervasives.list_index_of (Js.to_string e##value) %choices
+        in
+        %push_new_choice_server_function (%exo_str, %name_str, idx)
         >> %display_evaluation_state_now None
       );
       Js._true

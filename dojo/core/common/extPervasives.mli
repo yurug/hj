@@ -127,14 +127,6 @@ val natural_indices : unit ->
   * ('a -> int)          (** [find x] *)
   * ('a -> int -> 'a)    (** [set x idx] *)
 
-module ExtFilename : sig
-
-  (** [temp_filename tmpdir prefix suffix] returns a fresh name for a
-      file. Only guarantee that the file does not exist when called. *)
-  val temp_filename : ?temp_dir:string -> string -> string -> string Lwt.t
-
-end
-
 (** Please remember that exceptions are Achilles'heel of ML. Indeed,
     there is no support in the language to statically track down
     from where an exception is coming. Thus, exceptions are better

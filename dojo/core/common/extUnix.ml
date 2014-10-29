@@ -198,3 +198,15 @@ let mail ~mailer ~domain ~target_email ~target_name ~subject ~message =
     in
     sendmail ~mailer msg
   )
+
+module ExtFilename = struct
+
+ let temp_filename ?(temp_dir = Filename.get_temp_dir_name ()) prefix suffix =
+    let fname = Filename.temp_file ~temp_dir prefix suffix in
+    Lwt_unix.unlink fname
+    >>= fun _ -> return fname
+
+  let fresh_filename dir =
+    temp_filename ~temp_dir:dir
+
+end

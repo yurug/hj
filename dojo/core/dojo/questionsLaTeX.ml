@@ -116,8 +116,8 @@ let make q =
         puts (escape s)
       | Code t ->
         let escape s = Str.(
-          let s = global_replace (regexp "|") "\\textbar" in
-          global_replace (regexp "\n") " "
+          let s = global_replace (regexp "|") "\\textbar" s in
+          global_replace (regexp "\n") " " s
         )
         in
         puts (sprintf "\\verb|%s|" (escape (flatten_string t)))

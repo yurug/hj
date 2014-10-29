@@ -83,3 +83,12 @@ val mail:
   target_name:string ->
   subject:string ->
   message:string -> unit
+
+module ExtFilename : sig
+
+  (** [temp_filename tmpdir prefix suffix] returns a fresh name for a
+      file. Only guarantee that the file does not exist when called. *)
+  val temp_filename : ?temp_dir:string -> string -> string -> string Lwt.t
+
+end
+

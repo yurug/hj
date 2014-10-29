@@ -40,9 +40,9 @@ endif
 ##----------------------------------------------------------------------
 ## General
 
-.PHONY: all byte opt
+.PHONY: all byte opt expand
 
-all: byte opt
+all: expand byte opt
 
 byte opt:: $(TEST_PREFIX)$(ELIOMSTATICDIR)/${PROJECT_NAME}.js
 byte opt:: $(TEST_PREFIX)$(ETCDIR)/$(PROJECT_NAME).conf
@@ -51,6 +51,16 @@ byte:: $(TEST_PREFIX)$(LIBDIR)/${PROJECT_NAME}.cma
 opt:: $(TEST_PREFIX)$(LIBDIR)/${PROJECT_NAME}.cmxs
 
 DIST_DIRS = $(ETCDIR) $(DATADIR) $(LIBDIR) $(LOGDIR) $(STATICDIR) $(ELIOMSTATICDIR) $(shell dirname $(CMDPIPE)) $(SRCDIRS)
+
+##----------------------------------------------------------------------
+## Expansion of pre-eliom files
+PRELIOM  := $(wildcard *.preliom)
+EXPELIOM := $(PRELIOM:.preliom=.eliom)
+expand: $(EXPELIOM)
+%.eliom: %.preliom
+	rm -f $@
+	cpp $< -o $@
+	chmod a-w $@
 
 ##----------------------------------------------------------------------
 ## Testing
