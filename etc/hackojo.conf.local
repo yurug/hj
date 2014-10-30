@@ -21,8 +21,10 @@
     %%DEBUGMODE%%
     <commandpipe>%%CMDPIPE%%</commandpipe>
     <extension findlib-package="ocsigenserver.ext.staticmod"/>
+    <extension findlib-package="ocsigenserver.ext.deflatemod"/>
     <extension findlib-package="ocsigenserver.ext.ocsipersist-%%PERSISTENT_DATA_BACKEND%%"/>
     <extension findlib-package="eliom.server"/>
+    <netbuffersize>16384</netbuffersize>
     %%% This will include the packages defined as SERVER_PACKAGES in your Makefile:
     %%PACKAGES%%
     <host hostfilter="*">
@@ -32,6 +34,10 @@
       <development />
       </eliommodule>
       <eliom/>
+      <deflate compress="allbut">
+          <extension>.tar.gz</extension>
+          <type>image/*</type>
+      </deflate>
     </host>
   </server>
 </ocsigen>
