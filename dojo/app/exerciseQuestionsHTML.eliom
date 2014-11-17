@@ -173,11 +173,6 @@ let grader_as_html
       ""
   )
   in
-  let expected_file_is_binary =
-    match expected_extension with
-      | ".zip" | ".tar" | ".gz" | ".rar" | ".jar" -> true
-      | _ -> false
-  in
   lwt answer =
     try_lwt
       lwt a, author = Answers.answer_of_question answers name_str in
@@ -211,49 +206,64 @@ let grader_as_html
 
   let initial_answer_str = Resource.content initial_answer in
 
-  let submit_answer =
-    server_function ~timeout:3600. Json.t<string> (fun src ->
-      let answer_resource = Resource.make expected_file src in
-      let answers_id = Answers.identifier answers in
-      OnDisk.save_resource answers_id answer_resource (fun () ->
-        push_new_answer_function (exo_id, name_str, File expected_file)
-        >> return ()
-      )
+  let submit_answer_function src =
+    let answer_resource = Resource.make expected_file src in
+    let answers_id = Answers.identifier answers in
+    OnDisk.save_resource answers_id answer_resource (fun () ->
+      push_new_answer_function (exo_id, name_str, File expected_file)
+      >> return ()
     )
+  in
+  let submit_answer =
+    server_function ~timeout:3600. Json.t<string> submit_answer_function
   in
   let onload =
     {{ fun _ ->
       !(%reset) ();
-      if (%expected_file_is_binary) then (
-        %reset := (fun () -> ());
-        %theeditor := None;
-      ) else (
-        let open EditorHTML in
-            let editor = !(%editor_maker) %expected_extension in
-            %theeditor := Some editor;
-            let ready = ref true in
-            let submit () =
-              if !ready then
-                let src = editor.get_value () in
-                Lwt.async (fun () ->
-                  ready := false;
-                  %submit_answer src >> (
-                  editor.console_clear ();
-                  %display_evaluation_state_now (Some editor.console_write)
-                  >> return (ready := true)
-                  ))
-            in
-            let reset_answer () =
-              editor.set_value %initial_answer_str
-            in
-            %reset := editor.EditorHTML.dispose;
-            editor.EditorHTML.set_value %answer_str;
-            editor.EditorHTML.set_ok_cb submit;
-            editor.EditorHTML.set_reset_cb reset_answer
-      )
+      let open EditorHTML in
+      let editor = !(%editor_maker) %expected_extension in
+      %theeditor := Some editor;
+      let ready = ref true in
+      let submit () =
+        if !ready then
+          let src = editor.get_value () in
+          Lwt.async (fun () ->
+            ready := false;
+            %submit_answer src >> (
+            editor.console_clear ();
+            %display_evaluation_state_now (Some editor.console_write)
+            >> return (ready := true)
+            ))
+      in
+      let reset_answer () =
+        editor.set_value %initial_answer_str
+      in
+      %reset := editor.EditorHTML.dispose;
+      editor.EditorHTML.set_value %answer_str;
+      editor.EditorHTML.set_ok_cb submit;
+      editor.EditorHTML.set_reset_cb reset_answer
      }}
   in
+  let upload_form =
+    let import fname =
+      let dest = OnDisk.resource_real_path (Answers.identifier answers) expected_file in
+      let commit () =
+(*      OnDisk.
+        push_new_answer_function (exo_id, name_str, File expected_file)
+        >> return () *)
+        return ()
+      in
+      return (dest, commit)
+    in
+    post_form ~service:(FileHTTP.upload import) (fun f ->
+      [
+        file_input ~name:f ();
+        string_input ~input_type:`Submit ~value:"OK" ()
+      ]
+    ) ()
+  in
   return (div ~a:[a_onload onload] [
+    upload_form;
     p [pcdata ("▶ " ^ I18N.String.(
       answer_expected (in_a_file_named expected_file)))]
   ])

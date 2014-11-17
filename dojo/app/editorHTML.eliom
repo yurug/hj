@@ -108,6 +108,8 @@ let make = {string -> string -> interface{ fun container_id ext ->
     match ext with
     | ".java" ->
       "text/x-java"
+    | ".zip" | ".tar" | ".jar" | ".gz" ->
+      "hide"
     | ext ->
       Firebug.console##log (Js.string ("Unknown extension " ^ ext));
       ""
@@ -134,18 +136,31 @@ let make = {string -> string -> interface{ fun container_id ext ->
 
   elt##id <- Js.string editor_id;
   let elt = (elt :> Dom.node Js.t) in
-  ignore (container_elt##appendChild (elt));
-  ignore (container_elt##appendChild (buttons));
+  if mode <> "hide" then (
+    ignore (container_elt##appendChild (elt));
+    ignore (container_elt##appendChild (buttons))
+  );
   ignore (container_elt##appendChild (console));
-  let editor = CodeMirror.make editor_id mode in
-  editor##setSize ("100%", "30em");
-  let get_value () = Js.to_string (editor##getValue ()) in
-  let set_value s  = editor##setValue (Js.string s) in
-  let dispose () =
-    ignore (editor##toTextArea ());
-    ignore (container_elt##removeChild (elt));
-    ignore (container_elt##removeChild (buttons));
-    ignore (container_elt##removeChild (console))
+
+  let get_value, set_value, dispose =
+    if mode = "hide" then
+      let dispose () =
+        ignore (container_elt##removeChild (console))
+      in
+      (fun () -> ""), (fun _ -> ()), dispose
+    else (
+      let editor = CodeMirror.make editor_id mode in
+      ignore (editor##setSize ("100%", "30em"));
+      let get_value () = Js.to_string (editor##getValue ()) in
+      let set_value s  = editor##setValue (Js.string s) in
+      let dispose () =
+        ignore (editor##toTextArea ());
+        ignore (container_elt##removeChild (elt));
+        ignore (container_elt##removeChild (console));
+        ignore (container_elt##removeChild (buttons));
+      in
+      get_value, set_value, dispose
+    )
   in
 
   let console_write es =

@@ -63,3 +63,24 @@ let send fname =
       bname
   in
   return (Xml.uri_of_string url)
+
+let upload import =
+  let service =
+    Eliom_service.Http.post_coservice'
+      ~post_params:(Eliom_parameter.(file "file"))
+      ()
+  in
+  Eliom_registration.Action.register ~options:`NoReload ~service
+    (fun () file ->
+      Ocsigen_messages.errlog
+        (Printf.sprintf "Received a file (%Ld):\n %s\n%s\n%s"
+           file.Ocsigen_extensions.filesize
+           file.Ocsigen_extensions.tmp_filename
+           file.Ocsigen_extensions.raw_original_filename
+           file.Ocsigen_extensions.original_basename);
+        (* FIXME: Handle error. *)
+      lwt dest, commit = import file.Ocsigen_extensions.original_basename in
+      ExtPervasives.ltry ExtUnix.(cp file.Ocsigen_extensions.tmp_filename dest)
+      >>= fun _ -> commit () >> return ()
+    );
+  service
