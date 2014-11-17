@@ -173,6 +173,11 @@ let grader_as_html
       ""
   )
   in
+  let expected_file_is_binary =
+    match expected_extension with
+      | ".zip" | ".tar" | ".gz" | ".rar" | ".jar" -> true
+      | _ -> false
+  in
   lwt answer =
     try_lwt
       lwt a, author = Answers.answer_of_question answers name_str in
@@ -219,28 +224,33 @@ let grader_as_html
   let onload =
     {{ fun _ ->
       !(%reset) ();
-      let open EditorHTML in
-      let editor = !(%editor_maker) %expected_extension in
-      %theeditor := Some editor;
-      let ready = ref true in
-      let submit () =
-        if !ready then
-          let src = editor.get_value () in
-          Lwt.async (fun () ->
-            ready := false;
-            %submit_answer src >> (
-            editor.console_clear ();
-            %display_evaluation_state_now (Some editor.console_write)
-            >> return (ready := true)
-          ))
-      in
-      let reset_answer () =
-        editor.set_value %initial_answer_str
-      in
-      %reset := editor.EditorHTML.dispose;
-      editor.EditorHTML.set_value %answer_str;
-      editor.EditorHTML.set_ok_cb submit;
-      editor.EditorHTML.set_reset_cb reset_answer;
+      if (%expected_file_is_binary) then (
+        %reset := (fun () -> ());
+        %theeditor := None;
+      ) else (
+        let open EditorHTML in
+            let editor = !(%editor_maker) %expected_extension in
+            %theeditor := Some editor;
+            let ready = ref true in
+            let submit () =
+              if !ready then
+                let src = editor.get_value () in
+                Lwt.async (fun () ->
+                  ready := false;
+                  %submit_answer src >> (
+                  editor.console_clear ();
+                  %display_evaluation_state_now (Some editor.console_write)
+                  >> return (ready := true)
+                  ))
+            in
+            let reset_answer () =
+              editor.set_value %initial_answer_str
+            in
+            %reset := editor.EditorHTML.dispose;
+            editor.EditorHTML.set_value %answer_str;
+            editor.EditorHTML.set_ok_cb submit;
+            editor.EditorHTML.set_reset_cb reset_answer
+      )
      }}
   in
   return (div ~a:[a_onload onload] [

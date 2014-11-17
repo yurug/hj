@@ -157,7 +157,7 @@ let exercise_subscribe = HTTP.(
   api_service "exercise_subscribe" "exercise"
     (string "identifier")
     (string "status")
-    "Return the questions for the logged user."
+    "Subscribe a user to a question of an exercise."
     (fun name ->
       get_user_answers name >>= function
         | `OK _ -> completed ()
@@ -218,7 +218,7 @@ let exercise_push_new_answer = HTTP.(
      ** answer "answer"
     )
     (string "status")
-    "Return the questions for the logged user."
+    "Push a new answer to an exercise."
     (fun (name, (qid, answer)) ->
       let id = identifier_of_string name in
       (push_new_answer_function (id, qid, answer)) >>= function
