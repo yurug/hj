@@ -39,6 +39,9 @@ val append : string -> string -> ('a, 'b) raiser -> unit Lwt.t
 (** [cat fname] returns the content of [fname] (if it fits in a string). *)
 val cat : string -> ('a, 'b) raiser -> string Lwt.t
 
+(** [nothing] does nothing. *)
+val nothing : ('a, 'b) raiser -> unit Lwt.t
+
 (** [split cmd delim] splits each line produced by [cmd] using
     regexp [delim]. *)
 val split

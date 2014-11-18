@@ -85,6 +85,10 @@ let save_resource id s on_finished =
     | `KO _ ->
       save ()
 
+let commit_resource id s on_finished =
+  let path = file (path_of_identifier id) (Resource.name s) in
+  VFS.commit (who id) path on_finished
+
 let exists id =
   VFS.exists (metafile (path_of_identifier id))
 

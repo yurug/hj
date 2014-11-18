@@ -102,6 +102,9 @@ let append c f =
     )
   ) ()
 
+let nothing lraise =
+  handle_unix_error (fun () -> return ()) () lraise
+
 let cat f =
   handle_unix_error (fun () ->
     let b = Buffer.create 13 in

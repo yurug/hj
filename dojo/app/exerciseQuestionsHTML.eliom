@@ -217,11 +217,16 @@ let grader_as_html
   let submit_answer =
     server_function ~timeout:3600. Json.t<string> submit_answer_function
   in
+  let show_evaluation_state = {(unit -> unit Lwt.t) ref{ ref (fun () -> return ()) }} in
   let onload =
     {{ fun _ ->
       !(%reset) ();
       let open EditorHTML in
       let editor = !(%editor_maker) %expected_extension in
+      %show_evaluation_state := (fun () ->
+         editor.console_clear ();
+         %display_evaluation_state_now (Some editor.console_write)
+      );
       %theeditor := Some editor;
       let ready = ref true in
       let submit () =
@@ -229,11 +234,9 @@ let grader_as_html
           let src = editor.get_value () in
           Lwt.async (fun () ->
             ready := false;
-            %submit_answer src >> (
-            editor.console_clear ();
-            %display_evaluation_state_now (Some editor.console_write)
-            >> return (ready := true)
-            ))
+            %submit_answer src
+            >> !(%show_evaluation_state) ()
+            >> return (ready := true))
       in
       let reset_answer () =
         editor.set_value %initial_answer_str
@@ -245,20 +248,25 @@ let grader_as_html
      }}
   in
   let upload_form =
+    let show = {{ fun _ ->
+      Lwt.async (fun () -> !(%show_evaluation_state) ())
+    }}
+    in
     let import fname =
-      let dest = OnDisk.resource_real_path (Answers.identifier answers) expected_file in
+      let answers_id = Answers.identifier answers in
+      let dest = OnDisk.resource_real_path answers_id expected_file in
       let commit () =
-(*      OnDisk.
-        push_new_answer_function (exo_id, name_str, File expected_file)
-        >> return () *)
-        return ()
+        OnDisk.commit_resource answers_id answer_resource (fun () ->
+          push_new_answer_function (exo_id, name_str, File expected_file)
+          >> return ()
+        )
       in
       return (dest, commit)
     in
     post_form ~service:(FileHTTP.upload import) (fun f ->
       [
         file_input ~name:f ();
-        string_input ~input_type:`Submit ~value:"OK" ()
+        string_input ~a:[a_onclick show] ~input_type:`Submit ~value:"OK" ()
       ]
     ) ()
   in

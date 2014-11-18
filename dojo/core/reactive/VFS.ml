@@ -217,7 +217,8 @@ let version_from_number path n =
   with Not_found ->
     return (`KO `NoSuchVersion)
 
-let onfile f who = on_path (fun p ps fname where c on_finished -> ltry (
+let onfile f who =
+  on_path (fun p ps fname where c on_finished -> ltry (
   !>> f c ps
   >>> git_add where [fname]
   >>> git_commit who where [fname] ps
@@ -229,6 +230,8 @@ let onfile f who = on_path (fun p ps fname where c on_finished -> ltry (
 
 let save   = onfile echo
 let append = onfile append
+
+let commit p ps = onfile (fun _ _ -> ExtUnix.nothing) p ps ()
 
 let owner = on_path (fun _ where _ _ -> ltry (
   git_toplevel where

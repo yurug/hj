@@ -61,6 +61,11 @@ val load_resource : Identifier.t -> ?version:string -> Resource.name ->
   | `KO of [> `SystemError of string | `NoSuchVersion ]
   ] Lwt.t
 
+val commit_resource : Identifier.t -> Resource.t -> (unit -> unit Lwt.t) ->
+  [ `OK of unit
+  | `KO of [> `SystemError of string ]
+  ] Lwt.t
+
 val resource_versions : Identifier.t -> Resource.name ->
   [ `OK of VFS.version list
   | `KO of [> `SystemError of string ]
