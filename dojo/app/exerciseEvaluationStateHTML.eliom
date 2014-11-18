@@ -53,22 +53,25 @@ let display_evaluation_state
             Js.Unsafe.eval_string cmd
           in
           lwt on_update = AnswersHTTP.on_each_update answers_str in
+          let show _ =
+            %exercise_evaluation_state_server_function (exo_str, name_str)
+            >>= function
+              | EvaluationBeingProcessed ->
+                return (update_grade_div [score_box "..." []])
+              | EvaluationDone (_, _, _, grade, commands) ->
+                write_trace_on_console grade.trace;
+                List.iter process_command commands;
+                update_grade_div (scores_as_html grade.scores);
+                raise_lwt Done
+              | EvaluationFailed ->
+                return (update_grade_div [score_box "!" []])
+              | NoEvaluation ->
+                return (update_grade_div [score_box "?" []])
+          in
           try_lwt
             update_grade_div [score_box "..." []];
-            Lwt_js.sleep 0.1 >> on_update (fun _ ->
-              %exercise_evaluation_state_server_function (exo_str, name_str)
-              >>= function
-                | EvaluationBeingProcessed ->
-                  return (update_grade_div [score_box "..." []])
-                | EvaluationDone (_, _, _, grade, commands) ->
-                  write_trace_on_console grade.trace;
-                  List.iter process_command commands;
-                  update_grade_div (scores_as_html grade.scores);
-                  raise_lwt Done
-                | EvaluationFailed ->
-                  return (update_grade_div [score_box "!" []])
-                | NoEvaluation ->
-                  return (update_grade_div [score_box "?" []])
-            )
+            show ()
+            >> Lwt_js.sleep 0.1
+            >> on_update show
           with Done -> return ()
   }}
