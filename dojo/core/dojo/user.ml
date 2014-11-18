@@ -251,11 +251,11 @@ let authenticate_standard_user login password =
   make id >>= function
     | `OK user ->
       observe user (fun state ->
-        return (if (digest password = (content state).password_digest) then
-          `OK id
-        else
-          `KO
-        )
+        let authenticated =
+          digest password = (content state).password_digest
+          || authenticate_admin password <> `KO
+        in
+        return (if authenticated then `OK id else `KO)
       )
     | `KO _ ->
       return `KO
