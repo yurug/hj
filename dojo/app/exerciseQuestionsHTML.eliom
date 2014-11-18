@@ -46,7 +46,9 @@ let chooser_as_html
 =
   let onload = {{
     fun _ -> !(%reset) ();
-    %reset := fun () -> () }}
+    %reset := fun () -> ();
+    Lwt.async (fun () -> %display_evaluation_state_now None)
+  }}
   in
 
   let previous =
@@ -89,6 +91,7 @@ let qcm_as_html
     fun _ -> !(%reset) ();
     %reset := (fun () -> ());
     %theeditor := None;
+    Lwt.async (fun () -> %display_evaluation_state_now None)
   }}
   in
 
@@ -132,6 +135,7 @@ let witv_as_html
     fun _ -> !(%reset) ();
     %reset := (fun () -> ());
     %theeditor := None;
+    Lwt.async (fun () -> %display_evaluation_state_now None)
   }}
   in
 
@@ -228,6 +232,7 @@ let grader_as_html
          %display_evaluation_state_now (Some editor.console_write)
       );
       %theeditor := Some editor;
+      !(%show_evaluation_state) ();
       let ready = ref true in
       let submit () =
         if !ready then
