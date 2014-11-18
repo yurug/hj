@@ -43,6 +43,7 @@ type frame_editor =
 
 let chooser_as_html
     display_evaluation_state_now exo_str name_str choices
+    answer
 =
   let onload = {{
     fun _ -> !(%reset) ();
@@ -51,14 +52,22 @@ let chooser_as_html
   }}
   in
 
-  let previous =
-        (* FIXME *)
-    ""
+  let previous_choices =
+    match answer with
+      | Some (Questions.Choices uchoices) ->
+        List.(map (fun idx -> List.nth choices idx) uchoices)
+      | _ ->
+        [] (* FIXME: Should never happen, right? *)
   in
   let property_selector =
     Raw.select ~a:[a_onload onload] (
       List.map (fun s ->
-        let a = if s = previous then [a_selected `Selected] else [] in
+        let a =
+          if List.mem s previous_choices then
+            [a_selected `Selected]
+          else
+            []
+        in
         Raw.option ~a (pcdata s)
       ) choices
     )
@@ -83,7 +92,17 @@ let chooser_as_html
 
 let qcm_as_html
     display_evaluation_state_now
-    exo_str name_str statements =
+    exo_str name_str statements
+    answer
+    =
+
+  let previous_choices =
+    match answer with
+      | Some (Questions.Choices uchoices) ->
+        uchoices
+      | _ ->
+        []
+  in
 
   let choices = {int list ref{ ref [] }} in
 
@@ -103,8 +122,11 @@ let qcm_as_html
      }}
   in
   let qcm_item (i : int) statement =
+    let is_checked =
+      if List.mem (i + 1) previous_choices then [a_checked `Checked] else []
+    in
     p [
-      input ~input_type:`Checkbox ~a:[a_onclick (oc i)] ();
+      input ~input_type:`Checkbox ~a:(a_onclick (oc i) :: is_checked) ();
       span (template_text_as_html [] statement)
     ]
   in
@@ -125,12 +147,19 @@ let qcm_as_html
 
 let witv_as_html
     display_evaluation_state_now
-    exo_str name_str expressions =
+    exo_str name_str expressions answer =
 
   let nb = List.length expressions in
 
   let values = {string array{ Array.make %nb "" }} in
 
+  let previous_values =
+    match answer with
+      | Some (Questions.GivenValues vs) ->
+        Array.of_list vs
+      | _ ->
+        Array.make nb ""
+  in
   let onload = {{
     fun _ -> !(%reset) ();
     %reset := (fun () -> ());
@@ -149,7 +178,7 @@ let witv_as_html
     let id = fresh_id () in
     p [
       span (template_text_as_html [] expression);
-      input ~input_type:`Text ~a:[a_id id; a_onchange (onchange i id)] ()
+      input ~input_type:`Text ~a:[a_id id; a_onchange (onchange i id); a_value (previous_values.(i))] ()
     ]
   in
   return (div ~a:[a_onload onload] (List.mapi item expressions @ [
@@ -210,9 +239,10 @@ let grader_as_html
 
   let initial_answer_str = Resource.content initial_answer in
 
+  let answers_id = Answers.identifier answers in
+
   let submit_answer_function src =
     let answer_resource = Resource.make expected_file src in
-    let answers_id = Answers.identifier answers in
     OnDisk.save_resource answers_id answer_resource (fun () ->
       push_new_answer_function (exo_id, name_str, File expected_file)
       >> return ()
@@ -232,7 +262,7 @@ let grader_as_html
          %display_evaluation_state_now (Some editor.console_write)
       );
       %theeditor := Some editor;
-      !(%show_evaluation_state) ();
+      Lwt.async !(%show_evaluation_state);
       let ready = ref true in
       let submit () =
         if !ready then
@@ -258,7 +288,6 @@ let grader_as_html
     }}
     in
     let import fname =
-      let answers_id = Answers.identifier answers in
       let dest = OnDisk.resource_real_path answers_id expected_file in
       let commit () =
         OnDisk.commit_resource answers_id answer_resource (fun () ->
@@ -275,8 +304,22 @@ let grader_as_html
       ]
     ) ()
   in
+  lwt download_button =
+    match answer with
+      | Some _ ->
+        let src = OnDisk.resource_real_path answers_id expected_file in
+        lwt url = FileHTTP.send src in
+        return (
+          Raw.a ~a:[a_href (Xml.uri_of_string url)] [
+            I18N.(String.(pcdata (cap download)))
+          ]
+        )
+      | None ->
+        return (span [])
+  in
   return (div ~a:[a_onload onload] [
     upload_form;
+    download_button;
     p [pcdata ("▶ " ^ I18N.String.(
       answer_expected (in_a_file_named expected_file)))]
   ])
@@ -364,10 +407,17 @@ let question_as_html exo question answers
 
   let grade_div = div ~a:[a_class ["score_div"]] [] in
   let display_evaluation_state_now =
-   {([Html5_types.div_content_fun] elt list -> unit) option -> unit Lwt.t{
+    {([Html5_types.div_content_fun] elt list -> unit) option -> unit Lwt.t{
       %display_evaluation_state %exo_str %answers_str %name_str %grade_div
    }}
-   in
+  in
+  lwt answer =
+    try_lwt
+      lwt a, _ = Answers.answer_of_question answers name in
+      return (Some a)
+    with Not_found ->
+      return None
+  in
 
   let context_as_html context =
     let rec aux accu = function
@@ -376,17 +426,17 @@ let question_as_html exo question answers
         lwt h = match s with
           | QCM (statements, _) ->
             qcm_as_html display_evaluation_state_now
-              exo_str name_str statements
+              exo_str name_str statements answer
           | Grader (expected_file, _, _) ->
             grader_as_html
               exo answers display_evaluation_state_now
               exo_str name_str expected_file
           | WITV (expressions, _, _) ->
             witv_as_html display_evaluation_state_now
-              exo_str name_str expressions
+              exo_str name_str expressions answer
           | Chooser choices ->
             chooser_as_html display_evaluation_state_now
-              exo_str name_str choices
+              exo_str name_str choices answer
           | NoGrade ->
             return (span [])
         in
