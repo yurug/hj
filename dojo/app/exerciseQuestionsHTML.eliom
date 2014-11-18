@@ -313,7 +313,7 @@ let results_table get_editor rows = I18N.(String.(
         {unit -> unit{ fun () ->
           Lwt.async (fun () ->
             try_lwt
-                  (* FIXME: Use a standard JS function. *)
+              (* FIXME: Use a standard JS function. *)
               let split c s =
                 let b = Buffer.create 23 in
                 let l = ref [] in

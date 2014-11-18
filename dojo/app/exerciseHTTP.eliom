@@ -312,6 +312,7 @@ let gen_string_of_evaluation_state f g = Questions.(function
   | EvaluationHandled _ -> ("processing...", "")
 )
 
+(* FIXME: This is a source of memory leak. *)
 module TraceProxy = Proxy.Make (struct
   type t = string
   let hash = Hashtbl.hash
