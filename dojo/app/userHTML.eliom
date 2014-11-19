@@ -214,26 +214,17 @@ let connection_box
   }}
   in
 
-  let connect =
-    match supercow_connection with
-      | None ->
-        login_server_function
-      | Some login ->
-        server_function ~timeout:300. ~max_use:1 Json.t<string * string> (
-          fun (_, password) ->
-            User.register login password
-            >> UserHTTP.login_function (login, password)
-            >> return ()
-        )
-  in
-
   let connect_cb =
     {unit -> unit{ fun () ->
       Lwt.async (fun () ->
-        let login = (ExtDom.get_input_by_id %login_id)##value
-        and password = (ExtDom.get_input_by_id %password_id)##value in
-        %connect (Js.to_string login, Js.to_string password)
-        >> change_page ~service:%root () ()
+        (let password = (ExtDom.get_input_by_id %password_id)##value in
+         match %supercow_connection with
+           | None ->
+             let login = (ExtDom.get_input_by_id %login_id)##value in
+             %login_server_function (Js.to_string login, Js.to_string password)
+           | Some login ->
+             %password_reset_server_function (login, Js.to_string password)
+        ) >> change_page ~service:%root () ()
       )
      }}
   in
@@ -258,39 +249,53 @@ let connection_box
     }}
   in
 
+  let login_div =
+    match supercow_connection with
+      | None ->
+        div ~a:[a_id "connection_login"] [
+          H.label [pcdata I18N.(cap String.username)];
+          H.Raw.input ~a:[a_id login_id] ()
+        ]
+      | Some login ->
+        div ~a:[a_id "connection_login"] []
+  in
+
+  let password_div =
+    div ~a:[a_id "connection_password"] [
+      H.label [pcdata I18N.(cap String.password)];
+      H.Raw.input ~a:[a_onkeydown password_entered_cb;
+                      a_input_type `Password;
+                      a_id password_id] ()
+    ];
+  in
+  let actions_box =
+    let actions =
+      match supercow_connection with
+        | None ->
+          [
+            string_input ~a:[a_id "connection_box_signin"; a_onclick login_cb]
+              ~input_type:`Submit ~value:I18N.String.connect ();
+
+            string_input ~a:[a_id "connection_box_reset_password";
+                             a_onclick reset_cb]
+              ~input_type:`Submit ~value:I18N.String.reset_password ();
+          ]
+        | Some _ ->
+          [
+            string_input ~a:[a_id "connection_box_signin"; a_onclick login_cb]
+              ~input_type:`Submit ~value:"OK" ()
+          ]
+    in
+    div ~a:[a_id "connection_box_actions"] actions
+  in
+
   return (div [
     div ~a:[a_id "connection_box"] [
       div ~a:[a_id "connection_form"] [
-        begin match supercow_connection with
-          | None ->
-            div ~a:[a_id "connection_login"] [
-              H.label [pcdata I18N.(cap String.username)];
-              H.Raw.input ~a:[a_id login_id] ()
-            ]
-          | Some login ->
-            div ~a:[a_id "connection_login"] [
-              H.label [pcdata I18N.(cap String.username)];
-              H.Raw.input ~a:[a_id login_id;
-                              a_value (login);
-                              a_readonly `ReadOnly
-                             ] ()
-            ]
-        end;
-        div ~a:[a_id "connection_password"] [
-          H.label [pcdata I18N.(cap String.password)];
-          H.Raw.input ~a:[a_onkeydown password_entered_cb;
-                          a_input_type `Password;
-                          a_id password_id] ()
-        ];
+        login_div;
+        password_div
       ];
-      div ~a:[a_id "connection_box_actions"] [
-        string_input ~a:[a_id "connection_box_signin"; a_onclick login_cb]
-          ~input_type:`Submit ~value:I18N.String.connect ();
-
-        string_input ~a:[a_id "connection_box_reset_password";
-                         a_onclick reset_cb]
-          ~input_type:`Submit ~value:I18N.String.reset_password ();
-      ];
+      actions_box;
       message
     ]
   ])
