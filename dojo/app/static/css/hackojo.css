@@ -721,7 +721,7 @@ div.context {
     border:1px solid #171410;
     padding: 0.1em;
     text-align: center;
-    width: 4em;
+    min-width: 4em;
     min-height: 4em;
     margin-top: 1em;
     float: right;

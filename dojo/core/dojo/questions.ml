@@ -457,7 +457,7 @@ let grade_program qid tags difficulty files cmd update =
   let commands                  = ref [] in
 
   let trace_max_length = 1024 in
-  let trace_max_line_length = 255 in
+  let trace_max_line_length = 1024 in
 
   let puts s =
     let s =
