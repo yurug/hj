@@ -456,7 +456,7 @@ let grade_program qid tags difficulty files cmd update =
   let automatic_potential_score = ref 0 in
   let commands                  = ref [] in
 
-  let trace_max_length = 1024 in
+  let trace_max_length = 64 * 1024 in (* FIXME: Should be configurable. *)
   let trace_max_line_length = 1024 in
 
   let puts s =
