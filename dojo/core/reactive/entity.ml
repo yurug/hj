@@ -219,6 +219,7 @@ module type U = sig
   type change
   val kind : string
   val react : (data, change) reaction
+  val act : data meta -> (change -> unit Lwt.t) -> unit Lwt.t
   val string_of_change : change -> string
   val current_version : string
   val converters : (module OnDisk.Converter with type destination = data) list
@@ -244,6 +245,8 @@ module Passive (I : D) : U
 
   let react _ _ cs _ =
     return (InMemory.state_changes cs)
+
+  let act _ _ = return ()
 
   let string_of_change =
     InMemory.string_of_state_change I.string_of_replacement
@@ -342,8 +345,15 @@ and type change = I.change
       (dependency_image (dependencies e.description)
       );
     Lwt.async (fun () ->
-      let rec tick () =
+      let rec tick (action_ticks : int) =
         (** This is the only place where update is called. *)
+        lwt action_ticks =
+          if action_ticks = 0 then (
+            I.act e.description (change e)
+            >> return 10
+          ) else
+            return (action_ticks - 1)
+        in
         update e
         (* FIXME: I would like to use the following condition instead of
            FIXME: this ugly active loop. Yet, for some reason, it does
@@ -353,9 +363,9 @@ and type change = I.change
         (*        >> Lwt_condition.wait e.react_cond *)
         >> Lwt_unix.yield ()
         >> Lwt_unix.sleep 0.1
-        >>= tick
+        >> tick action_ticks
       in
-      tick ()
+      tick 0
     );
     return (`OK e)
 
@@ -449,7 +459,7 @@ and type change = I.change
   and save_on_disk ?(now=false) e =
     (* 60. must be a parameter. *)
     if (Timestamp.compare (timestamp e.description) e.last_save <> 0
-      && (now || Timestamp.older_than 60. e.last_save))
+      && (now || Timestamp.older_than_duration 60. e.last_save))
     then begin
       e.last_save <- timestamp e.description;
       OTD.save e.description

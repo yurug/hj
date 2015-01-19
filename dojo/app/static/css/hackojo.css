@@ -101,7 +101,7 @@ div.reactive {
 div.editor_buttons {
     margin-top: 0.5em;
     margin-bottom: 0.5em;
-    height: 1.5em;
+    height: 1.1em;
 }
 
 div.editor_button {
@@ -162,8 +162,8 @@ div.editor_reset_button {
 }
 
 .menu_button {
-    margin-top: 2em;
-    margin-bottom: 2em;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
     text-decoration:none;
     font-size:0.7em;
     font-weight:bold ;
@@ -484,7 +484,7 @@ td {
     padding-right: 1em;
 }
 
-div.button {
+span.button {
     font-weight:bold;
     cursor:pointer;
     margin-right: 1em;
@@ -501,7 +501,7 @@ div.button {
     font-size:1em;
 }
 
-div.button:hover, div.button:focus {
+span.button:hover, span.button:focus {
     background-color :#99969C;
     -webkit-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
     -moz-box-shadow: 0 0 1px rgba(1, 1, 1, .75);
@@ -799,6 +799,16 @@ code {
      font-style: italic;
 }
 
+.input_button {
+    padding: 5px 15px;
+    width: 8em;
+    font-size: 1em;
+    border: 2px solid #dadada;
+    border-radius: 7px;
+    margin-right: 0.5em;
+    margin-left: 0.5em;
+}
+
 .share_div {
     margin-top: 1em;
 }
@@ -834,4 +844,24 @@ div.teacher_space {
 div.editor_console > p {
   margin: 0px;
   padding: 0px;
+}
+
+div.teamer_subject {
+  border: 1px;
+}
+
+div.teamer_team {
+  border: 1px;
+  background-color: #FAFAFA;
+}
+
+div.teamer_buttons {
+  padding: 0;
+  height: 3em;
+  left-padding: 1em;
+}
+
+li {
+    list-style-type: none;
+    padding: 0;
 }

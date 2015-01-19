@@ -136,6 +136,12 @@ sig
   val reset_password : string
   val password_reset_sent_by_email : string -> string -> string
   val you_do_not_exist : string -> string
+  val remind_not_enough_users : string -> string -> int -> int -> string
+  val remind_not_enough_users_subject : string
+  val remind_confirmation_needed : string -> string -> string
+  val remind_confirmation_needed_subject : string
+  val cancellation_email : string -> string -> int -> string
+  val cancellation_email_subject : string
 end
 
 }}

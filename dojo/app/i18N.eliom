@@ -378,6 +378,68 @@ module Fr : I18N_sig.Text = struct
   let you_do_not_exist =
     Printf.sprintf "Vous n'existez pas... Contactez donc `%s'!"
 
+  let remind_not_enough_users url limit expected given =
+    Printf.sprintf "\n\
+    Bonjour,\n\
+    \n\
+    votre groupe de projet n'est pas complet. Il faut %d membres\n\
+    et vous n'en avez que %d.\n\
+    \n\
+    Rendez-vous sur %s pour ajouter un nouveau membre à votre équipe.\n\
+    \n\
+    ATTENTION, vous devez effectuer cette action avant le :\n\
+    \n\
+    %s\n\
+    \n\
+    sans quoi votre réservation sera annulée.\n\
+    \n\
+    Bonne programmation à vous!\n\
+    -- Hackojo
+    "
+      expected given url limit
+
+  let remind_not_enough_users_subject =
+    "Rappel : il manque des membres à votre groupe de projet!"
+
+  let remind_confirmation_needed url limit =
+    Printf.sprintf "\
+    Bonjour,\n\
+    \n\
+    vous avez été inscrit dans un groupe de projet. Pour que cette\n\
+    inscription soit définitive, il faut vous rendre à l'adresse\n\
+    suivante pour confirmer votre inscription:\n\
+    \n\
+    %s\n\
+    \n\
+    ATTENTION, vous devez effectuer cette action avant le :\n\
+    \n\
+    %s\n\
+    \n\
+    sans quoi votre réservation sera annulée.\n\
+    \n\
+    Bonne programmation à vous!\n\
+    -- Hackojo
+    "
+      url limit
+
+  let remind_confirmation_needed_subject =
+    "Demande de confirmation pour l'inscription à un groupe de projet"
+
+  let cancellation_email url sid idx =
+    Printf.sprintf "\
+    Bonjour,\n\
+    \n\
+    votre réservation du groupe %d sur le sujet '%s' de\n\
+    %s\n\
+    est annulée car vous n'avez pas répondu à temps.\n\
+    \n\
+    -- Hackojo
+    "
+      (succ idx) sid url
+
+  let cancellation_email_subject =
+    "Annulation de la réservation d'un groupe de projet"
+
 end
 
 module String = (val

@@ -157,7 +157,7 @@ let update_password = HTTP.(
 )
 
 let password_reset_server_function =
-  server_function ~timeout:300. ~max_use:1 Json.t<string * string> (
+  server_function Json.t<string * string> (
     fun (login, password) ->
       User.register login password
       >> login_function (login, password)

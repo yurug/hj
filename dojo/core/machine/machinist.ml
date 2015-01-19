@@ -144,6 +144,8 @@ include Entity.Make (struct
 
   type change = public_change
 
+  let act _ _ = return ()
+
   let string_of_change = function
     | AllocateSandbox (Some (addr, t), _) ->
       Printf.sprintf "Allocate sandbox : %s:%d [%d]"

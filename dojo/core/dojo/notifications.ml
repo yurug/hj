@@ -49,6 +49,8 @@ include Entity.Make (struct
 
   let kind = "notifications"
 
+  let act _ _ = return ()
+
   let react state mdeps cs later =
     let make_change content = function
       | NewNotification n ->

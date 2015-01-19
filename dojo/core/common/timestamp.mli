@@ -10,6 +10,10 @@ val origin : unit -> t
 
 val compare : t -> t -> int
 
+val to_string : t -> string
+
+val shift : t -> float -> t
+
 type interval
 
 val make : timestamp -> timestamp -> interval
@@ -18,4 +22,6 @@ val mem : timestamp -> interval -> bool
 
 val always : interval
 
-val older_than : float -> timestamp -> bool
+val older_than : timestamp -> timestamp -> bool
+
+val older_than_duration : float -> timestamp -> bool

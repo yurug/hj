@@ -95,7 +95,13 @@ val map_assoc_opt : 'a -> ('b option -> 'b) -> ('a * 'b) list -> ('a * 'b) list
 
 val opt_assoc : 'a -> ('a * 'b) list -> 'b option
 
+val list_complete : 'a list -> int -> 'a -> 'a list
+
+val list_update_nth : 'a list -> int -> ('a -> 'a) -> 'a list
+
 val list_push : 'a list ref -> 'a -> unit
+
+val list_existsi : 'a list -> ('a -> bool) -> int option
 
 val cons_if : bool -> 'a -> 'a list -> 'a list
 

@@ -2,7 +2,31 @@
 
 open Lwt
 
+let rec list_make n x =
+  if n <= 0 then [] else x :: list_make (n - 1) x
+
+let list_complete l n x =
+  l @ list_make (n - List.length l) x
+
 let list_push l x = l := x :: !l
+
+exception Found of int
+
+let list_existsi l p =
+  try
+    List.iteri (fun i x -> if p x then raise (Found i)) l;
+    None
+  with Found i -> Some i
+
+exception ListUpdateNth of int
+
+let list_update_nth l idx f =
+  let rec aux i = function
+    | [] -> raise (ListUpdateNth idx)
+    | x :: xs ->
+      if i = idx then f x :: xs else x :: (aux (i + 1) xs)
+  in
+  aux 0 l
 
 let ( $> ) f g () = f (); g ()
 

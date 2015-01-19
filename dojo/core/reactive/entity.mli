@@ -228,6 +228,9 @@ module type U = sig
       execution of [react]. *)
   val react : (data, change) reaction
 
+  (** An action that can be done every second. *)
+  val act : data meta -> (change -> unit Lwt.t) -> unit Lwt.t
+
   (** For the logging facilities, we expect a [change] to
       be showable in a (one line long) string. *)
   val string_of_change : change -> string

@@ -38,7 +38,7 @@ $HJC set_mailer "/usr/sbin/sendmail"
 read -d '' SCRIPT <<EOF
 case %what in
  exists) echo 1;;
- email) echo yrg@pps.univ-paris-diderot.fr;;
+ email) echo yann.regisgianas@gmail.com;;
  status) echo teacher;;
 esac
 EOF

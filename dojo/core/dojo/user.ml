@@ -120,6 +120,8 @@ include Entity.Make (struct
 
   let kind = "user"
 
+  let act _ _ = return ()
+
   let react state mdeps cs later =
     let make_change content = function
       | SetPasswordDigest password_digest ->

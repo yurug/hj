@@ -14,25 +14,38 @@
   let generic_button classes labels onclick =
     let caption = span [List.hd labels] in
     let onclick = {onclick_cb{
-      let state = ref 0 in
-      let next () =
-        if !state = List.length %labels - 1 then state := 0 else incr state
-      in
-      let label () = List.nth %labels !state in
       fun e ->
-        let open Eliom_content.Html5 in
-        next ();
-        Manip.replaceChildren %caption [label ()];
         %onclick e
     }}
     in
-    div ~a:[a_onclick {{ fun _ -> %onclick () }};
+    span ~a:[a_onclick {{ fun _ -> %onclick () }};
             a_class ("inlined" :: classes) ] [caption]
 
   let link_button ls = generic_button ["link_button"] (List.map pcdata ls)
   let small_button ls = generic_button ["menu_button"] (List.map pcdata ls)
   let button ls = generic_button ["button"] (List.map pcdata ls)
   let icon x = generic_button ["icon"] x
+
+  let input_button label cb =
+    let input_id =
+      Random.(Printf.sprintf "__input_id%d%d%d" (bits ()) (bits ()) (bits ()))
+    in
+    let ocb =
+      {unit -> unit{
+        fun _ ->
+          Lwt.async (fun () ->
+            let id = (ExtDom.get_input_by_id %input_id)##value in
+            let id = Js.to_string id in
+            %cb id
+          )
+      }}
+    in
+    return (
+      div [
+        span [pcdata label];
+        Raw.input ~a:[a_class ["input_button"]; a_id input_id] ();
+        small_button ["OK"] ocb
+      ])
 
 }}
 
@@ -482,6 +495,7 @@ let fileuploader width height import =
     (label : _ :> (_, _, _) c)
     {{ fun () -> () }}
     (pcdata "↑")
+
 
 let active_div
     ?(classes=[])

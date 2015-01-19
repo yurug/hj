@@ -58,6 +58,8 @@ include Entity.Make (struct
 
   let kind = "exercise"
 
+  let act _ _ = return ()
+
   let react state mdeps cs later =
     let update_code content =
       let return_error msg =
@@ -203,7 +205,7 @@ let update who exo =
         (fun data -> return (content data).code) >>= function
           | Valid (t, _) when uptodate t -> return (`OK ())
           | Error (t, e) when uptodate t -> return (`KO (`InvalidCode e))
-          | _ -> Lwt_unix.yield () >> wait ()
+          | _ -> Lwt_unix.sleep 0.1 >> Lwt_unix.yield () >> wait ()
     in
     wait ()
 
