@@ -345,9 +345,9 @@ module Fr : I18N_sig.Text = struct
   let please_reload_the_page =
     "Veuillez recharger la page, s'il vous plait."
 
-  let password_reset_email_body login url =
+  let password_reset_email_body login url firstname surname =
     Printf.sprintf "\
-    Bonjour,
+    Bonjour %s %s,
 
     vous avez demandé la mise à jour du mot de passe pour l'identifiant `%s'.
 
@@ -358,8 +358,7 @@ module Fr : I18N_sig.Text = struct
     Bonne programmation à vous!
     -- Hackojo
     "
-      login
-      url
+      firstname surname login url
 
   let password_reset_email_subject =
     "Mise à jour du mot de passe"
@@ -370,7 +369,7 @@ module Fr : I18N_sig.Text = struct
   let reset_password =
     "Nouveau mot de passe"
 
-  let password_reset_sent_by_email =
+  let password_reset_sent_by_email firstname surname =
     Printf.sprintf "
     Un message a été envoyé à `%s'. \
     Si ce n'est pas votre email, écrivez à `%s'."
@@ -378,14 +377,18 @@ module Fr : I18N_sig.Text = struct
   let you_do_not_exist =
     Printf.sprintf "Vous n'existez pas... Contactez donc `%s'!"
 
-  let remind_not_enough_users url limit expected given =
+  let remind_not_enough_users url rurl sid idx limit expected given firstname surname =
     Printf.sprintf "\n\
-    Bonjour,\n\
+    Bonjour %s %s,\n\
     \n\
-    votre groupe de projet n'est pas complet. Il faut %d membres\n\
+    votre équipe %d du sujet %s n'est pas complet. Il faut %d membres \n\
     et vous n'en avez que %d.\n\
     \n\
-    Rendez-vous sur %s pour ajouter un nouveau membre à votre équipe.\n\
+    Après s'être connecté sur le Dojo, n'importe qui peut s'inscrire dans votre \
+    équipe en suivant le lien suivant:\n\
+    %s\n\
+    \n\
+    Sinon, rendez-vous sur %s pour ajouter manuellement un nouveau membre à votre équipe.\n\
     \n\
     ATTENTION, vous devez effectuer cette action avant le :\n\
     \n\
@@ -396,17 +399,17 @@ module Fr : I18N_sig.Text = struct
     Bonne programmation à vous!\n\
     -- Hackojo
     "
-      expected given url limit
+      firstname surname idx sid expected given rurl url limit
 
   let remind_not_enough_users_subject =
-    "Rappel : il manque des membres à votre groupe de projet!"
+    "Rappel : il manque des membres à votre équipe de projet!"
 
-  let remind_confirmation_needed url limit =
+  let remind_confirmation_needed url sid idx limit firstname surname =
     Printf.sprintf "\
-    Bonjour,\n\
+    Bonjour %s %s,\n\
     \n\
-    vous avez été inscrit dans un groupe de projet. Pour que cette\n\
-    inscription soit définitive, il faut vous rendre à l'adresse\n\
+    vous avez été inscrit dans l'équipe %d du projet `%s'. Pour que cette \n\
+    inscription soit définitive, il faut vous rendre à l'adresse \n\
     suivante pour confirmer votre inscription:\n\
     \n\
     %s\n\
@@ -415,21 +418,22 @@ module Fr : I18N_sig.Text = struct
     \n\
     %s\n\
     \n\
-    sans quoi votre réservation sera annulée.\n\
+    sans quoi la réservation de ce sujet par votre équipe sera annulée.\n\
     \n\
     Bonne programmation à vous!\n\
     -- Hackojo
     "
-      url limit
+      firstname surname idx sid url limit
+
 
   let remind_confirmation_needed_subject =
-    "Demande de confirmation pour l'inscription à un groupe de projet"
+    "Demande de confirmation pour l'inscription à une équipe de projet"
 
-  let cancellation_email url sid idx =
+  let cancellation_email url sid idx firstname surname =
     Printf.sprintf "\
     Bonjour,\n\
     \n\
-    votre réservation du groupe %d sur le sujet '%s' de\n\
+    votre réservation de l'équipe %d sur le sujet '%s' de\n\
     %s\n\
     est annulée car vous n'avez pas répondu à temps.\n\
     \n\
@@ -438,7 +442,33 @@ module Fr : I18N_sig.Text = struct
       (succ idx) sid url
 
   let cancellation_email_subject =
-    "Annulation de la réservation d'un groupe de projet"
+    "Annulation de la réservation d'une équipe de projet"
+
+  let withdraw_warning url sid idx uid expiration is_complete firstname surname =
+    let extra =
+    Printf.sprintf "
+    ATTENTION, votre équipe est incomplète! Vous devez compléter votre équipe avant le :\n\
+    \n\
+    %s\n\
+    \n\
+    sans quoi la réservation de ce sujet par votre équipe sera annulée.\n\
+    \n\
+    " expiration
+    in
+    Printf.sprintf "\
+    Bonjour %s %s,\n\
+    \n\
+    Pour information, l'utilisateur %s s'est désincrit de votre équipe %d du sujet %s\n\
+    \n\
+    %s
+    Bonne programmation à vous!\n\
+    -- Hackojo
+    "
+      firstname surname uid idx sid
+      (if is_complete then extra else "")
+
+  let withdraw_warning_subject =
+    "Désinscription d'un membre de votre équipe"
 
 end
 

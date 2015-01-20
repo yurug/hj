@@ -68,6 +68,30 @@ type internal_state = {
   checkers    : (Timestamp.t * (subject_identifier * int * string)) list;
 } deriving (Json)
 
+let subject_description_from_sid description_state sid =
+  match description_state with
+    | Valid (_, description) ->
+      List.find (fun d -> d.identifier = sid) description.subjects
+    | _ ->
+      raise Not_found
+
+let min_nb_users_per_team description_state =
+  match description_state with
+    | Valid (_, d) -> d.nb_users_per_team.min
+    | _ -> 0
+
+let is_open description_state =
+  match description_state with
+    | Valid (_, d) ->
+      let now = Timestamp.(to_float (current ())) in
+      let is_open = now >= d.opening_date && now <= d.closing_date in
+      (* Printf.eprintf "Opening: %f Now: %f Closing: %f => %B\n%!" *)
+      (*   d.opening_date now d.closing_date is_open; *)
+      is_open || true (* FIXME *)
+
+    | _ ->
+      false
+
 type public_change =
   | UpdateDescription
   | ReserveForUser of uid * subject_identifier * int
@@ -77,15 +101,19 @@ type public_change =
   | Withdraw of uid * subject_identifier * int
 
 let remind_not_enough_users = ref (
-  fun teamer expected given limit uid -> return ()
+  fun teamer sid title slot_idx cdate expected given limit uid -> return ()
 )
 
 let remind_confirmation_needed = ref (
-  fun teamer uid limit -> return ()
+  fun teamer sid slot_idx uid limit -> return ()
 )
 
 let send_cancellation_email = ref (
   fun teamer sid slot_idx uid -> return ()
+)
+
+let send_withdraw_email = ref (
+  fun teamer sid slot_idx uid wuid expiration incomplete -> return ()
 )
 
 include Entity.Make (struct
@@ -101,11 +129,6 @@ include Entity.Make (struct
   let act state later =
     let selfid = identifier state in
     let now = Timestamp.current () in
-    let min_nb_users_per_team =
-      match (content state).description with
-        | Valid (_, d) -> d.nb_users_per_team.min
-        | _ -> 0
-    in
     let check_slot (sid, idx, limit) =
       let slots =
         try
@@ -115,26 +138,33 @@ include Entity.Make (struct
       match List.nth slots idx with
         | Free ->
           return ()
-        | Reserved (_, expiration, cuids, uuids) ->
+        | Reserved (cdate, expiration, cuids, uuids) ->
           let all = cuids @ uuids in
           let nall = List.length all in
           let is_expired = Timestamp.older_than expiration now in
-          let is_incomplete = nall < min_nb_users_per_team in
+          let is_incomplete = nall < min_nb_users_per_team (content state).description in
           let has_unconfirmed = (uuids <> []) in
+          let SID sids = sid in
+          let title =
+            try
+              (subject_description_from_sid (content state).description sid).title
+            with Not_found -> "sans titre"
+          in
 
-          Printf.eprintf "Expiration? %s < %s, is_incomplete:%B, is_expired: %B, has_unconfirmed:%B\n"
-            (Timestamp.to_string expiration)
-            (Timestamp.to_string now)
-            is_incomplete is_expired has_unconfirmed
-          ;
+          (* Printf.eprintf "Expiration? %s < %s, is_incomplete:%B, is_expired: %B, has_unconfirmed:%B\n" *)
+          (*   (Timestamp.to_string expiration) *)
+          (*   (Timestamp.to_string now) *)
+          (*   is_incomplete is_expired has_unconfirmed *)
+          (* ; *)
 
           (if is_incomplete then
+              let m = (min_nb_users_per_team (content state).description) in
               Lwt_list.iter_s
-                (!remind_not_enough_users selfid min_nb_users_per_team nall limit)
+                (!remind_not_enough_users selfid sids title idx cdate m nall limit)
                 all
            else
               return ()
-          ) >> Lwt_list.iter_s (!remind_confirmation_needed selfid limit) uuids
+          ) >> Lwt_list.iter_s (!remind_confirmation_needed selfid title idx limit) uuids
           >> (if (has_unconfirmed || is_incomplete) && is_expired then (
             later (Cancel (sid, idx))
           ) else return ()
@@ -354,8 +384,12 @@ include Entity.Make (struct
         | Reserved (_, _, cuids, uuids) -> users := cuids @ uuids; Free, content
       )
       in
-      let SID ssid = sid in
-      Lwt_list.iter_s (!send_cancellation_email (identifier state) ssid slot_idx) !users
+      let title =
+        try
+          (subject_description_from_sid content.description sid).title
+        with Not_found -> "sans titre"
+      in
+      Lwt_list.iter_s (!send_cancellation_email (identifier state) title slot_idx) !users
       >> return content
     in
 
@@ -383,6 +417,20 @@ include Entity.Make (struct
             Free, content
           else (
             let content, expiration = install_checkers content sid slot_idx now in
+            let title =
+              try
+                (subject_description_from_sid content.description sid).title
+              with Not_found -> "sans titre"
+            in
+            let all = cuids @ uuids in
+            let is_incomplete =
+              List.length all < min_nb_users_per_team content.description
+            in
+            List.iter (fun ruid ->
+              Lwt.async (fun () ->
+                !send_withdraw_email (identifier state) title slot_idx ruid uid expiration is_incomplete
+              )
+            ) all;
             Reserved (cdate, expiration, cuids, uuids), content
           )
       ))
@@ -509,12 +557,35 @@ let team_of_user teamer uid =
       return (`OK (sid, int))
   )
 
-let max_number_of_users_per_team teamer =
+let number_of_users_per_team teamer =
   observe teamer (fun data ->
     match (content data).description with
-      | Valid (_, description) -> return description.nb_users_per_team.max
-      | _ -> return 0
+      | Valid (_, description) -> return description.nb_users_per_team
+      | _ -> return { min = 0; max = 0 }
   )
+
+let max_number_of_users_per_team teamer =
+  lwt i = number_of_users_per_team teamer in
+  return i.max
+
+let min_number_of_users_per_team teamer =
+  lwt i = number_of_users_per_team teamer in
+  return i.min
+
+let is_complete teamer sid slot_idx =
+  slots_of_subject teamer sid >>>= fun slots ->
+  match List.nth slots slot_idx with
+    | Free ->
+      return (`OK `Incomplete)
+    | Reserved (_, _, cuid, uuid) ->
+      let nbu = List.length (cuid @ uuid) in
+      lwt i = number_of_users_per_team teamer in
+      if nbu = i.max then
+        return (`OK `Full)
+      else if i.min <= nbu then
+        return (`OK `Complete)
+      else
+        return (`OK `Incomplete)
 
 let check_reservation_is_possible teamer requesting_user sid slot_idx uid =
   lwt max_number_of_users_per_team = max_number_of_users_per_team teamer in
@@ -529,7 +600,7 @@ let check_reservation_is_possible teamer requesting_user sid slot_idx uid =
        return (`KO `MustBeAlreadyInTheTeam)
    in
    let not_full all =
-     if List.length all <= max_number_of_users_per_team then
+     if List.length all < max_number_of_users_per_team then
        return (`OK ())
      else
        return (`KO `TeamIsFull)
@@ -562,3 +633,8 @@ let confirm teamer sid slot_idx uid =
 
 let withdraw_for_user teamer sid slot_idx uid =
   change teamer (Withdraw (uid, sid, slot_idx))
+
+let teamer_is_open teamer =
+  observe teamer (fun data ->
+    return (is_open ((content data).description))
+  )

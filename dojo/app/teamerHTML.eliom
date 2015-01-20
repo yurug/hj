@@ -40,6 +40,19 @@ let teamer_page teamer =
           lwt slots = get_slots () in
           let s = List.nth slots i in
 
+          lwt is_complete =
+            Teamer.teamer_is_open teamer >>= function
+              | true ->
+                (Teamer.is_complete teamer (SID sid) slot_idx >>= function
+                  | `OK `Incomplete -> return "Incomplète"
+                  | `OK `Complete -> return "Complète"
+                  | `OK `Full -> return "Complète et plus de place disponible"
+                  | `KO _ -> return "Erreur (signaler à yrg@pps.univ-paris-diderot.fr)"
+                )
+              | false ->
+                return "Inscriptions closes"
+          in
+
           let uid confirmed id =
             let status = if confirmed then "(OK)" else "(?)" in
             lwt name, suid = User.(make id >>= function
@@ -59,50 +72,87 @@ let teamer_page teamer =
             in
             return (li [span [pcdata (name ^ status); unsubscribe_icon]])
           in
-          match s with
-            | Free ->
-              return [span [pcdata "Libre"]]
-            | Reserved (cdate, _, confirmed_uids, unconfirmed_uids) ->
-              lwt cuids = Lwt_list.map_s (uid true) confirmed_uids in
-              lwt uuids = Lwt_list.map_s (uid false) unconfirmed_uids in
-              return [ul (cuids @ uuids)]
-        in
-        let status = active_div 2. view_slot in
-
-        let self_subscribe uid =
-          let suid = Identifier.string_of_identifier uid in
-          let subscribe = {unit -> unit{ fun () ->
-            Lwt.async (fun () ->
-              %teamer_reserve_for_user_server_function (%teamer_sid, %sid, %suid, %slot_idx)
-              >>
-              %teamer_confirm_for_user_server_function (%teamer_sid, %sid, %suid, %slot_idx)
-            )
-            }}
-          in
-          WidgetHTML.small_button ["M'inscrire"] subscribe
-        in
-        lwt insert_user =
-          WidgetHTML.input_button "Inscrire" {string -> bool Lwt.t{fun suid ->
-            let suid = "/users/" ^ suid in (* FIXME *)
-            %teamer_reserve_for_user_server_function (%teamer_sid, %sid, suid, %slot_idx)
-          }}
-        in
-        lwt buttons =
-          UserHTTP.logged_user () >>= function
-            | `OK logged_user ->
-              return [
-                div ~a:[a_class ["teamer_buttons"]] [
-                  div ~a:[a_class ["left_side"]] [self_subscribe (User.identifier logged_user)];
-                  div ~a:[a_class ["right_side"]] [insert_user]
+          lwt status =
+            match s with
+              | Free ->
+                return [p [span [pcdata ("Libre " ^ is_complete)]]]
+              | Reserved (cdate, _, confirmed_uids, unconfirmed_uids) ->
+                lwt cuids = Lwt_list.map_s (uid true) confirmed_uids in
+                lwt uuids = Lwt_list.map_s (uid false) unconfirmed_uids in
+                return [
+                  p [pcdata is_complete];
+                  ul (cuids @ uuids)
                 ]
-              ]
-            | `KO _ ->
-              return []
+          in
+
+          let self_subscribe uid =
+            match s with
+              | Free ->
+                let suid = Identifier.string_of_identifier uid in
+                let subscribe = {unit -> unit{ fun () ->
+                  Lwt.async (fun () ->
+                    %teamer_reserve_for_user_server_function (%teamer_sid, %sid, %suid, %slot_idx)
+                    >>
+                    %teamer_confirm_for_user_server_function (%teamer_sid, %sid, %suid, %slot_idx)
+                  )
+                }}
+                in
+                WidgetHTML.small_button ["M'inscrire"] subscribe
+              | _ ->
+                span []
+          in
+
+          let self_confirm uid =
+            match s with
+              | Reserved (_, _, _, uuids)
+                when List.exists (fun u -> Identifier.compare u uid = 0) uuids ->
+                let suid = Identifier.string_of_identifier uid in
+                let confirm = {unit -> unit{ fun () ->
+                  Lwt.async (fun () ->
+                    %teamer_confirm_for_user_server_function (%teamer_sid, %sid, %suid, %slot_idx)
+                  )
+                }}
+                in
+                WidgetHTML.small_button ["Confirmer mon inscription"] confirm
+              | _ ->
+                span []
+          in
+
+          let insert_user uid =
+            match s with
+              | Reserved (_, _, cuids, uuids)
+                when List.exists (fun u -> Identifier.compare u uid = 0) (uuids @ cuids) ->
+                WidgetHTML.input_button "Inscrire" {string -> bool Lwt.t{fun suid ->
+                  let suid = "/users/" ^ suid in (* FIXME *)
+                  %teamer_reserve_for_user_server_function (%teamer_sid, %sid, suid, %slot_idx)
+                }}
+              | _ ->
+                return  (span [])
+          in
+          lwt buttons =
+            teamer_is_open teamer >>= function
+              | true ->
+                (UserHTTP.logged_user () >>= function
+                  | `OK logged_user ->
+                    lwt insert_button = insert_user (User.identifier logged_user) in
+                    return [
+                      div ~a:[a_class ["teamer_buttons"]] [
+                        div ~a:[a_class ["left_side"]] [self_subscribe (User.identifier logged_user)];
+                        div ~a:[a_class ["left_side"]] [self_confirm (User.identifier logged_user)];
+                        div ~a:[a_class ["right_side"]] [insert_button]
+                      ]
+                    ]
+                  | `KO _ ->
+                    return [])
+              | false ->
+                return []
+          in
+          return (status @ buttons)
         in
+
         return (div ~a:[a_class ["teamer_team"]] (
           p [span ~a:[a_class ["bold"]] [pcdata ("Équipe " ^ string_of_int (succ i))]]
-          :: status
-          :: buttons
+          :: [ active_div 2. view_slot ]
         ))
       in
       lwt slots = get_slots () in
@@ -133,11 +183,57 @@ let create_service user ok_page ko_page =
         | `KO e -> return (ko_page "Error")
     )
 
+let register_reservation_direct_link () =
+  HTML.Hackojo_app.register_service
+    ~secure_session:true
+    ~path:["direct"; "teamer_reserve"]
+    ~get_params:Eliom_parameter.(suffix (all_suffix "id"))
+    (fun teamer () ->
+      let idx_of_cdate slots cdate =
+        let idx = ref (-1) in
+        List.iteri (fun i -> function Reserved (cdate', _, _, _) ->
+          if cdate = cdate' then idx := i
+          | _ -> ()
+        ) slots;
+        if !idx = -1 then return (`KO `InvalidURL) else return (`OK !idx)
+      in
+      (match List.rev teamer with
+        | cdate :: sids :: revname ->
+          let sid = SID sids in
+          let name = identifier_of_string_list (List.rev revname) in
+          let cdate = float_of_string cdate in
+          Printf.eprintf "%s | %s | %f\n"
+            (string_of_identifier name)
+            sids
+            cdate;
+          (Teamer.make name >>>= fun teamer ->
+           slots_of_subject teamer sid >>>= fun slots ->
+           idx_of_cdate slots (Timestamp.from_float cdate) >>>= fun idx ->
+           teamer_reserve_for_himself name sid idx >>>= fun () ->
+           return (`OK teamer)
+          )
+        | _ ->
+          return (`KO `InvalidURL)
+      ) >>= function
+        | `OK teamer ->
+          HTML.default_menu ()
+          >> lwt (links, page) = teamer_page teamer in
+             HTML.hackojo_page links page
+
+        | `KO _ ->
+          let links _ = return (div [span [pcdata "."]]) in
+          let page _ = return (div [p [pcdata "Invalid URL."]]) in
+          HTML.hackojo_page links page
+    )
+
 let teamer_page id =
   EntityHTML.offer_creation Teamer.make create_service teamer_page id
+
+let _ =
+  register_reservation_direct_link ()
 
 let () =
   EntityHTML.register_page_maker
     (fun id -> Identifier.(is_prefix Teamer.path id))
-    teamer_page
+    teamer_page;
 

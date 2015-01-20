@@ -25,3 +25,7 @@ val always : interval
 val older_than : timestamp -> timestamp -> bool
 
 val older_than_duration : float -> timestamp -> bool
+
+val from_float : float -> t
+
+val to_float : t -> float

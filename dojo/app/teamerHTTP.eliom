@@ -66,6 +66,13 @@ let teamer_update = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
+let teamer_reserve_for_himself name sid slot =
+  logged_user () >>>= fun user ->
+  Teamer.make name >>>= fun teamer ->
+  let uid = User.identifier user in
+  Teamer.reserve_for_user teamer user sid slot uid >>>= fun _ ->
+  (Teamer.confirm teamer sid slot uid >> return (`OK ()))
+
 let teamer_reserve_for_user_function name sid uid slot =
   logged_user () >>>= fun user ->
   Teamer.make name >>>= fun teamer ->
@@ -205,15 +212,15 @@ let email_user uid ~subject ~message =
     | `OK user ->
       lwt email = User.email user in
       lwt login = User.login user in
-      Printf.eprintf "Email %s %s [%s]:\n%s\n%!"
-        email login subject message;
+      lwt firstname = User.firstname user in
+      lwt surname = User.surname user in
       return (ExtUnix.mail
         ~mailer:(Config.get_mailer ())
         ~domain:Ocsigen_config.server_name
         ~target_email:email
         ~target_name:login
         ~subject
-        ~message
+        ~message:(message firstname surname)
       )
     | `KO _ ->
       (* FIXME: Warn *)
@@ -225,25 +232,49 @@ let teamer_url teamer_id =
     (Eliom_config.get_default_port ())
     (string_of_identifier teamer_id)
 
-let remind_not_enough_users teamer_id expected given limit uid =
+let teamer_url_to_reserve teamer_id sid cdate =
+  Printf.sprintf "http://%s:%d/direct/teamer_reserve%s/%s/%f"
+    (Eliom_config.get_default_hostname ())
+    (Eliom_config.get_default_port ())
+    (string_of_identifier teamer_id)
+    sid
+    cdate
+
+let remind_not_enough_users teamer_id sid title slot_idx cdate expected given limit uid =
+  let cdate = Timestamp.to_float cdate in
   let teamer_url = teamer_url teamer_id in
+  let teamer_url_to_reserve = teamer_url_to_reserve teamer_id sid cdate in
+  let slot_idx = succ slot_idx in
   email_user uid
     ~subject:I18N.String.remind_not_enough_users_subject
-    ~message:(I18N.String.remind_not_enough_users teamer_url limit expected given)
+    ~message:(I18N.String.remind_not_enough_users teamer_url teamer_url_to_reserve title slot_idx limit expected given)
 
-let remind_confirmation_needed teamer_id limit uid =
+let remind_confirmation_needed teamer_id sid slot_idx limit uid =
   let teamer_url = teamer_url teamer_id in
+  let slot_idx = succ slot_idx in
   email_user uid
     ~subject:I18N.String.remind_confirmation_needed_subject
-    ~message:(I18N.String.remind_confirmation_needed teamer_url limit)
+    ~message:(I18N.String.remind_confirmation_needed teamer_url sid slot_idx limit)
 
 let send_cancellation_email teamer_id sid slot_idx uid =
   let teamer_url = teamer_url teamer_id in
+  let slot_idx = succ slot_idx in
   email_user uid
     ~subject:I18N.String.cancellation_email_subject
     ~message:(I18N.String.cancellation_email teamer_url sid slot_idx)
 
+let send_withdraw_email teamer_id sid slot_idx uid ruid expiration is_complete =
+  let expiration = Timestamp.to_string expiration in
+  let teamer_url = teamer_url teamer_id in
+  let ruid = string_of_identifier ruid in
+  let slot_idx = succ slot_idx in
+  email_user uid
+    ~subject:I18N.String.withdraw_warning_subject
+    ~message:(I18N.String.withdraw_warning teamer_url sid slot_idx ruid expiration is_complete)
+
+
 let install_mail_hooks =
   Teamer.remind_not_enough_users    := remind_not_enough_users;
   Teamer.remind_confirmation_needed := remind_confirmation_needed;
-  Teamer.send_cancellation_email    := send_cancellation_email
+  Teamer.send_cancellation_email    := send_cancellation_email;
+  Teamer.send_withdraw_email        := send_withdraw_email;

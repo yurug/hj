@@ -121,6 +121,8 @@ let update_password_function login =
   User.get_user_info login "exists" >>= function
     | "1" ->
       lwt email = User.get_user_info login "email" in
+      lwt firstname = User.get_user_info login "firstname" in
+      lwt surname = User.get_user_info login "surname" in
       let url = !get_fresh_password_reset_url login in
       ExtUnix.mail
         ~mailer:(Config.get_mailer ())
@@ -128,7 +130,7 @@ let update_password_function login =
         ~target_email:email
         ~target_name:login
         ~subject:I18N.String.password_reset_email_subject
-        ~message:(I18N.String.password_reset_email_body login url);
+        ~message:(I18N.String.password_reset_email_body login url firstname surname);
       return (`OK email)
     | _ ->
       return (`KO `UnauthorizedLogin)

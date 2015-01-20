@@ -242,7 +242,7 @@ let connection_box
         let login = Js.to_string (ExtDom.get_input_by_id %login_id)##value in
         %update_password_server_function login >>= function
           | Some email -> return (%say (
-            I18N.String.password_reset_sent_by_email email %admin_email
+            I18N.String.password_reset_sent_by_email email %admin_email "" ""
           ))
           | None -> return (%say (I18N.String.you_do_not_exist %admin_email))
       )

@@ -31,3 +31,7 @@ let always = (0., infinity)
 let older_than t1 t2 = t2 -. t1 > 0.
 
 let older_than_duration d t = current () -. t > d
+
+let from_float f = f
+
+let to_float f = f
