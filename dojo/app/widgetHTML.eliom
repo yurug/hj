@@ -500,21 +500,22 @@ let fileuploader width height import =
 let active_div
     ?(classes=[])
     (freq : float)
-    (f : unit -> [ div_content ] elt list Lwt.t) =
+    (f : unit -> [ div_content ] elt list option Lwt.t) =
   (* FIXME: the server function should be taken as a parameter,
      FIXME: for better resource usage control. *)
   let sf = server_function ~timeout:3600. Json.t<unit> f in
   let d = div ~a:[a_class classes] [] in
   let onload =
     {{ fun _ ->
-      let m = ref [] in
       let rec aux () =
-        lwt m' = %sf () in
-        (if !m <> m' then (
-          Manip.replaceChildren %d m';
-          return (m := m')
-        ) else return ())
-        >> Lwt_js.sleep %freq >> aux ()
+        %sf ()
+        >>= (function
+          | None ->
+            return ()
+          | Some m ->
+            return (Manip.replaceChildren %d m))
+        >> Lwt_js.sleep %freq
+        >> aux ()
       in
       Lwt.async aux
      }}

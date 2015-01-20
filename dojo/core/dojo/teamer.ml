@@ -351,20 +351,24 @@ include Entity.Make (struct
           | _ -> content, Timestamp.current ()
     in
     let reserve_for_user content uid sid slot_idx =
-      let slots = try Slots.lookup sid content.slots with Not_found -> assert false in
-      let content = ref content in
-      let sslots = list_update_nth slots slot_idx (function
-        | Free ->
-          let now = Timestamp.current () in
-          let new_content, expiration = install_checkers !content sid slot_idx now in
-          content := new_content;
-          Reserved (now, expiration, [], [uid])
-        | Reserved (cd, expiration, cuids, uuids) ->
-          Reserved (cd, expiration, cuids, uid :: uuids)
-      )
-      in
-      let content = !content in
-      return { content with slots = Slots.update sid sslots content.slots }
+      User.make uid >>= function
+        | `KO _ ->
+          return content
+        | `OK _ ->
+          let slots = try Slots.lookup sid content.slots with Not_found -> assert false in
+          let content = ref content in
+          let sslots = list_update_nth slots slot_idx (function
+            | Free ->
+              let now = Timestamp.current () in
+              let new_content, expiration = install_checkers !content sid slot_idx now in
+              content := new_content;
+              Reserved (now, expiration, [], [uid])
+            | Reserved (cd, expiration, cuids, uuids) ->
+              Reserved (cd, expiration, cuids, uid :: uuids)
+          )
+          in
+          let content = !content in
+          return { content with slots = Slots.update sid sslots content.slots }
     in
 
     let update_checkers content rdate =
@@ -394,14 +398,18 @@ include Entity.Make (struct
     in
 
     let confirm content uid sid slot_idx =
-      return (update_slot_of_sid content sid slot_idx (function
-        | Free -> Free, content (* FIXME: Something is probably wrong. *)
-        | Reserved (cdate, expiration, cuids, uuids) ->
-          let is_uid = (fun u -> Identifier.compare uid u = 0) in
-          let cuids = if List.exists is_uid uuids then uid :: cuids else cuids in
-          let uuids = List.filter (fun u -> not (is_uid u)) uuids in
-          Reserved (cdate, expiration, cuids, uuids), content
-      ))
+      User.make uid >>= function
+        | `KO _ ->
+          return content
+        | `OK _ ->
+          return (update_slot_of_sid content sid slot_idx (function
+            | Free -> Free, content (* FIXME: Something is probably wrong. *)
+            | Reserved (cdate, expiration, cuids, uuids) ->
+              let is_uid = (fun u -> Identifier.compare uid u = 0) in
+              let cuids = if List.exists is_uid uuids then uid :: cuids else cuids in
+              let uuids = List.filter (fun u -> not (is_uid u)) uuids in
+              Reserved (cdate, expiration, cuids, uuids), content
+          ))
     in
 
     let withdraw content uid sid slot_idx =

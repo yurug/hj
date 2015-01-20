@@ -485,8 +485,8 @@ let question_as_html exo question answers
   let teacher_space =
     active_div ~classes:["teacher_space"] 15. (fun () ->
       exercise_results_of_question_function exo_id name_str >>= function
-        | `OK rows -> return [results_table get_editor rows]
-        | `KO _ -> return [] (* FIXME *)
+        | `OK rows -> return (Some [results_table get_editor rows])
+        | `KO _ -> return (Some []) (* FIXME *)
     )
   in
 

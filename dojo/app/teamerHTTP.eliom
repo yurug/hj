@@ -70,8 +70,11 @@ let teamer_reserve_for_himself name sid slot =
   logged_user () >>>= fun user ->
   Teamer.make name >>>= fun teamer ->
   let uid = User.identifier user in
-  Teamer.reserve_for_user teamer user sid slot uid >>>= fun _ ->
-  (Teamer.confirm teamer sid slot uid >> return (`OK ()))
+  Teamer.reserve_for_user teamer user sid slot uid >>= function
+    | `KO `AlreadyInATeam | `OK _ ->
+      (Teamer.confirm teamer sid slot uid >> return (`OK ()))
+    | `KO e ->
+      return (`KO e)
 
 let teamer_reserve_for_user_function name sid uid slot =
   logged_user () >>>= fun user ->
