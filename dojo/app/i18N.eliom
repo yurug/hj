@@ -381,11 +381,11 @@ module Fr : I18N_sig.Text = struct
     Printf.sprintf "\n\
     Bonjour %s %s,\n\
     \n\
-    votre équipe %d du sujet %s n'est pas complet. Il faut %d membres \n\
+    votre équipe %d du sujet %s n'est pas complète. Il faut %d membres \n\
     et vous n'en avez que %d.\n\
     \n\
     Après s'être connecté sur le Dojo, n'importe qui peut s'inscrire dans votre \
-    équipe en suivant le lien suivant:\n\
+    équipe en cliquant sur le lien suivant:\n\
     %s\n\
     \n\
     Sinon, rendez-vous sur %s pour ajouter manuellement un nouveau membre à votre équipe.\n\

@@ -87,7 +87,7 @@ let is_open description_state =
       let is_open = now >= d.opening_date && now <= d.closing_date in
       (* Printf.eprintf "Opening: %f Now: %f Closing: %f => %B\n%!" *)
       (*   d.opening_date now d.closing_date is_open; *)
-      is_open || true (* FIXME *)
+      is_open
 
     | _ ->
       false
@@ -268,7 +268,7 @@ include Entity.Make (struct
                   tm_min = min;
                   tm_hour = hour;
                   tm_mday = day;
-                  tm_mon = month;
+                  tm_mon = month - 1;
                   tm_year = year - 1900;
                   tm_wday = 0;
                   tm_yday = 0;

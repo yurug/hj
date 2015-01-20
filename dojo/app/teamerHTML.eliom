@@ -232,8 +232,11 @@ let register_reservation_direct_link () =
         | `KO `TeamIsFull ->
           error "Plus de place dans l'équipe"
 
+        | `KO (`UndefinedSubjectIdentifier _) ->
+          error "Sujet indéfini"
+
         | `KO _ ->
-          error "Erreur."
+          error "Erreur lors de la confirmation."
     )
 
 let teamer_page id =
