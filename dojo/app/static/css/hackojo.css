@@ -865,3 +865,55 @@ li {
     list-style-type: none;
     padding: 0;
 }
+
+table.team_table {
+    width: 100%;
+    table-layout: fixed;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    border: 0px solid #000000;
+}
+
+.table_member_uid_column {
+    overflow: auto; text-align:center; min-width: 50%;
+}
+
+.table_member_uid_column {
+    overflow: auto; text-align:center; min-width: 10%;
+}
+
+.table_member_status_column {
+    overflow: auto; text-align:center; min-width: 10%;
+}
+
+.table_member_button_column {
+    overflow: auto; text-align:center; min-width: 30%;
+}
+
+span.greenlight {
+    background-color : #00ff00;
+    color: #ffffff;
+    padding: 5px 5px;
+    font-size: 1em;
+    border: 2px solid #0fff0f;
+    border-radius: 7px;
+    margin-right: 0.5em;
+    margin-left: 0.5em;
+    width: 3em;
+    display: block;
+    font-weight:bold ;
+}
+
+span.redlight {
+    background-color : #ff0000;
+    color: #ffffff;
+    padding: 5px 5px;
+    font-size: 1em;
+    border: 2px solid #ff0f0f;
+    border-radius: 7px;
+    margin-right: 0.5em;
+    margin-left: 0.5em;
+    width: 3em;
+    display: block;
+    font-weight:bold ;
+}

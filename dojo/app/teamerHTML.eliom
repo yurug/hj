@@ -54,12 +54,16 @@ let teamer_page teamer =
                   return "Inscriptions closes"
             in
             let uid confirmed id =
-              let status = if confirmed then "(OK)" else "(?)" in
+              let status =
+                if confirmed then
+                  span ~a:[a_class ["greenlight"]] [pcdata "OK"]
+                else
+                  span ~a:[a_class ["redlight"]] [pcdata "?"]
+              in
               lwt name, suid = User.(make id >>= function
                 | `OK e ->
                   lwt fn = fullname e in
-                  return (fn ^ "[" ^ string_of_identifier id ^ "]",
-                          string_of_identifier id)
+                  return (fn, string_of_identifier id)
                 | `KO _ -> return ("????", "????") (* FIXME: Should never happen. *)
               )
               in
@@ -70,7 +74,14 @@ let teamer_page teamer =
                   )
               }}
               in
-              return (li [span [pcdata (name ^ status); unsubscribe_icon]])
+              return (
+                  tr [
+                    td ~a:[a_class ["table_member_name_column"]] [pcdata name];
+                    td ~a:[a_class ["table_member_uid_column"]] [pcdata suid];
+                    td ~a:[a_class ["table_member_status_column"]] [status];
+                    td ~a:[a_class ["table_member_button_column"]] [unsubscribe_icon];
+                  ]
+              )
             in
             lwt status = match s with
               | Free ->
@@ -78,9 +89,12 @@ let teamer_page teamer =
               | Reserved (cdate, _, confirmed_uids, unconfirmed_uids) ->
                 lwt cuids = Lwt_list.map_s (uid true) confirmed_uids in
                 lwt uuids = Lwt_list.map_s (uid false) unconfirmed_uids in
+                let items =
+                  tablex ~a:[a_class ["team_table"]] [tbody (cuids @ uuids)]
+                in
                 return [
                   p [pcdata is_complete];
-                  ul (cuids @ uuids)
+                  items
                 ]
             in
             let self_subscribe uid =
