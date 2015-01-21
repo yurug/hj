@@ -235,11 +235,21 @@ let register_reservation_direct_link () =
         | `KO (`UndefinedSubjectIdentifier _) ->
           error "Sujet indéfini"
 
-        | `KO `NotLogged ->
+        | `KO (`NotLogged | `FailedLogin) ->
           error "Vous n'êtes pas connecté."
 
-        | `KO _ ->
-          error "Erreur lors de la confirmation."
+        | `KO `InvalidURL ->
+          error "L'URL n'est plus valide."
+
+        | `KO `MustBeAlreadyInTheTeam ->
+          error "L'utilisateur devrait déjà être dans l'équipe."
+
+        | `KO `Timeout ->
+          error "Délai dépassé."
+
+        | `KO (`InternalError _ | `SystemError _ | `UndefinedEntity _ | `AlreadyExists _) ->
+          error "Erreur interne."
+
     )
 
 let teamer_page id =

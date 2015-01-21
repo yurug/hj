@@ -628,10 +628,30 @@ let check_reservation_is_possible teamer requesting_user sid slot_idx uid =
     | `KO _ -> return (`OK ()))
 
 
+let wait_for_reservation_to_complete teamer uid sid slot_idx =
+  let rec wait tick =
+    let continue () =
+      if tick > 100 then
+        return (`KO `Timeout)
+      else
+        (Lwt_unix.sleep 0.1 >> Lwt_unix.yield () >> wait (succ tick))
+    in
+    team_of_user teamer uid >>= function
+      | `OK (sid', slot_idx') ->
+        if sid = sid' && slot_idx = slot_idx' then
+          return (`OK ())
+        else
+          continue ()
+      | `KO _ ->
+        continue ()
+  in
+  wait 0
+
 let reserve_for_user teamer requesting_uid sid slot_idx uid =
   check_reservation_is_possible teamer requesting_uid sid slot_idx uid >>= function
     | `OK _ ->
       change teamer (ReserveForUser (uid, sid, slot_idx))
+      >> wait_for_reservation_to_complete teamer uid sid slot_idx
       >> return (`OK ())
     | `KO e ->
       return (`KO e)
