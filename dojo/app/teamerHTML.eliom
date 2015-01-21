@@ -235,6 +235,9 @@ let register_reservation_direct_link () =
         | `KO (`UndefinedSubjectIdentifier _) ->
           error "Sujet indéfini"
 
+        | `KO `NotLogged ->
+          error "Vous n'êtes pas connecté."
+
         | `KO _ ->
           error "Erreur lors de la confirmation."
     )
