@@ -337,14 +337,20 @@ include Entity.Make (struct
     let install_checkers content sid slot_idx now =
       match content.description with
         | Valid (_, description) ->
-          let expiration_time = List.(hd (rev description.notifications)) in
+          let notifications = List.sort Pervasives.compare description.notifications in
+          let th_expiration_time = List.(hd (rev notifications)) in
+          let th_expiration = Timestamp.(to_float (shift now (th_expiration_time *. 3600.))) in
+          let expiration = min th_expiration description.closing_date in
+          let real_expiration_time = (expiration -. Timestamp.to_float now) /. 3600. in
+          let ratio = real_expiration_time /. th_expiration_time in
+
           let notifications =
               List.map
-                (fun hour -> Timestamp.(shift now (hour *. 3600.)))
-                description.notifications
+                (fun hour -> Timestamp.(shift now (ratio *. hour *. 3600.)))
+                notifications
           in
-          let expiration = Timestamp.shift now (expiration_time *. 3600.) in
-          let limit = Timestamp.to_string (List.(hd (rev notifications))) in
+          let expiration = Timestamp.from_float expiration in
+          let limit = Timestamp.to_string expiration in
           { content with
             checkers = List.map (fun d -> (d, (sid, slot_idx, limit))) notifications @ content.checkers
           }, expiration
