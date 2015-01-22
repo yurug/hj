@@ -445,7 +445,7 @@ module Fr : I18N_sig.Text = struct
   let cancellation_email_subject =
     "Annulation de la réservation d'une équipe de projet"
 
-  let withdraw_warning url sid idx uid expiration is_complete firstname surname =
+  let withdraw_warning url sid idx wfirstname wsurname expiration is_complete firstname surname =
     let extra =
     Printf.sprintf "
     ATTENTION, votre équipe est incomplète! Vous devez compléter votre équipe avant le :\n\
@@ -459,13 +459,13 @@ module Fr : I18N_sig.Text = struct
     Printf.sprintf "\
     Bonjour %s %s,\n\
     \n\
-    Pour information, l'utilisateur %s s'est désincrit de votre équipe %d du sujet %s\n\
+    Pour information, l'utilisateur %s %s s'est désincrit de votre équipe %d du sujet %s\n\
     \n\
     %s
     Bonne programmation à vous!\n\
     -- Hackojo
     "
-      firstname surname uid idx sid
+      firstname surname wfirstname wsurname idx sid
       (if is_complete then extra else "")
 
   let withdraw_warning_subject =

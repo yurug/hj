@@ -139,7 +139,8 @@ sig
   val remind_not_enough_users_subject : string
   val remind_confirmation_needed : string -> string -> int -> string -> string -> string -> string
   val remind_confirmation_needed_subject : string
-  val withdraw_warning : string -> string -> int -> string -> string -> bool -> string -> string -> string
+  val withdraw_warning
+    : string -> string -> int -> string -> string -> string -> bool -> string -> string -> string
   val withdraw_warning_subject : string
   val cancellation_email : string -> string -> int -> string -> string -> string
   val cancellation_email_subject : string

@@ -269,11 +269,19 @@ let send_cancellation_email teamer_id sid slot_idx uid =
 let send_withdraw_email teamer_id sid slot_idx uid ruid expiration is_complete =
   let expiration = Timestamp.to_string expiration in
   let teamer_url = teamer_url teamer_id in
-  let ruid = string_of_identifier ruid in
   let slot_idx = succ slot_idx in
-  email_user uid
-    ~subject:I18N.String.withdraw_warning_subject
-    ~message:(I18N.String.withdraw_warning teamer_url sid slot_idx ruid expiration is_complete)
+  User.make ruid >>= function
+    | `OK ruser ->
+      lwt rfirstname = User.firstname ruser in
+      lwt rsurname = User.surname ruser in
+      email_user uid
+        ~subject:I18N.String.withdraw_warning_subject
+        ~message:(I18N.String.withdraw_warning
+                    teamer_url sid slot_idx rfirstname rsurname
+                    expiration is_complete)
+    | `KO e ->
+      (* FIXME *)
+      return ()
 
 
 let install_mail_hooks =
