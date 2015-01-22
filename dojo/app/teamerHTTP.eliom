@@ -166,8 +166,8 @@ let teamer_confirm_for_user = HTTP.(
 let teamer_withdraw_for_user_function name sid slot_idx uid =
   logged_user () >>>= fun user ->
   Teamer.make name >>>= fun teamer ->
-  lwt user_is_not_teacher = not (User.is_teacher user) in
-  (if Identifier.compare (User.identifier user) uid <> 0 && user_is_not_teacher then
+  lwt user_is_teacher = User.is_teacher user in
+  (if Identifier.compare (User.identifier user) uid <> 0 && not user_is_teacher then
       return (`KO `OnlyTheUserCanWithdraw)
    else
       return (`OK ())
