@@ -18,7 +18,7 @@ type cookie_state =
 
 let username =
   Eliom_reference.eref
-    ~scope:Eliom_common.default_group_scope
+    ~scope:Eliom_common.default_session_scope
     ~persistent:"login_status"
     (`NotLogged : cookie_state)
 
