@@ -178,14 +178,18 @@ let make_notification message =
 
 module SR = Statement.ReifyFromAka
 
+let goto id s =
+  make_notification (GotoExercise (id, s))
+
+let aka_goto what id s =
+  let id = what ^ "/" ^ Statement.flatten_string SR.(template string id) in
+  let msg = GotoExercise (identifier_of_string id, SR.statement s) in
+  make_notification msg
+
 let _ =
   let open AkaInterpreter in
    message := (fun s ->
      let msg = Message (SR.statement s) in
      make_notification msg
    );
-   goto_exercise := (fun id s ->
-     let id = "aka/" ^ Statement.flatten_string SR.(template string id) in
-     let msg = GotoExercise (identifier_of_string id, SR.statement s) in
-     make_notification msg
-   )
+   goto_exercise := aka_goto "aka"

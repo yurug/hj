@@ -451,13 +451,17 @@ include Entity.Make (struct
     in
 
     let push_notification () =
-      (* let message = Statement.( *)
-      (*   Paragraph (flatten_list [ *)
-      (*     String (flatten_list ["Bonjour"]) *)
-      (*   ]) *)
-      (* ) *)
-      (* in *)
-      return ()
+      let message =
+        (* FIXME: Find the message in the description. *)
+        Statement.(Paragraph (TCode (String (TCode ("Formation des groupes de projet pour les L2",
+                                                    TNil)),
+                                     TNil)))
+      in
+      lwt notification =
+        Notifications.goto (identifier state) message
+      in
+      User.notify_all [] notification
+
     in
 
     let apply_change content = function
