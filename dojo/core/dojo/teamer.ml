@@ -450,10 +450,21 @@ include Entity.Make (struct
       ))
     in
 
+    let push_notification () =
+      (* let message = Statement.( *)
+      (*   Paragraph (flatten_list [ *)
+      (*     String (flatten_list ["Bonjour"]) *)
+      (*   ]) *)
+      (* ) *)
+      (* in *)
+      return ()
+    in
+
     let apply_change content = function
       | UpdateDescription ->
         lwt description = update_description () in
-        update_all_slots { content with description }
+        push_notification ()
+        >> update_all_slots { content with description }
       | ReserveForUser (uid, sid, slot_idx) ->
         reserve_for_user content uid sid slot_idx
       | UpdateCheckers date ->
