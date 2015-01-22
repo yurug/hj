@@ -344,6 +344,11 @@ include Entity.Make (struct
           let real_expiration_time = (expiration -. Timestamp.to_float now) /. 3600. in
           let ratio = real_expiration_time /. th_expiration_time in
 
+          Printf.eprintf "THEXPIRATION: %s\nExpiration:%s\nRatio:%f\n%!"
+            (Timestamp.(to_string (from_float th_expiration)))
+            (Timestamp.(to_string (from_float expiration)))
+            ratio;
+
           let notifications =
               List.map
                 (fun hour -> Timestamp.(shift now (ratio *. hour *. 3600.)))
