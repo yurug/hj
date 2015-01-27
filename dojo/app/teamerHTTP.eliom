@@ -212,7 +212,7 @@ let teamer_withdraw_from_user = HTTP.(
 )
 
 let teamer_versions = HTTP.(
-  api_service "teamer_withdraw_for_user" "teamer"
+  api_service "teamer_versions" "teamer"
     (string "identifier")
     (string "status")
     "Retrieve all the versions of a teamer."
