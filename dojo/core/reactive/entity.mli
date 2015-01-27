@@ -172,6 +172,15 @@ module type S = sig
       suspended. *)
   val observe : ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
 
+  (** [history e] returns all the versions of [e]. *)
+  val history : t -> VFS.version list Lwt.t
+
+  (** [remember e v] returns the version [v] of [e]. *)
+  val remember : t -> VFS.version -> [
+    `KO of [> `SystemError of string | `UndefinedEntity of Identifier.t ]
+  | `OK of data meta
+  ] Lwt.t
+
   (** [identifier e] returns the identifier of [e]. This information
       will never change during the life of [e]. *)
   val identifier : t -> Identifier.t

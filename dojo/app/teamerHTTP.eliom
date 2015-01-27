@@ -211,6 +211,32 @@ let teamer_withdraw_from_user = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
+let teamer_versions = HTTP.(
+  api_service "teamer_withdraw_for_user" "teamer"
+    (string "identifier")
+    (string "status")
+    "Retrieve all the versions of a teamer."
+    (fun name ->
+      (let name = identifier_of_string name in
+      Teamer.make name >>>= fun teamer ->
+      (lwt vs = teamer_versions teamer in
+      return (`OK vs))) >>= function
+        | `OK vs -> success vs
+        | `KO `MustBeAlreadyInTheTeam -> error "must_already_be_in_the_team"
+        | `KO `AlreadyInATeam -> error "already_in_a_team"
+        | `KO `OnlyTheUserCanWithdraw -> error "only_user_can_withdraw"
+        | `KO `TeamIsFull -> error "team_is_full"
+        | `KO (`UndefinedSubjectIdentifier _) -> error "undefined_subject_identifier"
+        | `KO `NotLogged -> error "not_logged"
+        | `KO `FailedLogin -> error "login_failed"
+        | `KO (`AlreadyExists _) -> error "already_exists"
+        | `KO (`SystemError e) -> error ("system:" ^ e)
+        | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+        | `KO `StudentsCannotCreateTeamer -> error "teacher_only"
+        | `KO `ForbiddenService -> error "teacher_only"
+        | `KO (`UndefinedEntity id) ->
+          error ("undefined:" ^ (string_of_identifier id))))
+
 let email_user uid ~subject ~message =
   User.make uid >>= function
     | `OK user ->

@@ -217,6 +217,17 @@ let version_from_number path n =
   with Not_found ->
     return (`KO `NoSuchVersion)
 
+let version_from_number path n =
+  versions path >>>= fun vs ->
+  try_lwt
+    Lwt_list.find_s (fun v ->
+      lwt nv = number v in
+      return (nv = n)
+    ) vs >>= fun x ->
+    return (`OK x)
+  with Not_found ->
+    return (`KO `NoSuchVersion)
+
 let onfile f who =
   on_path (fun p ps fname where c on_finished -> ltry (
   !>> f c ps

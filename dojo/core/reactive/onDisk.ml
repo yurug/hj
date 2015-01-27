@@ -23,7 +23,9 @@ module type S = sig
     | `KO of [> `SystemError of string | `InternalError of exn]
     ] Lwt.t
 
-  val load : Identifier.t ->
+  val history : Identifier.t -> VFS.version list Lwt.t
+
+  val load : ?version:VFS.version -> Identifier.t ->
     [ `OK of data InMemory.meta
     | `KO of [>
       `UndefinedEntity of Identifier.t
@@ -154,13 +156,21 @@ end)
       )
       else convert vd ms
 
-  let load id =
+  let history id =
+    VFS.versions (metafile (path_of_identifier id)) >>= function
+      | `OK vs -> return vs
+      | `KO _ -> return [] (* FIXME: This should never happen. *)
+
+  let load ?version id =
     let path = path_of_identifier id in
     (if not (exists id) then
         return (`KO (`UndefinedEntity id))
      else
         return (`OK ()))
-    >>>= (fun () -> VFS.latest (metafile path))
+    >>>= (fun () ->
+      match version with
+        | None -> VFS.latest (metafile path)
+        | Some v -> return (`OK v))
     >>>= VFS.read
     >>>= fun raw ->
     try_lwt

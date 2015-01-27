@@ -692,3 +692,45 @@ let teamer_is_open teamer =
   observe teamer (fun data ->
     return (is_open ((content data).description))
   )
+
+let string_of_subject_description slots d =
+  let (SID id) as sid = d.identifier in
+  let slot = function
+    | Free ->
+      "libre"
+    | Reserved (_, _, cuids, uuids) ->
+      String.concat " " (List.map (fun u -> string_of_identifier u) cuids) ^
+      String.concat " " (List.map (fun u -> string_of_identifier u ^ "?") uuids)
+  in
+  let slots =
+    String.concat "\n" (List.map slot (Slots.lookup sid slots))
+  in
+  Printf.sprintf "%s \"%s\"\n%s\n"
+    id d.title
+    slots
+
+let string_of_teamer_data data =
+  match (content data).description with
+    | Valid (_, description) ->
+      String.concat "\n" (
+        List.map
+          (string_of_subject_description (content data).slots)
+          description.subjects
+      )
+    | _ ->
+      "Invalid"
+
+let teamer_versions t =
+  history t >>= fun versions ->
+  lwt ss = Lwt_list.map_s
+    (fun version ->
+      remember t version >>= function
+        | `OK data ->
+          lwt date = VFS.date version in
+          return (date ^ "\n" ^ string_of_teamer_data data)
+        | `KO _ ->
+          return "error" (* FIXME *)
+    )
+    versions
+  in
+  return (String.concat "\n\n" ss)

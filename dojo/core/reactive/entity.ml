@@ -183,6 +183,13 @@ module type S = sig
   val observe
     : ?who:identifier -> t -> (data meta -> 'a Lwt.t) -> 'a Lwt.t
 
+  val history : t -> VFS.version list Lwt.t
+
+  val remember : t -> VFS.version -> [
+    `KO of [> `SystemError of string | `UndefinedEntity of Identifier.t ]
+  | `OK of data meta
+  ] Lwt.t
+
   val identifier : t -> Identifier.t
 
   val resources : t -> Resource.name list
@@ -378,6 +385,10 @@ and type change = I.change
     else
       OTD.save (InMemory.make id deps fnames init)
 
+  and history x = OTD.history (identifier x)
+
+  and remember x v = OTD.load ~version:v (identifier x)
+
   (* ************************** *)
   (*  Operations over entities  *)
   (* ************************** *)
@@ -501,7 +512,7 @@ and type change = I.change
   let bad_assumption e msg =
     Log.log (identifier e) bad_assumption_descriptor msg
 
-  let observe (type a) ?who (e : t) (o : data meta -> a Lwt.t) : a Lwt.t =
+   let observe (type a) ?who (e : t) (o : data meta -> a Lwt.t) : a Lwt.t =
     let master = ref false in
     let rec aux () =
       let incr_observers () =

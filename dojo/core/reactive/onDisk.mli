@@ -28,7 +28,9 @@ module type S = sig
     | `KO of [> `SystemError of string | `InternalError of exn]
     ] Lwt.t
 
-  val load : Identifier.t ->
+  val history : Identifier.t -> VFS.version list Lwt.t
+
+  val load : ?version:VFS.version -> Identifier.t ->
     [ `OK of data InMemory.meta
     | `KO of [>
       `UndefinedEntity of Identifier.t
