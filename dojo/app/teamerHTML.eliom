@@ -169,7 +169,7 @@ let teamer_page teamer =
                             ]
                           ]
                         | false ->
-                          return [])
+                          return [div [pcdata "Plus d'action possible."]])
                     | `KO _ ->
                       return [])
             in
