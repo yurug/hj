@@ -628,7 +628,8 @@ let check_reservation_is_possible teamer requesting_user sid slot_idx uid =
      of users of the reservation. *)
   (slots_of_subject teamer sid >>>= fun slots ->
    let already_in_or_himself uids =
-     if user_in_list requesting_uid (uid :: uids) then
+     lwt is_teacher = User.is_teacher requesting_user in
+     if user_in_list requesting_uid (uid :: uids) || is_teacher then
        return (`OK ())
      else
        return (`KO `MustBeAlreadyInTheTeam)

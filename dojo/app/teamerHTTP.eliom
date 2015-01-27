@@ -163,6 +163,29 @@ let teamer_confirm_for_user = HTTP.(
           error ("undefined:" ^ (string_of_identifier id)))
 )
 
+let teamer_insert_user_function name sid slot_idx uid =
+  logged_user () >>>= fun user ->
+  Teamer.make name >>>= fun teamer ->
+  lwt user_is_teacher = User.is_teacher user in
+  (if Identifier.compare (User.identifier user) uid <> 0 && not user_is_teacher then
+      return (`KO `OnlyTeacherCanInsertUser)
+   else
+      return (`OK ())
+  ) >>>= fun () ->
+  reserve_for_user teamer user sid slot_idx uid
+  >> confirm teamer sid slot_idx uid
+  >> return (`OK ())
+
+let teamer_insert_user_server_function =
+  server_function Json.t<string * string * string * int> (
+    fun (name, sid, uid, slot) ->
+      let name = (identifier_of_string name)
+      and uid = (identifier_of_string uid) in
+      (teamer_insert_user_function name (SID sid) slot uid >>= function
+        | `OK () -> return true
+        | `KO _  -> return false)
+  )
+
 let teamer_withdraw_for_user_function name sid slot_idx uid =
   logged_user () >>>= fun user ->
   Teamer.make name >>>= fun teamer ->

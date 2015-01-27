@@ -128,13 +128,16 @@ let teamer_page teamer =
                 | _ ->
                   span []
             in
-            let insert_user uid =
+            let insert_user ?(teacher=false) uid =
               match s with
                 | Reserved (_, _, cuids, uuids)
                     when List.exists (fun u -> Identifier.compare u uid = 0) (uuids @ cuids) ->
                   WidgetHTML.input_button "Inscrire" {string -> bool Lwt.t{fun suid ->
                     let suid = "/users/" ^ suid in (* FIXME *)
-                    %teamer_reserve_for_user_server_function (%teamer_sid, %sid, suid, %slot_idx)
+                    if %teacher then
+                      %teamer_insert_user_server_function (%teamer_sid, %sid, suid, %slot_idx)
+                    else
+                       %teamer_reserve_for_user_server_function (%teamer_sid, %sid, suid, %slot_idx)
                   }}
                 | _ ->
                   return  (span [])
@@ -155,7 +158,20 @@ let teamer_page teamer =
                     | `KO _ ->
                       return [])
                 | false ->
-                  return []
+                  (UserHTTP.logged_user () >>= function
+                    | `OK logged_user ->
+                      (User.is_teacher logged_user >>= function
+                        | true ->
+                          lwt insert_button = insert_user ~teacher:true (User.identifier logged_user) in
+                          return [
+                            div ~a:[a_class ["teamer_buttons"]] [
+                              div ~a:[a_class ["right_side"]] [insert_button]
+                            ]
+                          ]
+                        | false ->
+                          return [])
+                    | `KO _ ->
+                      return [])
             in
             if !prev = Some s then return None else (
               prev := Some s;
