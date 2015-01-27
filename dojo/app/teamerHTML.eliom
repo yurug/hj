@@ -129,9 +129,7 @@ let teamer_page teamer =
                   span []
             in
             let insert_user ?(teacher=false) uid =
-              match s with
-                | Reserved (_, _, cuids, uuids)
-                    when List.exists (fun u -> Identifier.compare u uid = 0) (uuids @ cuids) ->
+              let widget () =
                   WidgetHTML.input_button "Inscrire" {string -> bool Lwt.t{fun suid ->
                     let suid = "/users/" ^ suid in (* FIXME *)
                     if %teacher then
@@ -139,8 +137,13 @@ let teamer_page teamer =
                     else
                        %teamer_reserve_for_user_server_function (%teamer_sid, %sid, suid, %slot_idx)
                   }}
+              in
+              match s with
+                | Reserved (_, _, cuids, uuids)
+                    when List.exists (fun u -> Identifier.compare u uid = 0) (uuids @ cuids) ->
+                  widget ()
                 | _ ->
-                  return  (span [])
+                  if teacher then widget () else return (span [])
             in
             lwt buttons =
               teamer_is_open teamer >>= function
