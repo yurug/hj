@@ -94,7 +94,7 @@ let git_versions where what lraise =
 let git_show hash what lraise =
   let where = Filename.dirname what in
   let fname = Filename.basename what in
-  pread (!% (where @@ Printf.sprintf "git show %s:./%s" hash fname))
+  pread (!% (where @@ Printf.sprintf "git show %s:%s" hash fname))
 
 let git_toplevel where lraise =
   pread_lines (!% (where @@ "git rev-parse --show-toplevel")) ~lraise
