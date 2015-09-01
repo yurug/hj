@@ -7,6 +7,7 @@
     interface. *)
 
 {shared{
+open EditorHTML
 open Lwt
 open Eliom_content.Html5.D
 open Eliom_content.Html5.Id
