@@ -1,6 +1,8 @@
 (* -*- tuareg -*- *)
 
 {shared{
+open EditorHTML
+open EntityHTML
 open Lwt
 open Eliom_content.Html5
 open Eliom_content.Html5.D
