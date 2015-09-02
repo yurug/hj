@@ -209,7 +209,7 @@ let create_user_account login password =
       | `Text password -> digest password
   in
   lwt status = get_user_info login "status" in
-  let teacher = (status = "teacher") in
+  let teacher = (status = "teacher" || is_admin id) in
   lwt firstname = get_user_info login "firstname" in
   lwt surname = get_user_info login "surname" in
   lwt email = get_user_info login "email" in
