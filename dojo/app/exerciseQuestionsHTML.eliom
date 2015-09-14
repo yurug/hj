@@ -151,8 +151,6 @@ let witv_as_html
 
   let nb = List.length expressions in
 
-  let values = {string array{ Array.make %nb "" }} in
-
   let previous_values =
     match answer with
       | Some (Questions.GivenValues vs) ->
@@ -160,6 +158,9 @@ let witv_as_html
       | _ ->
         Array.make nb ""
   in
+
+  let values = {string array{ Array.copy %previous_values }} in
+
   let onload = {{
     fun _ -> !(%reset) ();
     %reset := (fun () -> ());
