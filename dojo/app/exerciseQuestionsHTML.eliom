@@ -104,7 +104,7 @@ let qcm_as_html
         []
   in
 
-  let choices = {int list ref{ ref [] }} in
+  let choices = {int list ref{ ref %previous_choices }} in
 
   let onload = {{
     fun _ -> !(%reset) ();
