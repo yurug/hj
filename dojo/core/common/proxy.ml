@@ -1,6 +1,9 @@
 (* FIXME: We may want an expiration date on keys. *)
 
-module Make (H : Hashtbl.HashedType) = struct
+module Make (H : sig
+  include Hashtbl.HashedType
+  val size : t -> int
+end) = struct
   type key = int * float
   deriving (Json)
 
@@ -28,10 +31,9 @@ module Make (H : Hashtbl.HashedType) = struct
       (!c, Unix.gettimeofday ())
 
   let cache_size t =
-    let size x = Obj.(size (repr x)) in
     let s = ref 0 in
-    K.iter (fun k v -> s := !s + size k + size v) t.ktable;
-    T.iter (fun k v -> s := !s + size k + size v) t.htable;
+    K.iter (fun k v -> s := !s + H.size v) t.ktable;
+    T.iter (fun k v -> s := !s + H.size k) t.htable;
     !s
 
   let show_cache_size_freq = 100
