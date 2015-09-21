@@ -27,7 +27,25 @@ module Make (H : Hashtbl.HashedType) = struct
       incr c;
       (!c, Unix.gettimeofday ())
 
+  let cache_size t =
+    let size x = Obj.(size (repr x)) in
+    let s = ref 0 in
+    K.iter (fun k v -> s := !s + size k + size v) t.ktable;
+    T.iter (fun k v -> s := !s + size k + size v) t.htable;
+    !s
+
+  let show_cache_size_freq = 100
+  let debug_show_cache_size =
+    let c = ref 0 in
+    fun t ->
+      try
+	incr c;
+	if !c mod show_cache_size_freq = 0 then
+	  Printf.eprintf "CACHE SIZE: %d\n%!" (cache_size t)
+      with _ -> ()
+
   let cache t x =
+    debug_show_cache_size t;
     try
       T.find t.htable x
     with Not_found ->
