@@ -317,6 +317,7 @@ module TraceProxy = Proxy.Make (struct
   type t = string
   let hash = Hashtbl.hash
   let equal x y = (x = y)
+  let size = String.length
 end)
 let trace_table = TraceProxy.make ()
 let trace_cache = TraceProxy.cache trace_table
