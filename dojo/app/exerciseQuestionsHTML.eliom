@@ -195,9 +195,22 @@ let witv_as_html
     }}
   ]))
 
+let submit_answer : (string*string*string*string*string, unit) server_function =
+  server_function Json.t<string * string * string * string * string>
+  (fun (src, expected_file, answers_id, exo_id, name_str) ->
+    try_lwt
+      let answers_id = Identifier.identifier_of_string answers_id in
+      let exo_id = Identifier.identifier_of_string exo_id in
+      let answer_resource = Resource.make (expected_file : string) src in
+      OnDisk.save_resource answers_id answer_resource (fun () ->
+	push_new_answer_function (exo_id, name_str, File expected_file) >> return ()
+      ) >> return ()
+    with _ -> return ()
+  )
+
 let grader_as_html
     exo answers display_evaluation_state_now
-    exo_str name_str expected_file =
+    exo_str (name_str : string) (expected_file : string) =
 
   let exo_id = Exercise.identifier exo in
   let expected_extension = Str.(
@@ -241,17 +254,9 @@ let grader_as_html
   let initial_answer_str = Resource.content initial_answer in
 
   let answers_id = Answers.identifier answers in
+  let answers_id_str = Identifier.string_of_identifier answers_id in
+  let exo_id_str = Identifier.string_of_identifier exo_id in
 
-  let submit_answer_function src =
-    let answer_resource = Resource.make expected_file src in
-    OnDisk.save_resource answers_id answer_resource (fun () ->
-      push_new_answer_function (exo_id, name_str, File expected_file)
-      >> return ()
-    )
-  in
-  let submit_answer =
-    server_function ~timeout:3600. Json.t<string> submit_answer_function
-  in
   let show_evaluation_state = {(unit -> unit Lwt.t) ref{ ref (fun () -> return ()) }} in
   let onload =
     {{ fun _ ->
@@ -259,20 +264,28 @@ let grader_as_html
       let open EditorHTML in
       let editor = !(%editor_maker) %expected_extension in
       %show_evaluation_state := (fun () ->
+	 Firebug.console##log (Js.string "Clear?");
          editor.console_clear ();
-         %display_evaluation_state_now (Some editor.console_write)
+	 Firebug.console##log (Js.string "Display evaluation state now");
+         %display_evaluation_state_now (Some editor.console_write) 
       );
       %theeditor := Some editor;
       Lwt.async !(%show_evaluation_state);
       let ready = ref true in
       let submit () =
-        if !ready then
-          let src = editor.get_value () in
-          Lwt.async (fun () ->
-            ready := false;
-            %submit_answer src
-            >> !(%show_evaluation_state) ()
-            >> return (ready := true))
+          if !ready then
+            let src = editor.get_value () in
+            Lwt.async (fun () ->
+	      try_lwt 
+		ready := false;
+                %submit_answer (src, %expected_file, %answers_id_str, %exo_id_str, %name_str)
+              >> !(%show_evaluation_state) ()
+		>> return (ready := true)
+	with e ->
+	  Firebug.console##log (Js.string ("Exn: " ^ Printexc.to_string e));
+	  return ()
+
+	    )
       in
       let reset_answer () =
         editor.set_value %initial_answer_str
@@ -325,7 +338,7 @@ let grader_as_html
       answer_expected (in_a_file_named expected_file)))]
   ])
 
-let results_table get_editor rows = I18N.(String.(
+(* let results_table get_editor rows = I18N.(String.(
   let columns =
     [
       cap identifier, "table_id_column";
@@ -388,6 +401,7 @@ let results_table get_editor rows = I18N.(String.(
   let rows = List.map row rows in
   tablex ~a:[a_class ["results_table"]] ~thead [tbody rows]
 ))
+*)
 
 let question_as_html exo question answers
 : ([ pre ] elt list * [ div ] elt) Lwt.t =
@@ -409,7 +423,9 @@ let question_as_html exo question answers
   let grade_div = div ~a:[a_class ["score_div"]] [] in
   let display_evaluation_state_now =
     {([Html5_types.div_content_fun] elt list -> unit) option -> unit Lwt.t{
-      %display_evaluation_state %exo_str %answers_str %name_str %grade_div
+      fun r ->
+	Firebug.console##log (Js.string "Display evaluation state now called");
+        ExerciseEvaluationStateHTML.display_evaluation_state %exo_str %answers_str %name_str  %grade_div r 
    }}
   in
   lwt answer =
@@ -483,13 +499,13 @@ let question_as_html exo question answers
       | false -> return (div [])
   in
 
-  let teacher_space =
+(*  let teacher_space =
     active_div ~classes:["teacher_space"] 15. (fun () ->
       exercise_results_of_question_function exo_id name_str >>= function
         | `OK rows -> return (Some [results_table get_editor rows])
         | `KO _ -> return (Some []) (* FIXME *)
     )
-  in
+  in *)
 
   return (!codes, div (
     [ h1 [pcdata (title ^ " (" ^ stars difficulty ^ ")")];
@@ -498,6 +514,6 @@ let question_as_html exo question answers
     @ statements_as_html codes statements
     @ context
     @ [ grade_div ;
-        import_div;
-        teacher_space ]
+        import_div
+       (* teacher_space *) ] 
   ))

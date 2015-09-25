@@ -27,7 +27,7 @@
     <netbuffersize>16384</netbuffersize>
     %%% This will include the packages defined as SERVER_PACKAGES in your Makefile:
     %%PACKAGES%%
-    <host hostfilter="*">
+    <host hostfilter="*" defaulthostname="www.hackojo.org">
       <static dir="%%STATICDIR%%" />
       <static dir="%%ELIOMSTATICDIR%%" />
       <eliommodule module="%%LIBDIR%%/%%PROJECT_NAME%%.cma">

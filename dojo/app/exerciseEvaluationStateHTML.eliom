@@ -13,16 +13,8 @@ open ExerciseHTTP
 
 {client{
 exception Done
-}}
 
-let display_evaluation_state
-=
-  { string
-    -> string
-    -> string
-    -> [ div ] elt
-    -> ([Html5_types.div_content_fun] elt list -> unit) option
-    -> unit Lwt.t{
+let display_evaluation_state =
     fun exo_str answers_str name_str grade_div console_write ->
       let score_box = fun score criteria ->
         div ~a:[a_class ["score_box"]] [
@@ -64,14 +56,18 @@ let display_evaluation_state
                 update_grade_div (scores_as_html grade.scores);
                 raise_lwt Done
               | EvaluationFailed ->
-                return (update_grade_div [score_box "!" []])
+                update_grade_div [score_box "!" []];
+		raise_lwt Done
               | NoEvaluation ->
-                return (update_grade_div [score_box "?" []])
+                update_grade_div [score_box "?" []];
+		raise_lwt Done
           in
           try_lwt
             update_grade_div [score_box "..." []];
-            show ()
-            >> Lwt_js.sleep 0.1
-            >> on_update show
-          with Done -> return ()
-  }}
+	    let rec loop k =
+	      if k > 500 then raise_lwt Done else Lwt_js.sleep 1. >> show () >> loop (succ k) in
+	    loop 0
+          with Done ->
+	    return () 
+
+}}

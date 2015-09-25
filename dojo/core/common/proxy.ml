@@ -47,7 +47,6 @@ end) = struct
       with _ -> ()
 
   let cache t x =
-    debug_show_cache_size t;
     try
       T.find t.htable x
     with Not_found ->
