@@ -278,6 +278,13 @@ let register login password =
     | r ->
       return (`KO `UnauthorizedLogin)
 
+let set_password_digest uid (pd : string) =
+  make uid >>= function
+    | `OK user ->
+      change user (SetPasswordDigest (PasswordDigest pd))
+      >>= fun _ -> return (`OK ())
+    | `KO e -> return (`KO e) (* FIXME *)
+
 let tag uid exoid qid tags difficulty =
   make uid >>= function
     | `OK user -> change user (Tagged (exoid, qid, tags, difficulty))

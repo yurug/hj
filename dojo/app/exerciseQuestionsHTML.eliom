@@ -403,8 +403,7 @@ let grader_as_html
 ))
 *)
 
-let question_as_html exo question answers
-: ([ pre ] elt list * [ div ] elt) Lwt.t =
+let question_as_html exo question answers : ([ pre ] elt list * [ div ] elt) Lwt.t =
 
   (** Shortcuts. *)
   let tags = question.tags

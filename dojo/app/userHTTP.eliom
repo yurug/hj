@@ -158,6 +158,23 @@ let update_password = HTTP.(
       ))
 )
 
+let set_password = HTTP.(
+  api_service "set_password" "user"
+    (string "login" ** string "password_digest")
+    (string "status")
+    "Set user password."
+    (fun (login, pd) ->
+      root_only (fun () ->
+	User.set_password_digest (identifier_of_string login) pd >>= (function
+          | `OK _ -> success "password_reset"
+          | `KO (`UndefinedEntity id) -> assert false
+          | `KO `UnauthorizedLogin -> error "login_cannot_register"
+          | `KO (`AlreadyExists _) -> error "already_exists"
+          | `KO (`SystemError e) -> error ("system:" ^ e)
+          | `KO (`InternalError e) -> error ("internal:" ^ (Printexc.to_string e))
+	)) ())
+)
+
 let password_reset_server_function =
   server_function Json.t<string * string> (
     fun (login, password) ->
