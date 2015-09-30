@@ -165,7 +165,7 @@ let set_password = HTTP.(
     "Set user password."
     (fun (login, pd) ->
       root_only (fun () ->
-	User.set_password_digest (identifier_of_string login) pd >>= (function
+	User.set_password_digest (identifier_of_string login) (Digest.from_hex pd) >>= (function
           | `OK _ -> success "password_reset"
           | `KO (`UndefinedEntity id) -> assert false
           | `KO `UnauthorizedLogin -> error "login_cannot_register"
