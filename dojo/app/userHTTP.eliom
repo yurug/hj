@@ -163,12 +163,12 @@ let set_password = HTTP.(
     (string "login" ** string "password_digest")
     (string "status")
     "Set user password."
-    (fun (login, pd) ->
+    (fun (username, pd) ->
       root_only (fun () ->
-	Ocsigen_messages.errlog (Printf.sprintf "Set password for %s with digest %s\n" login pd);
-	User.set_password_digest (identifier_of_string login) (Digest.from_hex pd) >>= (function
+	Ocsigen_messages.errlog (Printf.sprintf "Set password for %s with digest %s\n" username pd);
+	User.(set_password_digest (user_identifier username) (Digest.from_hex pd)) >>= (function
           | `OK _ -> success "password_reset"
-          | `KO (`UndefinedEntity id) -> assert false
+          | `KO (`UndefinedEntity id) -> error "does_not_exist"
           | `KO `UnauthorizedLogin -> error "login_cannot_register"
           | `KO (`AlreadyExists _) -> error "already_exists"
           | `KO (`SystemError e) -> error ("system:" ^ e)
