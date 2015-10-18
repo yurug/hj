@@ -336,4 +336,7 @@ let notify_all if_has_tags notification =
 let _ =
   let open AkaInterpreter in
       user_has_tag    := (fun s t -> has_tag (identifier_of_string s) t);
-      notify_all_user := notify_all
+      notify_all_user := notify_all;
+      user_is_teacher := (fun s -> make (identifier_of_string s) >>= function
+	| `OK e -> is_teacher e
+	| `KO _ -> return false)

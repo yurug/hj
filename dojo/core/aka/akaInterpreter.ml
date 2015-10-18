@@ -20,6 +20,7 @@ exception UnboundLabel of string
 
 (** To be set by Dojo logic modules. *)
 let user_has_tag               = ref (fun _ _ -> assert false)
+let user_is_teacher            = ref (fun _ -> assert false)
 let notify_all_user            = ref (fun _ _ -> assert false)
 let message                    = ref (fun _ -> assert false)
 let goto_exercise              = ref (fun _ _ -> assert false)
@@ -62,6 +63,10 @@ let lookup_primitive = function
     lift_string_fun (fun s ->
       lift_string_fun (fun s' ->
         return (to_bool (s = s'))))
+
+  | "user_is_teacher" ->
+    lift_string_fun (fun s ->
+      !user_is_teacher s >>= (fun b -> return (to_bool b)))
 
   | "user_has_tag" ->
     lift_string_fun (fun s ->
