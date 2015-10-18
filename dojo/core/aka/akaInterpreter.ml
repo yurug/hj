@@ -42,6 +42,10 @@ let rec as_bool = function
   | VData (DName "False", []) -> false
   | _ -> assert false
 
+let to_bool = function
+  | true -> VData (DName "True", [])
+  | false -> VData (DName "False", [])
+
 let lift_string_fun f =
   return (VPrimitiveFun (fun v -> f (as_string v)))
 
@@ -54,14 +58,15 @@ let lookup_primitive = function
       lift_string_fun (fun s' ->
         return (VPrimitive (PStringConstant (s ^ s')))))
 
+  | "string_equal" ->
+    lift_string_fun (fun s ->
+      lift_string_fun (fun s' ->
+        return (to_bool (s = s'))))
+
   | "user_has_tag" ->
     lift_string_fun (fun s ->
       lift_string_fun (fun t ->
-        !user_has_tag s t >>= (function
-          | true -> return (VData (DName "True", []))
-          | false -> return (VData (DName "False", []))
-        )
-      ))
+        !user_has_tag s t >>= (fun b -> return (to_bool b))))
 
   | "notify_all_user" ->
     lift_string_list_fun (fun l ->
