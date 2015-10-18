@@ -27,8 +27,6 @@ def false = False
 
 def or a b = a ? { True => b | False => False }
 
-def and a b = a ? { False => False | True => b }
-
 data text =
 | String   (template (string))
 | Bold     (template (text))
