@@ -207,6 +207,6 @@ external goto_exercise : template (string) -> statement -> notification
 
 external set_exercise_collaborative : string -> boolean -> unit
 
-external string_equal : string -> string -> bool
+external string_equal : string -> string -> boolean
 
-external user_is_teacher : string -> bool
+external user_is_teacher : string -> boolean
