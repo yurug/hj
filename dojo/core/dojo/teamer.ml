@@ -165,7 +165,7 @@ include Entity.Make (struct
            else
               return ()
           ) >> Lwt_list.iter_s (!remind_confirmation_needed selfid title idx limit) uuids
-          >> (if (has_unconfirmed || is_incomplete) && is_expired then (
+          >> (if (has_unconfirmed || is_incomplete) && is_expired && is_open (content state).description then (
             later (Cancel (sid, idx))
           ) else return ()
           )
@@ -499,22 +499,21 @@ include Entity.Make (struct
 
   let string_of_change = function
     | UpdateDescription ->
-      "update description"
+      "Update description"
     | ReserveForUser (uid, SID id, idx) ->
       Printf.sprintf
         "Reserve slot number %d of %s for %s"
         idx id (string_of_identifier uid)
     | UpdateCheckers d ->
-      "update checkers wrt " ^ Timestamp.to_string d
+      "Update checkers wrt " ^ Timestamp.to_string d
     | Cancel (SID id, idx) ->
       Printf.sprintf
-        "Cancel reservation of slot number %d of %s"
+        "Cancel reservation of slot number %d for %s"
         idx id
     | Confirm (uid, SID id, idx) ->
       Printf.sprintf
         "Confirmation for slot number %d of %s from %s"
         idx id (string_of_identifier uid)
-
     | Withdraw (uid, SID id, idx) ->
       Printf.sprintf
         "Withdraw for slot number %d of %s from %s"

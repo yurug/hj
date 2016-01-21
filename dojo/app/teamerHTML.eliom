@@ -46,7 +46,7 @@ let teamer_page teamer =
                 | true ->
                   (Teamer.is_complete teamer (SID sid) slot_idx >>= function
                     | `OK `Incomplete -> return "(incomplète)"
-                    | `OK `Complete -> return "(complète)"
+                    | `OK `Complete -> return "(complète mais place(s) disponible(s))"
                     | `OK `Full -> return "(complète et plus de place disponible)"
                     | `KO _ -> return "(erreur à signaler à yrg@pps.univ-paris-diderot.fr)"
                   )
